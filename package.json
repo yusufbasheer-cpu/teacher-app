@@ -11,12 +11,14 @@
   "dependencies": {
     "@supabase/supabase-js": "latest",
     "next": "latest",
+    "pdfkit": "latest",
     "pptxgenjs": "latest",
     "react": "latest",
     "react-dom": "latest"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "latest",
+    "@types/pdfkit": "latest",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",

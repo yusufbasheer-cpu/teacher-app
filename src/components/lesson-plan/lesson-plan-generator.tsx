@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { LESSON_PLAN_SECTIONS } from "@/lib/lesson-plan";
-import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
-import type {
-  LessonPlanInput,
-  LessonPlanResult,
-  SavedLessonPlan,
+import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
+import {
+  hasWorksheetForPdf,
+  type LessonPlanInput,
+  type LessonPlanResult,
+  type SavedLessonPlan,
 } from "@/lib/lesson-plan";
+import { supabase } from "@/lib/supabase";
 
 const initialForm: LessonPlanInput = {
   subject: "",
@@ -27,7 +28,8 @@ export function LessonPlanGenerator() {
   const [lessonPlan, setLessonPlan] = useState<LessonPlanResult | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [pptxLoading, setPptxLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -131,11 +133,11 @@ export function LessonPlanGenerator() {
     }
   };
 
-  const onDownloadPptx = async () => {
+  const onDownloadAllPptx = async () => {
     if (!lessonPlan) return;
     setError(null);
     setSuccessMessage(null);
-    setDownloading(true);
+    setPptxLoading(true);
 
     try {
       const response = await fetch("/api/lesson-plan/pptx", {
@@ -157,12 +159,12 @@ export function LessonPlanGenerator() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const safeTopic = (form.topic || "lesson-plan")
+      const safeTopic = (form.topic || "teacher-package")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "");
       a.href = url;
-      a.download = `${safeTopic || "lesson-plan"}.pptx`;
+      a.download = `${safeTopic || "teacher-package"}.pptx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -172,7 +174,52 @@ export function LessonPlanGenerator() {
         err instanceof Error ? err.message : "Unexpected error occurred.";
       setError(message);
     } finally {
-      setDownloading(false);
+      setPptxLoading(false);
+    }
+  };
+
+  const onDownloadWorksheetPdf = async () => {
+    if (!lessonPlan || !hasWorksheetForPdf(lessonPlan)) return;
+    setError(null);
+    setSuccessMessage(null);
+    setPdfLoading(true);
+
+    try {
+      const response = await fetch("/api/lesson-plan/worksheet-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: form.subject,
+          grade: form.grade,
+          topic: form.topic,
+          worksheet: lessonPlan["Worksheet"],
+        }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        throw new Error(data.error ?? "Could not generate worksheet PDF.");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeTopic = (form.topic || "worksheet")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      a.href = url;
+      a.download = `${safeTopic || "worksheet"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unexpected error occurred.";
+      setError(message);
+    } finally {
+      setPdfLoading(false);
     }
   };
 
@@ -337,45 +384,32 @@ export function LessonPlanGenerator() {
         </form>
 
         <section className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm md:p-7">
-          <h3 className="text-xl font-semibold text-slate-900">Generated Lesson Plan</h3>
-          <p className="mt-2 text-sm text-slate-600">
-            Your result appears here in a classroom-ready format.
-          </p>
+        <h3 className="text-xl font-semibold text-slate-900">Generated teacher package</h3>
+        <p className="mt-2 text-sm text-slate-600">
+          Lesson plan, slide outline, worksheet, assessments, homework, and teacher notes.
+        </p>
 
         {!lessonPlan ? (
           <div className="mt-6 rounded-xl border border-dashed border-blue-200 bg-blue-50/50 p-6 text-sm text-slate-500">
             No lesson plan generated yet.
           </div>
         ) : (
-          <div className="mt-6 space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={onSaveLessonPlan}
-                disabled={saving}
-                className="inline-flex items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {saving ? "Saving..." : "Save Lesson Plan"}
-              </button>
-              <button
-                type="button"
-                onClick={onDownloadPptx}
-                disabled={downloading}
-                className="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {downloading ? "Preparing PowerPoint..." : "Download as PowerPoint"}
-              </button>
-            </div>
-            {LESSON_PLAN_SECTIONS.map((section) => (
-              <article key={section} className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
-                <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-800">
-                  {section}
-                </h4>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                  {lessonPlan[section]}
-                </p>
-              </article>
-            ))}
+          <div className="mt-6 space-y-5">
+            <button
+              type="button"
+              onClick={onSaveLessonPlan}
+              disabled={saving}
+              className="inline-flex w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+            >
+              {saving ? "Saving..." : "Save Lesson Plan"}
+            </button>
+            <TeacherPackageViewer
+              lessonPlan={lessonPlan}
+              onDownloadAllPptx={onDownloadAllPptx}
+              pptxLoading={pptxLoading}
+              onDownloadWorksheetPdf={onDownloadWorksheetPdf}
+              pdfLoading={pdfLoading}
+            />
           </div>
         )}
         </section>

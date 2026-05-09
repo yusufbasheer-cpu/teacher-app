@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { LESSON_PLAN_SECTIONS } from "@/lib/lesson-plan";
+import { DEEPSEEK_LESSON_SYSTEM_PROMPT } from "@/lib/deepseek-lesson-system-prompt";
+import { TEACHER_PACKAGE_SECTIONS } from "@/lib/lesson-plan";
 import type { LessonPlanInput, LessonPlanResult } from "@/lib/lesson-plan";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
@@ -31,9 +32,9 @@ function parsePlan(content: string): LessonPlanResult | null {
 
   try {
     const parsed = JSON.parse(jsonCandidate) as Record<string, unknown>;
-    const result: Partial<LessonPlanResult> = {};
+    const result: LessonPlanResult = {};
 
-    for (const section of LESSON_PLAN_SECTIONS) {
+    for (const section of TEACHER_PACKAGE_SECTIONS) {
       const value = parsed[section];
       if (typeof value !== "string" || value.trim().length === 0) {
         return null;
@@ -41,7 +42,7 @@ function parsePlan(content: string): LessonPlanResult | null {
       result[section] = value.trim();
     }
 
-    return result as LessonPlanResult;
+    return result;
   } catch {
     return null;
   }
@@ -51,32 +52,19 @@ function buildMessages(input: LessonPlanInput): DeepSeekMessage[] {
   return [
     {
       role: "system",
-      content:
-        "You are an expert teacher assistant. Return ONLY valid JSON and no markdown or extra text.",
+      content: DEEPSEEK_LESSON_SYSTEM_PROMPT,
     },
     {
       role: "user",
       content: `
-Generate a detailed, practical lesson plan for a teacher using this context:
+Use this class context to build the complete teacher package (all six JSON fields):
+
 - Subject: ${input.subject}
-- Grade: ${input.grade}
+- Grade / Year group: ${input.grade}
 - Topic: ${input.topic}
-- Learning Objectives: ${input.learningObjectives}
+- Teacher-provided learning objectives / focus: ${input.learningObjectives}
 
-You must return a JSON object with exactly these keys:
-"Starter Activity",
-"Main Phase",
-"Transdisciplinary Connection",
-"Interdisciplinary Connection",
-"Extended Task",
-"CCL"
-
-Requirements:
-- Each section should be clear and actionable.
-- Keep language professional and classroom-ready.
-- Include concrete activities and teaching strategies.
-- "CCL" means Communication, Collaboration, and Leadership outcomes.
-- Return ONLY raw JSON.
+Follow every instructional design rule in the system prompt. Adapt tone and examples to the subject and grade. Ensure "Full Lesson Plan" is comprehensive and the other five fields contain ready-to-use classroom materials (not placeholders).
       `.trim(),
     },
   ];
@@ -113,7 +101,7 @@ export async function POST(req: Request) {
     },
     body: JSON.stringify({
       model: "deepseek-chat",
-      temperature: 0.6,
+      temperature: 0.55,
       messages: buildMessages(body),
     }),
   });
@@ -141,7 +129,7 @@ export async function POST(req: Request) {
   const parsedPlan = parsePlan(content);
   if (!parsedPlan) {
     return NextResponse.json(
-      { error: "Could not parse structured lesson plan from DeepSeek response." },
+      { error: "Could not parse structured teacher package from DeepSeek response." },
       { status: 502 },
     );
   }

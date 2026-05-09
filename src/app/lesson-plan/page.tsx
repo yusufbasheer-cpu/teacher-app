@@ -19,8 +19,9 @@ export default function LessonPlanPage() {
             AI Lesson Plan Generator
           </h1>
           <p className="mt-2 max-w-2xl text-slate-600">
-            Enter your class details and generate a complete plan with all required
-            phases in one click.
+            Generate a full teacher package: structured lesson plan, slide-by-slide PPT
+            content, worksheet, assessments, homework, and teacher notes—aligned to your
+            subject and grade.
           </p>
         </div>
         <Suspense fallback={<LessonPlanFallback />}>
