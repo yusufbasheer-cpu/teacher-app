@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
 import type { LessonPlanInput, LessonPlanResult, SavedLessonPlan } from "@/lib/lesson-plan";
 import { supabase } from "@/lib/supabase";
@@ -202,6 +203,7 @@ export function LessonPlanGenerator() {
       <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <form
           onSubmit={onSubmit}
+          aria-busy={loading}
           className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm md:p-7"
         >
           <h2 className="text-xl font-semibold text-slate-900">Lesson Plan Generator</h2>
@@ -322,6 +324,8 @@ export function LessonPlanGenerator() {
           {successMessage}
         </div>
       ) : null}
+
+      {loading ? <LessonPlanLoadingGame active /> : null}
     </div>
   );
 }
