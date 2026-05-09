@@ -1,0 +1,21 @@
+import { LessonPlanGenerator } from "@/components/lesson-plan/lesson-plan-generator";
+import { Container } from "@/components/ui/container";
+
+export default function LessonPlanPage() {
+  return (
+    <main className="min-h-screen pb-16 pt-10">
+      <Container>
+        <div className="mb-8 rounded-3xl border border-blue-100 bg-white/90 p-6 shadow-sm md:p-8">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+            AI Lesson Plan Generator
+          </h1>
+          <p className="mt-2 max-w-2xl text-slate-600">
+            Enter your class details and generate a complete plan with all required
+            phases in one click.
+          </p>
+        </div>
+        <LessonPlanGenerator />
+      </Container>
+    </main>
+  );
+}
