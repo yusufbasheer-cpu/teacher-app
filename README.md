@@ -8,6 +8,8 @@ A clean Next.js + Tailwind CSS starter for a teacher-focused AI web app.
 - Tailwind CSS
 - ESLint
 - PptxGenJS (PowerPoint export)
+- docx (Word export)
+- JSZip (ZIP packaging)
 
 ## Getting Started
 
@@ -55,6 +57,8 @@ Auth uses Supabase email/password:
 - `src/lib` - app-level constants/helpers
 - `src/types` - shared TypeScript types
 - `src/app/api/lesson-plan` - DeepSeek lesson plan API route
-- `src/app/api/lesson-plan/pptx` - PPTX export route (one slide per section)
+- `src/app/api/lesson-plan/export/pptx` - PPT content → multi-slide PowerPoint
+- `src/app/api/lesson-plan/export/docx` - section → Word (.docx)
+- `src/app/api/lesson-plan/export/zip` - full teacher package ZIP
 - `src/app/my-lesson-plans` - page to browse and reopen saved plans
 - `supabase/schema.sql` - table and RLS policies for saved lesson plans

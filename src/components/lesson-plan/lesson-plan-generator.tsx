@@ -5,12 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
-import {
-  hasWorksheetForPdf,
-  type LessonPlanInput,
-  type LessonPlanResult,
-  type SavedLessonPlan,
-} from "@/lib/lesson-plan";
+import type { LessonPlanInput, LessonPlanResult, SavedLessonPlan } from "@/lib/lesson-plan";
 import { supabase } from "@/lib/supabase";
 
 const initialForm: LessonPlanInput = {
@@ -28,8 +23,6 @@ export function LessonPlanGenerator() {
   const [lessonPlan, setLessonPlan] = useState<LessonPlanResult | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [pptxLoading, setPptxLoading] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -130,96 +123,6 @@ export function LessonPlanGenerator() {
       setError(message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const onDownloadAllPptx = async () => {
-    if (!lessonPlan) return;
-    setError(null);
-    setSuccessMessage(null);
-    setPptxLoading(true);
-
-    try {
-      const response = await fetch("/api/lesson-plan/pptx", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject: form.subject,
-          grade: form.grade,
-          topic: form.topic,
-          lessonPlan,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        throw new Error(data.error ?? "Could not generate PowerPoint.");
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const safeTopic = (form.topic || "teacher-package")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      a.href = url;
-      a.download = `${safeTopic || "teacher-package"}.pptx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Unexpected error occurred.";
-      setError(message);
-    } finally {
-      setPptxLoading(false);
-    }
-  };
-
-  const onDownloadWorksheetPdf = async () => {
-    if (!lessonPlan || !hasWorksheetForPdf(lessonPlan)) return;
-    setError(null);
-    setSuccessMessage(null);
-    setPdfLoading(true);
-
-    try {
-      const response = await fetch("/api/lesson-plan/worksheet-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject: form.subject,
-          grade: form.grade,
-          topic: form.topic,
-          worksheet: lessonPlan["Worksheet"],
-        }),
-      });
-
-      if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        throw new Error(data.error ?? "Could not generate worksheet PDF.");
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const safeTopic = (form.topic || "worksheet")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      a.href = url;
-      a.download = `${safeTopic || "worksheet"}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Unexpected error occurred.";
-      setError(message);
-    } finally {
-      setPdfLoading(false);
     }
   };
 
@@ -405,10 +308,9 @@ export function LessonPlanGenerator() {
             </button>
             <TeacherPackageViewer
               lessonPlan={lessonPlan}
-              onDownloadAllPptx={onDownloadAllPptx}
-              pptxLoading={pptxLoading}
-              onDownloadWorksheetPdf={onDownloadWorksheetPdf}
-              pdfLoading={pdfLoading}
+              subject={form.subject}
+              grade={form.grade}
+              topic={form.topic}
             />
           </div>
         )}

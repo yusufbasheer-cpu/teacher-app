@@ -45,18 +45,6 @@ export type LessonPlanInput = {
 /** Stored JSON may be new package or legacy; treat as string map. */
 export type LessonPlanResult = Record<string, string>;
 
-export function hasWorksheetForPdf(plan: LessonPlanResult): boolean {
-  const w = plan["Worksheet"];
-  return typeof w === "string" && w.trim().length > 0;
-}
-
-export type LessonPlanPptxPayload = {
-  subject: string;
-  grade: string;
-  topic: string;
-  lessonPlan: LessonPlanResult;
-};
-
 export type SavedLessonPlan = {
   id: string;
   subject: string;
