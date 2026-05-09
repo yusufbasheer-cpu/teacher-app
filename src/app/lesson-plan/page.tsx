@@ -1,5 +1,14 @@
+import { Suspense } from "react";
 import { LessonPlanGenerator } from "@/components/lesson-plan/lesson-plan-generator";
 import { Container } from "@/components/ui/container";
+
+function LessonPlanFallback() {
+  return (
+    <div className="rounded-3xl border border-blue-100 bg-white p-6 text-sm text-slate-600 shadow-sm">
+      Loading lesson planner…
+    </div>
+  );
+}
 
 export default function LessonPlanPage() {
   return (
@@ -14,7 +23,9 @@ export default function LessonPlanPage() {
             phases in one click.
           </p>
         </div>
-        <LessonPlanGenerator />
+        <Suspense fallback={<LessonPlanFallback />}>
+          <LessonPlanGenerator />
+        </Suspense>
       </Container>
     </main>
   );
