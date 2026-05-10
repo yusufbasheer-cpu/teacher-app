@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { buildDeepseekLessonSystemPrompt } from "@/lib/deepseek-lesson-system-prompt";
 import {
   normalizeGenerationSections,
+  SOURCE_MATERIAL_MAX_CHARS,
   type LessonPlanGenerateBody,
   type LessonPlanInput,
   type LessonPlanResult,
@@ -69,12 +70,28 @@ function parsePlan(
   }
 }
 
-function buildMessages(input: LessonPlanInput, sections: readonly TeacherPackageSectionKey[]): DeepSeekMessage[] {
+function buildMessages(
+  input: LessonPlanInput,
+  sections: readonly TeacherPackageSectionKey[],
+  sourceMaterial?: string,
+): DeepSeekMessage[] {
   const keysList = sections.map((k) => JSON.stringify(k)).join(", ");
   const chapterLine =
     input.chapter.trim().length > 0
       ? `- Chapter / unit: ${input.chapter.trim()}`
       : `- Chapter / unit: (not specified — infer sensible scope from topic and grade if needed)`;
+
+  const trimmedSource = sourceMaterial?.trim();
+  const sourceBlock =
+    trimmedSource && trimmedSource.length > 0
+      ? `
+
+### Source material (from teacher-uploaded PDF or image — primary content basis)
+Use the following extracted text as the main factual and instructional basis for every section you generate. Ground examples, definitions, sequencing, and practice tasks in this material while still honoring the curriculum, grade, topic, and learning objectives below. If the source is partial, infer sensible teaching structure and label reasonable inferences clearly.
+
+${trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS)}
+`
+      : "";
 
   return [
     {
@@ -92,6 +109,7 @@ Use this class context. Produce ONLY these JSON fields (no others): ${keysList}
 ${chapterLine}
 - Topic (within the chapter): ${input.topic.trim()}
 - Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}
+${sourceBlock}
 
 Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested field must be classroom-ready (not placeholders).
       `.trim(),
@@ -132,6 +150,11 @@ export async function POST(req: Request) {
     learningObjectives: body.learningObjectives ?? "",
   };
 
+  const rawSource =
+    typeof body.sourceMaterial === "string" ? body.sourceMaterial.trim() : "";
+  const sourceMaterial =
+    rawSource.length > 0 ? rawSource.slice(0, SOURCE_MATERIAL_MAX_CHARS) : undefined;
+
   const validationError = validateInput(input);
   if (validationError) {
     return NextResponse.json({ error: validationError }, { status: 400 });
@@ -146,7 +169,7 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       model: "deepseek-chat",
       temperature: 0.55,
-      messages: buildMessages(input, sections),
+      messages: buildMessages(input, sections, sourceMaterial),
     }),
   });
 

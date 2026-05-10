@@ -109,9 +109,14 @@ export function isValidSubjectOption(value: string): value is SubjectOption {
   return (SUBJECT_OPTIONS as readonly string[]).includes(value);
 }
 
+/** Max characters of upload-derived text sent into generation (truncated server-side). */
+export const SOURCE_MATERIAL_MAX_CHARS = 80_000;
+
 /** POST /api/lesson-plan body: class context plus which teacher-package sections to generate. */
 export type LessonPlanGenerateBody = LessonPlanInput & {
   sections: TeacherPackageSectionKey[];
+  /** Plain text from PDF extraction or image vision (optional). */
+  sourceMaterial?: string;
 };
 
 /** Stored JSON may be new package or legacy; treat as string map. */

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
@@ -52,6 +52,12 @@ export function LessonPlanGenerator() {
   const [sectionSelection, setSectionSelection] =
     useState<Record<TeacherPackageSectionKey, boolean>>(initialSectionSelection);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sourceMaterial, setSourceMaterial] = useState("");
+  const [uploadFileLabel, setUploadFileLabel] = useState<string | null>(null);
+  const [uploadExtracting, setUploadExtracting] = useState(false);
+  const [uploadInfo, setUploadInfo] = useState<string | null>(null);
+
   const loadPlanById = async (userId: string, planId: string) => {
     const { data, error: loadError } = await supabase
       .from("lesson_plans")
@@ -83,6 +89,12 @@ export function LessonPlanGenerator() {
     });
     setLessonPlan(plan.lesson_plan);
     setActivePlanId(plan.id);
+    setSourceMaterial("");
+    setUploadFileLabel(null);
+    setUploadInfo(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   useEffect(() => {
@@ -123,6 +135,75 @@ export function LessonPlanGenerator() {
     };
   }, [searchParams]);
 
+  const clearUploadedSource = () => {
+    setSourceMaterial("");
+    setUploadFileLabel(null);
+    setUploadInfo(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const onUploadFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      clearUploadedSource();
+      return;
+    }
+
+    const lower = file.name.toLowerCase();
+    const allowedExt =
+      lower.endsWith(".pdf") ||
+      lower.endsWith(".jpg") ||
+      lower.endsWith(".jpeg") ||
+      lower.endsWith(".png");
+    const allowedMime =
+      file.type === "application/pdf" ||
+      file.type === "image/jpeg" ||
+      file.type === "image/png";
+    if (!allowedExt && !allowedMime) {
+      setError("Please upload a PDF, JPG, or PNG file.");
+      e.target.value = "";
+      return;
+    }
+
+    setUploadExtracting(true);
+    setError(null);
+    setUploadInfo(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/lesson-plan/extract-upload", {
+        method: "POST",
+        body: fd,
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        extractedText?: string;
+        sourceLabel?: string;
+      };
+      if (!res.ok) {
+        throw new Error(data.error ?? "Could not read this file.");
+      }
+      const text = data.extractedText?.trim() ?? "";
+      if (!text) {
+        throw new Error("No text could be extracted from this file.");
+      }
+      setSourceMaterial(text);
+      setUploadFileLabel(data.sourceLabel ?? file.name);
+      setUploadInfo(
+        `Loaded ${text.length.toLocaleString()} characters from "${data.sourceLabel ?? file.name}". This text will be used when you generate.`,
+      );
+    } catch (err) {
+      setSourceMaterial("");
+      setUploadFileLabel(null);
+      setUploadInfo(null);
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploadExtracting(false);
+    }
+  };
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -142,7 +223,11 @@ export function LessonPlanGenerator() {
       const response = await fetch("/api/lesson-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, sections }),
+        body: JSON.stringify({
+          ...form,
+          sections,
+          ...(sourceMaterial.trim().length > 0 ? { sourceMaterial: sourceMaterial.trim() } : {}),
+        }),
       });
 
       const data = (await response.json()) as {
@@ -256,6 +341,49 @@ export function LessonPlanGenerator() {
           <p className="mt-2 text-sm text-slate-600">
             Fill in class details, choose which materials to generate, then run the AI.
           </p>
+
+        <div className="mt-6 rounded-2xl border border-dashed border-blue-200 bg-blue-50/50 p-4">
+          <p className="text-sm font-semibold text-blue-950">
+            Upload a PDF or image to generate resources from your own content.
+          </p>
+          <p className="mt-1 text-xs text-slate-600">
+            Supported formats: PDF, JPG, and PNG (max 12 MB). Text is extracted from PDFs; images are
+            read with AI vision, then used as the basis for your lesson package when you click
+            Generate.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+              onChange={onUploadFileChange}
+              disabled={uploadExtracting || loading}
+              className="block w-full min-w-0 text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-800 disabled:opacity-60 sm:w-auto"
+            />
+            {uploadFileLabel ? (
+              <button
+                type="button"
+                onClick={clearUploadedSource}
+                disabled={uploadExtracting || loading}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+              >
+                Remove file
+              </button>
+            ) : null}
+          </div>
+          {uploadExtracting ? (
+            <p className="mt-2 text-xs font-medium text-blue-800">Extracting text from your file…</p>
+          ) : null}
+          {uploadInfo ? (
+            <p className="mt-2 text-xs font-medium text-emerald-800">{uploadInfo}</p>
+          ) : null}
+          {uploadFileLabel && sourceMaterial ? (
+            <p className="mt-2 line-clamp-3 rounded-lg border border-blue-100 bg-white/80 p-2 font-mono text-[11px] text-slate-600">
+              {sourceMaterial.slice(0, 400)}
+              {sourceMaterial.length > 400 ? "…" : ""}
+            </p>
+          ) : null}
+        </div>
 
         <div className="mt-6 space-y-4">
           <div>
@@ -435,7 +563,11 @@ export function LessonPlanGenerator() {
 
         <button
           type="submit"
-          disabled={loading || TEACHER_PACKAGE_SECTIONS.every((k) => !sectionSelection[k])}
+          disabled={
+            loading ||
+            uploadExtracting ||
+            TEACHER_PACKAGE_SECTIONS.every((k) => !sectionSelection[k])
+          }
           className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? "Generating..." : "Generate Lesson Plan"}

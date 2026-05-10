@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ObstacleType = "book" | "pencil" | "bag";
 
@@ -11,7 +11,6 @@ type Obstacle = {
   w: number;
   h: number;
   passed: boolean;
-  hit: boolean;
 };
 
 type LessonPlanLoadingGameProps = {
@@ -20,6 +19,31 @@ type LessonPlanLoadingGameProps = {
 };
 
 const OB_TYPES: ObstacleType[] = ["book", "pencil", "bag"];
+
+/** Tight hitbox for drawn obstacle (CSS px, same space as o.x / groundY). */
+function obstacleHitRect(
+  obs: Obstacle,
+  groundTop: number,
+): { x: number; y: number; w: number; h: number } {
+  const baseY = groundTop - obs.h;
+  if (obs.type === "book") {
+    return { x: obs.x, y: baseY, w: obs.w, h: obs.h };
+  }
+  if (obs.type === "pencil") {
+    return { x: obs.x + 4, y: baseY, w: 14, h: obs.h - 2 };
+  }
+  return { x: obs.x + 2, y: baseY + 6, w: obs.w - 4, h: obs.h - 6 };
+}
+
+/** Teacher collision box — full sprite bounds (matches drawPixelTeacher footprint). */
+function teacherHitRect(teacher: { x: number; y: number; w: number; h: number }) {
+  return {
+    x: teacher.x,
+    y: teacher.y,
+    w: teacher.w,
+    h: teacher.h,
+  };
+}
 
 function drawPixelTeacher(
   ctx: CanvasRenderingContext2D,
@@ -38,32 +62,25 @@ function drawPixelTeacher(
   const cap = "#1e3a8a";
   const capBand = "#172554";
 
-  // Mortarboard (top)
   ctx.fillStyle = cap;
   ctx.fillRect(px(4), py(0), Math.round((36 * w) / 44), Math.round((10 * h) / 56));
   ctx.fillStyle = capBand;
   ctx.fillRect(px(6), py(8), Math.round((32 * w) / 44), Math.round((4 * h) / 56));
-  // Tassel
   ctx.fillStyle = "#fbbf24";
   ctx.fillRect(px(34), py(6), Math.round((4 * w) / 44), Math.round((14 * h) / 56));
 
-  // Head
   ctx.fillStyle = skin;
   ctx.fillRect(px(10), py(10), Math.round((24 * w) / 44), Math.round((18 * h) / 56));
 
-  // Body / shirt
   ctx.fillStyle = shirt;
   ctx.fillRect(px(8), py(26), Math.round((28 * w) / 44), Math.round((22 * h) / 56));
-  // Simple tie
   ctx.fillStyle = "#1e40af";
   ctx.fillRect(px(20), py(30), Math.round((6 * w) / 44), Math.round((16 * h) / 56));
 
-  // Legs
   ctx.fillStyle = pants;
   ctx.fillRect(px(10), py(46), Math.round((10 * w) / 44), Math.round((10 * h) / 56));
   ctx.fillRect(px(24), py(46), Math.round((10 * w) / 44), Math.round((10 * h) / 56));
 
-  // Eyes (pixel)
   ctx.fillStyle = "#0f172a";
   ctx.fillRect(px(14), py(16), Math.round((4 * w) / 44), Math.round((4 * h) / 56));
   ctx.fillRect(px(26), py(16), Math.round((4 * w) / 44), Math.round((4 * h) / 56));
@@ -119,8 +136,17 @@ export function LessonPlanLoadingGame({ active }: LessonPlanLoadingGameProps) {
   const scoreRef = useRef(0);
   const flashRef = useRef(0);
   const displayedFloorRef = useRef(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [finalScore, setFinalScore] = useState(0);
+  const [restartNonce, setRestartNonce] = useState(0);
 
   activeRef.current = active;
+
+  const restartGame = useCallback(() => {
+    setGameOver(false);
+    setFinalScore(0);
+    setRestartNonce((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     if (!active) return;
@@ -144,10 +170,12 @@ export function LessonPlanLoadingGame({ active }: LessonPlanLoadingGameProps) {
     let spawnNext = performance.now() + 900;
     let idCounter = 0;
     const obstacles: Obstacle[] = [];
+    let ended = false;
 
     scoreRef.current = 0;
     displayedFloorRef.current = 0;
     setScore(0);
+    setGameOver(false);
 
     const bumpScoreUi = () => {
       const floor = Math.floor(scoreRef.current);
@@ -160,7 +188,17 @@ export function LessonPlanLoadingGame({ active }: LessonPlanLoadingGameProps) {
     const groundY = cssH - 36;
     const teacher = { x: 72, y: groundY - 56, w: 44, h: 56, vy: 0, onGround: true };
 
+    const endGame = () => {
+      if (ended) return;
+      ended = true;
+      const fs = Math.floor(scoreRef.current);
+      setFinalScore(fs);
+      setGameOver(true);
+      bumpScoreUi();
+    };
+
     const jump = () => {
+      if (ended) return;
       if (teacher.onGround) {
         teacher.vy = -560;
         teacher.onGround = false;
@@ -183,6 +221,7 @@ export function LessonPlanLoadingGame({ active }: LessonPlanLoadingGameProps) {
     canvas.addEventListener("mousedown", jump);
 
     const spawnObstacle = () => {
+      if (ended) return;
       const type = OB_TYPES[Math.floor(Math.random() * OB_TYPES.length)]!;
       let w = 36;
       let h = 40;
@@ -200,7 +239,6 @@ export function LessonPlanLoadingGame({ active }: LessonPlanLoadingGameProps) {
         w,
         h,
         passed: false,
-        hit: false,
       });
     };
 
@@ -210,54 +248,57 @@ export function LessonPlanLoadingGame({ active }: LessonPlanLoadingGameProps) {
       const dt = Math.min((t - last) / 1000, 0.045);
       last = t;
 
-      // Physics
-      teacher.vy += 1750 * dt;
-      teacher.y += teacher.vy * dt;
-      if (teacher.y >= groundY - teacher.h) {
-        teacher.y = groundY - teacher.h;
-        teacher.vy = 0;
-        teacher.onGround = true;
-      }
-
-      // Spawn
-      if (t >= spawnNext) {
-        spawnObstacle();
-        spawnNext = t + 1100 + Math.random() * 900;
-      }
-
-      const speed = 260 + Math.min(scoreRef.current * 0.35, 140);
-
-      for (const o of obstacles) {
-        o.x -= speed * dt;
-        if (!o.passed && o.x + o.w < teacher.x) {
-          o.passed = true;
-          scoreRef.current += 12;
-          bumpScoreUi();
+      if (!ended) {
+        teacher.vy += 1750 * dt;
+        teacher.y += teacher.vy * dt;
+        if (teacher.y >= groundY - teacher.h) {
+          teacher.y = groundY - teacher.h;
+          teacher.vy = 0;
+          teacher.onGround = true;
         }
-        if (
-          !o.hit &&
-          rectsOverlap(teacher.x + 6, teacher.y + 8, teacher.w - 12, teacher.h - 10, o.x, groundY - o.h, o.w, o.h)
-        ) {
-          o.hit = true;
-          scoreRef.current = Math.max(0, scoreRef.current - 8);
-          bumpScoreUi();
-          flashRef.current = 8;
+
+        if (t >= spawnNext) {
+          spawnObstacle();
+          spawnNext = t + 1100 + Math.random() * 900;
         }
+
+        const speed = 260 + Math.min(scoreRef.current * 0.35, 140);
+        const tRect = teacherHitRect(teacher);
+
+        for (const o of obstacles) {
+          const prevX = o.x;
+          o.x -= speed * dt;
+          const hitNow = obstacleHitRect(o, groundY);
+          const hitPrev = obstacleHitRect({ ...o, x: prevX }, groundY);
+
+          if (
+            rectsOverlap(tRect.x, tRect.y, tRect.w, tRect.h, hitNow.x, hitNow.y, hitNow.w, hitNow.h) ||
+            rectsOverlap(tRect.x, tRect.y, tRect.w, tRect.h, hitPrev.x, hitPrev.y, hitPrev.w, hitPrev.h)
+          ) {
+            endGame();
+            break;
+          }
+
+          if (!o.passed && o.x + o.w < teacher.x) {
+            o.passed = true;
+            scoreRef.current += 12;
+            bumpScoreUi();
+          }
+        }
+
+        while (obstacles.length && obstacles[0]!.x + obstacles[0]!.w < -20) {
+          obstacles.shift();
+        }
+
+        scoreRef.current += dt * 6;
+        bumpScoreUi();
       }
 
-      while (obstacles.length && obstacles[0]!.x + obstacles[0]!.w < -20) {
-        obstacles.shift();
-      }
-
-      scoreRef.current += dt * 6;
-      bumpScoreUi();
       if (flashRef.current > 0) flashRef.current -= 1;
 
-      // Draw
       ctx.clearRect(0, 0, cssW, cssH);
       ctx.fillStyle = "#e0f2fe";
       ctx.fillRect(0, 0, cssW, cssH);
-      // Ground
       ctx.fillStyle = "#bfdbfe";
       ctx.fillRect(0, groundY, cssW, cssH - groundY);
       ctx.strokeStyle = "#93c5fd";
@@ -286,7 +327,7 @@ export function LessonPlanLoadingGame({ active }: LessonPlanLoadingGameProps) {
       canvas.removeEventListener("mousedown", jump);
       document.body.style.overflow = "";
     };
-  }, [active]);
+  }, [active, restartNonce]);
 
   if (!active) return null;
 
@@ -297,7 +338,7 @@ export function LessonPlanLoadingGame({ active }: LessonPlanLoadingGameProps) {
       aria-modal="true"
       aria-label="Lesson plan loading mini game"
     >
-      <div className="w-full max-w-lg rounded-2xl border border-blue-200 bg-white p-5 shadow-2xl">
+      <div className="relative w-full max-w-lg rounded-2xl border border-blue-200 bg-white p-5 shadow-2xl">
         <div className="mb-1 flex items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score</p>
           <p className="text-2xl font-bold tabular-nums text-blue-700">{score}</p>
@@ -315,6 +356,29 @@ export function LessonPlanLoadingGame({ active }: LessonPlanLoadingGameProps) {
         <p className="mt-3 text-center text-xs text-slate-500">
           Space or tap / click to jump · Dodge books, pencils &amp; school bags
         </p>
+
+        {gameOver ? (
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-slate-900/88 px-6 py-8 text-center backdrop-blur-[2px]"
+            role="alert"
+          >
+            <p className="text-2xl font-bold text-white">Game over</p>
+            <p className="mt-3 text-lg font-semibold text-sky-200">
+              Final score: <span className="tabular-nums text-white">{finalScore}</span>
+            </p>
+            <p className="mt-2 max-w-sm text-sm text-slate-300">
+              Generation is still running in the background. Restart the run to try again, or wait
+              for your lesson plan to finish.
+            </p>
+            <button
+              type="button"
+              onClick={restartGame}
+              className="mt-6 rounded-xl bg-blue-500 px-6 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+            >
+              Restart
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );
