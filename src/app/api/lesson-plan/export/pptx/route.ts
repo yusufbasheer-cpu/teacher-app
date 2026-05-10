@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
-import { buildPptxFromPptContent, sanitizeExportFileName } from "@/lib/lesson-plan-export";
+import { generatePptSlideImageUrls } from "@/lib/fal-ppt-slide-images";
+import {
+  buildPptxFromPptContent,
+  parsePptContentIntoSlides,
+  sanitizeExportFileName,
+} from "@/lib/lesson-plan-export";
 
 export const runtime = "nodejs";
+export const maxDuration = 600;
 
 type Body = {
   subject?: string;
@@ -31,7 +37,16 @@ export async function POST(req: Request) {
   }
 
   try {
-    const buffer = await buildPptxFromPptContent({ subject, grade, topic, pptContent });
+    const slides = parsePptContentIntoSlides(pptContent);
+    const slideImageUrls = await generatePptSlideImageUrls({ subject, grade, topic }, slides);
+
+    const buffer = await buildPptxFromPptContent({
+      subject,
+      grade,
+      topic,
+      pptContent,
+      slideImageUrls,
+    });
     const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-ppt`) || "ppt-content";
 
     return new NextResponse(new Uint8Array(buffer), {
@@ -43,7 +58,12 @@ export async function POST(req: Request) {
         "Cache-Control": "no-store",
       },
     });
-  } catch {
-    return NextResponse.json({ error: "Failed to build PowerPoint." }, { status: 500 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[pptx export]", message, e);
+    return NextResponse.json(
+      { error: `Failed to build PowerPoint: ${message}` },
+      { status: 500 },
+    );
   }
 }

@@ -122,6 +122,52 @@ export type LessonPlanGenerateBody = LessonPlanInput & {
 /** Stored JSON may be new package or legacy; treat as string map. */
 export type LessonPlanResult = Record<string, string>;
 
+/** URLs of FLUX-generated illustrations per teacher-package section (not sent to DeepSeek as text). */
+export type SectionImageMap = Partial<Record<TeacherPackageSectionKey, string[]>>;
+
+/** Serialized in `lesson_plan` JSON alongside section text keys. */
+export const LESSON_PLAN_SECTION_IMAGES_META_KEY = "__sectionImageUrls" as const;
+
+export function isLessonPlanMetaStorageKey(key: string): boolean {
+  return key === LESSON_PLAN_SECTION_IMAGES_META_KEY || key.startsWith("__");
+}
+
+/** Split stored plan into text sections and optional FLUX image URLs. */
+export function parseSectionImagesMeta(plan: LessonPlanResult): {
+  planTextOnly: LessonPlanResult;
+  sectionImages: SectionImageMap;
+} {
+  const planTextOnly = { ...plan };
+  const raw = planTextOnly[LESSON_PLAN_SECTION_IMAGES_META_KEY];
+  delete (planTextOnly as Record<string, unknown>)[LESSON_PLAN_SECTION_IMAGES_META_KEY];
+  if (typeof raw !== "string" || !raw.trim()) {
+    return { planTextOnly, sectionImages: {} };
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { planTextOnly, sectionImages: {} };
+    }
+    return { planTextOnly, sectionImages: parsed as SectionImageMap };
+  } catch {
+    return { planTextOnly, sectionImages: {} };
+  }
+}
+
+/** Attach serialized section image URLs for persistence (e.g. Supabase `lesson_plan`). */
+export function mergeSectionImagesMeta(
+  plan: LessonPlanResult,
+  images: SectionImageMap | null | undefined,
+): LessonPlanResult {
+  if (!images || Object.keys(images).length === 0) {
+    return plan;
+  }
+  return {
+    ...plan,
+    [LESSON_PLAN_SECTION_IMAGES_META_KEY]: JSON.stringify(images),
+  };
+}
+
 export type SavedLessonPlan = {
   id: string;
   subject: string;
@@ -194,5 +240,7 @@ export function getLessonPlanDisplayOrder(plan: LessonPlanResult): string[] {
   if (teacherPresent.length > 0) {
     return teacherPresent;
   }
-  return Object.keys(plan).filter((key) => isNonEmptyString(plan[key]));
+  return Object.keys(plan).filter(
+    (key) => isNonEmptyString(plan[key]) && !isLessonPlanMetaStorageKey(key),
+  );
 }

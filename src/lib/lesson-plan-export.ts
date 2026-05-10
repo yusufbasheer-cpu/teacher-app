@@ -137,11 +137,24 @@ export async function buildDocxBuffer(params: {
   return Buffer.from(await Packer.toBuffer(doc));
 }
 
+async function fetchImageUrlAsDataUri(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} fetching image`);
+  }
+  const mimeRaw = res.headers.get("content-type")?.split(";")[0]?.trim() || "image/png";
+  const mime = mimeRaw.startsWith("image/") ? mimeRaw : "image/png";
+  const buf = Buffer.from(await res.arrayBuffer());
+  return `data:${mime};base64,${buf.toString("base64")}`;
+}
+
 export async function buildPptxFromPptContent(params: {
   subject: string;
   grade: string;
   topic: string;
   pptContent: string;
+  /** One fal image URL per parsed content slide (same order as `parsePptContentIntoSlides`). */
+  slideImageUrls?: (string | null)[] | null;
 }): Promise<Buffer> {
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
@@ -151,6 +164,7 @@ export async function buildPptxFromPptContent(params: {
   pptx.title = `Slides — ${params.topic}`;
 
   const slides = parsePptContentIntoSlides(params.pptContent);
+  const slideImageUrls = params.slideImageUrls ?? null;
 
   const titleSlide = pptx.addSlide();
   titleSlide.background = { color: PPT_COLORS.white };
@@ -209,9 +223,24 @@ export async function buildPptxFromPptContent(params: {
     fontFace: "Calibri",
   });
 
-  for (const { title, body } of slides) {
+  for (let slideIdx = 0; slideIdx < slides.length; slideIdx++) {
+    const { title, body } = slides[slideIdx]!;
     const slide = pptx.addSlide();
     slide.background = { color: PPT_COLORS.white };
+
+    const remoteUrl = slideImageUrls?.[slideIdx] ?? null;
+    let imageDataUri: string | null = null;
+    if (remoteUrl) {
+      try {
+        imageDataUri = await fetchImageUrlAsDataUri(remoteUrl);
+      } catch (e) {
+        console.warn("[pptx] could not embed slide image", slideIdx + 1, e);
+      }
+    }
+
+    const hasImage = Boolean(imageDataUri);
+    const textPanelW = hasImage ? 6.95 : 12.05;
+    const textInnerW = hasImage ? 6.55 : 11.5;
 
     slide.addShape(pptx.ShapeType.rect, {
       x: 0,
@@ -225,7 +254,7 @@ export async function buildPptxFromPptContent(params: {
     slide.addText(title, {
       x: 0.6,
       y: 0.28,
-      w: 11.5,
+      w: 12.2,
       h: 0.5,
       fontSize: 22,
       bold: true,
@@ -246,7 +275,7 @@ export async function buildPptxFromPptContent(params: {
     slide.addShape(pptx.ShapeType.roundRect, {
       x: 0.65,
       y: 1.55,
-      w: 12.05,
+      w: textPanelW,
       h: 5.45,
       rectRadius: 0.08,
       fill: { color: PPT_COLORS.lightBlue, transparency: 76 },
@@ -256,7 +285,7 @@ export async function buildPptxFromPptContent(params: {
     slide.addText(body, {
       x: 0.9,
       y: 1.82,
-      w: 11.5,
+      w: textInnerW,
       h: 5,
       fontSize: 15,
       color: PPT_COLORS.dark,
@@ -265,6 +294,18 @@ export async function buildPptxFromPptContent(params: {
       breakLine: true,
       fontFace: "Calibri",
     });
+
+    if (imageDataUri) {
+      slide.addImage({
+        data: imageDataUri,
+        x: 7.78,
+        y: 1.55,
+        w: 4.88,
+        h: 5.35,
+        rounding: true,
+        altText: "AI-generated illustration for this slide",
+      });
+    }
 
     slide.addText("EduPlan AI", {
       x: 0.65,

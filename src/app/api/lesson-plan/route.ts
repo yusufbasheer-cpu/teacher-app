@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
 import { buildDeepseekLessonSystemPrompt } from "@/lib/deepseek-lesson-system-prompt";
+import { generateFluxSectionImages, formatFalError } from "@/lib/fal-flux-section-images";
 import {
   normalizeGenerationSections,
   SOURCE_MATERIAL_MAX_CHARS,
   type LessonPlanGenerateBody,
   type LessonPlanInput,
   type LessonPlanResult,
+  type SectionImageMap,
   type TeacherPackageSectionKey,
   isValidCurriculumType,
   isValidGradeYear,
   isValidSubjectOption,
 } from "@/lib/lesson-plan";
+
+export const runtime = "nodejs";
+export const maxDuration = 600;
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 
@@ -201,5 +206,26 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ lessonPlan: parsedPlan });
+  let sectionImages: SectionImageMap = {};
+  let sectionImageErrors: Partial<Record<TeacherPackageSectionKey, string>> = {};
+  try {
+    const fluxResult = await generateFluxSectionImages({
+      input,
+      plan: parsedPlan,
+      sections,
+    });
+    sectionImages = fluxResult.sectionImages;
+    sectionImageErrors = fluxResult.errors;
+    if (Object.keys(sectionImageErrors).length > 0) {
+      console.warn("[lesson-plan] section image errors:", sectionImageErrors);
+    }
+  } catch (e) {
+    console.error("[lesson-plan] FLUX section images failed:", formatFalError(e), e);
+  }
+
+  return NextResponse.json({
+    lessonPlan: parsedPlan,
+    ...(Object.keys(sectionImages).length > 0 ? { sectionImages } : {}),
+    ...(Object.keys(sectionImageErrors).length > 0 ? { sectionImageErrors } : {}),
+  });
 }

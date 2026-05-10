@@ -3,24 +3,27 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@fal-ai/client": "^1.10.1",
     "@supabase/supabase-js": "latest",
     "docx": "latest",
     "jszip": "latest",
     "next": "latest",
-    "pdf-parse": "^2.4.5",
+    "pdf-parse": "^1.1.1",
     "pptxgenjs": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "latest",
     "@types/node": "latest",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "eslint": "latest",

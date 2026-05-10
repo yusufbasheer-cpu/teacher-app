@@ -1,12 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
-import type { LessonPlanInput, LessonPlanResult, SavedLessonPlan } from "@/lib/lesson-plan";
+import type {
+  LessonPlanInput,
+  LessonPlanResult,
+  SavedLessonPlan,
+  SectionImageMap,
+  TeacherPackageSectionKey,
+} from "@/lib/lesson-plan";
 import {
   CURRICULUM_TYPE_OPTIONS,
   GENERATION_CHECKBOX_LABELS,
@@ -17,8 +30,10 @@ import {
   isValidCurriculumType,
   isValidGradeYear,
   isValidSubjectOption,
-  type TeacherPackageSectionKey,
+  mergeSectionImagesMeta,
+  parseSectionImagesMeta,
 } from "@/lib/lesson-plan";
+import { supabase } from "@/lib/supabase";
 
 type SourceUploadChunk = {
   id: string;
@@ -33,7 +48,31 @@ function combineSourceChunks(chunks: SourceUploadChunk[]): string {
     .join("\n\n")
     .trim();
 }
-import { supabase } from "@/lib/supabase";
+
+type ExtractPayload = {
+  error?: string;
+  parts?: { sourceLabel: string; kind: "pdf" | "image"; text: string }[];
+  partialErrors?: { sourceLabel: string; message: string }[];
+};
+
+function formatExtractUploadFailure(status: number, data: ExtractPayload, raw: string): string {
+  const lines: string[] = [];
+  const headline = data.error?.trim() || "The extract-upload request failed.";
+  lines.push(`[HTTP ${status}] ${headline}`);
+  if (data.partialErrors && data.partialErrors.length > 0) {
+    lines.push(
+      "Per-file details:",
+      ...data.partialErrors.map((pe) => `  • ${pe.sourceLabel}: ${pe.message}`),
+    );
+  }
+  if (!data.error && (!data.partialErrors || data.partialErrors.length === 0)) {
+    const trimmed = raw.trim();
+    if (trimmed) {
+      lines.push(`Raw response (truncated):\n${trimmed.slice(0, 800)}`);
+    }
+  }
+  return lines.join("\n");
+}
 
 const initialForm: LessonPlanInput = {
   curriculumType: "CBSE/NCERT",
@@ -57,6 +96,10 @@ export function LessonPlanGenerator() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [form, setForm] = useState<LessonPlanInput>(initialForm);
   const [lessonPlan, setLessonPlan] = useState<LessonPlanResult | null>(null);
+  const [sectionImages, setSectionImages] = useState<SectionImageMap | null>(null);
+  const [sectionImageErrors, setSectionImageErrors] = useState<Partial<
+    Record<TeacherPackageSectionKey, string>
+  > | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -71,6 +114,12 @@ export function LessonPlanGenerator() {
   const [uploadExtracting, setUploadExtracting] = useState(false);
   const [uploadInfo, setUploadInfo] = useState<string | null>(null);
   const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
+  const [uploadExtractionError, setUploadExtractionError] = useState<string | null>(null);
+
+  const extractedMaterialPreview = useMemo(
+    () => combineSourceChunks(uploadedChunks),
+    [uploadedChunks],
+  );
 
   const loadPlanById = async (userId: string, planId: string) => {
     const { data, error: loadError } = await supabase
@@ -101,11 +150,15 @@ export function LessonPlanGenerator() {
       topic: plan.topic,
       learningObjectives: plan.learning_objectives,
     });
-    setLessonPlan(plan.lesson_plan);
+    const { planTextOnly, sectionImages: loadedImages } = parseSectionImagesMeta(plan.lesson_plan);
+    setLessonPlan(planTextOnly);
+    setSectionImages(Object.keys(loadedImages).length > 0 ? loadedImages : null);
+    setSectionImageErrors(null);
     setActivePlanId(plan.id);
     setUploadedChunks([]);
     setUploadInfo(null);
     setUploadWarnings([]);
+    setUploadExtractionError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -141,6 +194,9 @@ export function LessonPlanGenerator() {
       setUser(nextUser);
       if (!nextUser) {
         setActivePlanId(null);
+        setLessonPlan(null);
+        setSectionImages(null);
+        setSectionImageErrors(null);
       }
     });
 
@@ -153,6 +209,7 @@ export function LessonPlanGenerator() {
     setUploadedChunks([]);
     setUploadInfo(null);
     setUploadWarnings([]);
+    setUploadExtractionError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -162,15 +219,24 @@ export function LessonPlanGenerator() {
     setUploadedChunks((prev) => prev.filter((c) => c.id !== id));
     setUploadInfo(null);
     setUploadWarnings([]);
+    setUploadExtractionError(null);
   };
 
   const onUploadFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files;
     if (!list || list.length === 0) {
+      console.log("[lesson-plan upload] onChange skipped: no files in event");
       return;
     }
 
     const files = Array.from(list);
+    console.log("[lesson-plan upload] start", {
+      fileCount: files.length,
+      names: files.map((f) => f.name),
+      sizes: files.map((f) => f.size),
+      types: files.map((f) => f.type),
+    });
+
     const isAllowed = (file: File) => {
       const lower = file.name.toLowerCase();
       const allowedExt =
@@ -186,49 +252,86 @@ export function LessonPlanGenerator() {
     };
     const invalid = files.filter((f) => !isAllowed(f));
     if (invalid.length > 0) {
-      setError(
-        `Unsupported file type(s): ${invalid.map((f) => f.name).join(", ")}. Use PDF, JPG, or PNG only.`,
-      );
+      const msg = `Unsupported file type(s): ${invalid.map((f) => f.name).join(", ")}. Use PDF, JPG, or PNG only.`;
+      console.error("[lesson-plan upload] validation failed", msg);
+      setUploadExtractionError(msg);
       e.target.value = "";
       return;
     }
 
     setUploadExtracting(true);
     setError(null);
+    setUploadExtractionError(null);
     setUploadInfo(null);
     setUploadWarnings([]);
+
+    const inputEl = e.target;
+
     try {
       const fd = new FormData();
       for (const file of files) {
         fd.append("files", file);
       }
+      console.log("[lesson-plan upload] posting FormData to /api/lesson-plan/extract-upload");
+
       const res = await fetch("/api/lesson-plan/extract-upload", {
         method: "POST",
         body: fd,
       });
-      const data = (await res.json()) as {
-        error?: string;
-        parts?: { sourceLabel: string; kind: "pdf" | "image"; text: string }[];
-        partialErrors?: { sourceLabel: string; message: string }[];
-      };
-      if (!res.ok) {
-        throw new Error(data.error ?? "Could not read these files.");
+
+      const raw = await res.text();
+      console.log("[lesson-plan upload] response", {
+        ok: res.ok,
+        status: res.status,
+        contentType: res.headers.get("content-type"),
+        rawLength: raw.length,
+        rawPreview: raw.slice(0, 300),
+      });
+
+      let data: ExtractPayload;
+      try {
+        data = JSON.parse(raw) as ExtractPayload;
+      } catch (parseErr) {
+        console.error("[lesson-plan upload] JSON parse failed", parseErr, { rawPreview: raw.slice(0, 500) });
+        setUploadExtractionError(
+          `Could not parse server response as JSON (HTTP ${res.status}). First bytes:\n${raw.trim().slice(0, 600)}`,
+        );
+        return;
       }
+
+      if (!res.ok) {
+        const msg = formatExtractUploadFailure(res.status, data, raw);
+        console.error("[lesson-plan upload] non-OK response", msg);
+        setUploadExtractionError(msg);
+        return;
+      }
+
       const parts = data.parts ?? [];
       if (parts.length === 0) {
-        throw new Error("No text could be extracted from these files.");
+        const msg =
+          formatExtractUploadFailure(res.status, data, raw) +
+          "\n\n(Unexpected: HTTP 200 but no parts[] in JSON.)";
+        console.error("[lesson-plan upload] empty parts", data);
+        setUploadExtractionError(msg);
+        return;
       }
+
       const newChunks: SourceUploadChunk[] = parts.map((p) => ({
         id: crypto.randomUUID(),
         fileName: p.sourceLabel,
         kind: p.kind,
         text: p.text,
       }));
+      console.log("[lesson-plan upload] success", {
+        newChunkCount: newChunks.length,
+        charCounts: newChunks.map((c) => c.text.length),
+      });
+
       setUploadedChunks((prev) => [...prev, ...newChunks]);
 
       const addedChars = newChunks.reduce((n, c) => n + c.text.length, 0);
       setUploadInfo(
-        `Added ${newChunks.length} file(s) · ${addedChars.toLocaleString()} characters from this batch.`,
+        `Content extracted successfully. Added ${newChunks.length} file(s) from this batch (${addedChars.toLocaleString()} characters). Review the preview below before generating.`,
       );
       if (data.partialErrors?.length) {
         setUploadWarnings(
@@ -236,12 +339,17 @@ export function LessonPlanGenerator() {
         );
       }
     } catch (err) {
-      setUploadInfo(null);
-      setUploadWarnings([]);
-      setError(err instanceof Error ? err.message : "Upload failed.");
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[lesson-plan upload] thrown error", err);
+      setUploadExtractionError(
+        `${msg}${err instanceof Error && err.stack ? `\n\n${err.stack}` : ""}`.slice(0, 4000),
+      );
     } finally {
       setUploadExtracting(false);
-      e.target.value = "";
+      window.setTimeout(() => {
+        inputEl.value = "";
+        console.log("[lesson-plan upload] file input cleared (deferred)");
+      }, 0);
     }
   };
 
@@ -250,6 +358,8 @@ export function LessonPlanGenerator() {
     setError(null);
     setSuccessMessage(null);
     setLessonPlan(null);
+    setSectionImages(null);
+    setSectionImageErrors(null);
     setActivePlanId(null);
 
     const sections = TEACHER_PACKAGE_SECTIONS.filter((k) => sectionSelection[k]);
@@ -275,6 +385,8 @@ export function LessonPlanGenerator() {
       const data = (await response.json()) as {
         error?: string;
         lessonPlan?: LessonPlanResult;
+        sectionImages?: SectionImageMap;
+        sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
       };
 
       if (!response.ok) {
@@ -286,6 +398,17 @@ export function LessonPlanGenerator() {
       }
 
       setLessonPlan(data.lessonPlan);
+      setSectionImages(
+        data.sectionImages && Object.keys(data.sectionImages).length > 0 ? data.sectionImages : null,
+      );
+      setSectionImageErrors(
+        data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0
+          ? data.sectionImageErrors
+          : null,
+      );
+      if (data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0) {
+        console.warn("[lesson-plan] section image errors from API:", data.sectionImageErrors);
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Unexpected error occurred.";
@@ -310,7 +433,7 @@ export function LessonPlanGenerator() {
         chapter: form.chapter.trim(),
         topic: form.topic,
         learning_objectives: form.learningObjectives,
-        lesson_plan: lessonPlan,
+        lesson_plan: mergeSectionImagesMeta(lessonPlan, sectionImages),
       };
 
       if (activePlanId) {
@@ -391,7 +514,8 @@ export function LessonPlanGenerator() {
           <p className="mt-1 text-xs text-slate-600">
             You can select <strong>multiple PDFs and images in one go</strong> (Ctrl/Cmd+click or
             shift-select). Each file may be up to 12 MB; total up to 48 MB and 24 files per batch.
-            Text is extracted from PDFs; images use AI vision. Everything you keep below is combined
+            Text is extracted from PDFs; JPG and PNG use on-server OCR (Tesseract.js). Everything you
+            keep below is combined
             and sent to the AI when you generate.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -419,6 +543,14 @@ export function LessonPlanGenerator() {
             <p className="mt-2 text-xs font-medium text-blue-800">
               Extracting text from your files…
             </p>
+          ) : null}
+          {uploadExtractionError ? (
+            <div
+              role="alert"
+              className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-900 whitespace-pre-wrap"
+            >
+              {uploadExtractionError}
+            </div>
           ) : null}
           {uploadInfo ? (
             <p className="mt-2 text-xs font-medium text-emerald-800">{uploadInfo}</p>
@@ -459,9 +591,31 @@ export function LessonPlanGenerator() {
           {uploadedChunks.length > 0 ? (
             <p className="mt-2 text-xs text-slate-500">
               Combined:{" "}
-              {combineSourceChunks(uploadedChunks).length.toLocaleString()} characters across{" "}
+              {extractedMaterialPreview.length.toLocaleString()} characters across{" "}
               {uploadedChunks.length} file(s).
             </p>
+          ) : null}
+          {extractedMaterialPreview.length > 0 ? (
+            <div className="mt-4">
+              <label
+                htmlFor="extracted-upload-preview"
+                className="mb-1 block text-xs font-semibold text-slate-800"
+              >
+                Extracted content (review before generating)
+              </label>
+              <textarea
+                id="extracted-upload-preview"
+                readOnly
+                value={extractedMaterialPreview}
+                rows={12}
+                spellCheck={false}
+                className="max-h-80 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-xs leading-relaxed text-slate-800 outline-none ring-blue-500 focus:ring-2"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                This text is what the AI will use as your uploaded source material when you click
+                Generate.
+              </p>
+            </div>
           ) : null}
         </div>
 
@@ -660,7 +814,8 @@ export function LessonPlanGenerator() {
         <h3 className="text-xl font-semibold text-slate-900">Generated teacher package</h3>
         <p className="mt-2 text-sm text-slate-600">
           Preview and download only the sections you generated (lesson plan, slides, worksheet, and
-          more).
+          more). When <code className="rounded bg-slate-100 px-1">FAL_API_KEY</code> is set, FLUX.1
+          illustrations appear beside each section.
         </p>
 
         {!lessonPlan ? (
@@ -679,6 +834,8 @@ export function LessonPlanGenerator() {
             </button>
             <TeacherPackageViewer
               lessonPlan={lessonPlan}
+              sectionImages={sectionImages ?? undefined}
+              sectionImageErrors={sectionImageErrors ?? undefined}
               subject={form.subject}
               grade={form.grade}
               topic={form.topic}
