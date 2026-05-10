@@ -97,7 +97,7 @@ export function MyLessonPlansList() {
               >
                 <p className="font-semibold text-slate-900">{plan.topic}</p>
                 <p className="mt-1 text-sm text-slate-600">
-                  {plan.subject} | {plan.grade}
+                  {[plan.curriculum_type, plan.subject, plan.grade].filter(Boolean).join(" · ")}
                 </p>
                 <p className="mt-1 line-clamp-2 text-xs text-slate-500">
                   {plan.learning_objectives}

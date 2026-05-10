@@ -22,6 +22,49 @@ export function getSectionTabLabel(sectionKey: string): string {
   return SECTION_TAB_LABELS[sectionKey] ?? sectionKey;
 }
 
+/** Curriculum dropdown (lesson generator). */
+export const CURRICULUM_TYPE_OPTIONS = [
+  "CBSE/NCERT",
+  "British",
+  "American",
+  "UAE MOE",
+  "IB",
+  "Other",
+] as const;
+export type CurriculumTypeOption = (typeof CURRICULUM_TYPE_OPTIONS)[number];
+
+/** Grade / year group dropdown (Grade 1 … Grade 12). */
+export const GRADE_YEAR_OPTIONS = [
+  "Grade 1",
+  "Grade 2",
+  "Grade 3",
+  "Grade 4",
+  "Grade 5",
+  "Grade 6",
+  "Grade 7",
+  "Grade 8",
+  "Grade 9",
+  "Grade 10",
+  "Grade 11",
+  "Grade 12",
+] as const;
+export type GradeYearOption = (typeof GRADE_YEAR_OPTIONS)[number];
+
+/** Subject dropdown (lesson generator). */
+export const SUBJECT_OPTIONS = [
+  "Math",
+  "Science",
+  "English",
+  "Arabic",
+  "Islamic Studies",
+  "Social Science",
+  "ICT",
+  "Art",
+  "PE",
+  "Other",
+] as const;
+export type SubjectOption = (typeof SUBJECT_OPTIONS)[number];
+
 /** Earlier app versions saved this six-part legacy shape. */
 export const LEGACY_LESSON_PLAN_SECTIONS = [
   "Starter Activity",
@@ -46,11 +89,25 @@ export const GENERATION_CHECKBOX_LABELS: Record<TeacherPackageSectionKey, string
 };
 
 export type LessonPlanInput = {
-  subject: string;
+  curriculumType: string;
   grade: string;
+  subject: string;
+  chapter: string;
   topic: string;
   learningObjectives: string;
 };
+
+export function isValidCurriculumType(value: string): value is CurriculumTypeOption {
+  return (CURRICULUM_TYPE_OPTIONS as readonly string[]).includes(value);
+}
+
+export function isValidGradeYear(value: string): value is GradeYearOption {
+  return (GRADE_YEAR_OPTIONS as readonly string[]).includes(value);
+}
+
+export function isValidSubjectOption(value: string): value is SubjectOption {
+  return (SUBJECT_OPTIONS as readonly string[]).includes(value);
+}
 
 /** POST /api/lesson-plan body: class context plus which teacher-package sections to generate. */
 export type LessonPlanGenerateBody = LessonPlanInput & {
@@ -69,6 +126,9 @@ export type SavedLessonPlan = {
   lesson_plan: LessonPlanResult;
   created_at: string;
   user_id: string;
+  /** Added in schema migration; absent on older rows. */
+  curriculum_type?: string;
+  chapter?: string;
 };
 
 function isNonEmptyString(value: unknown): value is string {

@@ -8,16 +8,24 @@ import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-load
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
 import type { LessonPlanInput, LessonPlanResult, SavedLessonPlan } from "@/lib/lesson-plan";
 import {
+  CURRICULUM_TYPE_OPTIONS,
   GENERATION_CHECKBOX_LABELS,
+  GRADE_YEAR_OPTIONS,
+  SUBJECT_OPTIONS,
   TEACHER_PACKAGE_SECTIONS,
   getGenerationTimeEstimate,
+  isValidCurriculumType,
+  isValidGradeYear,
+  isValidSubjectOption,
   type TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
 import { supabase } from "@/lib/supabase";
 
 const initialForm: LessonPlanInput = {
-  subject: "",
-  grade: "",
+  curriculumType: "CBSE/NCERT",
+  grade: "Grade 1",
+  subject: "Math",
+  chapter: "",
   topic: "",
   learningObjectives: "",
 };
@@ -57,9 +65,19 @@ export function LessonPlanGenerator() {
     }
 
     const plan = data as SavedLessonPlan;
+    const ct = plan.curriculum_type?.trim();
+    const loadedCurriculum =
+      ct && isValidCurriculumType(ct) ? ct : CURRICULUM_TYPE_OPTIONS[CURRICULUM_TYPE_OPTIONS.length - 1]!;
+    const g = plan.grade?.trim();
+    const loadedGrade = g && isValidGradeYear(g) ? g : GRADE_YEAR_OPTIONS[0]!;
+    const subj = plan.subject?.trim();
+    const loadedSubject =
+      subj && isValidSubjectOption(subj) ? subj : SUBJECT_OPTIONS[SUBJECT_OPTIONS.length - 1]!;
     setForm({
-      subject: plan.subject,
-      grade: plan.grade,
+      curriculumType: loadedCurriculum,
+      grade: loadedGrade,
+      subject: loadedSubject,
+      chapter: plan.chapter ?? "",
       topic: plan.topic,
       learningObjectives: plan.learning_objectives,
     });
@@ -159,8 +177,10 @@ export function LessonPlanGenerator() {
     try {
       const payload = {
         user_id: user.id,
+        curriculum_type: form.curriculumType,
         subject: form.subject,
         grade: form.grade,
+        chapter: form.chapter.trim(),
         topic: form.topic,
         learning_objectives: form.learningObjectives,
         lesson_plan: lessonPlan,
@@ -239,32 +259,75 @@ export function LessonPlanGenerator() {
 
         <div className="mt-6 space-y-4">
           <div>
-            <label htmlFor="subject" className="mb-1 block text-sm font-medium text-slate-700">
-              Subject
+            <label htmlFor="curriculum" className="mb-1 block text-sm font-medium text-slate-700">
+              Curriculum type
             </label>
-            <input
-              id="subject"
-              type="text"
-              value={form.subject}
-              onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
-              placeholder="e.g. Science"
+            <select
+              id="curriculum"
+              value={form.curriculumType}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, curriculumType: e.target.value }))
+              }
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
               required
-            />
+            >
+              {CURRICULUM_TYPE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
-            <label htmlFor="grade" className="mb-1 block text-sm font-medium text-slate-700">
-              Grade
+            <label htmlFor="grade-year" className="mb-1 block text-sm font-medium text-slate-700">
+              Grade / year group
             </label>
-            <input
-              id="grade"
-              type="text"
+            <select
+              id="grade-year"
               value={form.grade}
               onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
-              placeholder="e.g. Grade 7"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
               required
+            >
+              {GRADE_YEAR_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="subject" className="mb-1 block text-sm font-medium text-slate-700">
+              Subject
+            </label>
+            <select
+              id="subject"
+              value={form.subject}
+              onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
+              required
+            >
+              {SUBJECT_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="chapter" className="mb-1 block text-sm font-medium text-slate-700">
+              Chapter name or number
+            </label>
+            <input
+              id="chapter"
+              type="text"
+              value={form.chapter}
+              onChange={(e) => setForm((prev) => ({ ...prev, chapter: e.target.value }))}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
+              placeholder="e.g. Chapter 5 - Photosynthesis"
             />
           </div>
 
@@ -278,7 +341,7 @@ export function LessonPlanGenerator() {
               value={form.topic}
               onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
               className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
-              placeholder="e.g. Photosynthesis"
+              placeholder="Specific topic within the chapter"
               required
             />
           </div>
@@ -288,7 +351,7 @@ export function LessonPlanGenerator() {
               htmlFor="objectives"
               className="mb-1 block text-sm font-medium text-slate-700"
             >
-              Learning Objectives
+              Learning objectives
             </label>
             <textarea
               id="objectives"

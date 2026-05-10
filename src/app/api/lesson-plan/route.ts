@@ -6,6 +6,9 @@ import {
   type LessonPlanInput,
   type LessonPlanResult,
   type TeacherPackageSectionKey,
+  isValidCurriculumType,
+  isValidGradeYear,
+  isValidSubjectOption,
 } from "@/lib/lesson-plan";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
@@ -15,13 +18,23 @@ type DeepSeekMessage = {
   content: string;
 };
 
-function validateInput(input: LessonPlanInput) {
-  return (
-    input.subject.trim().length > 0 &&
-    input.grade.trim().length > 0 &&
-    input.topic.trim().length > 0 &&
-    input.learningObjectives.trim().length > 0
-  );
+function validateInput(input: LessonPlanInput): string | null {
+  if (!isValidCurriculumType(input.curriculumType.trim())) {
+    return "Invalid curriculum type.";
+  }
+  if (!isValidGradeYear(input.grade.trim())) {
+    return "Invalid grade / year group.";
+  }
+  if (!isValidSubjectOption(input.subject.trim())) {
+    return "Invalid subject.";
+  }
+  if (input.topic.trim().length === 0) {
+    return "Please enter a topic.";
+  }
+  if (input.learningObjectives.trim().length === 0) {
+    return "Please fill Learning Objectives.";
+  }
+  return null;
 }
 
 function extractJsonObject(text: string): string | null {
@@ -58,6 +71,11 @@ function parsePlan(
 
 function buildMessages(input: LessonPlanInput, sections: readonly TeacherPackageSectionKey[]): DeepSeekMessage[] {
   const keysList = sections.map((k) => JSON.stringify(k)).join(", ");
+  const chapterLine =
+    input.chapter.trim().length > 0
+      ? `- Chapter / unit: ${input.chapter.trim()}`
+      : `- Chapter / unit: (not specified — infer sensible scope from topic and grade if needed)`;
+
   return [
     {
       role: "system",
@@ -68,12 +86,14 @@ function buildMessages(input: LessonPlanInput, sections: readonly TeacherPackage
       content: `
 Use this class context. Produce ONLY these JSON fields (no others): ${keysList}
 
-- Subject: ${input.subject}
-- Grade / Year group: ${input.grade}
-- Topic: ${input.topic}
-- Teacher-provided learning objectives / focus: ${input.learningObjectives}
+- Curriculum: ${input.curriculumType.trim()}
+- Grade / Year group: ${input.grade.trim()}
+- Subject: ${input.subject.trim()}
+${chapterLine}
+- Topic (within the chapter): ${input.topic.trim()}
+- Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}
 
-Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Adapt tone and examples to the subject and grade. Each requested field must be classroom-ready (not placeholders).
+Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested field must be classroom-ready (not placeholders).
       `.trim(),
     },
   ];
@@ -104,17 +124,17 @@ export async function POST(req: Request) {
   }
 
   const input: LessonPlanInput = {
-    subject: body.subject ?? "",
+    curriculumType: body.curriculumType ?? "",
     grade: body.grade ?? "",
+    subject: body.subject ?? "",
+    chapter: typeof body.chapter === "string" ? body.chapter : "",
     topic: body.topic ?? "",
     learningObjectives: body.learningObjectives ?? "",
   };
 
-  if (!validateInput(input)) {
-    return NextResponse.json(
-      { error: "Please fill Subject, Grade, Topic, and Learning Objectives." },
-      { status: 400 },
-    );
+  const validationError = validateInput(input);
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
   const deepseekResponse = await fetch(DEEPSEEK_API_URL, {
