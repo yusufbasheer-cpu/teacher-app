@@ -2,12 +2,25 @@ import { NextResponse } from "next/server";
 import { PDFParse } from "pdf-parse";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const MAX_FILE_BYTES = 12 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 48 * 1024 * 1024;
+const MAX_FILES = 24;
 
 type Sniffed = "pdf" | "jpeg" | "png";
+
+type ExtractedPart = {
+  sourceLabel: string;
+  kind: "pdf" | "image";
+  text: string;
+};
+
+type ExtractPartialError = {
+  sourceLabel: string;
+  message: string;
+};
 
 function sniffFileType(buf: Buffer): Sniffed | null {
   if (buf.length >= 4 && buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46) {
@@ -112,6 +125,18 @@ async function extractTextFromImageWithDeepSeek(
   throw new Error(lastError);
 }
 
+function collectFiles(formData: FormData): File[] {
+  const multi = formData.getAll("files").filter((f): f is File => f instanceof File);
+  if (multi.length > 0) {
+    return multi;
+  }
+  const single = formData.get("file");
+  if (single instanceof File) {
+    return [single];
+  }
+  return [];
+}
+
 export async function POST(req: Request) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
@@ -128,56 +153,102 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Expected multipart form data." }, { status: 400 });
   }
 
-  const file = formData.get("file");
-  if (!file || !(file instanceof File)) {
-    return NextResponse.json({ error: "Missing file field." }, { status: 400 });
+  const files = collectFiles(formData);
+  if (files.length === 0) {
+    return NextResponse.json({ error: "Missing file upload(s). Use field name \"files\" or \"file\"." }, { status: 400 });
   }
 
-  if (file.size > MAX_FILE_BYTES) {
+  if (files.length > MAX_FILES) {
     return NextResponse.json(
-      { error: `File too large. Maximum size is ${MAX_FILE_BYTES / (1024 * 1024)} MB.` },
+      { error: `Too many files at once. Maximum is ${MAX_FILES}.` },
       { status: 400 },
     );
   }
 
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  const sniffed = sniffFileType(buffer);
-  if (!sniffed) {
+  let totalBytes = 0;
+  for (const f of files) {
+    if (f.size > MAX_FILE_BYTES) {
+      return NextResponse.json(
+        {
+          error: `"${f.name}" is too large. Each file may be at most ${MAX_FILE_BYTES / (1024 * 1024)} MB.`,
+        },
+        { status: 400 },
+      );
+    }
+    totalBytes += f.size;
+  }
+  if (totalBytes > MAX_TOTAL_BYTES) {
     return NextResponse.json(
-      { error: "Unsupported file type. Upload a PDF, JPG, or PNG." },
+      {
+        error: `Total upload size is too large (max ${MAX_TOTAL_BYTES / (1024 * 1024)} MB across all files).`,
+      },
       { status: 400 },
     );
   }
 
-  try {
-    if (sniffed === "pdf") {
-      const text = await extractTextFromPdf(buffer);
-      if (!text) {
-        return NextResponse.json(
-          {
-            error:
-              "No extractable text was found in this PDF. It may be scanned pages only — try a text-based PDF or upload page images (JPG/PNG) instead.",
-          },
-          { status: 422 },
-        );
-      }
-      return NextResponse.json({
-        extractedText: text,
-        sourceLabel: file.name || "upload.pdf",
-        kind: "pdf",
-      });
+  const parts: ExtractedPart[] = [];
+  const partialErrors: ExtractPartialError[] = [];
+
+  for (const file of files) {
+    const label = file.name?.trim() || "upload";
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(await file.arrayBuffer());
+    } catch {
+      partialErrors.push({ sourceLabel: label, message: "Could not read file data." });
+      continue;
     }
 
-    const mime: "image/jpeg" | "image/png" = sniffed === "jpeg" ? "image/jpeg" : "image/png";
-    const text = await extractTextFromImageWithDeepSeek(apiKey, mime, buffer);
-    return NextResponse.json({
-      extractedText: text,
-      sourceLabel: file.name || (sniffed === "jpeg" ? "upload.jpg" : "upload.png"),
-      kind: "image",
-    });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Extraction failed.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    const sniffed = sniffFileType(buffer);
+    if (!sniffed) {
+      partialErrors.push({
+        sourceLabel: label,
+        message: "Unsupported type. Use PDF, JPG, or PNG.",
+      });
+      continue;
+    }
+
+    try {
+      if (sniffed === "pdf") {
+        const text = await extractTextFromPdf(buffer);
+        if (!text) {
+          partialErrors.push({
+            sourceLabel: label,
+            message:
+              "No extractable text in this PDF (it may be image-only). Try images of the pages or a text-based PDF.",
+          });
+          continue;
+        }
+        parts.push({ sourceLabel: label, kind: "pdf", text });
+        continue;
+      }
+
+      const mime: "image/jpeg" | "image/png" = sniffed === "jpeg" ? "image/jpeg" : "image/png";
+      const text = await extractTextFromImageWithDeepSeek(apiKey, mime, buffer);
+      parts.push({ sourceLabel: label, kind: "image", text });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Extraction failed.";
+      partialErrors.push({ sourceLabel: label, message });
+    }
   }
+
+  if (parts.length === 0) {
+    return NextResponse.json(
+      {
+        error: "No text could be extracted from any uploaded file.",
+        partialErrors,
+      },
+      { status: 422 },
+    );
+  }
+
+  const extractedText = parts
+    .map((p) => `===== ${p.sourceLabel} (${p.kind}) =====\n${p.text}`)
+    .join("\n\n");
+
+  return NextResponse.json({
+    extractedText,
+    parts,
+    ...(partialErrors.length > 0 ? { partialErrors } : {}),
+  });
 }

@@ -86,7 +86,7 @@ function buildMessages(
     trimmedSource && trimmedSource.length > 0
       ? `
 
-### Source material (from teacher-uploaded PDF or image — primary content basis)
+### Source material (from teacher-uploaded file(s): PDF and/or images — primary content basis)
 Use the following extracted text as the main factual and instructional basis for every section you generate. Ground examples, definitions, sequencing, and practice tasks in this material while still honoring the curriculum, grade, topic, and learning objectives below. If the source is partial, infer sensible teaching structure and label reasonable inferences clearly.
 
 ${trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS)}

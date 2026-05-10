@@ -19,6 +19,20 @@ import {
   isValidSubjectOption,
   type TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
+
+type SourceUploadChunk = {
+  id: string;
+  fileName: string;
+  kind: "pdf" | "image";
+  text: string;
+};
+
+function combineSourceChunks(chunks: SourceUploadChunk[]): string {
+  return chunks
+    .map((c) => `===== ${c.fileName} (${c.kind}) =====\n${c.text.trim()}`)
+    .join("\n\n")
+    .trim();
+}
 import { supabase } from "@/lib/supabase";
 
 const initialForm: LessonPlanInput = {
@@ -53,10 +67,10 @@ export function LessonPlanGenerator() {
     useState<Record<TeacherPackageSectionKey, boolean>>(initialSectionSelection);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [sourceMaterial, setSourceMaterial] = useState("");
-  const [uploadFileLabel, setUploadFileLabel] = useState<string | null>(null);
+  const [uploadedChunks, setUploadedChunks] = useState<SourceUploadChunk[]>([]);
   const [uploadExtracting, setUploadExtracting] = useState(false);
   const [uploadInfo, setUploadInfo] = useState<string | null>(null);
+  const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
 
   const loadPlanById = async (userId: string, planId: string) => {
     const { data, error: loadError } = await supabase
@@ -89,9 +103,9 @@ export function LessonPlanGenerator() {
     });
     setLessonPlan(plan.lesson_plan);
     setActivePlanId(plan.id);
-    setSourceMaterial("");
-    setUploadFileLabel(null);
+    setUploadedChunks([]);
     setUploadInfo(null);
+    setUploadWarnings([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -136,33 +150,45 @@ export function LessonPlanGenerator() {
   }, [searchParams]);
 
   const clearUploadedSource = () => {
-    setSourceMaterial("");
-    setUploadFileLabel(null);
+    setUploadedChunks([]);
     setUploadInfo(null);
+    setUploadWarnings([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
+  const removeUploadedChunk = (id: string) => {
+    setUploadedChunks((prev) => prev.filter((c) => c.id !== id));
+    setUploadInfo(null);
+    setUploadWarnings([]);
+  };
+
   const onUploadFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      clearUploadedSource();
+    const list = e.target.files;
+    if (!list || list.length === 0) {
       return;
     }
 
-    const lower = file.name.toLowerCase();
-    const allowedExt =
-      lower.endsWith(".pdf") ||
-      lower.endsWith(".jpg") ||
-      lower.endsWith(".jpeg") ||
-      lower.endsWith(".png");
-    const allowedMime =
-      file.type === "application/pdf" ||
-      file.type === "image/jpeg" ||
-      file.type === "image/png";
-    if (!allowedExt && !allowedMime) {
-      setError("Please upload a PDF, JPG, or PNG file.");
+    const files = Array.from(list);
+    const isAllowed = (file: File) => {
+      const lower = file.name.toLowerCase();
+      const allowedExt =
+        lower.endsWith(".pdf") ||
+        lower.endsWith(".jpg") ||
+        lower.endsWith(".jpeg") ||
+        lower.endsWith(".png");
+      const allowedMime =
+        file.type === "application/pdf" ||
+        file.type === "image/jpeg" ||
+        file.type === "image/png";
+      return allowedExt || allowedMime;
+    };
+    const invalid = files.filter((f) => !isAllowed(f));
+    if (invalid.length > 0) {
+      setError(
+        `Unsupported file type(s): ${invalid.map((f) => f.name).join(", ")}. Use PDF, JPG, or PNG only.`,
+      );
       e.target.value = "";
       return;
     }
@@ -170,37 +196,52 @@ export function LessonPlanGenerator() {
     setUploadExtracting(true);
     setError(null);
     setUploadInfo(null);
+    setUploadWarnings([]);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      for (const file of files) {
+        fd.append("files", file);
+      }
       const res = await fetch("/api/lesson-plan/extract-upload", {
         method: "POST",
         body: fd,
       });
       const data = (await res.json()) as {
         error?: string;
-        extractedText?: string;
-        sourceLabel?: string;
+        parts?: { sourceLabel: string; kind: "pdf" | "image"; text: string }[];
+        partialErrors?: { sourceLabel: string; message: string }[];
       };
       if (!res.ok) {
-        throw new Error(data.error ?? "Could not read this file.");
+        throw new Error(data.error ?? "Could not read these files.");
       }
-      const text = data.extractedText?.trim() ?? "";
-      if (!text) {
-        throw new Error("No text could be extracted from this file.");
+      const parts = data.parts ?? [];
+      if (parts.length === 0) {
+        throw new Error("No text could be extracted from these files.");
       }
-      setSourceMaterial(text);
-      setUploadFileLabel(data.sourceLabel ?? file.name);
+      const newChunks: SourceUploadChunk[] = parts.map((p) => ({
+        id: crypto.randomUUID(),
+        fileName: p.sourceLabel,
+        kind: p.kind,
+        text: p.text,
+      }));
+      setUploadedChunks((prev) => [...prev, ...newChunks]);
+
+      const addedChars = newChunks.reduce((n, c) => n + c.text.length, 0);
       setUploadInfo(
-        `Loaded ${text.length.toLocaleString()} characters from "${data.sourceLabel ?? file.name}". This text will be used when you generate.`,
+        `Added ${newChunks.length} file(s) · ${addedChars.toLocaleString()} characters from this batch.`,
       );
+      if (data.partialErrors?.length) {
+        setUploadWarnings(
+          data.partialErrors.map((pe) => `${pe.sourceLabel}: ${pe.message}`),
+        );
+      }
     } catch (err) {
-      setSourceMaterial("");
-      setUploadFileLabel(null);
       setUploadInfo(null);
+      setUploadWarnings([]);
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setUploadExtracting(false);
+      e.target.value = "";
     }
   };
 
@@ -220,13 +261,14 @@ export function LessonPlanGenerator() {
     setLoading(true);
 
     try {
+      const combinedSource = combineSourceChunks(uploadedChunks);
       const response = await fetch("/api/lesson-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
           sections,
-          ...(sourceMaterial.trim().length > 0 ? { sourceMaterial: sourceMaterial.trim() } : {}),
+          ...(combinedSource.length > 0 ? { sourceMaterial: combinedSource } : {}),
         }),
       });
 
@@ -347,40 +389,78 @@ export function LessonPlanGenerator() {
             Upload a PDF or image to generate resources from your own content.
           </p>
           <p className="mt-1 text-xs text-slate-600">
-            Supported formats: PDF, JPG, and PNG (max 12 MB). Text is extracted from PDFs; images are
-            read with AI vision, then used as the basis for your lesson package when you click
-            Generate.
+            You can select <strong>multiple PDFs and images in one go</strong> (Ctrl/Cmd+click or
+            shift-select). Each file may be up to 12 MB; total up to 48 MB and 24 files per batch.
+            Text is extracted from PDFs; images use AI vision. Everything you keep below is combined
+            and sent to the AI when you generate.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <input
               ref={fileInputRef}
               type="file"
+              multiple
               accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
               onChange={onUploadFileChange}
               disabled={uploadExtracting || loading}
               className="block w-full min-w-0 text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-800 disabled:opacity-60 sm:w-auto"
             />
-            {uploadFileLabel ? (
+            {uploadedChunks.length > 0 ? (
               <button
                 type="button"
                 onClick={clearUploadedSource}
                 disabled={uploadExtracting || loading}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
               >
-                Remove file
+                Clear all uploads
               </button>
             ) : null}
           </div>
           {uploadExtracting ? (
-            <p className="mt-2 text-xs font-medium text-blue-800">Extracting text from your file…</p>
+            <p className="mt-2 text-xs font-medium text-blue-800">
+              Extracting text from your files…
+            </p>
           ) : null}
           {uploadInfo ? (
             <p className="mt-2 text-xs font-medium text-emerald-800">{uploadInfo}</p>
           ) : null}
-          {uploadFileLabel && sourceMaterial ? (
-            <p className="mt-2 line-clamp-3 rounded-lg border border-blue-100 bg-white/80 p-2 font-mono text-[11px] text-slate-600">
-              {sourceMaterial.slice(0, 400)}
-              {sourceMaterial.length > 400 ? "…" : ""}
+          {uploadWarnings.length > 0 ? (
+            <ul className="mt-2 list-inside list-disc text-xs font-medium text-amber-900">
+              {uploadWarnings.map((w, i) => (
+                <li key={`warn-${i}`}>{w}</li>
+              ))}
+            </ul>
+          ) : null}
+          {uploadedChunks.length > 0 ? (
+            <ul className="mt-3 divide-y divide-blue-100 rounded-lg border border-blue-100 bg-white/90">
+              {uploadedChunks.map((chunk) => (
+                <li
+                  key={chunk.id}
+                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-slate-900">{chunk.fileName}</p>
+                    <p className="text-xs text-slate-500">
+                      {chunk.kind === "pdf" ? "PDF" : "Image"} ·{" "}
+                      {chunk.text.length.toLocaleString()} characters
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeUploadedChunk(chunk.id)}
+                    disabled={uploadExtracting || loading}
+                    className="shrink-0 rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {uploadedChunks.length > 0 ? (
+            <p className="mt-2 text-xs text-slate-500">
+              Combined:{" "}
+              {combineSourceChunks(uploadedChunks).length.toLocaleString()} characters across{" "}
+              {uploadedChunks.length} file(s).
             </p>
           ) : null}
         </div>
