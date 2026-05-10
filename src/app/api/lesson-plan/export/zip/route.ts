@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildTeacherPackageZipBuffer, sanitizeExportFileName } from "@/lib/lesson-plan-export";
-import { isTeacherPackagePlan } from "@/lib/lesson-plan";
+import { hasTeacherPackageContent } from "@/lib/lesson-plan";
 import type { LessonPlanResult } from "@/lib/lesson-plan";
 
 export const runtime = "nodejs";
@@ -32,9 +32,9 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!isTeacherPackagePlan(lessonPlan)) {
+  if (!hasTeacherPackageContent(lessonPlan)) {
     return NextResponse.json(
-      { error: "ZIP export requires the full six-part teacher package." },
+      { error: "ZIP export requires at least one teacher-package section with content." },
       { status: 400 },
     );
   }

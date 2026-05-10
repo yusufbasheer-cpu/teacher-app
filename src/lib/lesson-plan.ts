@@ -35,11 +35,26 @@ export const LEGACY_LESSON_PLAN_SECTIONS = [
 export type TeacherPackageSectionKey = (typeof TEACHER_PACKAGE_SECTIONS)[number];
 export type LegacyLessonPlanSectionKey = (typeof LEGACY_LESSON_PLAN_SECTIONS)[number];
 
+/** Checkbox labels on the generator form (maps API JSON keys to user-facing copy). */
+export const GENERATION_CHECKBOX_LABELS: Record<TeacherPackageSectionKey, string> = {
+  "Full Lesson Plan": "Lesson Plan",
+  "PPT Slide Content": "PPT Slides",
+  Worksheet: "Worksheet",
+  "Assessment Questions": "Assessment Questions",
+  "Homework Task": "Homework Task",
+  "Teacher Notes": "Teacher Notes",
+};
+
 export type LessonPlanInput = {
   subject: string;
   grade: string;
   topic: string;
   learningObjectives: string;
+};
+
+/** POST /api/lesson-plan body: class context plus which teacher-package sections to generate. */
+export type LessonPlanGenerateBody = LessonPlanInput & {
+  sections: TeacherPackageSectionKey[];
 };
 
 /** Stored JSON may be new package or legacy; treat as string map. */
@@ -64,17 +79,55 @@ export function isTeacherPackagePlan(plan: Record<string, unknown>): boolean {
   return TEACHER_PACKAGE_SECTIONS.every((key) => isNonEmptyString(plan[key]));
 }
 
+/** Teacher-package sections that are present and non-empty (canonical order). */
+export function getTeacherPackageKeysPresent(
+  plan: Record<string, unknown>,
+): TeacherPackageSectionKey[] {
+  return TEACHER_PACKAGE_SECTIONS.filter((key) => isNonEmptyString(plan[key]));
+}
+
+/** True when the plan has at least one non-empty teacher-package section. */
+export function hasTeacherPackageContent(plan: Record<string, unknown>): boolean {
+  return getTeacherPackageKeysPresent(plan).length > 0;
+}
+
+/** Normalise and validate `sections` from the client; returns null if invalid or empty. */
+export function normalizeGenerationSections(raw: unknown): TeacherPackageSectionKey[] | null {
+  if (!Array.isArray(raw)) return null;
+  const allowed = new Set<string>(TEACHER_PACKAGE_SECTIONS);
+  const out: TeacherPackageSectionKey[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (typeof item !== "string" || !allowed.has(item) || seen.has(item)) continue;
+    seen.add(item);
+    out.push(item as TeacherPackageSectionKey);
+  }
+  return out.length > 0 ? out : null;
+}
+
+/** Rough ETA copy for the generator UI based on how many sections are selected. */
+export function getGenerationTimeEstimate(selectedCount: number): {
+  tier: string;
+  detail: string;
+} {
+  if (selectedCount <= 0) return { tier: "—", detail: "Select at least one item" };
+  if (selectedCount <= 2) return { tier: "Fast", detail: "~30 sec" };
+  if (selectedCount <= 4) return { tier: "Medium", detail: "~1 min" };
+  return { tier: "Full package", detail: "~2–3 min" };
+}
+
 export function isLegacyLessonPlan(plan: Record<string, unknown>): boolean {
   return LEGACY_LESSON_PLAN_SECTIONS.every((key) => isNonEmptyString(plan[key]));
 }
 
 /** Order sections for UI and PPTX: prefer new package, then legacy, else arbitrary keys. */
 export function getLessonPlanDisplayOrder(plan: LessonPlanResult): string[] {
-  if (isTeacherPackagePlan(plan)) {
-    return [...TEACHER_PACKAGE_SECTIONS];
-  }
   if (isLegacyLessonPlan(plan)) {
     return [...LEGACY_LESSON_PLAN_SECTIONS];
+  }
+  const teacherPresent = TEACHER_PACKAGE_SECTIONS.filter((key) => isNonEmptyString(plan[key]));
+  if (teacherPresent.length > 0) {
+    return teacherPresent;
   }
   return Object.keys(plan).filter((key) => isNonEmptyString(plan[key]));
 }

@@ -296,13 +296,16 @@ export async function buildTeacherPackageZipBuffer(params: {
 
   const zip = new JSZip();
 
-  zip.file(
-    `${base}-ppt-content.pptx`,
-    await buildPptxFromPptContent({
-      ...meta,
-      pptContent: params.lessonPlan["PPT Slide Content"] ?? "",
-    }),
-  );
+  const pptRaw = params.lessonPlan["PPT Slide Content"];
+  if (typeof pptRaw === "string" && pptRaw.trim().length > 0) {
+    zip.file(
+      `${base}-ppt-content.pptx`,
+      await buildPptxFromPptContent({
+        ...meta,
+        pptContent: pptRaw,
+      }),
+    );
+  }
 
   const docxParts: { file: string; title: string; key: (typeof TEACHER_PACKAGE_SECTIONS)[number] }[] = [
     { file: `${base}-lesson-plan.docx`, title: "Lesson Plan", key: "Full Lesson Plan" },
@@ -313,14 +316,21 @@ export async function buildTeacherPackageZipBuffer(params: {
   ];
 
   for (const part of docxParts) {
-    zip.file(
-      part.file,
-      await buildDocxBuffer({
-        documentTitle: part.title,
-        ...meta,
-        content: params.lessonPlan[part.key] ?? "",
-      }),
-    );
+    const raw = params.lessonPlan[part.key];
+    if (typeof raw === "string" && raw.trim().length > 0) {
+      zip.file(
+        part.file,
+        await buildDocxBuffer({
+          documentTitle: part.title,
+          ...meta,
+          content: raw,
+        }),
+      );
+    }
+  }
+
+  if (Object.keys(zip.files).length === 0) {
+    throw new Error("No exportable teacher-package sections in lesson plan.");
   }
 
   return await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });

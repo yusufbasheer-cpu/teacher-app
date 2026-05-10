@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import { DEEPSEEK_LESSON_SYSTEM_PROMPT } from "@/lib/deepseek-lesson-system-prompt";
-import { TEACHER_PACKAGE_SECTIONS } from "@/lib/lesson-plan";
-import type { LessonPlanInput, LessonPlanResult } from "@/lib/lesson-plan";
+import { buildDeepseekLessonSystemPrompt } from "@/lib/deepseek-lesson-system-prompt";
+import {
+  normalizeGenerationSections,
+  type LessonPlanGenerateBody,
+  type LessonPlanInput,
+  type LessonPlanResult,
+  type TeacherPackageSectionKey,
+} from "@/lib/lesson-plan";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 
@@ -26,7 +31,10 @@ function extractJsonObject(text: string): string | null {
   return text.slice(first, last + 1);
 }
 
-function parsePlan(content: string): LessonPlanResult | null {
+function parsePlan(
+  content: string,
+  sections: readonly TeacherPackageSectionKey[],
+): LessonPlanResult | null {
   const jsonCandidate = extractJsonObject(content);
   if (!jsonCandidate) return null;
 
@@ -34,7 +42,7 @@ function parsePlan(content: string): LessonPlanResult | null {
     const parsed = JSON.parse(jsonCandidate) as Record<string, unknown>;
     const result: LessonPlanResult = {};
 
-    for (const section of TEACHER_PACKAGE_SECTIONS) {
+    for (const section of sections) {
       const value = parsed[section];
       if (typeof value !== "string" || value.trim().length === 0) {
         return null;
@@ -48,23 +56,24 @@ function parsePlan(content: string): LessonPlanResult | null {
   }
 }
 
-function buildMessages(input: LessonPlanInput): DeepSeekMessage[] {
+function buildMessages(input: LessonPlanInput, sections: readonly TeacherPackageSectionKey[]): DeepSeekMessage[] {
+  const keysList = sections.map((k) => JSON.stringify(k)).join(", ");
   return [
     {
       role: "system",
-      content: DEEPSEEK_LESSON_SYSTEM_PROMPT,
+      content: buildDeepseekLessonSystemPrompt(sections),
     },
     {
       role: "user",
       content: `
-Use this class context to build the complete teacher package (all six JSON fields):
+Use this class context. Produce ONLY these JSON fields (no others): ${keysList}
 
 - Subject: ${input.subject}
 - Grade / Year group: ${input.grade}
 - Topic: ${input.topic}
 - Teacher-provided learning objectives / focus: ${input.learningObjectives}
 
-Follow every instructional design rule in the system prompt. Adapt tone and examples to the subject and grade. Ensure "Full Lesson Plan" is comprehensive and the other five fields contain ready-to-use classroom materials (not placeholders).
+Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Adapt tone and examples to the subject and grade. Each requested field must be classroom-ready (not placeholders).
       `.trim(),
     },
   ];
@@ -79,14 +88,29 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: LessonPlanInput;
+  let body: LessonPlanGenerateBody;
   try {
-    body = (await req.json()) as LessonPlanInput;
+    body = (await req.json()) as LessonPlanGenerateBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  if (!validateInput(body)) {
+  const sections = normalizeGenerationSections(body.sections);
+  if (!sections) {
+    return NextResponse.json(
+      { error: "Provide a non-empty \"sections\" array of valid teacher-package keys." },
+      { status: 400 },
+    );
+  }
+
+  const input: LessonPlanInput = {
+    subject: body.subject ?? "",
+    grade: body.grade ?? "",
+    topic: body.topic ?? "",
+    learningObjectives: body.learningObjectives ?? "",
+  };
+
+  if (!validateInput(input)) {
     return NextResponse.json(
       { error: "Please fill Subject, Grade, Topic, and Learning Objectives." },
       { status: 400 },
@@ -102,7 +126,7 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       model: "deepseek-chat",
       temperature: 0.55,
-      messages: buildMessages(body),
+      messages: buildMessages(input, sections),
     }),
   });
 
@@ -126,7 +150,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const parsedPlan = parsePlan(content);
+  const parsedPlan = parsePlan(content, sections);
   if (!parsedPlan) {
     return NextResponse.json(
       { error: "Could not parse structured teacher package from DeepSeek response." },

@@ -2,7 +2,10 @@
  * System prompt for DeepSeek lesson / teacher-package generation.
  * Output must be JSON (enforced in API route); keys are defined in `lesson-plan.ts`.
  */
-export const DEEPSEEK_LESSON_SYSTEM_PROMPT = `You are an advanced AI Teaching Assistant and Instructional Designer for schools following CBSE, British, American, and international curricula.
+import { TEACHER_PACKAGE_SECTIONS, type TeacherPackageSectionKey } from "@/lib/lesson-plan";
+
+/** Pedagogy and quality rules without the final JSON key contract (contract is appended per request). */
+export const DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE = `You are an advanced AI Teaching Assistant and Instructional Designer for schools following CBSE, British, American, and international curricula.
 
 When generating lesson plans and PowerPoint presentations, always create highly structured, classroom-ready content with engaging pedagogy and differentiated instruction.
 
@@ -125,23 +128,35 @@ Adjust pedagogy depending on:
 - Avoid factual inaccuracies
 - Maintain curriculum alignment
 
-20. Output Format (delivered across the six JSON fields below)
-Structure your work as a complete teacher package:
+20. Deliverable reference (map content quality to JSON keys when those keys are requested)
 A. Full Lesson Plan — integrate items 1–14 above using clear subheadings and actionable steps; embed mini timings where helpful.
 B. PPT Slide Content — slide-by-slide outline with titles, concise bullets, speaker notes, visuals/icons, animations, interactive and quiz slides.
 C. Worksheet — print-ready student-facing tasks (include space cues like lines or numbered response areas described in text).
 D. Assessment Questions — formative and summative mix: MCQs, short answers, HOTS, oral prompts, exit ticket, and a simple rubric or mark scheme.
 E. Homework Task — aligned extended task with success criteria and expected time.
-F. Teacher Notes — differentiation reminders, common misconceptions, AFL moves, grouping, and quick contingency plans.
+F. Teacher Notes — differentiation reminders, common misconceptions, AFL moves, grouping, and quick contingency plans.`;
 
-CRITICAL RESPONSE RULES:
+export function buildTeacherPackageJsonContract(
+  sections: readonly TeacherPackageSectionKey[],
+): string {
+  const lines = sections.map((k) => `  ${JSON.stringify(k)}`).join("\n");
+  return `CRITICAL RESPONSE RULES (THIS REQUEST ONLY):
 - Reply with ONLY one valid JSON object. No markdown fences, no commentary before or after JSON.
-- Use EXACTLY these six top-level string keys (same spelling and spacing), each with a long, detailed string value:
-  "Full Lesson Plan"
-  "PPT Slide Content"
-  "Worksheet"
-  "Assessment Questions"
-  "Homework Task"
-  "Teacher Notes"
-- Do not add other top-level keys. Do not omit any of the six keys.
+- Use EXACTLY these top-level string keys (same spelling and spacing), each with a long, detailed string value — and no other top-level keys:
+${lines}
+- Apply sections A–F from the system prompt only for keys you are outputting; ignore deliverable letters that were not requested.
 - Keep each value richly detailed but well organized with headings, numbered lists, and bullet lists inside the string.`;
+}
+
+export function buildDeepseekLessonSystemPrompt(
+  sections: readonly TeacherPackageSectionKey[],
+): string {
+  return `${DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE.trim()}
+
+${buildTeacherPackageJsonContract(sections)}`;
+}
+
+/** Full six-part package (backwards-compatible export for tooling/tests). */
+export const DEEPSEEK_LESSON_SYSTEM_PROMPT = buildDeepseekLessonSystemPrompt([
+  ...TEACHER_PACKAGE_SECTIONS,
+]);

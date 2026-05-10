@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getLessonPlanDisplayOrder,
   getSectionTabLabel,
-  isTeacherPackagePlan,
+  hasTeacherPackageContent,
   type LessonPlanResult,
 } from "@/lib/lesson-plan";
 
@@ -35,6 +35,11 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function hasSectionContent(plan: LessonPlanResult, key: string): boolean {
+  const v = plan[key];
+  return typeof v === "string" && v.trim().length > 0;
+}
+
 function safeFilenamePart(value: string, fallback: string) {
   const s = value
     .toLowerCase()
@@ -54,7 +59,13 @@ export function TeacherPackageViewer({
   const [busy, setBusy] = useState<ExportKey | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const fullPackage = isTeacherPackagePlan(lessonPlan);
+  const showTeacherDownloads = hasTeacherPackageContent(lessonPlan);
+  const hasPpt = hasSectionContent(lessonPlan, "PPT Slide Content");
+  const hasLesson = hasSectionContent(lessonPlan, "Full Lesson Plan");
+  const hasWorksheet = hasSectionContent(lessonPlan, "Worksheet");
+  const hasAssessment = hasSectionContent(lessonPlan, "Assessment Questions");
+  const hasHomework = hasSectionContent(lessonPlan, "Homework Task");
+  const hasNotes = hasSectionContent(lessonPlan, "Teacher Notes");
 
   useEffect(() => {
     const keys = getLessonPlanDisplayOrder(lessonPlan);
@@ -170,13 +181,14 @@ export function TeacherPackageViewer({
 
   return (
     <div className="space-y-5">
-      {fullPackage ? (
+      {showTeacherDownloads ? (
         <>
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Downloads
             </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {hasPpt ? (
               <button
                 type="button"
                 disabled={busy !== null}
@@ -188,6 +200,8 @@ export function TeacherPackageViewer({
                   Multi-slide PowerPoint from PPT content
                 </span>
               </button>
+              ) : null}
+              {hasLesson ? (
               <button
                 type="button"
                 disabled={busy !== null}
@@ -197,6 +211,8 @@ export function TeacherPackageViewer({
                 {busy === "lesson" ? "Preparing…" : "Download Lesson Plan"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
               </button>
+              ) : null}
+              {hasWorksheet ? (
               <button
                 type="button"
                 disabled={busy !== null}
@@ -206,6 +222,8 @@ export function TeacherPackageViewer({
                 {busy === "worksheet" ? "Preparing…" : "Download Worksheet"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
               </button>
+              ) : null}
+              {hasAssessment ? (
               <button
                 type="button"
                 disabled={busy !== null}
@@ -215,6 +233,8 @@ export function TeacherPackageViewer({
                 {busy === "assessment" ? "Preparing…" : "Download Assessment"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
               </button>
+              ) : null}
+              {hasHomework ? (
               <button
                 type="button"
                 disabled={busy !== null}
@@ -224,6 +244,8 @@ export function TeacherPackageViewer({
                 {busy === "homework" ? "Preparing…" : "Download Homework"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
               </button>
+              ) : null}
+              {hasNotes ? (
               <button
                 type="button"
                 disabled={busy !== null}
@@ -233,6 +255,7 @@ export function TeacherPackageViewer({
                 {busy === "notes" ? "Preparing…" : "Download Teacher Notes"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
               </button>
+              ) : null}
             </div>
             <button
               type="button"
@@ -240,14 +263,18 @@ export function TeacherPackageViewer({
               onClick={onDownloadZip}
               className="mt-3 w-full rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:opacity-50 sm:w-auto"
             >
-              {busy === "zip" ? "Building ZIP…" : "Download All as ZIP"}
+              {busy === "zip" ? "Building ZIP…" : "Download ZIP package"}
             </button>
+            <p className="mt-1.5 text-xs text-slate-500">
+              ZIP includes only the materials present in this package.
+            </p>
           </div>
         </>
       ) : (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          File downloads (PPT, Word, and ZIP) are available for the full six-part teacher package.
-          Generate a new plan to unlock exports, or open a saved plan that uses the new format.
+          File downloads (PPT, Word, and ZIP) are available when your plan includes at least one
+          teacher-package section (lesson plan, slides, worksheet, and so on). Legacy-format plans
+          cannot be exported here — generate a new package to unlock downloads.
         </p>
       )}
 

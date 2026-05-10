@@ -7,6 +7,12 @@ import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
 import type { LessonPlanInput, LessonPlanResult, SavedLessonPlan } from "@/lib/lesson-plan";
+import {
+  GENERATION_CHECKBOX_LABELS,
+  TEACHER_PACKAGE_SECTIONS,
+  getGenerationTimeEstimate,
+  type TeacherPackageSectionKey,
+} from "@/lib/lesson-plan";
 import { supabase } from "@/lib/supabase";
 
 const initialForm: LessonPlanInput = {
@@ -15,6 +21,13 @@ const initialForm: LessonPlanInput = {
   topic: "",
   learningObjectives: "",
 };
+
+function initialSectionSelection(): Record<TeacherPackageSectionKey, boolean> {
+  return Object.fromEntries(TEACHER_PACKAGE_SECTIONS.map((k) => [k, true])) as Record<
+    TeacherPackageSectionKey,
+    boolean
+  >;
+}
 
 export function LessonPlanGenerator() {
   const searchParams = useSearchParams();
@@ -27,6 +40,9 @@ export function LessonPlanGenerator() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [sectionSelection, setSectionSelection] =
+    useState<Record<TeacherPackageSectionKey, boolean>>(initialSectionSelection);
 
   const loadPlanById = async (userId: string, planId: string) => {
     const { data, error: loadError } = await supabase
@@ -95,13 +111,20 @@ export function LessonPlanGenerator() {
     setSuccessMessage(null);
     setLessonPlan(null);
     setActivePlanId(null);
+
+    const sections = TEACHER_PACKAGE_SECTIONS.filter((k) => sectionSelection[k]);
+    if (sections.length === 0) {
+      setError("Select at least one item to generate.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await fetch("/api/lesson-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, sections }),
       });
 
       const data = (await response.json()) as {
@@ -194,6 +217,9 @@ export function LessonPlanGenerator() {
     );
   }
 
+  const selectedSectionCount = TEACHER_PACKAGE_SECTIONS.filter((k) => sectionSelection[k]).length;
+  const generationEta = getGenerationTimeEstimate(selectedSectionCount);
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-blue-100 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
@@ -208,7 +234,7 @@ export function LessonPlanGenerator() {
         >
           <h2 className="text-xl font-semibold text-slate-900">Lesson Plan Generator</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Fill in class details, then generate a complete AI lesson plan.
+            Fill in class details, choose which materials to generate, then run the AI.
           </p>
 
         <div className="mt-6 space-y-4">
@@ -277,9 +303,76 @@ export function LessonPlanGenerator() {
           </div>
         </div>
 
+        <fieldset className="mt-6 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+          <legend className="px-1 text-sm font-semibold text-slate-900">What to generate</legend>
+          <p className="mt-1 text-xs text-slate-600">
+            Only checked sections are sent to the AI — fewer selections usually means a quicker response.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setSectionSelection(
+                  Object.fromEntries(TEACHER_PACKAGE_SECTIONS.map((k) => [k, true])) as Record<
+                    TeacherPackageSectionKey,
+                    boolean
+                  >,
+                )
+              }
+              className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-900 shadow-sm hover:bg-blue-50"
+            >
+              Select All
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setSectionSelection(
+                  Object.fromEntries(TEACHER_PACKAGE_SECTIONS.map((k) => [k, false])) as Record<
+                    TeacherPackageSectionKey,
+                    boolean
+                  >,
+                )
+              }
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Deselect All
+            </button>
+          </div>
+          <ul className="mt-4 space-y-2.5">
+            {TEACHER_PACKAGE_SECTIONS.map((key) => (
+              <li key={key} className="flex items-start gap-3">
+                <input
+                  id={`gen-${key}`}
+                  type="checkbox"
+                  checked={sectionSelection[key]}
+                  onChange={() =>
+                    setSectionSelection((prev) => ({ ...prev, [key]: !prev[key] }))
+                  }
+                  className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-blue-700 focus:ring-blue-500"
+                />
+                <label htmlFor={`gen-${key}`} className="text-sm text-slate-800">
+                  {GENERATION_CHECKBOX_LABELS[key]}
+                </label>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+
+        <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          <span className="font-semibold text-slate-900">Estimated time: </span>
+          {selectedSectionCount === 0 ? (
+            generationEta.detail
+          ) : (
+            <>
+              {generationEta.tier} ({generationEta.detail}) — {selectedSectionCount} item
+              {selectedSectionCount === 1 ? "" : "s"} selected
+            </>
+          )}
+        </p>
+
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || TEACHER_PACKAGE_SECTIONS.every((k) => !sectionSelection[k])}
           className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? "Generating..." : "Generate Lesson Plan"}
@@ -291,7 +384,8 @@ export function LessonPlanGenerator() {
         <section className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm md:p-7">
         <h3 className="text-xl font-semibold text-slate-900">Generated teacher package</h3>
         <p className="mt-2 text-sm text-slate-600">
-          Lesson plan, slide outline, worksheet, assessments, homework, and teacher notes.
+          Preview and download only the sections you generated (lesson plan, slides, worksheet, and
+          more).
         </p>
 
         {!lessonPlan ? (
