@@ -430,6 +430,7 @@ export function LessonPlanGenerator() {
 
     const runSection = async (section: TeacherPackageSectionKey) => {
       try {
+        console.log("[parallel-generate] start", { section });
         const res = await fetch("/api/lesson-plan/section", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -437,12 +438,17 @@ export function LessonPlanGenerator() {
         });
         const data = (await res.json()) as {
           error?: string;
+          debug?: { rawPreview?: string };
           text?: string;
           sectionImageUrls?: string[];
           sectionImageError?: string;
         };
         if (!res.ok) {
-          updateLine(section, "error", data.error ?? "Request failed");
+          const detail = data.debug?.rawPreview
+            ? `${data.error ?? "Request failed"} — ${data.debug.rawPreview.slice(0, 140)}…`
+            : data.error ?? "Request failed";
+          updateLine(section, "error", detail);
+          console.error("[parallel-generate] section failed", { section, status: res.status, detail });
           if (section === "PPT Slide Content") {
             updateLine("ppt-slide-images", "error", "PPT text not generated");
           }
@@ -464,6 +470,7 @@ export function LessonPlanGenerator() {
           }));
         }
         updateLine(section, "done", "Done ✅");
+        console.log("[parallel-generate] done", { section, textChars: text.length });
 
         if (section === "PPT Slide Content") {
           const slides = parsePptContentIntoSlides(text);
@@ -480,6 +487,7 @@ export function LessonPlanGenerator() {
           await Promise.all(
             slides.map(async (_, i) => {
               try {
+                console.log("[parallel-generate] slide image start", { slideIndex: i, total });
                 const ir = await fetch("/api/lesson-plan/ppt-slide-image", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -494,8 +502,15 @@ export function LessonPlanGenerator() {
                     slideIndex: i,
                   }),
                 });
-                const ij = (await ir.json()) as { url?: string | null };
+                const ij = (await ir.json()) as { url?: string | null; error?: string };
                 urls[i] = typeof ij.url === "string" && ij.url.length > 0 ? ij.url : null;
+                if (!ir.ok) {
+                  console.error("[parallel-generate] slide image failed", {
+                    slideIndex: i,
+                    status: ir.status,
+                    error: ij.error,
+                  });
+                }
               } catch {
                 urls[i] = null;
               } finally {
@@ -515,6 +530,7 @@ export function LessonPlanGenerator() {
         if (section === "PPT Slide Content") {
           updateLine("ppt-slide-images", "error", "Skipped");
         }
+        console.error("[parallel-generate] section exception", { section, msg }, e);
         throw e;
       }
     };

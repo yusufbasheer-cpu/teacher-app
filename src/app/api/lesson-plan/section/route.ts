@@ -87,6 +87,15 @@ export async function POST(req: Request) {
   const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(input.curriculumFramework);
 
   try {
+    console.log("[lesson-plan/section] start", {
+      section,
+      curriculumType: input.curriculumType,
+      grade: input.grade,
+      subject: input.subject,
+      hasSourceMaterial: Boolean(sourceMaterial && sourceMaterial.trim().length > 0),
+      hasFramework: Boolean(input.curriculumFramework && input.curriculumFramework.trim().length > 0),
+    });
+
     const messages = buildMessagesForSingleSection(
       input,
       section as TeacherPackageSectionKey,
@@ -96,8 +105,15 @@ export async function POST(req: Request) {
     const raw = await callDeepseekChat(apiKey, messages);
     const text = parseSingleSectionFromResponse(raw, section as TeacherPackageSectionKey);
     if (!text) {
+      console.error("[lesson-plan/section] parse failed", {
+        section,
+        rawPreview: raw.slice(0, 800),
+      });
       return NextResponse.json(
-        { error: `Could not parse section "${section}" from model response.` },
+        {
+          error: `Could not parse section "${section}" from model response.`,
+          debug: { rawPreview: raw.slice(0, 800) },
+        },
         { status: 502 },
       );
     }
@@ -112,13 +128,22 @@ export async function POST(req: Request) {
       );
       if (url) {
         sectionImageUrls = [url];
+        console.log("[lesson-plan/section] flux ok", { section });
       } else if (error) {
         sectionImageError = error;
+        console.warn("[lesson-plan/section] flux empty", { section, error });
       }
     } catch (e) {
       sectionImageError = formatFalError(e);
       console.error("[lesson-plan/section] FLUX failed:", sectionImageError, e);
     }
+
+    console.log("[lesson-plan/section] done", {
+      section,
+      textChars: text.length,
+      hasImage: Boolean(sectionImageUrls && sectionImageUrls.length > 0),
+      hasImageError: Boolean(sectionImageError),
+    });
 
     return NextResponse.json({
       section,

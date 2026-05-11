@@ -26,9 +26,34 @@ export function parseSingleSectionFromResponse(
   try {
     const parsed = JSON.parse(jsonCandidate) as Record<string, unknown>;
     const value = parsed[section];
-    if (typeof value !== "string" || value.trim().length === 0) return null;
-    return value.trim();
+    if (typeof value === "string") {
+      return value.trim().length > 0 ? value.trim() : null;
+    }
+    if (value === null || value === undefined) return null;
+    try {
+      const asJson = JSON.stringify(value, null, 2);
+      return asJson && asJson.trim().length > 0 ? asJson : null;
+    } catch {
+      const asText = String(value);
+      return asText.trim().length > 0 ? asText : null;
+    }
   } catch {
+    // Fallback: try to regex-extract a JSON string value for this key.
+    // This helps when the model output is "almost JSON" (e.g. invalid escapes) but still contains the key.
+    try {
+      const escapedKey = section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`\"${escapedKey}\"\\s*:\\s*(\"(?:\\\\.|[^\"\\\\])*\")`);
+      const m = jsonCandidate.match(re);
+      const rawStringLiteral = m?.[1];
+      if (rawStringLiteral) {
+        const decoded = JSON.parse(rawStringLiteral) as unknown;
+        if (typeof decoded === "string" && decoded.trim().length > 0) {
+          return decoded.trim();
+        }
+      }
+    } catch {
+      // ignore
+    }
     return null;
   }
 }

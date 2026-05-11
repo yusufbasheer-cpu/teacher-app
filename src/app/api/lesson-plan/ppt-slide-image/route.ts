@@ -59,10 +59,13 @@ export async function POST(req: Request) {
   };
 
   try {
+    console.log("[ppt-slide-image] start", { slideIndex, slideCount: slides.length });
     const url = await generateSinglePptSlideImageUrl(meta, slide);
+    console.log("[ppt-slide-image] done", { slideIndex, ok: Boolean(url) });
     return NextResponse.json({ slideIndex, url });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    console.error("[ppt-slide-image] failed", { slideIndex, message }, e);
     return NextResponse.json({ error: message, slideIndex, url: null }, { status: 500 });
   }
 }
