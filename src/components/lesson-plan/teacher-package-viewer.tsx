@@ -217,7 +217,7 @@ export function TeacherPackageViewer({
                 onClick={onDownloadPpt}
                 className="rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
               >
-                {busy === "ppt" ? "Generating images for your slides…" : "Download PPT"}
+                {busy === "ppt" ? "Building your PPT… please wait" : "Download PPT"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">
                   PowerPoint with text plus an AI image per slide (requires FAL_API_KEY)
                 </span>
@@ -281,7 +281,7 @@ export function TeacherPackageViewer({
             </div>
             {busy === "ppt" ? (
               <p className="mt-3 text-sm font-medium text-blue-900" role="status" aria-live="polite">
-                Generating images for your slides…
+                Building your PPT… please wait
               </p>
             ) : null}
             <button

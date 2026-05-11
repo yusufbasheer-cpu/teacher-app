@@ -220,12 +220,13 @@ function toAccentRuns(line: string): Array<{ text: string; options: Record<strin
 }
 
 function addSlideFooter(
+  pptx: PptxGenJS,
   slide: PptxGenJS.Slide,
   subject: string,
   grade: string,
   slideNumberText: string,
 ) {
-  slide.addShape(PptxGenJS.ShapeType.line, {
+  slide.addShape(pptx.ShapeType.line, {
     x: 0.6,
     y: 7.0,
     w: 12.1,
@@ -250,6 +251,44 @@ function addSlideFooter(
     color: PPT_COLORS.muted,
     fontFace: "Calibri",
     align: "right",
+  });
+}
+
+function addImagePlaceholder(pptx: PptxGenJS, slide: PptxGenJS.Slide) {
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 7.72,
+    y: 1.78,
+    w: 4.95,
+    h: 4.9,
+    rectRadius: 0.06,
+    fill: { color: "F6F8FC" },
+    line: { color: "D0DEFA", pt: 1 },
+  });
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 9.2,
+    y: 3.0,
+    w: 1.9,
+    h: 1.35,
+    fill: { color: "E3EAF8" },
+    line: { color: "B8CAE9", pt: 1 },
+  });
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 9.45,
+    y: 3.85,
+    w: 1.35,
+    h: 0.4,
+    fill: { color: "C8D8F2" },
+    line: { color: "C8D8F2", pt: 0.5 },
+  });
+  slide.addText("Image unavailable", {
+    x: 8.0,
+    y: 5.05,
+    w: 4.4,
+    h: 0.28,
+    fontSize: 14,
+    color: PPT_COLORS.muted,
+    fontFace: "Calibri",
+    align: "center",
   });
 }
 
@@ -441,9 +480,12 @@ export async function buildPptxFromPptContent(params: {
         rounding: true,
         altText: "AI-generated illustration for this slide",
       });
+    } else if (slideImageUrls && slideImageUrls.length > 0) {
+      // fal may fail for one slide; keep PPT generation stable with a visible placeholder.
+      addImagePlaceholder(pptx, slide);
     }
 
-    addSlideFooter(slide, params.subject, params.grade, `Slide ${slideIdx + 2}`);
+    addSlideFooter(pptx, slide, params.subject, params.grade, `Slide ${slideIdx + 2}`);
   }
 
   const closing = pptx.addSlide();
@@ -484,7 +526,7 @@ export async function buildPptxFromPptContent(params: {
     fontFace: "Calibri",
     align: "center",
   });
-  addSlideFooter(closing, params.subject, params.grade, `Slide ${slides.length + 2}`);
+  addSlideFooter(pptx, closing, params.subject, params.grade, `Slide ${slides.length + 2}`);
 
   return (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
 }
