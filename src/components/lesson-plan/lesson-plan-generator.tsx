@@ -34,6 +34,11 @@ import {
   parseSectionImagesMeta,
 } from "@/lib/lesson-plan";
 import { CURRICULUM_FRAMEWORK_OPTIONS, isValidCurriculumFramework } from "@/lib/curriculum-framework";
+import {
+  DEFAULT_PPT_THEME_ID,
+  PPT_THEME_CARDS,
+  type PptThemeId,
+} from "@/lib/ppt-themes";
 import { supabase } from "@/lib/supabase";
 
 type SourceUploadChunk = {
@@ -117,6 +122,8 @@ export function LessonPlanGenerator() {
   const [uploadInfo, setUploadInfo] = useState<string | null>(null);
   const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
   const [uploadExtractionError, setUploadExtractionError] = useState<string | null>(null);
+
+  const [pptThemeId, setPptThemeId] = useState<PptThemeId>(DEFAULT_PPT_THEME_ID);
 
   const extractedMaterialPreview = useMemo(
     () => combineSourceChunks(uploadedChunks),
@@ -870,6 +877,53 @@ export function LessonPlanGenerator() {
             >
               {saving ? "Saving..." : "Save Lesson Plan"}
             </button>
+            {typeof lessonPlan["PPT Slide Content"] === "string" &&
+            lessonPlan["PPT Slide Content"].trim().length > 0 ? (
+              <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4 shadow-inner md:p-5">
+                <p className="text-sm font-semibold text-slate-900">Presentation theme</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  Pick a style for your PowerPoint, then use Download PPT. Ocean Blue is selected by
+                  default.
+                </p>
+                <div
+                  className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5"
+                  role="list"
+                >
+                  {PPT_THEME_CARDS.map((t) => {
+                    const selected = pptThemeId === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="listitem"
+                        onClick={() => setPptThemeId(t.id)}
+                        aria-pressed={selected}
+                        className={`rounded-xl border-2 bg-white p-3 text-left shadow-sm transition hover:shadow-md ${
+                          selected
+                            ? "border-blue-600 ring-2 ring-blue-200 ring-offset-2 ring-offset-slate-50"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="mb-2 flex gap-1 overflow-hidden rounded-lg" aria-hidden>
+                          {t.preview.map((hex) => (
+                            <span
+                              key={hex}
+                              className="h-7 min-w-0 flex-1"
+                              style={{ backgroundColor: `#${hex}` }}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                          Theme {t.themeNumber}
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900">{t.name}</p>
+                        <p className="mt-0.5 text-xs leading-snug text-slate-600">{t.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <TeacherPackageViewer
               lessonPlan={lessonPlan}
               sectionImages={sectionImages ?? undefined}
@@ -878,6 +932,7 @@ export function LessonPlanGenerator() {
               grade={form.grade}
               topic={form.topic}
               curriculumFramework={form.curriculumFramework.trim() || undefined}
+              pptThemeId={pptThemeId}
             />
           </div>
         )}

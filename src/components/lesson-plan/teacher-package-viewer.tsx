@@ -9,6 +9,7 @@ import {
   type SectionImageMap,
   type TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
+import { DEFAULT_PPT_THEME_ID, type PptThemeId } from "@/lib/ppt-themes";
 
 type TeacherPackageViewerProps = {
   lessonPlan: LessonPlanResult;
@@ -21,6 +22,8 @@ type TeacherPackageViewerProps = {
   topic: string;
   /** When set, PPT slide images use the same framework hint as generation. */
   curriculumFramework?: string;
+  /** PowerPoint color theme from the generator; defaults to Ocean Blue. */
+  pptThemeId?: PptThemeId;
 };
 
 type ExportKey =
@@ -64,6 +67,7 @@ export function TeacherPackageViewer({
   grade,
   topic,
   curriculumFramework,
+  pptThemeId = DEFAULT_PPT_THEME_ID,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
@@ -124,6 +128,7 @@ export function TeacherPackageViewer({
       {
         ...baseMeta,
         pptContent: lessonPlan["PPT Slide Content"] ?? "",
+        pptTheme: pptThemeId,
         ...(curriculumFramework?.trim()
           ? { curriculumFramework: curriculumFramework.trim() }
           : {}),

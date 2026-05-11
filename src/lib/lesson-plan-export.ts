@@ -2,17 +2,25 @@ import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import JSZip from "jszip";
 import PptxGenJS from "pptxgenjs";
 import { TEACHER_PACKAGE_SECTIONS, type LessonPlanResult } from "@/lib/lesson-plan";
+import {
+  DEFAULT_PPT_THEME_ID,
+  type PptRenderTheme,
+  type PptThemeId,
+  getPptRenderTheme,
+} from "@/lib/ppt-themes";
 
-const PPT_COLORS = {
-  blue: "1B3A6B",
-  lightBlue: "EAF1FB",
-  accent: "F5A623",
-  white: "FFFFFF",
-  dark: "333333",
-  muted: "5B6472",
-  blueMid: "234A82",
-  blueDeep: "102746",
-};
+const IN_SLIDE_W = 13.333333;
+const IN_SLIDE_H = 7.5;
+const IN_MARGIN = 0.3;
+const PPT_TOP_BAR_H = 0.18;
+const PPT_TITLE_H = 0.72;
+const PPT_META_H = 0.22;
+const PPT_LEFT_ACCENT_W = 0.1;
+const PPT_IMG_W = 4.42;
+const PPT_COL_GAP = 0.12;
+const PPT_FOOTER_BLOCK = 0.34;
+const PPT_BODY_PT = 19;
+const PPT_BODY_LINE_IN = 0.32;
 
 export function sanitizeExportFileName(value: string) {
   return value
@@ -151,10 +159,8 @@ async function fetchImageUrlAsDataUri(url: string): Promise<string> {
   return `data:${mime};base64,${buf.toString("base64")}`;
 }
 
-function stripMarkdownText(input: string): string {
-  const cleaned = input
-    .replace(/\r\n/g, "\n")
-    .replace(/^#{1,6}\s*/gm, "")
+function stripInlineMarkdownFromSegment(input: string): string {
+  return input
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
@@ -162,131 +168,268 @@ function stripMarkdownText(input: string): string {
     .replace(/__([^_]+)__/g, "$1")
     .replace(/_([^_]+)_/g, "$1")
     .replace(/~~([^~]+)~~/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/^\s*[-*+]\s+/gm, "• ")
-    .replace(/^\s*\d+\.\s+/gm, "• ")
-    .replace(/[|]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  // Extra hard strip for symbols user explicitly flagged.
-  return cleaned.replace(/[*#_]/g, "").trim();
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+}
+
+/** Remove stray markdown symbols (including # * _ ` |) after structural cleanup. */
+function stripResidualMarkdownSymbols(line: string): string {
+  return line.replace(/[*#_`|]/g, "").replace(/\s+/g, " ").trim();
 }
 
 function cleanSlideTitle(title: string): string {
-  return stripMarkdownText(title).slice(0, 120) || "Slide";
+  const t = stripInlineMarkdownFromSegment(title.replace(/\r\n/g, " "))
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/^\s*(?:[-*+]|(?:\d+[.)]))\s+/, "")
+    .replace(/^\s*-\s+/, "");
+  return stripResidualMarkdownSymbols(t || "Slide").slice(0, 120) || "Slide";
 }
 
-function toBulletLines(body: string): string[] {
-  const plain = stripMarkdownText(body);
-  if (!plain) return ["(No content provided)"];
-  const rawLines = plain
-    .split(/\n|(?<=\.)\s+(?=[A-Z0-9])/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-  const lines = rawLines.length > 0 ? rawLines : [plain];
-  return lines.slice(0, 8);
-}
-
-function toAccentRuns(line: string): Array<{ text: string; options: Record<string, unknown> }> {
-  const normalized = line.replace(/^•\s*/, "").trim();
-  if (!normalized) {
-    return [{ text: "• ", options: { color: PPT_COLORS.dark, fontFace: "Calibri", fontSize: 22 } }];
+/**
+ * Turn slide body into plain bullet lines: preserves paragraphs as separate lines,
+ * strips markdown list markers (including hyphen bullets), and removes markdown symbols.
+ */
+function normalizeBodyToBulletLines(body: string): string[] {
+  const text = body.replace(/\r\n/g, "\n");
+  const withoutFences = text.replace(/```[\s\S]*?```/g, "\n");
+  const rawLines = withoutFences.split("\n");
+  const out: string[] = [];
+  for (const raw of rawLines) {
+    let line = raw.trim();
+    if (!line) continue;
+    line = line.replace(/^#{1,6}\s+/, "");
+    line = line.replace(/^\s*(?:[-*+]|(?:\d+[.)]))\s+/, "");
+    line = line.replace(/^\s*-\s+/, "");
+    line = stripInlineMarkdownFromSegment(line);
+    line = stripResidualMarkdownSymbols(line);
+    if (line) out.push(line);
   }
+  return out.length > 0 ? out : ["(No content provided)"];
+}
 
+function charsPerLineForTextWidth(textWidthInches: number): number {
+  return Math.max(28, Math.floor(textWidthInches * 7.6));
+}
+
+function estimateWrappedLines(line: string, charsPerLine: number): number {
+  if (!line.length) return 1;
+  return Math.max(1, Math.ceil(line.length / charsPerLine));
+}
+
+/** Split a single long line into smaller lines so each fits roughly within `maxChars` characters. */
+function splitLongLineIntoSegments(line: string, maxChars: number): string[] {
+  const limit = Math.max(24, maxChars);
+  if (line.length <= limit) return [line];
+  const words = line.split(/\s+/).filter(Boolean);
+  if (words.length <= 1) {
+    const parts: string[] = [];
+    for (let i = 0; i < line.length; i += limit) {
+      parts.push(line.slice(i, i + limit).trim());
+    }
+    return parts.filter(Boolean);
+  }
+  const segments: string[] = [];
+  let buf = "";
+  for (const w of words) {
+    const next = buf ? `${buf} ${w}` : w;
+    if (next.length > limit && buf) {
+      segments.push(buf);
+      buf = w;
+    } else {
+      buf = next;
+    }
+  }
+  if (buf) segments.push(buf);
+  return segments.length ? segments : [line.slice(0, limit)];
+}
+
+function expandOverlongLines(lines: string[], charsPerLine: number, maxVisualRows: number): string[] {
+  const maxCharsPerSegment = Math.max(32, Math.floor(charsPerLine * Math.min(maxVisualRows, 14) * 0.9));
+  const expanded: string[] = [];
+  for (const line of lines) {
+    const est = estimateWrappedLines(line, charsPerLine);
+    if (est <= maxVisualRows) {
+      expanded.push(line);
+      continue;
+    }
+    expanded.push(...splitLongLineIntoSegments(line, maxCharsPerSegment));
+  }
+  return expanded;
+}
+
+function chunkBulletLines(
+  lines: string[],
+  textWidthInches: number,
+  maxVisualRows: number,
+): string[][] {
+  const cpl = charsPerLineForTextWidth(textWidthInches);
+  const maxRows = Math.max(4, maxVisualRows);
+  const linesExpanded = expandOverlongLines(lines, cpl, maxRows);
+  const chunks: string[][] = [];
+  let current: string[] = [];
+  let usedRows = 0;
+  for (const line of linesExpanded) {
+    const est = estimateWrappedLines(line, cpl);
+    if (usedRows + est > maxVisualRows && current.length > 0) {
+      chunks.push(current);
+      current = [];
+      usedRows = 0;
+    }
+    current.push(line);
+    usedRows += est;
+  }
+  if (current.length > 0) {
+    chunks.push(current);
+  }
+  return chunks.length > 0 ? chunks : [["(No content provided)"]];
+}
+
+function layoutInnerLeft(): number {
+  return IN_MARGIN + PPT_LEFT_ACCENT_W + 0.06;
+}
+
+function layoutContentMetrics(hasImage: boolean): {
+  titleX: number;
+  titleW: number;
+  metaY: number;
+  contentTop: number;
+  contentMaxH: number;
+  textX: number;
+  textW: number;
+  imgX: number;
+  imgY: number;
+  imgW: number;
+  imgH: number;
+} {
+  const innerLeft = layoutInnerLeft();
+  const titleY = IN_MARGIN + PPT_TOP_BAR_H + 0.05;
+  const metaY = titleY + PPT_TITLE_H + 0.05;
+  const contentTop = metaY + PPT_META_H + 0.08;
+  const footerTop = IN_SLIDE_H - IN_MARGIN - PPT_FOOTER_BLOCK;
+  const contentBottom = footerTop - 0.08;
+  const contentMaxH = Math.max(2.2, contentBottom - contentTop);
+
+  const imgW = PPT_IMG_W;
+  const imgX = IN_SLIDE_W - IN_MARGIN - imgW;
+  const textW = hasImage ? Math.max(3.5, imgX - PPT_COL_GAP - innerLeft) : IN_SLIDE_W - innerLeft - IN_MARGIN;
+
+  return {
+    titleX: innerLeft,
+    titleW: IN_SLIDE_W - innerLeft - IN_MARGIN,
+    metaY,
+    contentTop,
+    contentMaxH,
+    textX: innerLeft,
+    textW,
+    imgX,
+    imgY: contentTop,
+    imgW,
+    imgH: contentMaxH,
+  };
+}
+
+function maxBodyRows(contentMaxH: number): number {
+  return Math.max(4, Math.floor(contentMaxH / PPT_BODY_LINE_IN));
+}
+
+function toAccentRuns(
+  line: string,
+  theme: PptRenderTheme,
+): Array<{ text: string; options: Record<string, unknown> }> {
+  const normalized = line.replace(/^\u2022\s*/, "").trim();
+  const baseBody = { color: theme.bodyText, fontFace: "Calibri", fontSize: PPT_BODY_PT };
+  if (!normalized) {
+    return [{ text: "\u2022 ", options: { ...baseBody } }];
+  }
   const colon = normalized.indexOf(":");
-  if (colon > 1 && colon < 42) {
+  if (colon > 1 && colon < 52) {
     return [
-      {
-        text: "• ",
-        options: { color: PPT_COLORS.dark, fontFace: "Calibri", fontSize: 22 },
-      },
+      { text: "\u2022 ", options: { ...baseBody } },
       {
         text: `${normalized.slice(0, colon)}: `,
-        options: { color: PPT_COLORS.accent, bold: true, fontFace: "Calibri", fontSize: 22 },
+        options: {
+          color: theme.bodyAccent,
+          bold: true,
+          fontFace: "Calibri",
+          fontSize: PPT_BODY_PT,
+        },
       },
       {
         text: normalized.slice(colon + 1).trim(),
-        options: { color: PPT_COLORS.dark, fontFace: "Calibri", fontSize: 22 },
+        options: { ...baseBody },
       },
     ];
   }
-
-  return [
-    {
-      text: `• ${normalized}`,
-      options: { color: PPT_COLORS.dark, fontFace: "Calibri", fontSize: 22 },
-    },
-  ];
+  return [{ text: `\u2022 ${normalized}`, options: { ...baseBody } }];
 }
 
 function addSlideFooter(
   pptx: PptxGenJS,
   slide: PptxGenJS.Slide,
+  theme: PptRenderTheme,
   subject: string,
   grade: string,
   slideNumberText: string,
 ) {
+  const lineY = IN_SLIDE_H - IN_MARGIN - 0.22;
   slide.addShape(pptx.ShapeType.line, {
-    x: 0.6,
-    y: 7.0,
-    w: 12.1,
+    x: IN_MARGIN,
+    y: lineY,
+    w: IN_SLIDE_W - 2 * IN_MARGIN,
     h: 0,
-    line: { color: "DDE6F5", pt: 1 },
+    line: { color: theme.footerLine, pt: 1 },
   });
   slide.addText(`${subject} · ${grade}`, {
-    x: 0.7,
-    y: 7.08,
-    w: 7,
-    h: 0.24,
-    fontSize: 16,
-    color: PPT_COLORS.muted,
+    x: IN_MARGIN + 0.02,
+    y: lineY + 0.04,
+    w: 8.5,
+    h: 0.22,
+    fontSize: 14,
+    color: theme.footerText,
     fontFace: "Calibri",
   });
   slide.addText(slideNumberText, {
-    x: 10.9,
-    y: 7.08,
-    w: 1.8,
-    h: 0.24,
-    fontSize: 16,
-    color: PPT_COLORS.muted,
+    x: IN_SLIDE_W - IN_MARGIN - 2.1,
+    y: lineY + 0.04,
+    w: 1.9,
+    h: 0.22,
+    fontSize: 14,
+    color: theme.footerText,
     fontFace: "Calibri",
     align: "right",
   });
 }
 
-function addImagePlaceholder(pptx: PptxGenJS, slide: PptxGenJS.Slide) {
+function addImagePlaceholder(
+  pptx: PptxGenJS,
+  slide: PptxGenJS.Slide,
+  theme: PptRenderTheme,
+  box: { x: number; y: number; w: number; h: number },
+) {
+  const pad = 0.08;
   slide.addShape(pptx.ShapeType.roundRect, {
-    x: 7.72,
-    y: 1.78,
-    w: 4.95,
-    h: 4.9,
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
     rectRadius: 0.06,
-    fill: { color: "F6F8FC" },
-    line: { color: "D0DEFA", pt: 1 },
+    fill: { color: theme.placeholderFill },
+    line: { color: theme.placeholderLine, pt: 1 },
   });
   slide.addShape(pptx.ShapeType.rect, {
-    x: 9.2,
-    y: 3.0,
-    w: 1.9,
-    h: 1.35,
-    fill: { color: "E3EAF8" },
-    line: { color: "B8CAE9", pt: 1 },
-  });
-  slide.addShape(pptx.ShapeType.rect, {
-    x: 9.45,
-    y: 3.85,
-    w: 1.35,
-    h: 0.4,
-    fill: { color: "C8D8F2" },
-    line: { color: "C8D8F2", pt: 0.5 },
+    x: box.x + box.w * 0.28,
+    y: box.y + box.h * 0.28,
+    w: box.w * 0.44,
+    h: box.h * 0.22,
+    fill: { color: theme.placeholderInner },
+    line: { color: theme.placeholderLine, pt: 0.5 },
   });
   slide.addText("Image unavailable", {
-    x: 8.0,
-    y: 5.05,
-    w: 4.4,
+    x: box.x + pad,
+    y: box.y + box.h * 0.62,
+    w: box.w - 2 * pad,
     h: 0.28,
-    fontSize: 14,
-    color: PPT_COLORS.muted,
+    fontSize: 13,
+    color: theme.footerText,
     fontFace: "Calibri",
     align: "center",
   });
@@ -299,7 +442,10 @@ export async function buildPptxFromPptContent(params: {
   pptContent: string;
   /** One fal image URL per parsed content slide (same order as `parsePptContentIntoSlides`). */
   slideImageUrls?: (string | null)[] | null;
+  /** Presentation palette; defaults to Ocean Blue. */
+  themeId?: PptThemeId;
 }): Promise<Buffer> {
+  const theme = getPptRenderTheme(params.themeId);
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
   pptx.author = "EduPlan AI";
@@ -310,79 +456,61 @@ export async function buildPptxFromPptContent(params: {
   const slides = parsePptContentIntoSlides(params.pptContent);
   const slideImageUrls = params.slideImageUrls ?? null;
 
+  let slideNumber = 1;
+  const innerPadX = IN_MARGIN + 0.85;
+
   const titleSlide = pptx.addSlide();
-  titleSlide.background = { color: PPT_COLORS.blueDeep };
+  titleSlide.background = { color: theme.heroDeep };
   titleSlide.addShape(pptx.ShapeType.rect, {
     x: 0,
     y: 0,
-    w: 13.333,
-    h: 7.5,
-    fill: { color: PPT_COLORS.blueMid, transparency: 12 },
-    line: { color: PPT_COLORS.blueMid, transparency: 100 },
+    w: IN_SLIDE_W,
+    h: IN_SLIDE_H,
+    fill: { color: theme.heroMid, transparency: 14 },
+    line: { color: theme.heroMid, transparency: 100 },
   });
   titleSlide.addShape(pptx.ShapeType.rect, {
     x: 0,
     y: 0,
-    w: 13.333,
-    h: 3.1,
-    fill: { color: PPT_COLORS.blue, transparency: 15 },
-    line: { color: PPT_COLORS.blue, transparency: 100 },
+    w: IN_SLIDE_W,
+    h: 3.05,
+    fill: { color: theme.heroWash, transparency: 18 },
+    line: { color: theme.heroWash, transparency: 100 },
   });
   titleSlide.addShape(pptx.ShapeType.line, {
-    x: 2.05,
-    y: 4.72,
-    w: 9.2,
+    x: IN_MARGIN + 1.2,
+    y: 4.65,
+    w: IN_SLIDE_W - 2 * IN_MARGIN - 2.4,
     h: 0,
-    line: { color: PPT_COLORS.accent, pt: 2.5 },
+    line: { color: theme.heroAccentLine, pt: 2.5 },
   });
   titleSlide.addText(cleanSlideTitle(params.topic), {
-    x: 1.15,
-    y: 2.2,
-    w: 11.05,
-    h: 1.1,
-    fontSize: 40,
+    x: innerPadX,
+    y: 2.05,
+    w: IN_SLIDE_W - 2 * innerPadX,
+    h: 1.05,
+    fontSize: 38,
     bold: true,
-    color: PPT_COLORS.white,
+    color: theme.heroTitle,
     fontFace: "Calibri",
     align: "center",
     fit: "shrink",
   });
   titleSlide.addText("Classroom Presentation", {
-    x: 1.15,
-    y: 3.5,
-    w: 11.05,
-    h: 0.55,
-    fontSize: 18,
-    color: "E2ECFF",
-    fontFace: "Calibri",
-    align: "center",
-  });
-  titleSlide.addText(`${params.subject} · ${params.grade}`, {
-    x: 1.15,
-    y: 6.68,
-    w: 11.05,
-    h: 0.35,
+    x: innerPadX,
+    y: 3.35,
+    w: IN_SLIDE_W - 2 * innerPadX,
+    h: 0.52,
     fontSize: 17,
-    color: PPT_COLORS.white,
+    color: theme.heroSubtitle,
     fontFace: "Calibri",
     align: "center",
   });
-  titleSlide.addText(`Slide 1`, {
-    x: 10.95,
-    y: 7.08,
-    w: 1.7,
-    h: 0.24,
-    fontSize: 16,
-    color: "D7E7FF",
-    fontFace: "Calibri",
-    align: "right",
-  });
+  addSlideFooter(pptx, titleSlide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
+  slideNumber += 1;
 
   for (let slideIdx = 0; slideIdx < slides.length; slideIdx++) {
     const { title, body } = slides[slideIdx]!;
-    const slide = pptx.addSlide();
-    slide.background = { color: PPT_COLORS.white };
-
     const remoteUrl = slideImageUrls?.[slideIdx] ?? null;
     let imageDataUri: string | null = null;
     if (remoteUrl) {
@@ -393,140 +521,173 @@ export async function buildPptxFromPptContent(params: {
       }
     }
 
-    const hasImage = Boolean(imageDataUri);
-    const titleText = cleanSlideTitle(title);
-    const bulletLines = toBulletLines(body);
-    const textStartX = 0.95;
-    const textWidth = hasImage ? 6.35 : 11.5;
+    const reserveImageColumn = Boolean(remoteUrl);
+    const showPlaceholder = Boolean(remoteUrl) && !imageDataUri;
 
-    slide.addShape(pptx.ShapeType.rect, {
-      x: 0,
-      y: 0,
-      w: 13.333,
-      h: 0.38,
-      fill: { color: PPT_COLORS.blue },
-      line: { color: PPT_COLORS.blue },
-    });
-    slide.addShape(pptx.ShapeType.rect, {
-      x: 0.02,
-      y: 0.55,
-      w: 0.18,
-      h: 5.95,
-      fill: { color: PPT_COLORS.accent, transparency: 8 },
-      line: { color: PPT_COLORS.accent, transparency: 100 },
-    });
+    const titleBase = cleanSlideTitle(title);
+    const bulletLines = normalizeBodyToBulletLines(body);
+    const layoutForChunking = layoutContentMetrics(reserveImageColumn);
+    const chunks = chunkBulletLines(
+      bulletLines,
+      layoutForChunking.textW,
+      maxBodyRows(layoutForChunking.contentMaxH),
+    );
 
-    slide.addText(titleText, {
-      x: textStartX,
-      y: 0.66,
-      w: hasImage ? 7.0 : 11.2,
-      h: 0.82,
-      fontSize: 38,
-      bold: true,
-      color: PPT_COLORS.blue,
-      fontFace: "Calibri",
-      fit: "shrink",
-    });
-    slide.addShape(pptx.ShapeType.line, {
-      x: textStartX,
-      y: 1.58,
-      w: hasImage ? 6.95 : 10.7,
-      h: 0,
-      line: { color: PPT_COLORS.accent, pt: 2.25 },
-    });
+    for (let chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
+      const chunk = chunks[chunkIdx]!;
+      const useImageColumn = reserveImageColumn && chunkIdx === 0;
+      const L = layoutContentMetrics(useImageColumn);
+      const titleText =
+        chunkIdx > 0 ? `${titleBase} (continued)` : titleBase;
+      const titleY = IN_MARGIN + PPT_TOP_BAR_H + 0.05;
+      const contentBottom = L.contentTop + L.contentMaxH;
 
-    slide.addText(`${params.subject} · ${params.grade}`, {
-      x: textStartX,
-      y: 1.72,
-      w: textWidth,
-      h: 0.3,
-      fontSize: 17,
-      color: PPT_COLORS.muted,
-      fontFace: "Calibri",
-    });
+      const slide = pptx.addSlide();
+      slide.background = { color: theme.slideBg };
 
-    let lineY = 2.18;
-    for (const line of bulletLines) {
-      const runs = toAccentRuns(line);
-      slide.addText(runs, {
-        x: textStartX,
-        y: lineY,
-        w: textWidth,
-        h: 0.58,
+      slide.addShape(pptx.ShapeType.rect, {
+        x: IN_MARGIN,
+        y: IN_MARGIN,
+        w: IN_SLIDE_W - 2 * IN_MARGIN,
+        h: PPT_TOP_BAR_H,
+        fill: { color: theme.topBar },
+        line: { color: theme.topBar },
+      });
+
+      slide.addShape(pptx.ShapeType.rect, {
+        x: IN_MARGIN,
+        y: titleY,
+        w: PPT_LEFT_ACCENT_W,
+        h: Math.max(0.35, contentBottom - titleY + 0.02),
+        fill: { color: theme.sideAccent, transparency: 10 },
+        line: { color: theme.sideAccent, transparency: 100 },
+      });
+
+      slide.addText(titleText, {
+        x: L.titleX,
+        y: titleY,
+        w: L.titleW,
+        h: PPT_TITLE_H,
+        fontSize: 30,
+        bold: true,
+        color: theme.titleText,
+        fontFace: "Calibri",
         valign: "top",
         fit: "shrink",
-        breakLine: true,
       });
-      lineY += 0.64;
-      if (lineY > 6.45) break;
-    }
 
-    if (imageDataUri) {
-      slide.addShape(pptx.ShapeType.roundRect, {
-        x: 7.72,
-        y: 1.78,
-        w: 4.95,
-        h: 4.9,
-        rectRadius: 0.06,
-        fill: { color: PPT_COLORS.lightBlue, transparency: 20 },
-        line: { color: "D0DEFA", pt: 1 },
+      slide.addShape(pptx.ShapeType.line, {
+        x: L.titleX,
+        y: titleY + PPT_TITLE_H + 0.03,
+        w: L.titleW,
+        h: 0,
+        line: { color: theme.titleUnderline, pt: 2 },
       });
-      slide.addImage({
-        data: imageDataUri,
-        x: 7.88,
-        y: 1.92,
-        w: 4.72,
-        h: 4.62,
-        rounding: true,
-        altText: "AI-generated illustration for this slide",
-      });
-    } else if (slideImageUrls && slideImageUrls.length > 0) {
-      // fal may fail for one slide; keep PPT generation stable with a visible placeholder.
-      addImagePlaceholder(pptx, slide);
-    }
 
-    addSlideFooter(pptx, slide, params.subject, params.grade, `Slide ${slideIdx + 2}`);
+      slide.addText(`${params.subject} · ${params.grade}`, {
+        x: L.textX,
+        y: L.metaY,
+        w: L.textW,
+        h: PPT_META_H,
+        fontSize: 14,
+        color: theme.metaText,
+        fontFace: "Calibri",
+        valign: "top",
+        fit: "shrink",
+      });
+
+      const bodyRuns: Array<{ text: string; options: Record<string, unknown> }> = [];
+      for (let i = 0; i < chunk.length; i++) {
+        const line = chunk[i]!;
+        bodyRuns.push(...toAccentRuns(line, theme));
+        if (i < chunk.length - 1) {
+          bodyRuns.push({ text: "", options: { breakLine: true } });
+        }
+      }
+
+      slide.addText(bodyRuns, {
+        x: L.textX,
+        y: L.contentTop,
+        w: L.textW,
+        h: L.contentMaxH,
+        valign: "top",
+        fit: "shrink",
+      });
+
+      const imgPad = 0.07;
+      if (imageDataUri && chunkIdx === 0) {
+        slide.addShape(pptx.ShapeType.roundRect, {
+          x: L.imgX,
+          y: L.imgY,
+          w: L.imgW,
+          h: L.imgH,
+          rectRadius: 0.06,
+          fill: { color: theme.imagePanelFill, transparency: 8 },
+          line: { color: theme.imagePanelLine, pt: 1 },
+        });
+        slide.addImage({
+          data: imageDataUri,
+          x: L.imgX + imgPad,
+          y: L.imgY + imgPad,
+          w: L.imgW - 2 * imgPad,
+          h: L.imgH - 2 * imgPad,
+          rounding: true,
+          altText: "AI-generated illustration for this slide",
+        });
+      } else if (showPlaceholder && chunkIdx === 0) {
+        addImagePlaceholder(pptx, slide, theme, {
+          x: L.imgX,
+          y: L.imgY,
+          w: L.imgW,
+          h: L.imgH,
+        });
+      }
+
+      addSlideFooter(pptx, slide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
+      slideNumber += 1;
+    }
   }
 
   const closing = pptx.addSlide();
-  closing.background = { color: PPT_COLORS.blueDeep };
+  closing.background = { color: theme.closingDeep };
   closing.addShape(pptx.ShapeType.rect, {
     x: 0,
     y: 0,
-    w: 13.333,
-    h: 7.5,
-    fill: { color: PPT_COLORS.blue, transparency: 24 },
-    line: { color: PPT_COLORS.blue, transparency: 100 },
+    w: IN_SLIDE_W,
+    h: IN_SLIDE_H,
+    fill: { color: theme.closingWash, transparency: 22 },
+    line: { color: theme.closingWash, transparency: 100 },
   });
   closing.addShape(pptx.ShapeType.line, {
-    x: 3.2,
-    y: 4.08,
-    w: 6.9,
+    x: IN_MARGIN + 2.4,
+    y: 4.0,
+    w: IN_SLIDE_W - 2 * IN_MARGIN - 4.8,
     h: 0,
-    line: { color: PPT_COLORS.accent, pt: 2.5 },
+    line: { color: theme.heroAccentLine, pt: 2.5 },
   });
   closing.addText("Thank You", {
-    x: 1.8,
-    y: 2.35,
-    w: 9.8,
+    x: IN_MARGIN + 1.2,
+    y: 2.25,
+    w: IN_SLIDE_W - 2 * IN_MARGIN - 2.4,
     h: 0.95,
-    fontSize: 40,
+    fontSize: 38,
     bold: true,
-    color: PPT_COLORS.white,
+    color: theme.closingTitle,
     fontFace: "Calibri",
     align: "center",
+    fit: "shrink",
   });
   closing.addText("Questions and recap discussion", {
-    x: 2.0,
-    y: 3.25,
-    w: 9.4,
-    h: 0.45,
-    fontSize: 18,
-    color: "E2ECFF",
+    x: IN_MARGIN + 1.4,
+    y: 3.15,
+    w: IN_SLIDE_W - 2 * IN_MARGIN - 2.8,
+    h: 0.48,
+    fontSize: 17,
+    color: theme.closingSubtitle,
     fontFace: "Calibri",
     align: "center",
   });
-  addSlideFooter(pptx, closing, params.subject, params.grade, `Slide ${slides.length + 2}`);
+  addSlideFooter(pptx, closing, theme, params.subject, params.grade, `Slide ${slideNumber}`);
 
   return (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
 }
@@ -553,6 +714,7 @@ export async function buildTeacherPackageZipBuffer(params: {
       await buildPptxFromPptContent({
         ...meta,
         pptContent: pptRaw,
+        themeId: DEFAULT_PPT_THEME_ID,
       }),
     );
   }

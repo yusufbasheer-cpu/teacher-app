@@ -6,6 +6,7 @@ import {
   parsePptContentIntoSlides,
   sanitizeExportFileName,
 } from "@/lib/lesson-plan-export";
+import { DEFAULT_PPT_THEME_ID, isValidPptThemeId } from "@/lib/ppt-themes";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
@@ -17,6 +18,8 @@ type Body = {
   pptContent?: string;
   /** Optional framework id (same values as lesson generator). */
   curriculumFramework?: string;
+  /** One of the generator theme ids; invalid values fall back to Ocean Blue. */
+  pptTheme?: string;
 };
 
 export async function POST(req: Request) {
@@ -33,6 +36,8 @@ export async function POST(req: Request) {
   const pptContent = body.pptContent?.trim();
   const curriculumFramework =
     typeof body.curriculumFramework === "string" ? body.curriculumFramework.trim() : "";
+  const pptThemeRaw = typeof body.pptTheme === "string" ? body.pptTheme.trim() : "";
+  const pptTheme = isValidPptThemeId(pptThemeRaw) ? pptThemeRaw : DEFAULT_PPT_THEME_ID;
 
   if (!subject || !grade || !topic || !pptContent) {
     return NextResponse.json(
@@ -63,6 +68,7 @@ export async function POST(req: Request) {
       topic,
       pptContent,
       slideImageUrls,
+      themeId: pptTheme,
     });
     const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-ppt`) || "ppt-content";
 
