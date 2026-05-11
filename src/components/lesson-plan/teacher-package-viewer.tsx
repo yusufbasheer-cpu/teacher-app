@@ -24,6 +24,10 @@ type TeacherPackageViewerProps = {
   curriculumFramework?: string;
   /** PowerPoint color theme from the generator; defaults to Ocean Blue. */
   pptThemeId?: PptThemeId;
+  /** Shown on title slide and sent to export API. */
+  teacherName?: string;
+  /** Learning objectives line from the generator form (enriches PPT objectives slide). */
+  learningObjectives?: string;
 };
 
 type ExportKey =
@@ -68,6 +72,8 @@ export function TeacherPackageViewer({
   topic,
   curriculumFramework,
   pptThemeId = DEFAULT_PPT_THEME_ID,
+  teacherName,
+  learningObjectives,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
@@ -128,6 +134,10 @@ export function TeacherPackageViewer({
       {
         ...baseMeta,
         pptContent: lessonPlan["PPT Slide Content"] ?? "",
+        fullLessonPlan: lessonPlan["Full Lesson Plan"] ?? "",
+        learningObjectives: learningObjectives?.trim() || "",
+        homeworkTask: lessonPlan["Homework Task"] ?? "",
+        teacherName: teacherName?.trim() || "",
         pptTheme: pptThemeId,
         ...(curriculumFramework?.trim()
           ? { curriculumFramework: curriculumFramework.trim() }

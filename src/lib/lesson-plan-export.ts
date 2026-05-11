@@ -1,6 +1,12 @@
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import JSZip from "jszip";
 import PptxGenJS from "pptxgenjs";
+import {
+  buildLessonPlanContextFromResult,
+  buildStructuredLessonSlides,
+  PPT_IMAGE_SLIDE_INDEX_SET,
+  type StructuredLessonSlideModel,
+} from "@/lib/ppt-structured-lesson";
 import { TEACHER_PACKAGE_SECTIONS, type LessonPlanResult } from "@/lib/lesson-plan";
 import {
   DEFAULT_PPT_THEME_ID,
@@ -399,6 +405,49 @@ function addSlideFooter(
   });
 }
 
+function addAflSuggestionBox(
+  pptx: PptxGenJS,
+  slide: PptxGenJS.Slide,
+  theme: PptRenderTheme,
+  text: string | undefined,
+) {
+  const t = text?.trim();
+  if (!t) return;
+  const bx = IN_SLIDE_W - IN_MARGIN - 3.58;
+  const by = IN_SLIDE_H - IN_MARGIN - PPT_FOOTER_BLOCK - 0.92;
+  slide.addShape(pptx.ShapeType.rect, {
+    x: bx,
+    y: by,
+    w: 3.48,
+    h: 0.78,
+    fill: { color: theme.imagePanelFill, transparency: 12 },
+    line: { color: theme.titleUnderline, pt: 1 },
+  });
+  slide.addText(`AFL suggestion: ${t}`, {
+    x: bx + 0.1,
+    y: by + 0.06,
+    w: 3.28,
+    h: 0.64,
+    fontSize: 10,
+    color: theme.bodyText,
+    fontFace: "Calibri",
+    valign: "top",
+    fit: "shrink",
+  });
+}
+
+function normalizeDeckImageUrls(
+  deckLen: number,
+  urls: (string | null)[] | null | undefined,
+): (string | null)[] {
+  const out: (string | null)[] = Array.from({ length: deckLen }, () => null);
+  if (!urls) return out;
+  for (let i = 0; i < Math.min(deckLen, urls.length); i++) {
+    out[i] = urls[i] ?? null;
+  }
+  return out;
+}
+
 function addImagePlaceholder(
   pptx: PptxGenJS,
   slide: PptxGenJS.Slide,
@@ -406,12 +455,11 @@ function addImagePlaceholder(
   box: { x: number; y: number; w: number; h: number },
 ) {
   const pad = 0.08;
-  slide.addShape(pptx.ShapeType.roundRect, {
+  slide.addShape(pptx.ShapeType.rect, {
     x: box.x,
     y: box.y,
     w: box.w,
     h: box.h,
-    rectRadius: 0.06,
     fill: { color: theme.placeholderFill },
     line: { color: theme.placeholderLine, pt: 1 },
   });
@@ -440,9 +488,14 @@ export async function buildPptxFromPptContent(params: {
   grade: string;
   topic: string;
   pptContent: string;
-  /** One fal image URL per parsed content slide (same order as `parsePptContentIntoSlides`). */
+  teacherName?: string;
+  fullLessonPlan?: string;
+  learningObjectives?: string;
+  homeworkTask?: string;
+  /** When set, skips rebuilding slide models from text fields. */
+  structuredSlides?: StructuredLessonSlideModel[];
+  /** Parallel to structured deck: URL only for slides that use images (title, main teaching, group, plenary). */
   slideImageUrls?: (string | null)[] | null;
-  /** Presentation palette; defaults to Ocean Blue. */
   themeId?: PptThemeId;
 }): Promise<Buffer> {
   const theme = getPptRenderTheme(params.themeId);
@@ -453,67 +506,168 @@ export async function buildPptxFromPptContent(params: {
   pptx.subject = `${params.subject} — ${params.topic}`;
   pptx.title = `Slides — ${params.topic}`;
 
-  const slides = parsePptContentIntoSlides(params.pptContent);
-  const slideImageUrls = params.slideImageUrls ?? null;
+  const ctx = {
+    subject: params.subject.trim(),
+    grade: params.grade.trim(),
+    topic: params.topic.trim(),
+    teacherName: (params.teacherName || "Teacher").trim() || "Teacher",
+    learningObjectivesText: params.learningObjectives?.trim(),
+    fullLessonPlan: params.fullLessonPlan?.trim(),
+    pptContent: (params.pptContent || "").trim(),
+    homeworkTask: params.homeworkTask?.trim(),
+  };
+  const deck = params.structuredSlides ?? buildStructuredLessonSlides(ctx);
+  const slideUrls = normalizeDeckImageUrls(deck.length, params.slideImageUrls);
 
   let slideNumber = 1;
   const innerPadX = IN_MARGIN + 0.85;
 
+  const titleModel = deck[0]!;
+  const titleRemote = slideUrls[0] ?? null;
+  let titleImgData: string | null = null;
+  if (titleRemote) {
+    try {
+      titleImgData = await fetchImageUrlAsDataUri(titleRemote);
+    } catch (e) {
+      console.warn("[pptx] could not embed title slide image", e);
+    }
+  }
+
   const titleSlide = pptx.addSlide();
-  titleSlide.background = { color: theme.heroDeep };
-  titleSlide.addShape(pptx.ShapeType.rect, {
-    x: 0,
-    y: 0,
-    w: IN_SLIDE_W,
-    h: IN_SLIDE_H,
-    fill: { color: theme.heroMid, transparency: 14 },
-    line: { color: theme.heroMid, transparency: 100 },
-  });
-  titleSlide.addShape(pptx.ShapeType.rect, {
-    x: 0,
-    y: 0,
-    w: IN_SLIDE_W,
-    h: 3.05,
-    fill: { color: theme.heroWash, transparency: 18 },
-    line: { color: theme.heroWash, transparency: 100 },
-  });
-  titleSlide.addShape(pptx.ShapeType.line, {
-    x: IN_MARGIN + 1.2,
-    y: 4.65,
-    w: IN_SLIDE_W - 2 * IN_MARGIN - 2.4,
-    h: 0,
-    line: { color: theme.heroAccentLine, pt: 2.5 },
-  });
-  titleSlide.addText(cleanSlideTitle(params.topic), {
-    x: innerPadX,
-    y: 2.05,
-    w: IN_SLIDE_W - 2 * innerPadX,
-    h: 1.05,
-    fontSize: 38,
-    bold: true,
-    color: theme.heroTitle,
-    fontFace: "Calibri",
-    align: "center",
-    fit: "shrink",
-  });
-  titleSlide.addText("Classroom Presentation", {
-    x: innerPadX,
-    y: 3.35,
-    w: IN_SLIDE_W - 2 * innerPadX,
-    h: 0.52,
-    fontSize: 17,
-    color: theme.heroSubtitle,
-    fontFace: "Calibri",
-    align: "center",
-  });
+  if (titleImgData) {
+    titleSlide.background = { color: theme.heroDeep };
+    titleSlide.addShape(pptx.ShapeType.rect, {
+      x: 0,
+      y: 0,
+      w: IN_SLIDE_W,
+      h: IN_SLIDE_H,
+      fill: { color: theme.heroMid, transparency: 16 },
+      line: { color: theme.heroMid, transparency: 100 },
+    });
+    const textColW = 7.15;
+    titleSlide.addText(cleanSlideTitle(params.topic), {
+      x: IN_MARGIN,
+      y: 1.05,
+      w: textColW - IN_MARGIN,
+      h: 1.05,
+      fontSize: 34,
+      bold: true,
+      color: theme.heroTitle,
+      fontFace: "Calibri",
+      valign: "top",
+      fit: "shrink",
+    });
+    titleSlide.addText(titleModel.body, {
+      x: IN_MARGIN,
+      y: 2.2,
+      w: textColW - IN_MARGIN,
+      h: 4.35,
+      fontSize: 15,
+      color: theme.heroSubtitle,
+      fontFace: "Calibri",
+      valign: "top",
+      fit: "shrink",
+    });
+    titleSlide.addText("Classroom presentation", {
+      x: IN_MARGIN,
+      y: 6.55,
+      w: textColW - IN_MARGIN,
+      h: 0.35,
+      fontSize: 14,
+      color: theme.heroFooter,
+      fontFace: "Calibri",
+    });
+    const ix = textColW + 0.12;
+    const iw = IN_SLIDE_W - IN_MARGIN - ix;
+    const ih = 5.35;
+    const iy = 1.05;
+    titleSlide.addShape(pptx.ShapeType.rect, {
+      x: ix,
+      y: iy,
+      w: iw,
+      h: ih,
+      fill: { color: theme.imagePanelFill, transparency: 10 },
+      line: { color: theme.imagePanelLine, pt: 1 },
+    });
+    titleSlide.addImage({
+      data: titleImgData,
+      x: ix + 0.08,
+      y: iy + 0.08,
+      w: iw - 0.16,
+      h: ih - 0.16,
+      altText: "Topic illustration for title slide",
+    });
+  } else {
+    titleSlide.background = { color: theme.heroDeep };
+    titleSlide.addShape(pptx.ShapeType.rect, {
+      x: 0,
+      y: 0,
+      w: IN_SLIDE_W,
+      h: IN_SLIDE_H,
+      fill: { color: theme.heroMid, transparency: 14 },
+      line: { color: theme.heroMid, transparency: 100 },
+    });
+    titleSlide.addShape(pptx.ShapeType.rect, {
+      x: 0,
+      y: 0,
+      w: IN_SLIDE_W,
+      h: 3.05,
+      fill: { color: theme.heroWash, transparency: 18 },
+      line: { color: theme.heroWash, transparency: 100 },
+    });
+    titleSlide.addShape(pptx.ShapeType.line, {
+      x: IN_MARGIN + 1.2,
+      y: 4.65,
+      w: IN_SLIDE_W - 2 * IN_MARGIN - 2.4,
+      h: 0,
+      line: { color: theme.heroAccentLine, pt: 2.5 },
+    });
+    titleSlide.addText(cleanSlideTitle(params.topic), {
+      x: innerPadX,
+      y: 1.85,
+      w: IN_SLIDE_W - 2 * innerPadX,
+      h: 1.0,
+      fontSize: 38,
+      bold: true,
+      color: theme.heroTitle,
+      fontFace: "Calibri",
+      align: "center",
+      fit: "shrink",
+    });
+    titleSlide.addText(titleModel.body, {
+      x: innerPadX,
+      y: 2.95,
+      w: IN_SLIDE_W - 2 * innerPadX,
+      h: 2.2,
+      fontSize: 16,
+      color: theme.heroSubtitle,
+      fontFace: "Calibri",
+      align: "center",
+      valign: "top",
+      fit: "shrink",
+    });
+    titleSlide.addText("Classroom presentation", {
+      x: innerPadX,
+      y: 5.25,
+      w: IN_SLIDE_W - 2 * innerPadX,
+      h: 0.45,
+      fontSize: 17,
+      color: theme.heroSubtitle,
+      fontFace: "Calibri",
+      align: "center",
+    });
+  }
+
+  titleSlide.addNotes(titleModel.speakerNotes);
+  addAflSuggestionBox(pptx, titleSlide, theme, titleModel.aflCallout);
   addSlideFooter(pptx, titleSlide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
   slideNumber += 1;
 
-  for (let slideIdx = 0; slideIdx < slides.length; slideIdx++) {
-    const { title, body } = slides[slideIdx]!;
-    const remoteUrl = slideImageUrls?.[slideIdx] ?? null;
+  for (let slideIdx = 1; slideIdx < deck.length; slideIdx++) {
+    const model = deck[slideIdx]!;
+    const remoteUrl = slideUrls[slideIdx] ?? null;
     let imageDataUri: string | null = null;
-    if (remoteUrl) {
+    if (remoteUrl && PPT_IMAGE_SLIDE_INDEX_SET.has(slideIdx)) {
       try {
         imageDataUri = await fetchImageUrlAsDataUri(remoteUrl);
       } catch (e) {
@@ -521,11 +675,12 @@ export async function buildPptxFromPptContent(params: {
       }
     }
 
-    const reserveImageColumn = Boolean(remoteUrl);
-    const showPlaceholder = Boolean(remoteUrl) && !imageDataUri;
+    const wantSlot = PPT_IMAGE_SLIDE_INDEX_SET.has(slideIdx);
+    const reserveImageColumn = wantSlot && Boolean(remoteUrl);
+    const showPlaceholder = wantSlot && Boolean(remoteUrl) && !imageDataUri;
 
-    const titleBase = cleanSlideTitle(title);
-    const bulletLines = normalizeBodyToBulletLines(body);
+    const titleBase = cleanSlideTitle(model.slideTitle);
+    const bulletLines = normalizeBodyToBulletLines(model.body);
     const layoutForChunking = layoutContentMetrics(reserveImageColumn);
     const chunks = chunkBulletLines(
       bulletLines,
@@ -537,8 +692,7 @@ export async function buildPptxFromPptContent(params: {
       const chunk = chunks[chunkIdx]!;
       const useImageColumn = reserveImageColumn && chunkIdx === 0;
       const L = layoutContentMetrics(useImageColumn);
-      const titleText =
-        chunkIdx > 0 ? `${titleBase} (continued)` : titleBase;
+      const titleText = chunkIdx > 0 ? `${titleBase} (continued)` : titleBase;
       const titleY = IN_MARGIN + PPT_TOP_BAR_H + 0.05;
       const contentBottom = L.contentTop + L.contentMaxH;
 
@@ -616,12 +770,11 @@ export async function buildPptxFromPptContent(params: {
 
       const imgPad = 0.07;
       if (imageDataUri && chunkIdx === 0) {
-        slide.addShape(pptx.ShapeType.roundRect, {
+        slide.addShape(pptx.ShapeType.rect, {
           x: L.imgX,
           y: L.imgY,
           w: L.imgW,
           h: L.imgH,
-          rectRadius: 0.06,
           fill: { color: theme.imagePanelFill, transparency: 8 },
           line: { color: theme.imagePanelLine, pt: 1 },
         });
@@ -631,8 +784,7 @@ export async function buildPptxFromPptContent(params: {
           y: L.imgY + imgPad,
           w: L.imgW - 2 * imgPad,
           h: L.imgH - 2 * imgPad,
-          rounding: true,
-          altText: "AI-generated illustration for this slide",
+          altText: "AI-generated rectangular illustration for this slide",
         });
       } else if (showPlaceholder && chunkIdx === 0) {
         addImagePlaceholder(pptx, slide, theme, {
@@ -643,51 +795,19 @@ export async function buildPptxFromPptContent(params: {
         });
       }
 
+      const notes =
+        chunkIdx > 0
+          ? `${model.speakerNotes}\n\n(Continued slide — same section.)`
+          : model.speakerNotes;
+      slide.addNotes(notes);
+      if (chunkIdx === 0) {
+        addAflSuggestionBox(pptx, slide, theme, model.aflCallout);
+      }
+
       addSlideFooter(pptx, slide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
       slideNumber += 1;
     }
   }
-
-  const closing = pptx.addSlide();
-  closing.background = { color: theme.closingDeep };
-  closing.addShape(pptx.ShapeType.rect, {
-    x: 0,
-    y: 0,
-    w: IN_SLIDE_W,
-    h: IN_SLIDE_H,
-    fill: { color: theme.closingWash, transparency: 22 },
-    line: { color: theme.closingWash, transparency: 100 },
-  });
-  closing.addShape(pptx.ShapeType.line, {
-    x: IN_MARGIN + 2.4,
-    y: 4.0,
-    w: IN_SLIDE_W - 2 * IN_MARGIN - 4.8,
-    h: 0,
-    line: { color: theme.heroAccentLine, pt: 2.5 },
-  });
-  closing.addText("Thank You", {
-    x: IN_MARGIN + 1.2,
-    y: 2.25,
-    w: IN_SLIDE_W - 2 * IN_MARGIN - 2.4,
-    h: 0.95,
-    fontSize: 38,
-    bold: true,
-    color: theme.closingTitle,
-    fontFace: "Calibri",
-    align: "center",
-    fit: "shrink",
-  });
-  closing.addText("Questions and recap discussion", {
-    x: IN_MARGIN + 1.4,
-    y: 3.15,
-    w: IN_SLIDE_W - 2 * IN_MARGIN - 2.8,
-    h: 0.48,
-    fontSize: 17,
-    color: theme.closingSubtitle,
-    fontFace: "Calibri",
-    align: "center",
-  });
-  addSlideFooter(pptx, closing, theme, params.subject, params.grade, `Slide ${slideNumber}`);
 
   return (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
 }
@@ -709,11 +829,21 @@ export async function buildTeacherPackageZipBuffer(params: {
 
   const pptRaw = params.lessonPlan["PPT Slide Content"];
   if (typeof pptRaw === "string" && pptRaw.trim().length > 0) {
+    const ctx = buildLessonPlanContextFromResult(params.lessonPlan, {
+      subject: meta.subject,
+      grade: meta.grade,
+      topic: meta.topic,
+      teacherName: "Teacher",
+    });
     zip.file(
       `${base}-ppt-content.pptx`,
       await buildPptxFromPptContent({
         ...meta,
         pptContent: pptRaw,
+        fullLessonPlan: ctx.fullLessonPlan,
+        learningObjectives: ctx.learningObjectivesText,
+        homeworkTask: ctx.homeworkTask,
+        teacherName: ctx.teacherName,
         themeId: DEFAULT_PPT_THEME_ID,
       }),
     );

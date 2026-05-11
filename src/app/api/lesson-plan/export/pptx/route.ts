@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { isValidCurriculumFramework } from "@/lib/curriculum-framework";
-import { generatePptSlideImageUrls } from "@/lib/fal-ppt-slide-images";
 import {
-  buildPptxFromPptContent,
-  parsePptContentIntoSlides,
-  sanitizeExportFileName,
-} from "@/lib/lesson-plan-export";
+  generateLessonPptSlideImages,
+  type LessonPptImageGenerationSpec,
+} from "@/lib/fal-ppt-slide-images";
+import { buildPptxFromPptContent, sanitizeExportFileName } from "@/lib/lesson-plan-export";
+import { buildStructuredLessonSlides, mapFourImagesToDeck } from "@/lib/ppt-structured-lesson";
 import { DEFAULT_PPT_THEME_ID, isValidPptThemeId } from "@/lib/ppt-themes";
 
 export const runtime = "nodejs";
@@ -16,9 +16,11 @@ type Body = {
   grade?: string;
   topic?: string;
   pptContent?: string;
-  /** Optional framework id (same values as lesson generator). */
+  fullLessonPlan?: string;
+  learningObjectives?: string;
+  homeworkTask?: string;
+  teacherName?: string;
   curriculumFramework?: string;
-  /** One of the generator theme ids; invalid values fall back to Ocean Blue. */
   pptTheme?: string;
 };
 
@@ -33,15 +35,28 @@ export async function POST(req: Request) {
   const subject = body.subject?.trim();
   const grade = body.grade?.trim();
   const topic = body.topic?.trim();
-  const pptContent = body.pptContent?.trim();
+  const pptContent = typeof body.pptContent === "string" ? body.pptContent.trim() : "";
+  const fullLessonPlan =
+    typeof body.fullLessonPlan === "string" ? body.fullLessonPlan.trim() : "";
+  const learningObjectives =
+    typeof body.learningObjectives === "string" ? body.learningObjectives.trim() : "";
+  const homeworkTask = typeof body.homeworkTask === "string" ? body.homeworkTask.trim() : "";
+  const teacherName = typeof body.teacherName === "string" ? body.teacherName.trim() : "";
   const curriculumFramework =
     typeof body.curriculumFramework === "string" ? body.curriculumFramework.trim() : "";
   const pptThemeRaw = typeof body.pptTheme === "string" ? body.pptTheme.trim() : "";
   const pptTheme = isValidPptThemeId(pptThemeRaw) ? pptThemeRaw : DEFAULT_PPT_THEME_ID;
 
-  if (!subject || !grade || !topic || !pptContent) {
+  if (!subject || !grade || !topic) {
     return NextResponse.json(
-      { error: "subject, grade, topic, and pptContent are required." },
+      { error: "subject, grade, and topic are required." },
+      { status: 400 },
+    );
+  }
+
+  if (!pptContent && !fullLessonPlan) {
+    return NextResponse.json(
+      { error: "Provide pptContent and/or fullLessonPlan for the presentation." },
       { status: 400 },
     );
   }
@@ -51,22 +66,45 @@ export async function POST(req: Request) {
   }
 
   try {
-    const slides = parsePptContentIntoSlides(pptContent);
-    const slideImageUrls = await generatePptSlideImageUrls(
+    const deck = buildStructuredLessonSlides({
+      subject,
+      grade,
+      topic,
+      teacherName: teacherName || "Teacher",
+      learningObjectivesText: learningObjectives || undefined,
+      fullLessonPlan: fullLessonPlan || undefined,
+      pptContent: pptContent || undefined,
+      homeworkTask: homeworkTask || undefined,
+    });
+
+    const imageSpecs: LessonPptImageGenerationSpec[] = [
+      { slot: "title", slideTitle: deck[0]!.slideTitle, bodySnippet: deck[0]!.body },
+      { slot: "main_teaching", slideTitle: deck[4]!.slideTitle, bodySnippet: deck[4]!.body },
+      { slot: "group_activity", slideTitle: deck[6]!.slideTitle, bodySnippet: deck[6]!.body },
+      { slot: "plenary", slideTitle: deck[12]!.slideTitle, bodySnippet: deck[12]!.body },
+    ];
+
+    const fourUrls = await generateLessonPptSlideImages(
       {
         subject,
         grade,
         topic,
         ...(curriculumFramework ? { curriculumFramework } : {}),
       },
-      slides,
+      imageSpecs,
     );
+    const slideImageUrls = mapFourImagesToDeck(deck.length, fourUrls);
 
     const buffer = await buildPptxFromPptContent({
       subject,
       grade,
       topic,
-      pptContent,
+      pptContent: pptContent || fullLessonPlan.slice(0, 1200),
+      teacherName: teacherName || "Teacher",
+      fullLessonPlan: fullLessonPlan || undefined,
+      learningObjectives: learningObjectives || undefined,
+      homeworkTask: homeworkTask || undefined,
+      structuredSlides: deck,
       slideImageUrls,
       themeId: pptTheme,
     });

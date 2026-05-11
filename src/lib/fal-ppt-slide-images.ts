@@ -6,21 +6,14 @@ import {
   getFalCredentials,
 } from "@/lib/fal-flux-section-images";
 
-/** Appended to every PPT slide image prompt for consistent look and resolution. */
-export const PPT_SLIDE_IMAGE_QUALITY_TAGS =
-  "professional educational illustration, flat design, vibrant colors, clean background, high quality, suitable for school PowerPoint presentation";
-
-/** Mandatory restrictions on every slide image (user + Islamic-safe visuals). */
-export const PPT_SLIDE_IMAGE_RESTRICTIONS =
-  "no human figures, no faces, no women, no text in image, no watermarks, follows Islamic content guidelines";
-
 const PROMPT_MAX_LEN = 1900;
 
-/** @deprecated Use PPT_SLIDE_IMAGE_RESTRICTIONS; kept for any external imports. */
-export const PPT_SLIDE_IMAGE_PROMPT_RULES = PPT_SLIDE_IMAGE_RESTRICTIONS;
+/** Appended to every lesson-PPT image prompt (layout + safety). */
+export const LESSON_PPT_IMAGE_STYLE_SUFFIX =
+  "flat design style, clean background, no circular crop, no round frame, rectangular image, professional educational illustration, no human figures, no faces, Islamic appropriate";
 
-function compressSlideBodyForVisualPrompt(body: string, maxLen: number): string {
-  const lines = body
+function compressSnippet(text: string, maxLen: number): string {
+  const oneLine = text
     .replace(/\r\n/g, "\n")
     .split("\n")
     .map((line) =>
@@ -29,88 +22,95 @@ function compressSlideBodyForVisualPrompt(body: string, maxLen: number): string 
         .replace(/^#{1,6}\s*/, "")
         .trim(),
     )
-    .filter((line) => line.length > 0);
-
-  let t = lines.join(", ").replace(/\s+/g, " ").trim();
-  t = t.replace(/https?:\/\/\S+/gi, "").replace(/\s+/g, " ").trim();
-  if (t.length <= maxLen) return t;
-  const slice = t.slice(0, maxLen);
-  const lastBreak = Math.max(slice.lastIndexOf(", "), slice.lastIndexOf("; "));
-  const head = lastBreak > maxLen * 0.5 ? slice.slice(0, lastBreak) : slice;
-  return `${head.trimEnd()}…`;
+    .filter(Boolean)
+    .join(", ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const cleaned = oneLine.replace(/https?:\/\/\S+/gi, "").trim();
+  if (cleaned.length <= maxLen) return cleaned;
+  return `${cleaned.slice(0, maxLen).trim()}…`;
 }
 
 export type PptSlideImageMeta = {
   subject: string;
   grade: string;
   topic: string;
-  /** Optional; improves slide imagery alignment when re-exporting with a framework. */
   curriculumFramework?: string;
 };
 
+export type LessonPptImageSlot = "title" | "main_teaching" | "group_activity" | "plenary";
+
+export type LessonPptImageGenerationSpec = {
+  slot: LessonPptImageSlot;
+  slideTitle: string;
+  bodySnippet: string;
+};
+
 /**
- * One cohesive, slide-specific prompt: subject, topic, key concept (title), and
- * body-derived visual elements (diagram style like the photosynthesis example).
+ * Topic-specific FLUX prompt for one of the four allowed lesson-PPT images.
+ * Example style: concrete nouns from topic (e.g. photosynthesis → leaf, chloroplasts, arrows for glucose/oxygen).
  */
-export function buildPptSlideFluxPrompt(
+export function buildLessonPptFluxPrompt(
   meta: PptSlideImageMeta,
-  slide: { title: string; body: string },
+  spec: LessonPptImageGenerationSpec,
 ): string {
   const subject = meta.subject.replace(/\s+/g, " ").trim();
   const topic = meta.topic.replace(/\s+/g, " ").trim();
   const grade = meta.grade.replace(/\s+/g, " ").trim();
-  const keyConcept = slide.title.replace(/\s+/g, " ").trim() || "main lesson idea";
-  const visualDetail = compressSlideBodyForVisualPrompt(slide.body, 580);
   const frameworkHint = buildCurriculumFrameworkImageHint(meta.curriculumFramework ?? "");
+  const detail = compressSnippet(`${spec.slideTitle}. ${spec.bodySnippet}`, 720);
+
+  const slotIntro: Record<LessonPptImageSlot, string> = {
+    title: `Flat design educational hero illustration for opening slide: subject "${subject}", grade ${grade}, topic "${topic}". Show iconic symbols and diagrams that instantly signal this unit (no readable words in the artwork).`,
+    main_teaching: `Flat design educational diagram for main teaching of "${topic}" in ${subject} (${grade}). Show clear instructional flow: stages, arrows, labeled-style shapes as icons only, schematic relationships (e.g. process, structure, or mechanism appropriate to the topic).`,
+    group_activity: `Flat design educational illustration for collaborative work on "${topic}" in ${subject}: shared task materials, icons, and cooperative workflow symbols only (no people, no faces).`,
+    plenary: `Flat design educational summary illustration for lesson closure on "${topic}" in ${subject}: recap icons, checklist motifs, reflection prompts as abstract symbols only (no text in image).`,
+  };
 
   const coreParts = [
-    `Educational diagram for school use: subject "${subject}", topic "${topic}", grade ${grade}.`,
+    slotIntro[spec.slot],
     frameworkHint,
-    `This slide's key concept: "${keyConcept}".`,
-    visualDetail
-      ? `Show specifically (invent clear symbols and flow, no readable words in the artwork): ${visualDetail}.`
-      : `Illustrate the concept "${keyConcept}" with clear symbols, stages, arrows, and relationships.`,
-    "Style: clear instructional infographic — icons, process flow, cross-sections, or schematic relationships; flat vector look; colorful and easy to read at a glance.",
+    detail ? `Lesson content cues (non-literal, for symbolism only): ${detail}` : null,
+    "Vibrant colors, clean white or very light neutral background, crisp vector-like shapes, high clarity for projection.",
+    LESSON_PPT_IMAGE_STYLE_SUFFIX,
   ].filter((p): p is string => Boolean(p));
 
-  const core = coreParts.join(" ");
-
-  const full = [
-    core,
-    PPT_SLIDE_IMAGE_QUALITY_TAGS,
-    PPT_SLIDE_IMAGE_RESTRICTIONS,
-  ].join(" ");
-
+  const full = coreParts.join(" ");
   return full.length > PROMPT_MAX_LEN ? `${full.slice(0, PROMPT_MAX_LEN)}…` : full;
 }
 
-/**
- * One FLUX image per slide, in order. Null entries mean generation or API skipped that slide.
- */
-export async function generatePptSlideImageUrls(
+function imageSizeForSlot(slot: LessonPptImageSlot): "landscape_16_9" | "square_hd" {
+  if (slot === "group_activity") return "square_hd";
+  return "landscape_16_9";
+}
+
+/** Generates exactly four images (title, main teaching, group activity, plenary), in that order. */
+export async function generateLessonPptSlideImages(
   meta: PptSlideImageMeta,
-  slides: { title: string; body: string }[],
+  specs: LessonPptImageGenerationSpec[],
 ): Promise<(string | null)[]> {
+  if (specs.length === 0) return [];
   const credentials = getFalCredentials();
   if (!credentials) {
     console.log("[fal-ppt] no FAL_API_KEY/FAL_KEY — exporting PPT without slide images");
-    return slides.map(() => null);
+    return specs.map(() => null);
   }
 
   const client = createFalClient({ credentials });
   const out: (string | null)[] = [];
 
-  console.log("[fal-ppt] generating images for", slides.length, "slide(s), model:", FAL_FLUX_MODEL_ID);
+  console.log("[fal-ppt] generating", specs.length, "lesson PPT image(s), model:", FAL_FLUX_MODEL_ID);
 
-  for (let i = 0; i < slides.length; i++) {
-    const slide = slides[i]!;
+  for (let i = 0; i < specs.length; i++) {
+    const spec = specs[i]!;
     const n = i + 1;
     try {
-      const prompt = buildPptSlideFluxPrompt(meta, slide);
+      const prompt = buildLessonPptFluxPrompt(meta, spec);
+      const image_size = imageSizeForSlot(spec.slot);
       const result = await client.subscribe(FAL_FLUX_MODEL_ID, {
         input: {
           prompt,
-          image_size: "landscape_16_9",
+          image_size,
           num_images: 1,
           num_inference_steps: 28,
           guidance_scale: 7.5,
@@ -121,15 +121,14 @@ export async function generatePptSlideImageUrls(
       const url = result.data?.images?.[0]?.url;
       if (typeof url === "string" && url.length > 0) {
         out.push(url);
-        console.log("[fal-ppt] slide", n, "/", slides.length, "image ok");
+        console.log("[fal-ppt] image", n, "/", specs.length, "ok", { slot: spec.slot, image_size });
       } else {
         out.push(null);
-        console.error("[fal-ppt] slide", n, "no URL in response", JSON.stringify(result.data).slice(0, 300));
+        console.error("[fal-ppt] image", n, "no URL", JSON.stringify(result.data).slice(0, 300));
       }
     } catch (e) {
-      const msg = formatFalError(e);
       out.push(null);
-      console.error("[fal-ppt] slide", n, "failed:", msg);
+      console.error("[fal-ppt] image", n, "failed:", formatFalError(e));
     }
   }
 

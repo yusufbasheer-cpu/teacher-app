@@ -946,6 +946,12 @@ export function LessonPlanGenerator() {
               topic={form.topic}
               curriculumFramework={form.curriculumFramework.trim() || undefined}
               pptThemeId={pptThemeId}
+              learningObjectives={form.learningObjectives}
+              teacherName={
+                typeof user?.user_metadata?.full_name === "string"
+                  ? user.user_metadata.full_name.trim()
+                  : user?.email?.split("@")[0]
+              }
             />
           </div>
         )}
