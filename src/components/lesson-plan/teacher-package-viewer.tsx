@@ -9,7 +9,6 @@ import {
   type SectionImageMap,
   type TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
-import { parsePptContentIntoSlides } from "@/lib/ppt-slide-parse";
 
 type TeacherPackageViewerProps = {
   lessonPlan: LessonPlanResult;
@@ -22,12 +21,6 @@ type TeacherPackageViewerProps = {
   topic: string;
   /** When set, PPT slide images use the same framework hint as generation. */
   curriculumFramework?: string;
-  /** When false, download buttons are hidden until parallel generation fully completes. */
-  downloadsUnlocked?: boolean;
-  /** Pre-generated slide image URLs (same order as slides); speeds PPT export and skips re-calling fal. */
-  cachedSlideImageUrls?: (string | null)[] | null;
-  /** True while parallel generation is running and no tabs yet — show a short placeholder. */
-  generationActive?: boolean;
 };
 
 type ExportKey =
@@ -71,17 +64,13 @@ export function TeacherPackageViewer({
   grade,
   topic,
   curriculumFramework,
-  downloadsUnlocked = true,
-  cachedSlideImageUrls,
-  generationActive = false,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
   const [busy, setBusy] = useState<ExportKey | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const showTeacherDownloads =
-    downloadsUnlocked && hasTeacherPackageContent(lessonPlan);
+  const showTeacherDownloads = hasTeacherPackageContent(lessonPlan);
   const hasPpt = hasSectionContent(lessonPlan, "PPT Slide Content");
   const hasLesson = hasSectionContent(lessonPlan, "Full Lesson Plan");
   const hasWorksheet = hasSectionContent(lessonPlan, "Worksheet");
@@ -127,28 +116,19 @@ export function TeacherPackageViewer({
 
   const baseMeta = { subject, grade, topic };
 
-  const onDownloadPpt = () => {
-    const pptContent = lessonPlan["PPT Slide Content"] ?? "";
-    const slides = parsePptContentIntoSlides(pptContent);
-    const useCache =
-      Array.isArray(cachedSlideImageUrls) &&
-      cachedSlideImageUrls.length === slides.length &&
-      slides.length > 0;
-
-    return runExport(
+  const onDownloadPpt = () =>
+    runExport(
       "ppt",
       `${baseName}-ppt.pptx`,
       "/api/lesson-plan/export/pptx",
       {
         ...baseMeta,
-        pptContent,
+        pptContent: lessonPlan["PPT Slide Content"] ?? "",
         ...(curriculumFramework?.trim()
           ? { curriculumFramework: curriculumFramework.trim() }
           : {}),
-        ...(useCache ? { slideImageUrls: cachedSlideImageUrls } : {}),
       },
     );
-  };
 
   const onDownloadLessonPlan = () =>
     runExport(
@@ -223,13 +203,6 @@ export function TeacherPackageViewer({
 
   return (
     <div className="space-y-5">
-      {hasTeacherPackageContent(lessonPlan) && !downloadsUnlocked ? (
-        <p className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
-          File downloads are held until every parallel job finishes (including all PPT slide images).
-          You can read each tab below as soon as its text is ready.
-        </p>
-      ) : null}
-
       {showTeacherDownloads ? (
         <>
           <div>
@@ -244,14 +217,7 @@ export function TeacherPackageViewer({
                 onClick={onDownloadPpt}
                 className="rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
               >
-                {busy === "ppt"
-                  ? cachedSlideImageUrls &&
-                      cachedSlideImageUrls.length > 0 &&
-                      parsePptContentIntoSlides(lessonPlan["PPT Slide Content"] ?? "").length ===
-                        cachedSlideImageUrls.length
-                    ? "Building PowerPoint…"
-                    : "Generating images for your slides…"
-                  : "Download PPT"}
+                {busy === "ppt" ? "Generating images for your slides…" : "Download PPT"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">
                   PowerPoint with text plus an AI image per slide (requires FAL_API_KEY)
                 </span>
@@ -360,11 +326,6 @@ export function TeacherPackageViewer({
       ) : null}
 
       <div className="overflow-x-auto pb-1">
-        {sectionKeys.length === 0 && generationActive ? (
-          <p className="mb-3 text-sm text-slate-600">
-            Tabs for each section will appear here as soon as the first part is ready.
-          </p>
-        ) : null}
         <div
           className="flex min-w-0 gap-2 border-b border-blue-100 pb-3"
           role="tablist"

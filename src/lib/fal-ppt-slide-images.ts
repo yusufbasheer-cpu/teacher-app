@@ -84,37 +84,6 @@ export function buildPptSlideFluxPrompt(
   return full.length > PROMPT_MAX_LEN ? `${full.slice(0, PROMPT_MAX_LEN)}…` : full;
 }
 
-export async function generateSinglePptSlideImageUrl(
-  meta: PptSlideImageMeta,
-  slide: { title: string; body: string },
-): Promise<string | null> {
-  const credentials = getFalCredentials();
-  if (!credentials) {
-    return null;
-  }
-
-  const client = createFalClient({ credentials });
-  try {
-    const prompt = buildPptSlideFluxPrompt(meta, slide);
-    const result = await client.subscribe(FAL_FLUX_MODEL_ID, {
-      input: {
-        prompt,
-        image_size: "landscape_16_9",
-        num_images: 1,
-        num_inference_steps: 28,
-        guidance_scale: 7.5,
-        enable_safety_checker: true,
-        output_format: "png",
-      },
-    });
-    const url = result.data?.images?.[0]?.url;
-    return typeof url === "string" && url.length > 0 ? url : null;
-  } catch (e) {
-    console.error("[fal-ppt] single slide failed:", formatFalError(e));
-    return null;
-  }
-}
-
 /**
  * One FLUX image per slide, in order. Null entries mean generation or API skipped that slide.
  */
@@ -122,35 +91,47 @@ export async function generatePptSlideImageUrls(
   meta: PptSlideImageMeta,
   slides: { title: string; body: string }[],
 ): Promise<(string | null)[]> {
-  if (slides.length === 0) {
-    return [];
-  }
-
   const credentials = getFalCredentials();
   if (!credentials) {
     console.log("[fal-ppt] no FAL_API_KEY/FAL_KEY — exporting PPT without slide images");
     return slides.map(() => null);
   }
 
-  console.log("[fal-ppt] generating images for", slides.length, "slide(s) in parallel, model:", FAL_FLUX_MODEL_ID);
+  const client = createFalClient({ credentials });
+  const out: (string | null)[] = [];
 
-  const results = await Promise.all(
-    slides.map(async (slide, i) => {
-      const n = i + 1;
-      try {
-        const url = await generateSinglePptSlideImageUrl(meta, slide);
-        if (url) {
-          console.log("[fal-ppt] slide", n, "/", slides.length, "image ok");
-        } else {
-          console.error("[fal-ppt] slide", n, "no URL");
-        }
-        return url;
-      } catch (e) {
-        console.error("[fal-ppt] slide", n, "failed:", formatFalError(e));
-        return null;
+  console.log("[fal-ppt] generating images for", slides.length, "slide(s), model:", FAL_FLUX_MODEL_ID);
+
+  for (let i = 0; i < slides.length; i++) {
+    const slide = slides[i]!;
+    const n = i + 1;
+    try {
+      const prompt = buildPptSlideFluxPrompt(meta, slide);
+      const result = await client.subscribe(FAL_FLUX_MODEL_ID, {
+        input: {
+          prompt,
+          image_size: "landscape_16_9",
+          num_images: 1,
+          num_inference_steps: 28,
+          guidance_scale: 7.5,
+          enable_safety_checker: true,
+          output_format: "png",
+        },
+      });
+      const url = result.data?.images?.[0]?.url;
+      if (typeof url === "string" && url.length > 0) {
+        out.push(url);
+        console.log("[fal-ppt] slide", n, "/", slides.length, "image ok");
+      } else {
+        out.push(null);
+        console.error("[fal-ppt] slide", n, "no URL in response", JSON.stringify(result.data).slice(0, 300));
       }
-    }),
-  );
+    } catch (e) {
+      const msg = formatFalError(e);
+      out.push(null);
+      console.error("[fal-ppt] slide", n, "failed:", msg);
+    }
+  }
 
-  return results;
+  return out;
 }

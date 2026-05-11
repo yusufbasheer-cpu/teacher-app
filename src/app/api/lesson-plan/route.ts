@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { buildCurriculumFrameworkSystemAddendum, isValidCurriculumFramework } from "@/lib/curriculum-framework";
-import { generateFluxSectionImageForKey, formatFalError } from "@/lib/fal-flux-section-images";
 import {
-  buildMessagesForSingleSection,
-  callDeepseekChat,
-  parseSingleSectionFromResponse,
-} from "@/lib/lesson-plan-deepseek";
+  buildCurriculumFrameworkSystemAddendum,
+  getCurriculumFrameworkLabel,
+  isValidCurriculumFramework,
+} from "@/lib/curriculum-framework";
+import { buildDeepseekLessonSystemPrompt } from "@/lib/deepseek-lesson-system-prompt";
+import { generateFluxSectionImages, formatFalError } from "@/lib/fal-flux-section-images";
 import {
   normalizeGenerationSections,
   SOURCE_MATERIAL_MAX_CHARS,
@@ -21,6 +21,13 @@ import {
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
+
+const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
+
+type DeepSeekMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
 
 function validateInput(input: LessonPlanInput): string | null {
   if (!isValidCurriculumType(input.curriculumType.trim())) {
@@ -44,7 +51,121 @@ function validateInput(input: LessonPlanInput): string | null {
   return null;
 }
 
-/** Legacy single-response endpoint: runs all sections + FLUX in parallel internally. */
+function extractJsonObject(text: string): string | null {
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first === -1 || last === -1 || last <= first) return null;
+  return text.slice(first, last + 1);
+}
+
+function parsePlan(
+  content: string,
+  sections: readonly TeacherPackageSectionKey[],
+): LessonPlanResult | null {
+  const jsonCandidate = extractJsonObject(content);
+  if (!jsonCandidate) return null;
+
+  try {
+    const parsed = JSON.parse(jsonCandidate) as Record<string, unknown>;
+    const result: LessonPlanResult = {};
+
+    for (const section of sections) {
+      const value = parsed[section];
+      if (typeof value === "string") {
+        if (value.trim().length === 0) return null;
+        result[section] = value.trim();
+        continue;
+      }
+      if (value === null || value === undefined) return null;
+      try {
+        const asJson = JSON.stringify(value, null, 2);
+        if (!asJson || asJson.trim().length === 0) return null;
+        result[section] = asJson;
+      } catch {
+        const asText = String(value);
+        if (!asText || asText.trim().length === 0) return null;
+        result[section] = asText;
+      }
+    }
+
+    return result;
+  } catch {
+    // Fallback for "almost JSON" responses: try per-key string extraction.
+    const result: LessonPlanResult = {};
+    try {
+      for (const section of sections) {
+        const escapedKey = section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const re = new RegExp(`\"${escapedKey}\"\\s*:\\s*(\"(?:\\\\.|[^\"\\\\])*\")`);
+        const m = jsonCandidate.match(re);
+        const rawStringLiteral = m?.[1];
+        if (!rawStringLiteral) return null;
+        const decoded = JSON.parse(rawStringLiteral) as unknown;
+        if (typeof decoded !== "string" || decoded.trim().length === 0) return null;
+        result[section] = decoded.trim();
+      }
+      return result;
+    } catch {
+      return null;
+    }
+  }
+}
+
+function buildMessages(
+  input: LessonPlanInput,
+  sections: readonly TeacherPackageSectionKey[],
+  sourceMaterial: string | undefined,
+  frameworkAddendum: string | null,
+): DeepSeekMessage[] {
+  const keysList = sections.map((k) => JSON.stringify(k)).join(", ");
+  const chapterLine =
+    input.chapter.trim().length > 0
+      ? `- Chapter / unit: ${input.chapter.trim()}`
+      : `- Chapter / unit: (not specified — infer sensible scope from topic and grade if needed)`;
+
+  const trimmedSource = sourceMaterial?.trim();
+  const sourceBlock =
+    trimmedSource && trimmedSource.length > 0
+      ? `
+
+### Source material (from teacher-uploaded file(s): PDF and/or images — primary content basis)
+Use the following extracted text as the main factual and instructional basis for every section you generate. Ground examples, definitions, sequencing, and practice tasks in this material while still honoring the curriculum, grade, topic, and learning objectives below. If the source is partial, infer sensible teaching structure and label reasonable inferences clearly.
+
+${trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS)}
+`
+      : "";
+
+  const fw = input.curriculumFramework.trim();
+  const frameworkUserLine =
+    fw.length > 0
+      ? `\n- **Curriculum framework (mandatory alignment):** ${getCurriculumFrameworkLabel(fw)} — apply the framework rules in the system prompt to every field you generate.`
+      : "";
+
+  return [
+    {
+      role: "system",
+      content: buildDeepseekLessonSystemPrompt(sections, {
+        curriculumFrameworkAddendum: frameworkAddendum,
+      }),
+    },
+    {
+      role: "user",
+      content: `
+Use this class context. Produce ONLY these JSON fields (no others): ${keysList}
+
+- Curriculum: ${input.curriculumType.trim()}
+- Grade / Year group: ${input.grade.trim()}
+- Subject: ${input.subject.trim()}
+${chapterLine}
+- Topic (within the chapter): ${input.topic.trim()}
+- Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}${frameworkUserLine}
+${sourceBlock}
+
+Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested field must be classroom-ready (not placeholders).
+      `.trim(),
+    },
+  ];
+}
+
 export async function POST(req: Request) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
@@ -92,67 +213,67 @@ export async function POST(req: Request) {
 
   const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(input.curriculumFramework);
 
+  const deepseekResponse = await fetch(DEEPSEEK_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      temperature: 0.55,
+      messages: buildMessages(input, sections, sourceMaterial, frameworkAddendum),
+    }),
+  });
+
+  if (!deepseekResponse.ok) {
+    const errorText = await deepseekResponse.text();
+    return NextResponse.json(
+      { error: `DeepSeek request failed: ${errorText}` },
+      { status: 502 },
+    );
+  }
+
+  const data = (await deepseekResponse.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
+    return NextResponse.json(
+      { error: "DeepSeek returned an empty response." },
+      { status: 502 },
+    );
+  }
+
+  const parsedPlan = parsePlan(content, sections);
+  if (!parsedPlan) {
+    return NextResponse.json(
+      { error: "Could not parse structured teacher package from DeepSeek response." },
+      { status: 502 },
+    );
+  }
+
+  let sectionImages: SectionImageMap = {};
+  let sectionImageErrors: Partial<Record<TeacherPackageSectionKey, string>> = {};
   try {
-    const textResults = await Promise.all(
-      sections.map(async (section) => {
-        const messages = buildMessagesForSingleSection(
-          input,
-          section,
-          sourceMaterial,
-          frameworkAddendum,
-        );
-        const raw = await callDeepseekChat(apiKey, messages);
-        const text = parseSingleSectionFromResponse(raw, section);
-        if (!text) {
-          throw new Error(`Could not parse section "${section}" from model response.`);
-        }
-        return { section, text } as const;
-      }),
-    );
-
-    const parsedPlan: LessonPlanResult = {};
-    for (const { section, text } of textResults) {
-      parsedPlan[section] = text;
-    }
-
-    const fluxPairs = await Promise.all(
-      sections.map(async (section) => {
-        const text = parsedPlan[section]!;
-        try {
-          const { url, error } = await generateFluxSectionImageForKey(input, section, text);
-          return { section, url, error } as const;
-        } catch (e) {
-          return {
-            section,
-            url: null as string | null,
-            error: formatFalError(e),
-          } as const;
-        }
-      }),
-    );
-
-    const sectionImages: SectionImageMap = {};
-    const sectionImageErrors: Partial<Record<TeacherPackageSectionKey, string>> = {};
-    for (const { section, url, error } of fluxPairs) {
-      if (url) {
-        sectionImages[section] = [url];
-      } else if (error) {
-        sectionImageErrors[section] = error;
-      }
-    }
-
+    const fluxResult = await generateFluxSectionImages({
+      input,
+      plan: parsedPlan,
+      sections,
+    });
+    sectionImages = fluxResult.sectionImages;
+    sectionImageErrors = fluxResult.errors;
     if (Object.keys(sectionImageErrors).length > 0) {
       console.warn("[lesson-plan] section image errors:", sectionImageErrors);
     }
-
-    return NextResponse.json({
-      lessonPlan: parsedPlan,
-      ...(Object.keys(sectionImages).length > 0 ? { sectionImages } : {}),
-      ...(Object.keys(sectionImageErrors).length > 0 ? { sectionImageErrors } : {}),
-    });
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("[lesson-plan]", message, e);
-    return NextResponse.json({ error: message }, { status: 502 });
+    console.error("[lesson-plan] FLUX section images failed:", formatFalError(e), e);
   }
+
+  return NextResponse.json({
+    lessonPlan: parsedPlan,
+    ...(Object.keys(sectionImages).length > 0 ? { sectionImages } : {}),
+    ...(Object.keys(sectionImageErrors).length > 0 ? { sectionImageErrors } : {}),
+  });
 }

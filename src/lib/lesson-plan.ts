@@ -121,12 +121,6 @@ export type LessonPlanGenerateBody = LessonPlanInput & {
   sourceMaterial?: string;
 };
 
-/** POST /api/lesson-plan/section — generate one teacher-package section (parallel UI). */
-export type LessonPlanSectionRequestBody = LessonPlanInput & {
-  section: TeacherPackageSectionKey;
-  sourceMaterial?: string;
-};
-
 /** Stored JSON may be new package or legacy; treat as string map. */
 export type LessonPlanResult = Record<string, string>;
 
