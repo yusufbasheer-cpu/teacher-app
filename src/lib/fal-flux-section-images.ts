@@ -48,6 +48,43 @@ function buildFluxPrompt(
   return body.length > 1900 ? `${body.slice(0, 1900)}…` : body;
 }
 
+export async function generateFluxSectionImageForKey(
+  input: LessonPlanInput,
+  sectionKey: TeacherPackageSectionKey,
+  sectionText: string,
+): Promise<{ url: string | null; error?: string }> {
+  const credentials = getFalCredentials();
+  if (!credentials) {
+    return { url: null };
+  }
+
+  const client = createFalClient({ credentials });
+  try {
+    const prompt = buildFluxPrompt(input, sectionKey, sectionText);
+    const result = await client.subscribe(FAL_FLUX_MODEL_ID, {
+      input: {
+        prompt,
+        image_size: "landscape_4_3",
+        num_images: 1,
+        num_inference_steps: 28,
+        enable_safety_checker: true,
+        output_format: "png",
+      },
+    });
+
+    const url = result.data?.images?.[0]?.url;
+    if (typeof url === "string" && url.length > 0) {
+      return { url };
+    }
+    return {
+      url: null,
+      error: `fal returned no image URL; data=${JSON.stringify(result.data).slice(0, 400)}`,
+    };
+  } catch (e) {
+    return { url: null, error: formatFalError(e) };
+  }
+}
+
 /** Supports `FAL_API_KEY` (app convention) or fal’s documented `FAL_KEY`. */
 export function getFalCredentials(): string | undefined {
   const fromApi = process.env.FAL_API_KEY?.trim();
@@ -103,45 +140,34 @@ export async function generateFluxSectionImages(params: {
     return { sectionImages: {}, errors: {} };
   }
 
-  const client = createFalClient({ credentials });
-  const out: SectionImageMap = {};
-  const errors: Partial<Record<TeacherPackageSectionKey, string>> = {};
-
   console.log("[fal-flux] batch start", {
     model: FAL_FLUX_MODEL_ID,
     sectionCount: params.sections.length,
   });
 
-  for (const section of params.sections) {
-    const text = params.plan[section];
-    if (typeof text !== "string" || !text.trim()) continue;
-
-    try {
-      const prompt = buildFluxPrompt(params.input, section, text);
-      const result = await client.subscribe(FAL_FLUX_MODEL_ID, {
-        input: {
-          prompt,
-          image_size: "landscape_4_3",
-          num_images: 1,
-          num_inference_steps: 28,
-          enable_safety_checker: true,
-          output_format: "png",
-        },
-      });
-
-      const url = result.data?.images?.[0]?.url;
-      if (typeof url === "string" && url.length > 0) {
-        out[section] = [url];
-        console.log("[fal-flux] ok", { section, urlPreview: url.slice(0, 80) });
-      } else {
-        const msg = `fal returned no image URL; data=${JSON.stringify(result.data).slice(0, 400)}`;
-        errors[section] = msg;
-        console.error("[fal-flux] empty url", { section, data: result.data });
+  const pairs = await Promise.all(
+    params.sections.map(async (section) => {
+      const text = params.plan[section];
+      if (typeof text !== "string" || !text.trim()) {
+        return { section, url: null as string | null, error: undefined as string | undefined };
       }
-    } catch (e) {
-      const msg = formatFalError(e);
-      errors[section] = msg;
-      console.error("[fal-flux] subscribe failed", { section, error: msg, raw: e });
+      const { url, error } = await generateFluxSectionImageForKey(params.input, section, text);
+      if (url) {
+        console.log("[fal-flux] ok", { section, urlPreview: url.slice(0, 80) });
+      } else if (error) {
+        console.error("[fal-flux] empty url", { section, error });
+      }
+      return { section, url, error };
+    }),
+  );
+
+  const out: SectionImageMap = {};
+  const errors: Partial<Record<TeacherPackageSectionKey, string>> = {};
+  for (const { section, url, error } of pairs) {
+    if (url) {
+      out[section] = [url];
+    } else if (error) {
+      errors[section] = error;
     }
   }
 

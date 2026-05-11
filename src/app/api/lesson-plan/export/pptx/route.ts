@@ -17,6 +17,8 @@ type Body = {
   pptContent?: string;
   /** Optional framework id (same values as lesson generator). */
   curriculumFramework?: string;
+  /** When length matches parsed slides, skip fal and embed these URLs. */
+  slideImageUrls?: (string | null)[] | null;
 };
 
 export async function POST(req: Request) {
@@ -47,15 +49,23 @@ export async function POST(req: Request) {
 
   try {
     const slides = parsePptContentIntoSlides(pptContent);
-    const slideImageUrls = await generatePptSlideImageUrls(
-      {
-        subject,
-        grade,
-        topic,
-        ...(curriculumFramework ? { curriculumFramework } : {}),
-      },
-      slides,
-    );
+    const rawCached = body.slideImageUrls;
+    let slideImageUrls: (string | null)[];
+    if (Array.isArray(rawCached) && rawCached.length === slides.length) {
+      slideImageUrls = rawCached.map((u) =>
+        typeof u === "string" && u.trim().length > 0 ? u.trim() : null,
+      );
+    } else {
+      slideImageUrls = await generatePptSlideImageUrls(
+        {
+          subject,
+          grade,
+          topic,
+          ...(curriculumFramework ? { curriculumFramework } : {}),
+        },
+        slides,
+      );
+    }
 
     const buffer = await buildPptxFromPptContent({
       subject,

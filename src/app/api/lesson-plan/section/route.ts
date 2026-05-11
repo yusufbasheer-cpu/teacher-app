@@ -7,12 +7,10 @@ import {
   parseSingleSectionFromResponse,
 } from "@/lib/lesson-plan-deepseek";
 import {
-  normalizeGenerationSections,
   SOURCE_MATERIAL_MAX_CHARS,
-  type LessonPlanGenerateBody,
+  TEACHER_PACKAGE_SECTIONS,
   type LessonPlanInput,
-  type LessonPlanResult,
-  type SectionImageMap,
+  type LessonPlanSectionRequestBody,
   type TeacherPackageSectionKey,
   isValidCurriculumType,
   isValidGradeYear,
@@ -44,7 +42,6 @@ function validateInput(input: LessonPlanInput): string | null {
   return null;
 }
 
-/** Legacy single-response endpoint: runs all sections + FLUX in parallel internally. */
 export async function POST(req: Request) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
@@ -54,19 +51,16 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: LessonPlanGenerateBody;
+  let body: LessonPlanSectionRequestBody;
   try {
-    body = (await req.json()) as LessonPlanGenerateBody;
+    body = (await req.json()) as LessonPlanSectionRequestBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const sections = normalizeGenerationSections(body.sections);
-  if (!sections) {
-    return NextResponse.json(
-      { error: "Provide a non-empty \"sections\" array of valid teacher-package keys." },
-      { status: 400 },
-    );
+  const section = body.section;
+  if (typeof section !== "string" || !TEACHER_PACKAGE_SECTIONS.includes(section as TeacherPackageSectionKey)) {
+    return NextResponse.json({ error: "Invalid or missing section." }, { status: 400 });
   }
 
   const input: LessonPlanInput = {
@@ -93,66 +87,48 @@ export async function POST(req: Request) {
   const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(input.curriculumFramework);
 
   try {
-    const textResults = await Promise.all(
-      sections.map(async (section) => {
-        const messages = buildMessagesForSingleSection(
-          input,
-          section,
-          sourceMaterial,
-          frameworkAddendum,
-        );
-        const raw = await callDeepseekChat(apiKey, messages);
-        const text = parseSingleSectionFromResponse(raw, section);
-        if (!text) {
-          throw new Error(`Could not parse section "${section}" from model response.`);
-        }
-        return { section, text } as const;
-      }),
+    const messages = buildMessagesForSingleSection(
+      input,
+      section as TeacherPackageSectionKey,
+      sourceMaterial,
+      frameworkAddendum,
     );
-
-    const parsedPlan: LessonPlanResult = {};
-    for (const { section, text } of textResults) {
-      parsedPlan[section] = text;
+    const raw = await callDeepseekChat(apiKey, messages);
+    const text = parseSingleSectionFromResponse(raw, section as TeacherPackageSectionKey);
+    if (!text) {
+      return NextResponse.json(
+        { error: `Could not parse section "${section}" from model response.` },
+        { status: 502 },
+      );
     }
 
-    const fluxPairs = await Promise.all(
-      sections.map(async (section) => {
-        const text = parsedPlan[section]!;
-        try {
-          const { url, error } = await generateFluxSectionImageForKey(input, section, text);
-          return { section, url, error } as const;
-        } catch (e) {
-          return {
-            section,
-            url: null as string | null,
-            error: formatFalError(e),
-          } as const;
-        }
-      }),
-    );
-
-    const sectionImages: SectionImageMap = {};
-    const sectionImageErrors: Partial<Record<TeacherPackageSectionKey, string>> = {};
-    for (const { section, url, error } of fluxPairs) {
+    let sectionImageUrls: string[] | undefined;
+    let sectionImageError: string | undefined;
+    try {
+      const { url, error } = await generateFluxSectionImageForKey(
+        input,
+        section as TeacherPackageSectionKey,
+        text,
+      );
       if (url) {
-        sectionImages[section] = [url];
+        sectionImageUrls = [url];
       } else if (error) {
-        sectionImageErrors[section] = error;
+        sectionImageError = error;
       }
-    }
-
-    if (Object.keys(sectionImageErrors).length > 0) {
-      console.warn("[lesson-plan] section image errors:", sectionImageErrors);
+    } catch (e) {
+      sectionImageError = formatFalError(e);
+      console.error("[lesson-plan/section] FLUX failed:", sectionImageError, e);
     }
 
     return NextResponse.json({
-      lessonPlan: parsedPlan,
-      ...(Object.keys(sectionImages).length > 0 ? { sectionImages } : {}),
-      ...(Object.keys(sectionImageErrors).length > 0 ? { sectionImageErrors } : {}),
+      section,
+      text,
+      ...(sectionImageUrls ? { sectionImageUrls } : {}),
+      ...(sectionImageError ? { sectionImageError } : {}),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error("[lesson-plan]", message, e);
+    console.error("[lesson-plan/section]", message, e);
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }

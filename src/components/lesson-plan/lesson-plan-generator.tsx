@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
+import { GenerationProgressPanel, type GenLineStatus, type GenProgressLine } from "@/components/lesson-plan/generation-progress-panel";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
 import type {
   LessonPlanInput,
@@ -33,6 +33,7 @@ import {
   mergeSectionImagesMeta,
   parseSectionImagesMeta,
 } from "@/lib/lesson-plan";
+import { parsePptContentIntoSlides } from "@/lib/ppt-slide-parse";
 import { CURRICULUM_FRAMEWORK_OPTIONS, isValidCurriculumFramework } from "@/lib/curriculum-framework";
 import { supabase } from "@/lib/supabase";
 
@@ -103,7 +104,11 @@ export function LessonPlanGenerator() {
     Record<TeacherPackageSectionKey, string>
   > | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [parallelLoading, setParallelLoading] = useState(false);
+  const [progressLines, setProgressLines] = useState<GenProgressLine[]>([]);
+  const [downloadsUnlocked, setDownloadsUnlocked] = useState(true);
+  const [pptSlideImageUrls, setPptSlideImageUrls] = useState<(string | null)[] | null>(null);
+  const latestPlanRef = useRef<LessonPlanResult>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -161,6 +166,9 @@ export function LessonPlanGenerator() {
     setSectionImages(Object.keys(loadedImages).length > 0 ? loadedImages : null);
     setSectionImageErrors(null);
     setActivePlanId(plan.id);
+    setDownloadsUnlocked(true);
+    setPptSlideImageUrls(null);
+    setProgressLines([]);
     setUploadedChunks([]);
     setUploadInfo(null);
     setUploadWarnings([]);
@@ -203,6 +211,10 @@ export function LessonPlanGenerator() {
         setLessonPlan(null);
         setSectionImages(null);
         setSectionImageErrors(null);
+        setParallelLoading(false);
+        setProgressLines([]);
+        setPptSlideImageUrls(null);
+        setDownloadsUnlocked(true);
       }
     });
 
@@ -363,10 +375,13 @@ export function LessonPlanGenerator() {
     event.preventDefault();
     setError(null);
     setSuccessMessage(null);
-    setLessonPlan(null);
+    setPptSlideImageUrls(null);
+    setDownloadsUnlocked(false);
+    setActivePlanId(null);
+    latestPlanRef.current = {};
+    setLessonPlan({});
     setSectionImages(null);
     setSectionImageErrors(null);
-    setActivePlanId(null);
 
     const sections = TEACHER_PACKAGE_SECTIONS.filter((k) => sectionSelection[k]);
     if (sections.length === 0) {
@@ -374,58 +389,160 @@ export function LessonPlanGenerator() {
       return;
     }
 
-    setLoading(true);
+    const initialLines: GenProgressLine[] = sections.map((s) => ({
+      key: s,
+      label: GENERATION_CHECKBOX_LABELS[s],
+      status: "running" as const,
+      detail: "Generating…",
+    }));
+    if (sections.includes("PPT Slide Content")) {
+      initialLines.push({
+        key: "ppt-slide-images",
+        label: "Slide images (PPT)",
+        status: "pending",
+        detail: "Waiting for slide content…",
+      });
+    }
+    setProgressLines(initialLines);
+    setParallelLoading(true);
+
+    const pptUrlsRef: { current: (string | null)[] | null } = { current: null };
+
+    const updateLine = (key: string, status: GenLineStatus, detail?: string) => {
+      setProgressLines((prev) =>
+        prev.map((l) =>
+          l.key === key
+            ? {
+                ...l,
+                status,
+                ...(detail !== undefined ? { detail } : {}),
+              }
+            : l,
+        ),
+      );
+    };
+
+    const combinedSource = combineSourceChunks(uploadedChunks);
+    const basePayload = {
+      ...form,
+      ...(combinedSource.length > 0 ? { sourceMaterial: combinedSource } : {}),
+    };
+
+    const runSection = async (section: TeacherPackageSectionKey) => {
+      try {
+        const res = await fetch("/api/lesson-plan/section", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...basePayload, section }),
+        });
+        const data = (await res.json()) as {
+          error?: string;
+          text?: string;
+          sectionImageUrls?: string[];
+          sectionImageError?: string;
+        };
+        if (!res.ok) {
+          updateLine(section, "error", data.error ?? "Request failed");
+          if (section === "PPT Slide Content") {
+            updateLine("ppt-slide-images", "error", "PPT text not generated");
+          }
+          throw new Error(data.error ?? `Section "${section}" failed.`);
+        }
+        const text = data.text ?? "";
+        latestPlanRef.current = { ...latestPlanRef.current, [section]: text };
+        setLessonPlan({ ...latestPlanRef.current });
+        if (data.sectionImageUrls && data.sectionImageUrls.length > 0) {
+          setSectionImages((prev) => ({
+            ...(prev ?? {}),
+            [section]: data.sectionImageUrls,
+          }));
+        }
+        if (data.sectionImageError) {
+          setSectionImageErrors((prev) => ({
+            ...(prev ?? {}),
+            [section]: data.sectionImageError,
+          }));
+        }
+        updateLine(section, "done", "Done ✅");
+
+        if (section === "PPT Slide Content") {
+          const slides = parsePptContentIntoSlides(text);
+          const total = slides.length;
+          if (total === 0) {
+            updateLine("ppt-slide-images", "done", "Done ✅ (0 slides)");
+            pptUrlsRef.current = [];
+            setPptSlideImageUrls([]);
+            return;
+          }
+          updateLine("ppt-slide-images", "running", `0 of ${total}`);
+          const urls: (string | null)[] = new Array(total).fill(null);
+          const counter = { n: 0 };
+          await Promise.all(
+            slides.map(async (_, i) => {
+              try {
+                const ir = await fetch("/api/lesson-plan/ppt-slide-image", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    subject: form.subject,
+                    grade: form.grade,
+                    topic: form.topic,
+                    ...(form.curriculumFramework.trim()
+                      ? { curriculumFramework: form.curriculumFramework.trim() }
+                      : {}),
+                    pptContent: text,
+                    slideIndex: i,
+                  }),
+                });
+                const ij = (await ir.json()) as { url?: string | null };
+                urls[i] = typeof ij.url === "string" && ij.url.length > 0 ? ij.url : null;
+              } catch {
+                urls[i] = null;
+              } finally {
+                counter.n += 1;
+                updateLine("ppt-slide-images", "running", `${counter.n} of ${total}`);
+              }
+            }),
+          );
+          pptUrlsRef.current = urls;
+          setPptSlideImageUrls(urls);
+          const ok = urls.filter(Boolean).length;
+          updateLine("ppt-slide-images", "done", `Done ✅ (${ok}/${total})`);
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        updateLine(section, "error", msg.slice(0, 160));
+        if (section === "PPT Slide Content") {
+          updateLine("ppt-slide-images", "error", "Skipped");
+        }
+        throw e;
+      }
+    };
 
     try {
-      const combinedSource = combineSourceChunks(uploadedChunks);
-      const response = await fetch("/api/lesson-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          sections,
-          ...(combinedSource.length > 0 ? { sourceMaterial: combinedSource } : {}),
-        }),
-      });
-
-      const data = (await response.json()) as {
-        error?: string;
-        lessonPlan?: LessonPlanResult;
-        sectionImages?: SectionImageMap;
-        sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
-      };
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Failed to generate lesson plan.");
+      const results = await Promise.allSettled(sections.map((s) => runSection(s)));
+      const failed = results.filter((r) => r.status === "rejected");
+      if (failed.length === results.length) {
+        setError("Every section failed to generate. Check the progress list and try again.");
+      } else if (failed.length > 0) {
+        setError("Some sections failed; successful parts are still available below.");
       }
 
-      if (!data.lessonPlan) {
-        throw new Error("No lesson plan returned.");
+      if (sections.includes("PPT Slide Content") && pptUrlsRef.current === null) {
+        pptUrlsRef.current = [];
+        setPptSlideImageUrls([]);
       }
-
-      setLessonPlan(data.lessonPlan);
-      setSectionImages(
-        data.sectionImages && Object.keys(data.sectionImages).length > 0 ? data.sectionImages : null,
-      );
-      setSectionImageErrors(
-        data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0
-          ? data.sectionImageErrors
-          : null,
-      );
-      if (data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0) {
-        console.warn("[lesson-plan] section image errors from API:", data.sectionImageErrors);
-      }
+      setDownloadsUnlocked(sections.every((s) => Boolean(latestPlanRef.current[s]?.trim())));
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Unexpected error occurred.";
+      const message = err instanceof Error ? err.message : "Unexpected error occurred.";
       setError(message);
     } finally {
-      setLoading(false);
+      setParallelLoading(false);
     }
   };
 
   const onSaveLessonPlan = async () => {
-    if (!user || !lessonPlan) return;
+    if (!user || !lessonPlan || Object.keys(lessonPlan).length === 0) return;
     setError(null);
     setSuccessMessage(null);
     setSaving(true);
@@ -506,7 +623,7 @@ export function LessonPlanGenerator() {
       <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <form
           onSubmit={onSubmit}
-          aria-busy={loading}
+          aria-busy={parallelLoading}
           className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm md:p-7"
         >
           <h2 className="text-xl font-semibold text-slate-900">Lesson Plan Generator</h2>
@@ -532,14 +649,14 @@ export function LessonPlanGenerator() {
               multiple
               accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
               onChange={onUploadFileChange}
-              disabled={uploadExtracting || loading}
+              disabled={uploadExtracting || parallelLoading}
               className="block w-full min-w-0 text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-800 disabled:opacity-60 sm:w-auto"
             />
             {uploadedChunks.length > 0 ? (
               <button
                 type="button"
                 onClick={clearUploadedSource}
-                disabled={uploadExtracting || loading}
+                disabled={uploadExtracting || parallelLoading}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
               >
                 Clear all uploads
@@ -586,7 +703,7 @@ export function LessonPlanGenerator() {
                   <button
                     type="button"
                     onClick={() => removeUploadedChunk(chunk.id)}
-                    disabled={uploadExtracting || loading}
+                    disabled={uploadExtracting || parallelLoading}
                     className="shrink-0 rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
                   >
                     Remove
@@ -836,13 +953,13 @@ export function LessonPlanGenerator() {
         <button
           type="submit"
           disabled={
-            loading ||
+            parallelLoading ||
             uploadExtracting ||
             TEACHER_PACKAGE_SECTIONS.every((k) => !sectionSelection[k])
           }
           className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {loading ? "Generating..." : "Generate Lesson Plan"}
+          {parallelLoading ? "Generating..." : "Generate Lesson Plan"}
         </button>
 
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
@@ -856,28 +973,34 @@ export function LessonPlanGenerator() {
           illustrations appear beside each section.
         </p>
 
-        {!lessonPlan ? (
+        {lessonPlan === null && !parallelLoading ? (
           <div className="mt-6 rounded-xl border border-dashed border-blue-200 bg-blue-50/50 p-6 text-sm text-slate-500">
             No lesson plan generated yet.
           </div>
         ) : (
           <div className="mt-6 space-y-5">
+            {parallelLoading && progressLines.length > 0 ? (
+              <GenerationProgressPanel lines={progressLines} />
+            ) : null}
             <button
               type="button"
               onClick={onSaveLessonPlan}
-              disabled={saving}
+              disabled={saving || parallelLoading}
               className="inline-flex w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
             >
               {saving ? "Saving..." : "Save Lesson Plan"}
             </button>
             <TeacherPackageViewer
-              lessonPlan={lessonPlan}
+              lessonPlan={lessonPlan ?? {}}
               sectionImages={sectionImages ?? undefined}
               sectionImageErrors={sectionImageErrors ?? undefined}
               subject={form.subject}
               grade={form.grade}
               topic={form.topic}
               curriculumFramework={form.curriculumFramework.trim() || undefined}
+              downloadsUnlocked={downloadsUnlocked}
+              cachedSlideImageUrls={pptSlideImageUrls ?? undefined}
+              generationActive={parallelLoading && Object.keys(lessonPlan ?? {}).length === 0}
             />
           </div>
         )}
@@ -890,7 +1013,6 @@ export function LessonPlanGenerator() {
         </div>
       ) : null}
 
-      {loading ? <LessonPlanLoadingGame active /> : null}
     </div>
   );
 }
