@@ -19,6 +19,8 @@ type TeacherPackageViewerProps = {
   subject: string;
   grade: string;
   topic: string;
+  /** When set, PPT slide images use the same framework hint as generation. */
+  curriculumFramework?: string;
 };
 
 type ExportKey =
@@ -61,6 +63,7 @@ export function TeacherPackageViewer({
   subject,
   grade,
   topic,
+  curriculumFramework,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
@@ -111,14 +114,20 @@ export function TeacherPackageViewer({
     }
   };
 
-  const meta = { subject, grade, topic };
+  const baseMeta = { subject, grade, topic };
 
   const onDownloadPpt = () =>
     runExport(
       "ppt",
       `${baseName}-ppt.pptx`,
       "/api/lesson-plan/export/pptx",
-      { ...meta, pptContent: lessonPlan["PPT Slide Content"] ?? "" },
+      {
+        ...baseMeta,
+        pptContent: lessonPlan["PPT Slide Content"] ?? "",
+        ...(curriculumFramework?.trim()
+          ? { curriculumFramework: curriculumFramework.trim() }
+          : {}),
+      },
     );
 
   const onDownloadLessonPlan = () =>
@@ -127,7 +136,7 @@ export function TeacherPackageViewer({
       `${baseName}-lesson-plan.docx`,
       "/api/lesson-plan/export/docx",
       {
-        ...meta,
+        ...baseMeta,
         documentTitle: "Lesson Plan",
         fileBaseName: "lesson-plan",
         content: lessonPlan["Full Lesson Plan"] ?? "",
@@ -140,7 +149,7 @@ export function TeacherPackageViewer({
       `${baseName}-worksheet.docx`,
       "/api/lesson-plan/export/docx",
       {
-        ...meta,
+        ...baseMeta,
         documentTitle: "Worksheet",
         fileBaseName: "worksheet",
         content: lessonPlan["Worksheet"] ?? "",
@@ -153,7 +162,7 @@ export function TeacherPackageViewer({
       `${baseName}-assessment.docx`,
       "/api/lesson-plan/export/docx",
       {
-        ...meta,
+        ...baseMeta,
         documentTitle: "Assessment Questions",
         fileBaseName: "assessment",
         content: lessonPlan["Assessment Questions"] ?? "",
@@ -166,7 +175,7 @@ export function TeacherPackageViewer({
       `${baseName}-homework.docx`,
       "/api/lesson-plan/export/docx",
       {
-        ...meta,
+        ...baseMeta,
         documentTitle: "Homework",
         fileBaseName: "homework",
         content: lessonPlan["Homework Task"] ?? "",
@@ -179,7 +188,7 @@ export function TeacherPackageViewer({
       `${baseName}-teacher-notes.docx`,
       "/api/lesson-plan/export/docx",
       {
-        ...meta,
+        ...baseMeta,
         documentTitle: "Teacher Notes",
         fileBaseName: "teacher-notes",
         content: lessonPlan["Teacher Notes"] ?? "",
@@ -188,7 +197,7 @@ export function TeacherPackageViewer({
 
   const onDownloadZip = () =>
     runExport("zip", `${baseName}-all.zip`, "/api/lesson-plan/export/zip", {
-      ...meta,
+      ...baseMeta,
       lessonPlan,
     });
 

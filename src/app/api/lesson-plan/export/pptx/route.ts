@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isValidCurriculumFramework } from "@/lib/curriculum-framework";
 import { generatePptSlideImageUrls } from "@/lib/fal-ppt-slide-images";
 import {
   buildPptxFromPptContent,
@@ -14,6 +15,8 @@ type Body = {
   grade?: string;
   topic?: string;
   pptContent?: string;
+  /** Optional framework id (same values as lesson generator). */
+  curriculumFramework?: string;
 };
 
 export async function POST(req: Request) {
@@ -28,6 +31,8 @@ export async function POST(req: Request) {
   const grade = body.grade?.trim();
   const topic = body.topic?.trim();
   const pptContent = body.pptContent?.trim();
+  const curriculumFramework =
+    typeof body.curriculumFramework === "string" ? body.curriculumFramework.trim() : "";
 
   if (!subject || !grade || !topic || !pptContent) {
     return NextResponse.json(
@@ -36,9 +41,21 @@ export async function POST(req: Request) {
     );
   }
 
+  if (!isValidCurriculumFramework(curriculumFramework)) {
+    return NextResponse.json({ error: "Invalid curriculumFramework." }, { status: 400 });
+  }
+
   try {
     const slides = parsePptContentIntoSlides(pptContent);
-    const slideImageUrls = await generatePptSlideImageUrls({ subject, grade, topic }, slides);
+    const slideImageUrls = await generatePptSlideImageUrls(
+      {
+        subject,
+        grade,
+        topic,
+        ...(curriculumFramework ? { curriculumFramework } : {}),
+      },
+      slides,
+    );
 
     const buffer = await buildPptxFromPptContent({
       subject,

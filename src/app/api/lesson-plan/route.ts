@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  buildCurriculumFrameworkSystemAddendum,
+  getCurriculumFrameworkLabel,
+  isValidCurriculumFramework,
+} from "@/lib/curriculum-framework";
 import { buildDeepseekLessonSystemPrompt } from "@/lib/deepseek-lesson-system-prompt";
 import { generateFluxSectionImages, formatFalError } from "@/lib/fal-flux-section-images";
 import {
@@ -40,6 +45,9 @@ function validateInput(input: LessonPlanInput): string | null {
   if (input.learningObjectives.trim().length === 0) {
     return "Please fill Learning Objectives.";
   }
+  if (!isValidCurriculumFramework(input.curriculumFramework)) {
+    return "Invalid curriculum framework selection.";
+  }
   return null;
 }
 
@@ -78,7 +86,8 @@ function parsePlan(
 function buildMessages(
   input: LessonPlanInput,
   sections: readonly TeacherPackageSectionKey[],
-  sourceMaterial?: string,
+  sourceMaterial: string | undefined,
+  frameworkAddendum: string | null,
 ): DeepSeekMessage[] {
   const keysList = sections.map((k) => JSON.stringify(k)).join(", ");
   const chapterLine =
@@ -98,10 +107,18 @@ ${trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS)}
 `
       : "";
 
+  const fw = input.curriculumFramework.trim();
+  const frameworkUserLine =
+    fw.length > 0
+      ? `\n- **Curriculum framework (mandatory alignment):** ${getCurriculumFrameworkLabel(fw)} — apply the framework rules in the system prompt to every field you generate.`
+      : "";
+
   return [
     {
       role: "system",
-      content: buildDeepseekLessonSystemPrompt(sections),
+      content: buildDeepseekLessonSystemPrompt(sections, {
+        curriculumFrameworkAddendum: frameworkAddendum,
+      }),
     },
     {
       role: "user",
@@ -113,7 +130,7 @@ Use this class context. Produce ONLY these JSON fields (no others): ${keysList}
 - Subject: ${input.subject.trim()}
 ${chapterLine}
 - Topic (within the chapter): ${input.topic.trim()}
-- Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}
+- Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}${frameworkUserLine}
 ${sourceBlock}
 
 Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested field must be classroom-ready (not placeholders).
@@ -148,6 +165,8 @@ export async function POST(req: Request) {
 
   const input: LessonPlanInput = {
     curriculumType: body.curriculumType ?? "",
+    curriculumFramework:
+      typeof body.curriculumFramework === "string" ? body.curriculumFramework.trim() : "",
     grade: body.grade ?? "",
     subject: body.subject ?? "",
     chapter: typeof body.chapter === "string" ? body.chapter : "",
@@ -165,6 +184,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
+  const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(input.curriculumFramework);
+
   const deepseekResponse = await fetch(DEEPSEEK_API_URL, {
     method: "POST",
     headers: {
@@ -174,7 +195,7 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       model: "deepseek-chat",
       temperature: 0.55,
-      messages: buildMessages(input, sections, sourceMaterial),
+      messages: buildMessages(input, sections, sourceMaterial, frameworkAddendum),
     }),
   });
 

@@ -33,6 +33,7 @@ import {
   mergeSectionImagesMeta,
   parseSectionImagesMeta,
 } from "@/lib/lesson-plan";
+import { CURRICULUM_FRAMEWORK_OPTIONS, isValidCurriculumFramework } from "@/lib/curriculum-framework";
 import { supabase } from "@/lib/supabase";
 
 type SourceUploadChunk = {
@@ -76,6 +77,7 @@ function formatExtractUploadFailure(status: number, data: ExtractPayload, raw: s
 
 const initialForm: LessonPlanInput = {
   curriculumType: "CBSE/NCERT",
+  curriculumFramework: "",
   grade: "Grade 1",
   subject: "Math",
   chapter: "",
@@ -142,8 +144,12 @@ export function LessonPlanGenerator() {
     const subj = plan.subject?.trim();
     const loadedSubject =
       subj && isValidSubjectOption(subj) ? subj : SUBJECT_OPTIONS[SUBJECT_OPTIONS.length - 1]!;
+    const fw = plan.curriculum_framework?.trim();
+    const loadedFramework =
+      fw && isValidCurriculumFramework(fw) ? fw : "";
     setForm({
       curriculumType: loadedCurriculum,
+      curriculumFramework: loadedFramework,
       grade: loadedGrade,
       subject: loadedSubject,
       chapter: plan.chapter ?? "",
@@ -428,6 +434,7 @@ export function LessonPlanGenerator() {
       const payload = {
         user_id: user.id,
         curriculum_type: form.curriculumType,
+        curriculum_framework: form.curriculumFramework.trim() || "",
         subject: form.subject,
         grade: form.grade,
         chapter: form.chapter.trim(),
@@ -642,6 +649,37 @@ export function LessonPlanGenerator() {
           </div>
 
           <div>
+            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Curriculum Framework
+            </p>
+            <label
+              htmlFor="curriculum-framework"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
+              Select Educational Framework (Optional)
+            </label>
+            <select
+              id="curriculum-framework"
+              value={form.curriculumFramework}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, curriculumFramework: e.target.value }))
+              }
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-blue-500 focus:ring-2"
+            >
+              {CURRICULUM_FRAMEWORK_OPTIONS.map((opt) => (
+                <option key={opt.value === "" ? "none" : opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs text-slate-500">
+              Leave as &quot;None&quot; for a standard plan. Choosing a framework aligns lesson plan,
+              slides, worksheet, assessment, homework, and teacher notes with that system&apos;s
+              expectations.
+            </p>
+          </div>
+
+          <div>
             <label htmlFor="grade-year" className="mb-1 block text-sm font-medium text-slate-700">
               Grade / year group
             </label>
@@ -839,6 +877,7 @@ export function LessonPlanGenerator() {
               subject={form.subject}
               grade={form.grade}
               topic={form.topic}
+              curriculumFramework={form.curriculumFramework.trim() || undefined}
             />
           </div>
         )}

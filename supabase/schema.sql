@@ -5,6 +5,7 @@ create table if not exists public.lesson_plans (
   subject text not null,
   grade text not null,
   chapter text not null default '',
+  curriculum_framework text not null default '',
   topic text not null,
   learning_objectives text not null,
   lesson_plan jsonb not null,

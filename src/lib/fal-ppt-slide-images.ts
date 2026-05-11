@@ -1,4 +1,5 @@
 import { createFalClient } from "@fal-ai/client";
+import { buildCurriculumFrameworkImageHint } from "@/lib/curriculum-framework";
 import {
   FAL_FLUX_MODEL_ID,
   formatFalError,
@@ -39,12 +40,20 @@ function compressSlideBodyForVisualPrompt(body: string, maxLen: number): string 
   return `${head.trimEnd()}…`;
 }
 
+export type PptSlideImageMeta = {
+  subject: string;
+  grade: string;
+  topic: string;
+  /** Optional; improves slide imagery alignment when re-exporting with a framework. */
+  curriculumFramework?: string;
+};
+
 /**
  * One cohesive, slide-specific prompt: subject, topic, key concept (title), and
  * body-derived visual elements (diagram style like the photosynthesis example).
  */
 export function buildPptSlideFluxPrompt(
-  meta: { subject: string; grade: string; topic: string },
+  meta: PptSlideImageMeta,
   slide: { title: string; body: string },
 ): string {
   const subject = meta.subject.replace(/\s+/g, " ").trim();
@@ -52,15 +61,19 @@ export function buildPptSlideFluxPrompt(
   const grade = meta.grade.replace(/\s+/g, " ").trim();
   const keyConcept = slide.title.replace(/\s+/g, " ").trim() || "main lesson idea";
   const visualDetail = compressSlideBodyForVisualPrompt(slide.body, 580);
+  const frameworkHint = buildCurriculumFrameworkImageHint(meta.curriculumFramework ?? "");
 
-  const core = [
+  const coreParts = [
     `Educational diagram for school use: subject "${subject}", topic "${topic}", grade ${grade}.`,
+    frameworkHint,
     `This slide's key concept: "${keyConcept}".`,
     visualDetail
       ? `Show specifically (invent clear symbols and flow, no readable words in the artwork): ${visualDetail}.`
       : `Illustrate the concept "${keyConcept}" with clear symbols, stages, arrows, and relationships.`,
     "Style: clear instructional infographic — icons, process flow, cross-sections, or schematic relationships; flat vector look; colorful and easy to read at a glance.",
-  ].join(" ");
+  ].filter((p): p is string => Boolean(p));
+
+  const core = coreParts.join(" ");
 
   const full = [
     core,
@@ -75,7 +88,7 @@ export function buildPptSlideFluxPrompt(
  * One FLUX image per slide, in order. Null entries mean generation or API skipped that slide.
  */
 export async function generatePptSlideImageUrls(
-  meta: { subject: string; grade: string; topic: string },
+  meta: PptSlideImageMeta,
   slides: { title: string; body: string }[],
 ): Promise<(string | null)[]> {
   const credentials = getFalCredentials();

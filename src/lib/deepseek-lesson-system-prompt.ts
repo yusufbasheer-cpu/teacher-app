@@ -150,13 +150,20 @@ ${lines}
 
 export function buildDeepseekLessonSystemPrompt(
   sections: readonly TeacherPackageSectionKey[],
+  options?: { curriculumFrameworkAddendum?: string | null },
 ): string {
-  return `${DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE.trim()}
+  const core = `${DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE.trim()}
 
 ${buildTeacherPackageJsonContract(sections)}`;
+  const extra = options?.curriculumFrameworkAddendum?.trim();
+  if (!extra) return core;
+  return `${core}
+
+${extra}`;
 }
 
 /** Full six-part package (backwards-compatible export for tooling/tests). */
-export const DEEPSEEK_LESSON_SYSTEM_PROMPT = buildDeepseekLessonSystemPrompt([
-  ...TEACHER_PACKAGE_SECTIONS,
-]);
+export const DEEPSEEK_LESSON_SYSTEM_PROMPT = buildDeepseekLessonSystemPrompt(
+  [...TEACHER_PACKAGE_SECTIONS],
+  {},
+);

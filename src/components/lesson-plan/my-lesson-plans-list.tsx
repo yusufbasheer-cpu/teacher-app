@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { SavedLessonPlan } from "@/lib/lesson-plan";
+import { getCurriculumFrameworkLabel, isValidCurriculumFramework } from "@/lib/curriculum-framework";
 
 export function MyLessonPlansList() {
   const [user, setUser] = useState<User | null>(null);
@@ -89,7 +90,13 @@ export function MyLessonPlansList() {
           </div>
         ) : (
           <div className="mt-5 grid gap-3 md:grid-cols-2">
-            {plans.map((plan) => (
+            {plans.map((plan) => {
+              const fw = plan.curriculum_framework?.trim();
+              const frameworkSubtitle =
+                fw && isValidCurriculumFramework(fw) && fw.length > 0
+                  ? getCurriculumFrameworkLabel(fw)
+                  : null;
+              return (
               <Link
                 key={plan.id}
                 href={`/lesson-plan?planId=${plan.id}`}
@@ -97,7 +104,10 @@ export function MyLessonPlansList() {
               >
                 <p className="font-semibold text-slate-900">{plan.topic}</p>
                 <p className="mt-1 text-sm text-slate-600">
-                  {[plan.curriculum_type, plan.subject, plan.grade].filter(Boolean).join(" · ")}
+                  {[plan.curriculum_type, plan.subject, plan.grade]
+                    .filter(Boolean)
+                    .concat(frameworkSubtitle ? [frameworkSubtitle] : [])
+                    .join(" · ")}
                 </p>
                 <p className="mt-1 line-clamp-2 text-xs text-slate-500">
                   {plan.learning_objectives}
@@ -107,7 +117,8 @@ export function MyLessonPlansList() {
                 </p>
                 <p className="mt-2 text-sm font-medium text-blue-700">Open plan</p>
               </Link>
-            ))}
+            );
+            })}
           </div>
         )}
       </section>

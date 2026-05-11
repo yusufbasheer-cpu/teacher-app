@@ -90,6 +90,8 @@ export const GENERATION_CHECKBOX_LABELS: Record<TeacherPackageSectionKey, string
 
 export type LessonPlanInput = {
   curriculumType: string;
+  /** Optional jurisdictional framework; empty string = none (see `curriculum-framework.ts`). */
+  curriculumFramework: string;
   grade: string;
   subject: string;
   chapter: string;
@@ -179,6 +181,8 @@ export type SavedLessonPlan = {
   user_id: string;
   /** Added in schema migration; absent on older rows. */
   curriculum_type?: string;
+  /** Optional national framework id; absent on older rows. */
+  curriculum_framework?: string;
   chapter?: string;
 };
 

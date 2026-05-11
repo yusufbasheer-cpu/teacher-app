@@ -1,4 +1,5 @@
 import { ApiError, ValidationError, createFalClient } from "@fal-ai/client";
+import { buildCurriculumFrameworkImageHint } from "@/lib/curriculum-framework";
 import type {
   LessonPlanInput,
   LessonPlanResult,
@@ -27,12 +28,14 @@ function buildFluxPrompt(
   sectionText: string,
 ): string {
   const chapter = input.chapter.trim();
+  const frameworkHint = buildCurriculumFrameworkImageHint(input.curriculumFramework);
   const parts = [
     `Curriculum: ${input.curriculumType.trim()}`,
     `Grade: ${input.grade.trim()}`,
     `Subject: ${input.subject.trim()}`,
     chapter ? `Chapter: ${chapter}` : null,
     `Topic: ${input.topic.trim()}`,
+    frameworkHint,
     `Lesson section to illustrate: "${sectionKey}"`,
     "",
     "Single educational illustration: diagram, infographic-style layout, icons, or symbolic objects suitable for a slide or worksheet header. Draw ideas from this teaching content (avoid long paragraphs of on-image text):",
