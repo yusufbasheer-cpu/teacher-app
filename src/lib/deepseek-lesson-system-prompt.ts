@@ -1,10 +1,14 @@
 /**
  * System prompt for DeepSeek lesson / teacher-package generation.
- * Output must be JSON (enforced in API route); keys are defined in `lesson-plan.ts`.
+ * The model is asked to wrap each section in plain-text START/END markers (see `lesson-plan.ts`).
  */
-import { TEACHER_PACKAGE_SECTIONS, type TeacherPackageSectionKey } from "@/lib/lesson-plan";
+import {
+  TEACHER_PACKAGE_BLOCK_MARKERS,
+  TEACHER_PACKAGE_SECTIONS,
+  type TeacherPackageSectionKey,
+} from "@/lib/lesson-plan";
 
-/** Pedagogy and quality rules without the final JSON key contract (contract is appended per request). */
+/** Pedagogy and quality rules; labeled-block contract is appended per request. */
 export const DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE = `You are an expert teacher and instructional designer with deep knowledge of CBSE/NCERT, British, American, UAE MOE, and IB curricula. When generating lesson plans, PPTs, worksheets and all resources, align the content accurately with the selected curriculum, grade level, subject, chapter and topic. Use your knowledge of these curricula to generate accurate, curriculum-aligned, classroom-ready content without needing any textbook to be uploaded. Generate content as if you are a senior teacher who knows this curriculum and chapter deeply.
 
 When generating lesson plans and PowerPoint presentations, always create highly structured, classroom-ready content with engaging pedagogy and differentiated instruction. When the teacher provides uploaded PDF and/or image source material (one or more files) in the user message, treat it as authoritative curriculum content to interpret and expand — not as optional context.
@@ -128,7 +132,7 @@ Adjust pedagogy depending on:
 - Avoid factual inaccuracies
 - Maintain curriculum alignment
 
-20. Deliverable reference (map content quality to JSON keys when those keys are requested)
+20. Deliverable reference (map content quality to the sections you are asked to output)
 A. Full Lesson Plan — integrate items 1–14 above using clear subheadings and actionable steps; embed mini timings where helpful.
 B. PPT Slide Content — slide-by-slide outline with titles, concise bullets, speaker notes, visuals/icons, animations, interactive and quiz slides.
 C. Worksheet — print-ready student-facing tasks (include space cues like lines or numbered response areas described in text).
@@ -136,16 +140,24 @@ D. Assessment Questions — formative and summative mix: MCQs, short answers, HO
 E. Homework Task — aligned extended task with success criteria and expected time.
 F. Teacher Notes — differentiation reminders, common misconceptions, AFL moves, grouping, and quick contingency plans.`;
 
-export function buildTeacherPackageJsonContract(
+export function buildTeacherPackageLabeledBlocksContract(
   sections: readonly TeacherPackageSectionKey[],
 ): string {
-  const lines = sections.map((k) => `  ${JSON.stringify(k)}`).join("\n");
+  const blocks = sections
+    .map((key) => {
+      const [start, end] = TEACHER_PACKAGE_BLOCK_MARKERS[key];
+      return `For **${key}**, output exactly one block in this shape (the START and END lines must appear exactly as written, in UPPERCASE, on their own lines):\n${start}\n(your content here — detailed, classroom-ready)\n${end}`;
+    })
+    .join("\n\n");
+
   return `CRITICAL RESPONSE RULES (THIS REQUEST ONLY):
-- Reply with ONLY one valid JSON object. No markdown fences, no commentary before or after JSON.
-- Use EXACTLY these top-level string keys (same spelling and spacing), each with a long, detailed string value — and no other top-level keys:
-${lines}
-- Apply sections A–F from the system prompt only for keys you are outputting; ignore deliverable letters that were not requested.
-- Keep each value richly detailed but well organized with headings, numbered lists, and bullet lists inside the string.`;
+- Do NOT wrap the whole answer in a JSON object or markdown code fences.
+- Output plain text only. For each section listed below, use the exact START and END marker lines shown (uppercase, one marker per line), with all content for that section between them.
+- You may use headings, bullets, and numbered lists inside each section's content.
+- Output only the sections you are asked for in this request, in a sensible teaching order (typically: lesson plan → slides → worksheet → assessment → homework → teacher notes when all are requested).
+- If you truly cannot complete a requested section, still include its START/END pair with a short note inside explaining what is missing.
+
+${blocks}`;
 }
 
 export function buildDeepseekLessonSystemPrompt(
@@ -154,7 +166,7 @@ export function buildDeepseekLessonSystemPrompt(
 ): string {
   const core = `${DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE.trim()}
 
-${buildTeacherPackageJsonContract(sections)}`;
+${buildTeacherPackageLabeledBlocksContract(sections)}`;
   const extra = options?.curriculumFrameworkAddendum?.trim();
   if (!extra) return core;
   return `${core}

@@ -9,15 +9,16 @@ import { generateFluxSectionImages, formatFalError } from "@/lib/fal-flux-sectio
 import {
   normalizeGenerationSections,
   SOURCE_MATERIAL_MAX_CHARS,
+  TEACHER_PACKAGE_BLOCK_MARKERS,
   type LessonPlanGenerateBody,
   type LessonPlanInput,
-  type LessonPlanResult,
   type SectionImageMap,
   type TeacherPackageSectionKey,
   isValidCurriculumType,
   isValidGradeYear,
   isValidSubjectOption,
 } from "@/lib/lesson-plan";
+import { parseTeacherPackageResponse } from "@/lib/parse-teacher-package-response";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
@@ -51,72 +52,19 @@ function validateInput(input: LessonPlanInput): string | null {
   return null;
 }
 
-function extractJsonObject(text: string): string | null {
-  const first = text.indexOf("{");
-  const last = text.lastIndexOf("}");
-  if (first === -1 || last === -1 || last <= first) return null;
-  return text.slice(first, last + 1);
-}
-
-function parsePlan(
-  content: string,
-  sections: readonly TeacherPackageSectionKey[],
-): LessonPlanResult | null {
-  const jsonCandidate = extractJsonObject(content);
-  if (!jsonCandidate) return null;
-
-  try {
-    const parsed = JSON.parse(jsonCandidate) as Record<string, unknown>;
-    const result: LessonPlanResult = {};
-
-    for (const section of sections) {
-      const value = parsed[section];
-      if (typeof value === "string") {
-        if (value.trim().length === 0) return null;
-        result[section] = value.trim();
-        continue;
-      }
-      if (value === null || value === undefined) return null;
-      try {
-        const asJson = JSON.stringify(value, null, 2);
-        if (!asJson || asJson.trim().length === 0) return null;
-        result[section] = asJson;
-      } catch {
-        const asText = String(value);
-        if (!asText || asText.trim().length === 0) return null;
-        result[section] = asText;
-      }
-    }
-
-    return result;
-  } catch {
-    // Fallback for "almost JSON" responses: try per-key string extraction.
-    const result: LessonPlanResult = {};
-    try {
-      for (const section of sections) {
-        const escapedKey = section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const re = new RegExp(`\"${escapedKey}\"\\s*:\\s*(\"(?:\\\\.|[^\"\\\\])*\")`);
-        const m = jsonCandidate.match(re);
-        const rawStringLiteral = m?.[1];
-        if (!rawStringLiteral) return null;
-        const decoded = JSON.parse(rawStringLiteral) as unknown;
-        if (typeof decoded !== "string" || decoded.trim().length === 0) return null;
-        result[section] = decoded.trim();
-      }
-      return result;
-    } catch {
-      return null;
-    }
-  }
-}
-
 function buildMessages(
   input: LessonPlanInput,
   sections: readonly TeacherPackageSectionKey[],
   sourceMaterial: string | undefined,
   frameworkAddendum: string | null,
 ): DeepSeekMessage[] {
-  const keysList = sections.map((k) => JSON.stringify(k)).join(", ");
+  const sectionInstructions = sections
+    .map((key) => {
+      const [start, end] = TEACHER_PACKAGE_BLOCK_MARKERS[key];
+      return `- **${key}**: wrap the entire section between these two lines (exactly as written, uppercase, on their own lines):\n  ${start}\n  …your content…\n  ${end}`;
+    })
+    .join("\n\n");
+
   const chapterLine =
     input.chapter.trim().length > 0
       ? `- Chapter / unit: ${input.chapter.trim()}`
@@ -150,7 +98,9 @@ ${trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS)}
     {
       role: "user",
       content: `
-Use this class context. Produce ONLY these JSON fields (no others): ${keysList}
+Use this class context. Produce **only** the following teacher-package sections, each wrapped in its START/END marker lines as described (plain text — not JSON).
+
+${sectionInstructions}
 
 - Curriculum: ${input.curriculumType.trim()}
 - Grade / Year group: ${input.grade.trim()}
@@ -160,7 +110,7 @@ ${chapterLine}
 - Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}${frameworkUserLine}
 ${sourceBlock}
 
-Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested field must be classroom-ready (not placeholders).
+Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested section must be classroom-ready (not placeholders).
       `.trim(),
     },
   ];
@@ -246,13 +196,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const parsedPlan = parsePlan(content, sections);
-  if (!parsedPlan) {
-    return NextResponse.json(
-      { error: "Could not parse structured teacher package from DeepSeek response." },
-      { status: 502 },
-    );
-  }
+  console.log("[lesson-plan] DeepSeek raw response (full text):\n", content);
+
+  const { plan: parsedPlan, parseNotice, mode } = parseTeacherPackageResponse(content, sections);
+  console.log("[lesson-plan] Parsed teacher package mode:", mode);
 
   let sectionImages: SectionImageMap = {};
   let sectionImageErrors: Partial<Record<TeacherPackageSectionKey, string>> = {};
@@ -273,6 +220,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     lessonPlan: parsedPlan,
+    ...(parseNotice ? { parseNotice } : {}),
     ...(Object.keys(sectionImages).length > 0 ? { sectionImages } : {}),
     ...(Object.keys(sectionImageErrors).length > 0 ? { sectionImageErrors } : {}),
   });

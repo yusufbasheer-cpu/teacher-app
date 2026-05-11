@@ -78,6 +78,22 @@ export const LEGACY_LESSON_PLAN_SECTIONS = [
 export type TeacherPackageSectionKey = (typeof TEACHER_PACKAGE_SECTIONS)[number];
 export type LegacyLessonPlanSectionKey = (typeof LEGACY_LESSON_PLAN_SECTIONS)[number];
 
+/**
+ * Delimiter lines the model must use around each section (plain text, not JSON).
+ * Used by the DeepSeek prompt and by `parse-teacher-package-response.ts`.
+ */
+export const TEACHER_PACKAGE_BLOCK_MARKERS: Record<
+  TeacherPackageSectionKey,
+  readonly [start: string, end: string]
+> = {
+  "Full Lesson Plan": ["LESSON PLAN START", "LESSON PLAN END"],
+  "PPT Slide Content": ["PPT CONTENT START", "PPT CONTENT END"],
+  Worksheet: ["WORKSHEET START", "WORKSHEET END"],
+  "Assessment Questions": ["ASSESSMENT QUESTIONS START", "ASSESSMENT QUESTIONS END"],
+  "Homework Task": ["HOMEWORK TASK START", "HOMEWORK TASK END"],
+  "Teacher Notes": ["TEACHER NOTES START", "TEACHER NOTES END"],
+};
+
 /** Checkbox labels on the generator form (maps API JSON keys to user-facing copy). */
 export const GENERATION_CHECKBOX_LABELS: Record<TeacherPackageSectionKey, string> = {
   "Full Lesson Plan": "Lesson Plan",

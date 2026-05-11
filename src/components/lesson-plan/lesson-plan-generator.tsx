@@ -123,6 +123,7 @@ export function LessonPlanGenerator() {
   const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
   const [uploadExtractionError, setUploadExtractionError] = useState<string | null>(null);
 
+  const [parseNotice, setParseNotice] = useState<string | null>(null);
   const [pptThemeId, setPptThemeId] = useState<PptThemeId>(DEFAULT_PPT_THEME_ID);
 
   const extractedMaterialPreview = useMemo(
@@ -370,6 +371,7 @@ export function LessonPlanGenerator() {
     event.preventDefault();
     setError(null);
     setSuccessMessage(null);
+    setParseNotice(null);
     setLessonPlan(null);
     setSectionImages(null);
     setSectionImageErrors(null);
@@ -398,6 +400,7 @@ export function LessonPlanGenerator() {
       const data = (await response.json()) as {
         error?: string;
         lessonPlan?: LessonPlanResult;
+        parseNotice?: string;
         sectionImages?: SectionImageMap;
         sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
       };
@@ -411,6 +414,7 @@ export function LessonPlanGenerator() {
       }
 
       setLessonPlan(data.lessonPlan);
+      setParseNotice(typeof data.parseNotice === "string" && data.parseNotice.trim() ? data.parseNotice.trim() : null);
       setSectionImages(
         data.sectionImages && Object.keys(data.sectionImages).length > 0 ? data.sectionImages : null,
       );
@@ -426,6 +430,7 @@ export function LessonPlanGenerator() {
       const message =
         err instanceof Error ? err.message : "Unexpected error occurred.";
       setError(message);
+      setParseNotice(null);
     } finally {
       setLoading(false);
     }
@@ -869,6 +874,14 @@ export function LessonPlanGenerator() {
           </div>
         ) : (
           <div className="mt-6 space-y-5">
+            {parseNotice ? (
+              <p
+                role="status"
+                className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+              >
+                {parseNotice}
+              </p>
+            ) : null}
             <button
               type="button"
               onClick={onSaveLessonPlan}
