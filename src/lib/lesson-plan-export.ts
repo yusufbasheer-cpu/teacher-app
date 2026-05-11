@@ -4,11 +4,14 @@ import PptxGenJS from "pptxgenjs";
 import { TEACHER_PACKAGE_SECTIONS, type LessonPlanResult } from "@/lib/lesson-plan";
 
 const PPT_COLORS = {
-  blue: "1E40AF",
-  lightBlue: "DBEAFE",
+  blue: "1B3A6B",
+  lightBlue: "EAF1FB",
+  accent: "F5A623",
   white: "FFFFFF",
-  dark: "0F172A",
-  muted: "334155",
+  dark: "333333",
+  muted: "5B6472",
+  blueMid: "234A82",
+  blueDeep: "102746",
 };
 
 export function sanitizeExportFileName(value: string) {
@@ -148,6 +151,108 @@ async function fetchImageUrlAsDataUri(url: string): Promise<string> {
   return `data:${mime};base64,${buf.toString("base64")}`;
 }
 
+function stripMarkdownText(input: string): string {
+  const cleaned = input
+    .replace(/\r\n/g, "\n")
+    .replace(/^#{1,6}\s*/gm, "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/~~([^~]+)~~/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^\s*[-*+]\s+/gm, "• ")
+    .replace(/^\s*\d+\.\s+/gm, "• ")
+    .replace(/[|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  // Extra hard strip for symbols user explicitly flagged.
+  return cleaned.replace(/[*#_]/g, "").trim();
+}
+
+function cleanSlideTitle(title: string): string {
+  return stripMarkdownText(title).slice(0, 120) || "Slide";
+}
+
+function toBulletLines(body: string): string[] {
+  const plain = stripMarkdownText(body);
+  if (!plain) return ["(No content provided)"];
+  const rawLines = plain
+    .split(/\n|(?<=\.)\s+(?=[A-Z0-9])/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const lines = rawLines.length > 0 ? rawLines : [plain];
+  return lines.slice(0, 8);
+}
+
+function toAccentRuns(line: string): Array<{ text: string; options: Record<string, unknown> }> {
+  const normalized = line.replace(/^•\s*/, "").trim();
+  if (!normalized) {
+    return [{ text: "• ", options: { color: PPT_COLORS.dark, fontFace: "Calibri", fontSize: 22 } }];
+  }
+
+  const colon = normalized.indexOf(":");
+  if (colon > 1 && colon < 42) {
+    return [
+      {
+        text: "• ",
+        options: { color: PPT_COLORS.dark, fontFace: "Calibri", fontSize: 22 },
+      },
+      {
+        text: `${normalized.slice(0, colon)}: `,
+        options: { color: PPT_COLORS.accent, bold: true, fontFace: "Calibri", fontSize: 22 },
+      },
+      {
+        text: normalized.slice(colon + 1).trim(),
+        options: { color: PPT_COLORS.dark, fontFace: "Calibri", fontSize: 22 },
+      },
+    ];
+  }
+
+  return [
+    {
+      text: `• ${normalized}`,
+      options: { color: PPT_COLORS.dark, fontFace: "Calibri", fontSize: 22 },
+    },
+  ];
+}
+
+function addSlideFooter(
+  slide: PptxGenJS.Slide,
+  subject: string,
+  grade: string,
+  slideNumberText: string,
+) {
+  slide.addShape(PptxGenJS.ShapeType.line, {
+    x: 0.6,
+    y: 7.0,
+    w: 12.1,
+    h: 0,
+    line: { color: "DDE6F5", pt: 1 },
+  });
+  slide.addText(`${subject} · ${grade}`, {
+    x: 0.7,
+    y: 7.08,
+    w: 7,
+    h: 0.24,
+    fontSize: 16,
+    color: PPT_COLORS.muted,
+    fontFace: "Calibri",
+  });
+  slide.addText(slideNumberText, {
+    x: 10.9,
+    y: 7.08,
+    w: 1.8,
+    h: 0.24,
+    fontSize: 16,
+    color: PPT_COLORS.muted,
+    fontFace: "Calibri",
+    align: "right",
+  });
+}
+
 export async function buildPptxFromPptContent(params: {
   subject: string;
   grade: string;
@@ -167,60 +272,71 @@ export async function buildPptxFromPptContent(params: {
   const slideImageUrls = params.slideImageUrls ?? null;
 
   const titleSlide = pptx.addSlide();
-  titleSlide.background = { color: PPT_COLORS.white };
+  titleSlide.background = { color: PPT_COLORS.blueDeep };
   titleSlide.addShape(pptx.ShapeType.rect, {
     x: 0,
     y: 0,
     w: 13.333,
-    h: 2.1,
-    fill: { color: PPT_COLORS.blue },
-    line: { color: PPT_COLORS.blue },
+    h: 7.5,
+    fill: { color: PPT_COLORS.blueMid, transparency: 12 },
+    line: { color: PPT_COLORS.blueMid, transparency: 100 },
   });
-  titleSlide.addText("EduPlan AI", {
-    x: 0.75,
-    y: 0.55,
-    w: 11.8,
-    h: 0.45,
-    fontSize: 14,
-    color: PPT_COLORS.white,
-    fontFace: "Calibri",
+  titleSlide.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: 0,
+    w: 13.333,
+    h: 3.1,
+    fill: { color: PPT_COLORS.blue, transparency: 15 },
+    line: { color: PPT_COLORS.blue, transparency: 100 },
   });
-  titleSlide.addText("PPT slide content", {
-    x: 0.75,
-    y: 1.05,
-    w: 11.8,
-    h: 0.85,
-    fontSize: 30,
+  titleSlide.addShape(pptx.ShapeType.line, {
+    x: 2.05,
+    y: 4.72,
+    w: 9.2,
+    h: 0,
+    line: { color: PPT_COLORS.accent, pt: 2.5 },
+  });
+  titleSlide.addText(cleanSlideTitle(params.topic), {
+    x: 1.15,
+    y: 2.2,
+    w: 11.05,
+    h: 1.1,
+    fontSize: 40,
     bold: true,
     color: PPT_COLORS.white,
     fontFace: "Calibri",
+    align: "center",
+    fit: "shrink",
   });
-  titleSlide.addText(params.topic, {
-    x: 0.75,
-    y: 2.45,
-    w: 11.8,
+  titleSlide.addText("Classroom Presentation", {
+    x: 1.15,
+    y: 3.5,
+    w: 11.05,
     h: 0.55,
-    fontSize: 20,
-    color: PPT_COLORS.dark,
+    fontSize: 18,
+    color: "E2ECFF",
     fontFace: "Calibri",
+    align: "center",
   });
-  titleSlide.addText(`${params.subject}  ·  ${params.grade}`, {
-    x: 0.75,
-    y: 3.15,
-    w: 11.8,
+  titleSlide.addText(`${params.subject} · ${params.grade}`, {
+    x: 1.15,
+    y: 6.68,
+    w: 11.05,
     h: 0.35,
-    fontSize: 13,
-    color: PPT_COLORS.muted,
+    fontSize: 17,
+    color: PPT_COLORS.white,
     fontFace: "Calibri",
+    align: "center",
   });
-  titleSlide.addText(`${slides.length} slide(s) in this deck`, {
-    x: 0.75,
-    y: 3.85,
-    w: 11.5,
-    h: 0.35,
-    fontSize: 12,
-    color: PPT_COLORS.dark,
+  titleSlide.addText(`Slide 1`, {
+    x: 10.95,
+    y: 7.08,
+    w: 1.7,
+    h: 0.24,
+    fontSize: 16,
+    color: "D7E7FF",
     fontFace: "Calibri",
+    align: "right",
   });
 
   for (let slideIdx = 0; slideIdx < slides.length; slideIdx++) {
@@ -239,85 +355,136 @@ export async function buildPptxFromPptContent(params: {
     }
 
     const hasImage = Boolean(imageDataUri);
-    const textPanelW = hasImage ? 6.95 : 12.05;
-    const textInnerW = hasImage ? 6.55 : 11.5;
+    const titleText = cleanSlideTitle(title);
+    const bulletLines = toBulletLines(body);
+    const textStartX = 0.95;
+    const textWidth = hasImage ? 6.35 : 11.5;
 
     slide.addShape(pptx.ShapeType.rect, {
       x: 0,
       y: 0,
       w: 13.333,
-      h: 0.95,
+      h: 0.38,
       fill: { color: PPT_COLORS.blue },
       line: { color: PPT_COLORS.blue },
     });
-
-    slide.addText(title, {
-      x: 0.6,
-      y: 0.28,
-      w: 12.2,
-      h: 0.5,
-      fontSize: 22,
-      bold: true,
-      color: PPT_COLORS.white,
-      fontFace: "Calibri",
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0.02,
+      y: 0.55,
+      w: 0.18,
+      h: 5.95,
+      fill: { color: PPT_COLORS.accent, transparency: 8 },
+      line: { color: PPT_COLORS.accent, transparency: 100 },
     });
 
-    slide.addText(`${params.subject} | ${params.grade} | ${params.topic}`, {
-      x: 0.65,
-      y: 1.08,
-      w: 12,
-      h: 0.28,
-      fontSize: 11,
+    slide.addText(titleText, {
+      x: textStartX,
+      y: 0.66,
+      w: hasImage ? 7.0 : 11.2,
+      h: 0.82,
+      fontSize: 38,
+      bold: true,
+      color: PPT_COLORS.blue,
+      fontFace: "Calibri",
+      fit: "shrink",
+    });
+    slide.addShape(pptx.ShapeType.line, {
+      x: textStartX,
+      y: 1.58,
+      w: hasImage ? 6.95 : 10.7,
+      h: 0,
+      line: { color: PPT_COLORS.accent, pt: 2.25 },
+    });
+
+    slide.addText(`${params.subject} · ${params.grade}`, {
+      x: textStartX,
+      y: 1.72,
+      w: textWidth,
+      h: 0.3,
+      fontSize: 17,
       color: PPT_COLORS.muted,
       fontFace: "Calibri",
     });
 
-    slide.addShape(pptx.ShapeType.roundRect, {
-      x: 0.65,
-      y: 1.55,
-      w: textPanelW,
-      h: 5.45,
-      rectRadius: 0.08,
-      fill: { color: PPT_COLORS.lightBlue, transparency: 76 },
-      line: { color: PPT_COLORS.lightBlue, pt: 1 },
-    });
-
-    slide.addText(body, {
-      x: 0.9,
-      y: 1.82,
-      w: textInnerW,
-      h: 5,
-      fontSize: 15,
-      color: PPT_COLORS.dark,
-      valign: "top",
-      fit: "shrink",
-      breakLine: true,
-      fontFace: "Calibri",
-    });
+    let lineY = 2.18;
+    for (const line of bulletLines) {
+      const runs = toAccentRuns(line);
+      slide.addText(runs, {
+        x: textStartX,
+        y: lineY,
+        w: textWidth,
+        h: 0.58,
+        valign: "top",
+        fit: "shrink",
+        breakLine: true,
+      });
+      lineY += 0.64;
+      if (lineY > 6.45) break;
+    }
 
     if (imageDataUri) {
+      slide.addShape(pptx.ShapeType.roundRect, {
+        x: 7.72,
+        y: 1.78,
+        w: 4.95,
+        h: 4.9,
+        rectRadius: 0.06,
+        fill: { color: PPT_COLORS.lightBlue, transparency: 20 },
+        line: { color: "D0DEFA", pt: 1 },
+      });
       slide.addImage({
         data: imageDataUri,
-        x: 7.78,
-        y: 1.55,
-        w: 4.88,
-        h: 5.35,
+        x: 7.88,
+        y: 1.92,
+        w: 4.72,
+        h: 4.62,
         rounding: true,
         altText: "AI-generated illustration for this slide",
       });
     }
 
-    slide.addText("EduPlan AI", {
-      x: 0.65,
-      y: 7.18,
-      w: 12,
-      h: 0.2,
-      fontSize: 9,
-      color: PPT_COLORS.muted,
-      align: "right",
-      fontFace: "Calibri",
-    });
+    addSlideFooter(slide, params.subject, params.grade, `Slide ${slideIdx + 2}`);
   }
+
+  const closing = pptx.addSlide();
+  closing.background = { color: PPT_COLORS.blueDeep };
+  closing.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: 0,
+    w: 13.333,
+    h: 7.5,
+    fill: { color: PPT_COLORS.blue, transparency: 24 },
+    line: { color: PPT_COLORS.blue, transparency: 100 },
+  });
+  closing.addShape(pptx.ShapeType.line, {
+    x: 3.2,
+    y: 4.08,
+    w: 6.9,
+    h: 0,
+    line: { color: PPT_COLORS.accent, pt: 2.5 },
+  });
+  closing.addText("Thank You", {
+    x: 1.8,
+    y: 2.35,
+    w: 9.8,
+    h: 0.95,
+    fontSize: 40,
+    bold: true,
+    color: PPT_COLORS.white,
+    fontFace: "Calibri",
+    align: "center",
+  });
+  closing.addText("Questions and recap discussion", {
+    x: 2.0,
+    y: 3.25,
+    w: 9.4,
+    h: 0.45,
+    fontSize: 18,
+    color: "E2ECFF",
+    fontFace: "Calibri",
+    align: "center",
+  });
+  addSlideFooter(closing, params.subject, params.grade, `Slide ${slides.length + 2}`);
 
   return (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
 }
