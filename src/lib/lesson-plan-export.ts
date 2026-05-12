@@ -4,7 +4,6 @@ import PptxGenJS from "pptxgenjs";
 import {
   buildLessonPlanContextFromResult,
   buildStructuredLessonSlides,
-  PPT_IMAGE_SLIDE_INDEX_SET,
   type StructuredLessonSlideModel,
 } from "@/lib/ppt-structured-lesson";
 import { formatDocxAflAppendix, sanitizeAflSelections, type AflSelectionsPayload } from "@/lib/afl-tools";
@@ -410,37 +409,6 @@ function addSlideFooter(
   });
 }
 
-function addAflSuggestionBox(
-  pptx: PptxGenJS,
-  slide: PptxGenJS.Slide,
-  theme: PptRenderTheme,
-  text: string | undefined,
-) {
-  const t = text?.trim();
-  if (!t) return;
-  const bx = IN_SLIDE_W - IN_MARGIN - 3.58;
-  const by = IN_SLIDE_H - IN_MARGIN - PPT_FOOTER_BLOCK - 0.92;
-  slide.addShape(pptx.ShapeType.rect, {
-    x: bx,
-    y: by,
-    w: 3.48,
-    h: 0.78,
-    fill: { color: theme.imagePanelFill, transparency: 12 },
-    line: { color: theme.titleUnderline, pt: 1 },
-  });
-  slide.addText(`AFL suggestion: ${t}`, {
-    x: bx + 0.1,
-    y: by + 0.06,
-    w: 3.28,
-    h: 0.64,
-    fontSize: 10,
-    color: theme.bodyText,
-    fontFace: "Calibri",
-    valign: "top",
-    fit: "shrink",
-  });
-}
-
 function normalizeDeckImageUrls(
   deckLen: number,
   urls: (string | null)[] | null | undefined,
@@ -671,7 +639,6 @@ export async function buildPptxFromPptContent(params: {
   }
 
   titleSlide.addNotes(titleModel.speakerNotes);
-  addAflSuggestionBox(pptx, titleSlide, theme, titleModel.aflCallout);
   addSlideFooter(pptx, titleSlide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
   slideNumber += 1;
 
@@ -679,7 +646,7 @@ export async function buildPptxFromPptContent(params: {
     const model = deck[slideIdx]!;
     const remoteUrl = slideUrls[slideIdx] ?? null;
     let imageDataUri: string | null = null;
-    if (remoteUrl && PPT_IMAGE_SLIDE_INDEX_SET.has(slideIdx)) {
+    if (remoteUrl && model.includeImageSlot) {
       try {
         imageDataUri = await fetchImageUrlAsDataUri(remoteUrl);
       } catch (e) {
@@ -687,7 +654,7 @@ export async function buildPptxFromPptContent(params: {
       }
     }
 
-    const wantSlot = PPT_IMAGE_SLIDE_INDEX_SET.has(slideIdx);
+    const wantSlot = model.includeImageSlot;
     const reserveImageColumn = wantSlot && Boolean(remoteUrl);
     const showPlaceholder = wantSlot && Boolean(remoteUrl) && !imageDataUri;
 
@@ -812,10 +779,6 @@ export async function buildPptxFromPptContent(params: {
           ? `${model.speakerNotes}\n\n(Continued slide — same section.)`
           : model.speakerNotes;
       slide.addNotes(notes);
-      if (chunkIdx === 0) {
-        addAflSuggestionBox(pptx, slide, theme, model.aflCallout);
-      }
-
       addSlideFooter(pptx, slide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
       slideNumber += 1;
     }

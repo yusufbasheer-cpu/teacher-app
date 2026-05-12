@@ -38,7 +38,12 @@ export type PptSlideImageMeta = {
   curriculumFramework?: string;
 };
 
-export type LessonPptImageSlot = "title" | "main_teaching" | "group_activity" | "plenary";
+export type LessonPptImageSlot =
+  | "title"
+  | "picture_in_time"
+  | "main_teaching"
+  | "group_activity"
+  | "plenary";
 
 export type LessonPptImageGenerationSpec = {
   slot: LessonPptImageSlot;
@@ -62,6 +67,7 @@ export function buildLessonPptFluxPrompt(
 
   const slotIntro: Record<LessonPptImageSlot, string> = {
     title: `Flat design educational hero illustration for opening slide: subject "${subject}", grade ${grade}, topic "${topic}". Show iconic symbols and diagrams that instantly signal this unit (no readable words in the artwork).`,
+    picture_in_time: `Flat design educational "picture in time" illustration for "${topic}" in ${subject} (${grade}): show two clear sequential panels OR a before-and-after split (left vs right) suggesting change over time, process stages, or contrasting states — purely symbolic icons and diagrams (no faces, no readable words). The image must visually match the lesson moment described in the cues.`,
     main_teaching: `Flat design educational diagram for main teaching of "${topic}" in ${subject} (${grade}). Show clear instructional flow: stages, arrows, labeled-style shapes as icons only, schematic relationships (e.g. process, structure, or mechanism appropriate to the topic).`,
     group_activity: `Flat design educational illustration for collaborative work on "${topic}" in ${subject}: shared task materials, icons, and cooperative workflow symbols only (no people, no faces).`,
     plenary: `Flat design educational summary illustration for lesson closure on "${topic}" in ${subject}: recap icons, checklist motifs, reflection prompts as abstract symbols only (no text in image).`,
@@ -80,11 +86,11 @@ export function buildLessonPptFluxPrompt(
 }
 
 function imageSizeForSlot(slot: LessonPptImageSlot): "landscape_16_9" | "square_hd" {
-  if (slot === "group_activity") return "square_hd";
+  if (slot === "group_activity" || slot === "picture_in_time") return "square_hd";
   return "landscape_16_9";
 }
 
-/** Generates exactly four images (title, main teaching, group activity, plenary), in that order. */
+/** Generates FLUX images for lesson PPT (4 slots by default; 5 when Picture-in-Time is included in specs). */
 export async function generateLessonPptSlideImages(
   meta: PptSlideImageMeta,
   specs: LessonPptImageGenerationSpec[],

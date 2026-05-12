@@ -145,7 +145,7 @@ ${sourceBlock}
 ${aflPromptBlock}
 ${arabicBlock}
 
-Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested section must be classroom-ready (not placeholders).
+Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested section must be classroom-ready (not placeholders). **PPT Slide Content** must read as finished on-screen text for learners (no teacher coaching phrases in the slide body).
       `.trim(),
     },
   ];
@@ -212,9 +212,7 @@ export async function POST(req: Request) {
 
   const aflSelections = sanitizeAflSelections(body.aflSelections);
   const aflFormatted = formatAflForAiPrompt(aflSelections);
-  const aflPromptBlock = aflFormatted
-    ? `\n\n### Teacher-selected AFL tools (mandatory integration)\n${aflFormatted}`
-    : "";
+  const aflPromptBlock = aflFormatted ? `\n\n${aflFormatted}` : "";
 
   const orderedSections = TEACHER_PACKAGE_SECTIONS.filter((k) => sections.includes(k));
   const mergedPlan = emptyLessonShell(sections);

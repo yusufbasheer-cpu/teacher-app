@@ -86,17 +86,12 @@ The lesson plan must include:
 - Student grouping strategy
 - Behavioral engagement ideas
 
-15. PPT Generation Rules
-For PowerPoint slides:
-- Create visually engaging slide titles
-- Add slide-by-slide teacher notes
-- Suggest icons, diagrams, and image ideas
-- Include animations suggestions
-- Keep text minimal and student-friendly
-- Include interactive questions on slides
-- Add quiz slides
-- Add recap slides
-- Include differentiated activities
+15. PPT Slide Content (student-facing — CRITICAL)
+The **PPT Slide Content** section is projected **to students**. It must be **100% learner-ready text**: finished questions, stems, sorting tasks, brainstorm lists already filled with topic-specific examples, quizzes with options and correct answers, exit tickets with blank lines described (“Write your answer here”), etc.
+- **Forbidden on slides:** phrases that coach the teacher (“Pose…”, “Ask students to…”, “Teacher should…”, “Run a think-pair-share”, “Use wait time”) unless rewritten as the **exact** line you will show or say.
+- **Allowed:** brief slide titles, bullet prompts, visible MCQ options, visible correct answer when appropriate, timers, “Pair and discuss: [exact question]”.
+- **Speaker / presenter notes** (if you include them inside PPT content, clearly under a "Speaker notes:" subheading per slide) may hold timing — not the main bullet area.
+- Suggest **where** an image belongs by naming what it shows; the app may generate images for key slides automatically.
 
 16. AI Teaching Enhancements
 Automatically generate:
@@ -122,7 +117,7 @@ Adjust pedagogy depending on:
 
 18. Tone & Output Quality
 - Professional
-- Teacher-friendly
+- **Student-facing text in PPT sections** must read like a real deck, not a lesson plan rubric
 - Practical for real classroom use
 - Clear formatting
 - Ready-to-use content
@@ -133,12 +128,13 @@ Adjust pedagogy depending on:
 - Maintain curriculum alignment
 
 20. Deliverable reference (map content quality to the sections you are asked to output)
-A. Full Lesson Plan — integrate items 1–14 above using clear subheadings and actionable steps; embed mini timings where helpful.
-B. PPT Slide Content — slide-by-slide outline with titles, concise bullets, speaker notes, visuals/icons, animations, interactive and quiz slides.
+A. **Full Lesson Plan** — integrate items 1–14 above using clear subheadings; include **actionable timing** and teacher moves here (this document is mainly for the teacher).
+B. **PPT Slide Content** — slide-by-slide **titles and visible body text only** as students will see it; each AFL activity must already contain the **filled-in** task, not a reminder to invent it later.
 C. Worksheet — print-ready student-facing tasks (include space cues like lines or numbered response areas described in text).
 D. Assessment Questions — formative and summative mix: MCQs, short answers, HOTS, oral prompts, exit ticket, and a simple rubric or mark scheme.
 E. Homework Task — aligned extended task with success criteria and expected time.
-F. Teacher Notes — differentiation reminders, common misconceptions, AFL moves, grouping, and quick contingency plans.`;
+F. **Teacher Notes** — differentiation, misconceptions, grouping, contingencies, and **how** to run activities (teacher-only detail belongs here, not on PPT bullets).
+`.trim();
 
 /** When the teacher selects Arabic as the subject (تعليم اللغة العربية). */
 export const ARABIC_LANGUAGE_SUBJECT_ADDENDUM = `

@@ -1,12 +1,12 @@
-import type { AflPhaseId, AflSelectionsPayload } from "@/lib/afl-tools";
-import { AFL_PHASE_IDS, distributeIds, formatToolsBlockForSlide, getAflToolById } from "@/lib/afl-tools";
+import type { AflSelectionsPayload } from "@/lib/afl-tools";
+import { AFL_PHASE_IDS, PICTURE_IN_TIME_AFL_TOOL_ID } from "@/lib/afl-tools";
 import {
   type LessonPlanResult,
   getPptSourceLessonText,
   getPptSourceSlideOutline,
 } from "@/lib/lesson-plan";
 
-/** 0-based slide indices that may include one AI image each (max 4 per deck). */
+/** Default slide indices that receive FLUX images when no Picture-in-Time slot is used. */
 export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([0, 4, 6, 12]);
 
 export type StructuredLessonSlideModel = {
@@ -18,8 +18,6 @@ export type StructuredLessonSlideModel = {
 };
 
 const BULLET_MAX_LINES = 14;
-/** Extra lines when AFL tool blocks are appended so lesson bullets are not truncated away. */
-const BULLET_MAX_LINES_WITH_AFL = 24;
 const SECTION_MAX_CHARS = 3200;
 
 function truncateBody(s: string, maxLines: number): string {
@@ -261,91 +259,22 @@ function mergeBodies(primary: string, secondary: string, topicLine: string): str
   return polishBody(topicLine, 800);
 }
 
-const AFL_GENERAL =
-  "Rotate: cold calling, mini whiteboards, think-pair-share, thumbs up/down, peer assessment, hinge questions, and exit tickets.";
-
-const AFL_GENERAL_AR =
-  "تنويع: أسئلة عشوائية، السبورة الصغيرة، فكر-زاوج-شارك، إبهام لأعلى/أسفل، تقويم الأقران، أسئلة مفصلية، وبطاقة خروج.";
-
 function isArabicLanguageSubject(subject: string): boolean {
   return subject.trim() === "Arabic";
 }
 
-function buildNotes(topic: string, phase: string, aflCallout?: string, isArabic?: boolean): string {
+function buildNotes(topic: string, phase: string, _unused?: string, isArabic?: boolean): string {
   if (isArabic) {
     const core = phase.trim() || `قيادة حصة حول «${topic}» مع فحوص واضحة للفهم.`;
-    const box = aflCallout ? `\n\nمقترح للتقويم في هذه الشريحة: ${aflCallout}` : "";
-    return `${core}${box}\n\n${AFL_GENERAL_AR}\n\nاضبط التوقيت والمجموعات بما يتوافق مع خطة الدرس الكاملة المحفوظة.`;
+    return `${core}\n\nمحتوى الشريحة للطلاب؛ راجع خطة الدرس الكاملة للتوقيت والتنظيم.`;
   }
   const core = phase.trim() || `Facilitate ${topic} with clear checks for understanding.`;
-  const box = aflCallout ? `\n\nSuggested AFL on this slide: ${aflCallout}` : "";
-  return `${core}${box}\n\nBroader AFL toolkit: ${AFL_GENERAL}\n\nAlign timing and grouping with your saved Full Lesson Plan.`;
+  return `${core}\n\nSlide body is student-facing; use the Full Lesson Plan for pacing and grouping.`;
 }
 
 function aflPayloadHasTools(afl: AflSelectionsPayload | undefined): boolean {
   if (!afl) return false;
   return AFL_PHASE_IDS.some((p) => (afl[p]?.length ?? 0) > 0);
-}
-
-function appendAflToSlideBody(
-  slide: StructuredLessonSlideModel,
-  phase: AflPhaseId,
-  ids: string[] | undefined,
-) {
-  const block = formatToolsBlockForSlide(phase, ids);
-  if (!block) return;
-  const base = (slide.body ?? "").trim();
-  const merged = `${base}${block}`.trim();
-  const polished = polishBody(merged, SECTION_MAX_CHARS + 800, BULLET_MAX_LINES_WITH_AFL);
-  slide.body = polished || merged.slice(0, SECTION_MAX_CHARS + 800).trim() || base;
-}
-
-/**
- * Map selected tools onto the 13-slide deck (indices):
- * 0 title, 1 objectives, 2 starter, 3 prior/entry, 4–7 main family, 8 AFL/feedback,
- * 9 mini plenary, 10 exit, 11 homework, 12 plenary.
- */
-function applyAflToolInjections(slides: StructuredLessonSlideModel[], afl: AflSelectionsPayload | undefined) {
-  if (!aflPayloadHasTools(afl) || !afl) return;
-
-  const append = (slideIndex: number, phase: AflPhaseId, ids?: string[]) => {
-    const slide = slides[slideIndex];
-    if (!slide || !ids?.length) return;
-    appendAflToSlideBody(slide, phase, ids);
-  };
-
-  // Starter tools → Starter slide
-  append(2, "starter", afl.starter);
-  // Making connections → prior/entry; short reminder on first main teaching slide
-  append(3, "connections", afl.connections);
-  const connIds = afl.connections;
-  if (connIds?.length) {
-    const mainSlide = slides[4];
-    if (mainSlide) {
-      const labels = connIds
-        .map((id) => getAflToolById(id)?.label)
-        .filter((x): x is string => Boolean(x && x.trim()));
-      if (labels.length) {
-        const reminder = `\n\n— Making connections —\n${labels.map((l) => `• ${l}`).join("\n")}\n(See Prior Knowledge slide for how to use each tool.)`;
-        const merged = `${(mainSlide.body ?? "").trim()}${reminder}`.trim();
-        mainSlide.body =
-          polishBody(merged, SECTION_MAX_CHARS + 600, BULLET_MAX_LINES_WITH_AFL) ||
-          merged.slice(0, SECTION_MAX_CHARS + 600).trim();
-      }
-    }
-  }
-
-  const mainIds = afl.main ?? [];
-  if (mainIds.length > 0) {
-    const parts = distributeIds(mainIds, 5);
-    const mainSlideIndices = [4, 5, 6, 7, 9];
-    parts.forEach((chunk, i) => append(mainSlideIndices[i]!, "main", chunk));
-  }
-
-  append(8, "feedback", afl.feedback);
-  // Extended-task picks → Homework slide
-  append(11, "extended", afl.extended);
-  append(12, "plenary", afl.plenary);
 }
 
 function applyArabicFullPlanBodyFallback(
@@ -392,7 +321,7 @@ export type StructuredLessonPptContext = {
   fullLessonPlan?: string;
   pptContent?: string;
   homeworkTask?: string;
-  /** Teacher-selected AFL tools to append to matching slide bodies. */
+  /** Teacher-selected AFL tools (e.g. Picture in Time) — used for image slots and logging, not for generic catalogue text on slides. */
   aflSelections?: AflSelectionsPayload;
 };
 
@@ -455,16 +384,11 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
         plenary: "Plenary & Reflection",
       };
 
-  const pick = (
-    kind: keyof typeof extractors,
-    pptHints: string[],
-    topicFallback: string,
-    afl?: string,
-  ) => {
+  const pick = (kind: keyof typeof extractors, pptHints: string[], topicFallback: string) => {
     const fromPlan = plan ? extractFromFullPlan(plan, kind) : "";
     const fromPpt = ppt ? extractFromPptContent(ppt, pptHints) : "";
     const body = mergeBodies(fromPlan, fromPpt, `${contextAnchor}\n${topicFallback}`);
-    return { body, notes: buildNotes(topic, fromPlan || fromPpt, afl, isAr), afl };
+    return { body, notes: buildNotes(topic, fromPlan || fromPpt, undefined, isAr) };
   };
 
   const slides: StructuredLessonSlideModel[] = [];
@@ -476,11 +400,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
       ? [`المادة: ${subj}`, `الصف: ${gr}`, `الموضوع: ${topic}`, `المعلم: ${teacher}`].join("\n")
       : [`Subject: ${subj}`, `Grade: ${gr}`, `Topic: ${topic}`, `Teacher: ${teacher}`].join("\n"),
     speakerNotes: isAr
-      ? `رحب بالطلاب في موضوع «${topic}» لمادة ${subj}.\n\nتقويم سريع قبل الأهداف: إظهار اليد أو خريطة ذهنية لدقيقة واحدة حول «${topic}».\n\n${AFL_GENERAL_AR}`
-      : `Welcome learners to ${topic} in ${subj}.\n\nAFL: quick prior scan — show of hands or one-minute mind-map on "${topic}" before objectives.\n\n${AFL_GENERAL}`,
-    aflCallout: isAr
-      ? "مسح سريع: إبهام لأعلى إن سمعت بهذا الموضوع من قبل."
-      : "Prior scan: thumbs up/down if you have heard of this topic before.",
+      ? `افتتاحية الدرس: رحب بالطلاب في موضوع «${topic}» لمادة ${subj}.`
+      : `Opening: welcome learners to ${topic} in ${subj}.`,
     includeImageSlot: true,
   });
 
@@ -490,8 +411,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ["learning objectives", "objectives", "الأهداف", "أهداف"],
     isAr
       ? `صِغ أهدافًا ذكية وقابلة للقياس لموضوع «${topic}».`
-      : `State SMART objectives for ${topic}.`,
-    isAr ? "سبورة صغيرة: كلمة مفتاحية لكل هدف." : "Mini whiteboard: one keyword per objective.",
+      : `List 3–5 measurable “I can…” objectives learners will see for ${topic}.`,
   );
   const objBody = mergeBodies(
     lo,
@@ -504,7 +424,6 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     slideTitle: T.objectives,
     body: objBody,
     speakerNotes: objPick.notes,
-    aflCallout: isAr ? "سبورة صغيرة: يكتب الطلاب مؤشر نجاح واحد." : "Mini whiteboard: students write one success indicator.",
     includeImageSlot: false,
   });
 
@@ -512,43 +431,39 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "starter",
     ["starter", "hook", "engage", "التمهيد", "استهلال"],
     isAr
-      ? `تمهيد لموضوع «${topic}»: سؤال مثير أو محفز قصير.`
-      : `Starter hook for ${topic}: puzzling question or short stimulus.`,
-    isAr ? "فكر-زاوج-شارك" : "Think-pair-share",
+      ? `تمهيد لموضوع «${topic}»: سؤال واحد يظهر على الشريحة + مهمة قصيرة للطلاب.`
+      : `Starter for ${topic}: one hook question on-slide + a 2–3 minute task students can start immediately.`,
   );
   slides.push({
     slideTitle: T.starter,
     body: sStarter.body,
     speakerNotes: sStarter.notes,
-    aflCallout: isAr ? "فكر-زاوج-شارك بعد التمهيد." : "Think–pair–share after the hook.",
     includeImageSlot: false,
   });
 
   const sPrior = pick(
     "prior",
     ["prior", "entry", "diagnostic", "قبلي", "سابق"],
-    isAr ? `أسئلة عن المعرفة السابقة بخصوص «${topic}».` : `Prior-knowledge questions about ${topic}.`,
-    isAr ? "أسئلة عشوائية" : "Cold calling",
+    isAr
+      ? `أسئلة قبلية بخصوص «${topic}» مع خيارات أو مساحة إجابة للطلاب.`
+      : `Prior-knowledge check for ${topic}: printed/displayed questions with answer frames.`,
   );
   slides.push({
     slideTitle: T.prior,
     body: sPrior.body,
     speakerNotes: sPrior.notes,
-    aflCallout: isAr ? "أسئلة عشوائية مع وقت انتظار بعد كل سؤال." : "Cold calling with wait time after each question.",
     includeImageSlot: false,
   });
 
   const sMain = pick(
     "main",
     ["main teaching", "explanation", "i do", "شرح", "عرض"],
-    isAr ? `تسلسل شرح خطوة بخطوة لموضوع «${topic}».` : `Step-by-step teaching sequence for ${topic}.`,
-    isAr ? "أسئلة عشوائية وفحوص" : "Cold calling + checks",
+    isAr ? `شرح «${topic}» على الشريحة: خطوات مرقمة + أمثلة جاهزة للطلاب.` : `Main teaching for ${topic}: numbered steps + worked examples on-slide.`,
   );
   slides.push({
     slideTitle: T.main,
     body: sMain.body,
     speakerNotes: sMain.notes,
-    aflCallout: isAr ? "استخدم أسئلة مفصلية كل 3–5 دقائق." : "Use hinge questions every 3–5 minutes.",
     includeImageSlot: true,
   });
 
@@ -556,15 +471,13 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "guided",
     ["guided", "we do", "مرشد", "تطبيق"],
     isAr
-      ? `تطبيق مرشد لموضوع «${topic}» — حل نموذجي معًا.`
-      : `Guided practice for ${topic} — work a sample together.`,
-    isAr ? "تقويم الأقران" : "Peer assessment",
+      ? `تطبيق مرشد لموضوع «${topic}»: مسألة واحدة + خطوات حل تظهر للطلاب.`
+      : `Guided practice for ${topic}: one task + solution steps visible to learners.`,
   );
   slides.push({
     slideTitle: T.guided,
     body: sGuided.body,
     speakerNotes: sGuided.notes,
-    aflCallout: isAr ? "مراجعة الأقران لأول خطوة حل." : "Peer check of first solution step.",
     includeImageSlot: false,
   });
 
@@ -572,79 +485,67 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "group",
     ["group", "collaborative", "ccl", "جماعي", "تعاوني"],
     isAr
-      ? `مهمة جماعية حول «${topic}» بأدوار واضحة ومنتج نهائي.`
-      : `Collaborative task on ${topic} with clear roles and a product.`,
-    isAr ? "فكر-زاوج-شارك" : "Think-pair-share",
+      ? `مهمة جماعية حول «${topic}»: التعليمات والجدول أو المنتج المطلوب ظاهرة للطلاب.`
+      : `Group task on ${topic}: roles, success criteria, and deliverable shown on-slide.`,
   );
   slides.push({
     slideTitle: T.group,
     body: sGroup.body,
     speakerNotes: sGroup.notes,
-    aflCallout: isAr ? "جولة معرض أو متحدث من كل مجموعة." : "Gallery walk or reporter from each group.",
     includeImageSlot: true,
   });
 
   const sDiff = pick(
     "diff",
     ["differentiation", "support", "challenge", "تمايز", "دعم"],
-    isAr ? `مسارات دعم وتحدي لموضوع «${topic}».` : `Support and stretch paths for ${topic}.`,
-    isAr ? "إبهام لأعلى/أسفل" : "Thumbs up/down",
+    isAr ? `مسارات دعم وتحدي لموضوع «${topic}» مع مهام مختلفة جاهزة.` : `Support & stretch tasks for ${topic} — different paths with concrete prompts.`,
   );
   slides.push({
     slideTitle: T.diff,
     body: sDiff.body,
     speakerNotes: sDiff.notes,
-    aflCallout: isAr
-      ? "إبهام لأعلى/أسفل عن الثقة قبل العمل المستقل."
-      : "Thumbs up/down on confidence before independent work.",
     includeImageSlot: false,
   });
 
   const sAfl = pick(
     "afl",
     ["afl", "formative", "questioning", "تقويم"],
-    isAr ? `أساليب تقويمية لهذا الدرس حول «${topic}».` : `Formative moves for this lesson on ${topic}.`,
-    isAr ? "تنويع في التقويم" : "Mixed AFL",
+    isAr ? `أنشطة تقويم أثناء التعلم لموضوع «${topic}» بصياغة جاهزة للطلاب.` : `On-slide formative checks for ${topic}: questions, options, or frames students use.`,
   );
   slides.push({
     slideTitle: T.afl,
     body: sAfl.body,
     speakerNotes: sAfl.notes,
-    aflCallout: isAr ? "تناوب: سؤال عشوائي، فكر-زاوج-شارك، سبورات." : "Rotate: cold call, TPS, whiteboards.",
     includeImageSlot: false,
   });
 
   const sMini = pick(
     "mini",
     ["mini plenary", "check", "تلخيص", "فحص"],
-    isAr ? `فحص سريع للفهم بخصوص «${topic}».` : `Quick understanding check on ${topic}.`,
-    isAr ? "سؤال شفهي ختامي" : "Exit-style oral",
+    isAr ? `فحص سريع للفهم بخصوص «${topic}»: سؤال أو مهمة قصيرة جاهزة.` : `Mini plenary for ${topic}: one hinge task with visible prompt/choices.`,
   );
   slides.push({
     slideTitle: T.mini,
     body: sMini.body,
     speakerNotes: sMini.notes,
-    aflCallout: isAr ? "سؤال مفصلي واحد للجميع." : "One hinge question to whole class.",
     includeImageSlot: false,
   });
 
   const sExit = pick(
     "exit",
     ["exit ticket", "closure", "خروج", "إغلاق"],
-    isAr ? `أسئلة خروج متوافقة مع أهداف «${topic}».` : `Exit questions aligned to ${topic} objectives.`,
-    isAr ? "بطاقة خروج" : "Exit ticket",
+    isAr ? `بطاقة خروج لموضوع «${topic}»: سؤالان كحد أقصى بصياغة كاملة.` : `Exit ticket for ${topic}: up to two complete questions (or MCQ) on-slide.`,
   );
   slides.push({
     slideTitle: T.exit,
     body: sExit.body,
     speakerNotes: sExit.notes,
-    aflCallout: isAr ? "بطاقة خروج كتابية (سؤالان كحد أقصى)." : "Written exit ticket (2 questions max).",
     includeImageSlot: false,
   });
 
   const hwBody = mergeBodies(
     hw,
-    pick("homework", ["homework", "assignment", "واجب", "منزلي"], isAr ? `توسعة واجب لموضوع «${topic}».` : `Homework extension for ${topic}.`).body,
+    pick("homework", ["homework", "assignment", "واجب", "منزلي"], isAr ? `واجب منزلي لموضوع «${topic}».` : `Homework for ${topic} — task wording students can follow.`).body,
     isAr
       ? `${contextAnchor}\nتمرين موسع أو بحث قصير حول «${topic}».`
       : `${contextAnchor}\nExtended practice or research on ${topic}.`,
@@ -652,53 +553,57 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   slides.push({
     slideTitle: T.homework,
     body: hwBody,
-    speakerNotes: buildNotes(
-      topic,
-      hw || ppt,
-      isAr ? "معايير النجاح ظاهرة على السبورة / LMS." : "Success criteria visible on board / LMS.",
-      isAr,
-    ),
-    aflCallout: isAr ? "مراجعة الأقران للمعايير قبل المغادرة." : "Peer review of criteria before leaving.",
+    speakerNotes: buildNotes(topic, hw || ppt, undefined, isAr),
     includeImageSlot: false,
   });
 
   const sPlen = pick(
     "plenary",
     ["plenary", "reflection", "summary", "ختام", "تلخيص"],
-    isAr ? `تلخيص وتأمل لموضوع «${topic}».` : `Summary and reflection for ${topic}.`,
-    isAr ? "تقويم ذاتي" : "Self-assessment",
+    isAr ? `ختام لموضوع «${topic}»: أسئلة تأمل أو تلخيص جاهزة للطلاب.` : `Plenary for ${topic}: reflection prompts or summary frames on-slide.`,
   );
   slides.push({
     slideTitle: T.plenary,
     body: sPlen.body,
     speakerNotes: sPlen.notes,
-    aflCallout: isAr ? "يقيّم الطلاب ثقتهم 1–4 في أهداف اليوم." : "Students rate confidence 1–4 on today's objectives.",
     includeImageSlot: true,
   });
 
+  const starterPictureInTime =
+    ctx.aflSelections?.starter?.some((id) => id === PICTURE_IN_TIME_AFL_TOOL_ID) ?? false;
+  if (slides[2]) slides[2].includeImageSlot = starterPictureInTime;
+
   applyArabicFullPlanBodyFallback(slides, plan, isAr);
-  applyAflToolInjections(slides, ctx.aflSelections);
 
   if (aflPayloadHasTools(ctx.aflSelections)) {
     const bodies = slides.map((s, i) => ({ i, title: s.slideTitle, chars: s.body.trim().length }));
-    console.log("[ppt-structured-lesson] Slide body lengths after AFL merge:", bodies);
+    console.log("[ppt-structured-lesson] Slide body lengths (deck built):", bodies);
   }
 
   return slides;
 }
 
-/** Map four FAL results onto the 13-slide deck (null on slides without images). */
+/** Map FLUX image URLs to slide indices (order of orderedUrls must match imageSlideIndices). */
+export function mapLessonPptImagesToDeck(
+  deckLength: number,
+  imageSlideIndices: readonly number[],
+  orderedUrls: (string | null)[],
+): (string | null)[] {
+  const out: (string | null)[] = Array.from({ length: deckLength }, () => null);
+  for (let i = 0; i < imageSlideIndices.length && i < orderedUrls.length; i++) {
+    const idx = imageSlideIndices[i]!;
+    if (idx >= 0 && idx < deckLength) out[idx] = orderedUrls[i] ?? null;
+  }
+  return out;
+}
+
+/** Maps four default FLUX slots to slides 0,4,6,12. Use mapLessonPptImagesToDeck when slide 2 may carry Picture-in-Time. */
 export function mapFourImagesToDeck(
   deckLength: number,
   orderedUrls: (string | null)[],
 ): (string | null)[] {
   const imageIndices = [...PPT_IMAGE_SLIDE_INDEX_SET].sort((a, b) => a - b);
-  const out: (string | null)[] = Array.from({ length: deckLength }, () => null);
-  for (let i = 0; i < imageIndices.length && i < orderedUrls.length; i++) {
-    const idx = imageIndices[i]!;
-    if (idx < deckLength) out[idx] = orderedUrls[i] ?? null;
-  }
-  return out;
+  return mapLessonPptImagesToDeck(deckLength, imageIndices, orderedUrls);
 }
 
 export function buildLessonPlanContextFromResult(

@@ -14,6 +14,9 @@ export const AFL_PHASE_IDS = [
 
 export type AflPhaseId = (typeof AFL_PHASE_IDS)[number];
 
+/** When selected, starter slide may receive a dedicated FLUX image (Picture in Time). */
+export const PICTURE_IN_TIME_AFL_TOOL_ID = "st-picture-in-time" as const;
+
 export type AflToolDefinition = {
   id: string;
   label: string;
@@ -195,22 +198,32 @@ export function sanitizeAflSelections(raw: unknown): AflSelectionsPayload {
 export function formatAflForAiPrompt(selections: AflSelectionsPayload): string {
   const lines: string[] = [];
   lines.push(
-    "The teacher selected the following AFL tools. You MUST integrate them into the Full Lesson Plan in the matching sections (starter, main teaching, connections, plenary, homework/extended task, and assessment/feedback) with short, practical instructions for each tool.",
-    "You MUST also weave the same tools into PPT CONTENT on the matching slide types (starter slide, main-phase slides, entry/connection moments, plenary slide, homework slide, and assessment/reflection where appropriate), each with a one-line how-to-use note.",
+    "### Teacher-selected AFL tools (mandatory — finished classroom content, not coaching)",
+    "The teacher picked specific AFL tools below. You MUST embed each tool as **fully written, ready-to-project material** for this exact topic, grade, and subject.",
+    "",
+    "**Full Lesson Plan:** For every selected tool, write the real activity: exact questions, prompts, item banks, MCQ stems with options and the correct answer marked, sorting cards text, brainstorming categories filled with 6–10 example items for this topic, quiz items, exit-ticket questions, etc. Do NOT write meta lines like “the teacher should…” or “pose an open question”; write the question itself.",
+    "",
+    "**PPT Slide Content:** Slides are shown **directly to students**. For each selected tool that appears on a slide, output only what learners see: titles, bullets, prompts, diagrams described as text, quiz/exit items with options and answers on separate speaker-note lines if needed — never “how to run brainstorming” instructions on the slide body.",
+    "",
+    "**Picture in Time (if selected):** Include one slide (or clear slide subsection) that names the image students will see, the **exact** comparison or prediction question, and a line the teacher can read aloud; the export pipeline will generate a matching illustration from that slide text.",
+    "",
+    "**Catalog reference (tool intent only — you replace with lesson-specific finished content):**",
     "",
   );
+  let listedAny = false;
   for (const group of AFL_PHASE_GROUPS) {
     const ids = selections[group.phase];
     if (!ids?.length) continue;
+    listedAny = true;
     lines.push(`**${group.title}**`);
     for (const id of ids) {
       const tool = getAflToolById(id);
       if (!tool) continue;
-      lines.push(`- ${tool.label}: ${tool.howToUse}`);
+      lines.push(`- ${tool.label} (${id}): ${tool.howToUse}`);
     }
     lines.push("");
   }
-  if (lines.length <= 4) {
+  if (!listedAny) {
     return "";
   }
   return lines.join("\n").trim();
