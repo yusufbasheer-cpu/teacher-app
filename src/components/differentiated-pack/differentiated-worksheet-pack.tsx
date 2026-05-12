@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { DifferentiatedPackContent } from "@/lib/differentiated-pack-markers";
+import {
+  emptyDifferentiatedPack,
+  type DifferentiatedPackContent,
+} from "@/lib/differentiated-pack-markers";
 import {
   clearDiffPackSession,
   readDiffPackSession,
@@ -27,6 +30,9 @@ function safeFilePart(topic: string) {
 }
 
 export function DifferentiatedWorksheetPack() {
+  type Level = "foundation" | "core" | "extension";
+  type LevelProgress = "idle" | "loading" | "success" | "error";
+
   const [topic, setTopic] = useState("");
   const [subject, setSubject] = useState("");
   const [grade, setGrade] = useState("");
@@ -39,10 +45,60 @@ export function DifferentiatedWorksheetPack() {
   const [pack, setPack] = useState<DifferentiatedPackContent | null>(null);
   const [parseNotice, setParseNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [levelProgress, setLevelProgress] = useState<Record<Level, LevelProgress>>({
+    foundation: "idle",
+    core: "idle",
+    extension: "idle",
+  });
   const [extracting, setExtracting] = useState(false);
   const [inferring, setInferring] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyDownload, setBusyDownload] = useState<string | null>(null);
+
+  const mergeLevelResult = (
+    current: DifferentiatedPackContent,
+    incoming: DifferentiatedPackContent,
+  ): DifferentiatedPackContent => {
+    const next = { ...current };
+    if (incoming.foundation.trim()) next.foundation = incoming.foundation.trim();
+    if (incoming.core.trim()) next.core = incoming.core.trim();
+    if (incoming.extension.trim()) next.extension = incoming.extension.trim();
+
+    const appendWithHeader = (existing: string, add: string, header: string) => {
+      const trimmed = add.trim();
+      if (!trimmed) return existing;
+      const block = `## ${header}\n\n${trimmed}`;
+      return existing.trim() ? `${existing.trim()}\n\n---\n\n${block}` : block;
+    };
+
+    if (incoming.answerKey.trim()) {
+      const header =
+        incoming.foundation.trim() ? "Foundation" : incoming.core.trim() ? "Core" : "Extension";
+      next.answerKey = appendWithHeader(next.answerKey, incoming.answerKey, header);
+    }
+    if (incoming.rubrics.trim()) {
+      const header =
+        incoming.foundation.trim() ? "Foundation" : incoming.core.trim() ? "Core" : "Extension";
+      next.rubrics = appendWithHeader(next.rubrics, incoming.rubrics, header);
+    }
+    if (incoming.teacherNotes.trim()) {
+      const header =
+        incoming.foundation.trim() ? "Foundation" : incoming.core.trim() ? "Core" : "Extension";
+      next.teacherNotes = appendWithHeader(next.teacherNotes, incoming.teacherNotes, header);
+    }
+    if (incoming.selfAssessment.trim()) {
+      const header =
+        incoming.foundation.trim() ? "Foundation" : incoming.core.trim() ? "Core" : "Extension";
+      next.selfAssessment = appendWithHeader(next.selfAssessment, incoming.selfAssessment, header);
+    }
+    if (incoming.peerAssessment.trim()) {
+      const header =
+        incoming.foundation.trim() ? "Foundation" : incoming.core.trim() ? "Core" : "Extension";
+      next.peerAssessment = appendWithHeader(next.peerAssessment, incoming.peerAssessment, header);
+    }
+
+    return next;
+  };
 
   useEffect(() => {
     const session = readDiffPackSession();
@@ -61,6 +117,7 @@ export function DifferentiatedWorksheetPack() {
     setError(null);
     setParseNotice(null);
     setPack(null);
+    setLevelProgress({ foundation: "idle", core: "idle", extension: "idle" });
     if (!topic.trim() || !subject.trim() || !grade.trim() || !learningObjectives.trim()) {
       setError("Please fill topic, subject, grade, and learning objectives.");
       return;
@@ -71,31 +128,57 @@ export function DifferentiatedWorksheetPack() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/differentiated-pack", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: topic.trim(),
-          subject: subject.trim(),
-          grade: grade.trim(),
-          learningObjectives: learningObjectives.trim(),
-          curriculumType: curriculumType.trim() || undefined,
-          curriculumFramework: curriculumFramework.trim() || undefined,
-          lessonSourceText: lessonSourceText.trim(),
-        }),
-      });
-      const data = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        pack?: DifferentiatedPackContent;
-        parseNotice?: string;
-        recoveryNotice?: string;
-      };
-      if (!res.ok) throw new Error(data.error ?? "Generation failed.");
-      if (!data.pack) throw new Error("No pack returned.");
-      setPack(data.pack);
-      setParseNotice(
-        [data.parseNotice, data.recoveryNotice].filter(Boolean).join(" ") || null,
-      );
+      const levels: Level[] = ["foundation", "core", "extension"];
+      const notices: string[] = [];
+      const failures: string[] = [];
+      let combined = emptyDifferentiatedPack();
+      let succeeded = 0;
+
+      for (const level of levels) {
+        setLevelProgress((prev) => ({ ...prev, [level]: "loading" }));
+        const res = await fetch("/api/differentiated-pack", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            level,
+            topic: topic.trim(),
+            subject: subject.trim(),
+            grade: grade.trim(),
+            learningObjectives: learningObjectives.trim(),
+            curriculumType: curriculumType.trim() || undefined,
+            curriculumFramework: curriculumFramework.trim() || undefined,
+            lessonSourceText: lessonSourceText.trim(),
+          }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          pack?: DifferentiatedPackContent;
+          parseNotice?: string;
+          recoveryNotice?: string;
+        };
+
+        if (!res.ok || !data.pack) {
+          setLevelProgress((prev) => ({ ...prev, [level]: "error" }));
+          failures.push(`${level}: ${data.error ?? "generation failed"}`);
+          continue;
+        }
+
+        combined = mergeLevelResult(combined, data.pack);
+        succeeded += 1;
+        setLevelProgress((prev) => ({ ...prev, [level]: "success" }));
+        if (data.parseNotice) notices.push(`${level}: ${data.parseNotice}`);
+        if (data.recoveryNotice) notices.push(`${level}: ${data.recoveryNotice}`);
+      }
+
+      if (succeeded === 0) {
+        throw new Error(failures.join(" | ") || "All three generation steps failed.");
+      }
+
+      setPack(combined);
+      setParseNotice(notices.length ? notices.join(" ") : null);
+      if (failures.length) {
+        setError(`Some levels failed, but successful levels are shown. ${failures.join(" | ")}`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generation failed.");
     } finally {
@@ -367,6 +450,38 @@ export function DifferentiatedWorksheetPack() {
           >
             Clear “from lesson” session
           </button>
+        </div>
+        <div className="mt-3 space-y-1 text-xs">
+          <p className="text-slate-700">
+            Generating Foundation worksheet…{" "}
+            {levelProgress.foundation === "loading"
+              ? "⏳"
+              : levelProgress.foundation === "success"
+                ? "✅"
+                : levelProgress.foundation === "error"
+                  ? "❌"
+                  : "—"}
+          </p>
+          <p className="text-slate-700">
+            Generating Core worksheet…{" "}
+            {levelProgress.core === "loading"
+              ? "⏳"
+              : levelProgress.core === "success"
+                ? "✅"
+                : levelProgress.core === "error"
+                  ? "❌"
+                  : "—"}
+          </p>
+          <p className="text-slate-700">
+            Generating Extension worksheet…{" "}
+            {levelProgress.extension === "loading"
+              ? "⏳"
+              : levelProgress.extension === "success"
+                ? "✅"
+                : levelProgress.extension === "error"
+                  ? "❌"
+                  : "—"}
+          </p>
         </div>
       </section>
 

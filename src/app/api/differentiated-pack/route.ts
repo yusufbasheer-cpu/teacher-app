@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import {
-  DIFF_PACK_SYSTEM_PROMPT,
+  buildDiffPackLevelSystemPrompt,
   buildDiffPackUserMessage,
+  type DifferentiatedLevel,
 } from "@/lib/differentiated-pack-prompts";
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 import { countFilledPackSections, parseDifferentiatedPack } from "@/lib/parse-differentiated-pack";
@@ -10,9 +11,10 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_MAX_TOKENS = 8000;
+const DEEPSEEK_MAX_TOKENS = 2600;
 
 type GenerateBody = {
+  level?: DifferentiatedLevel;
   topic?: string;
   subject?: string;
   grade?: string;
@@ -43,6 +45,14 @@ export async function POST(req: Request) {
   const grade = body.grade?.trim() ?? "";
   const learningObjectives = body.learningObjectives?.trim() ?? "";
   const lessonSourceText = body.lessonSourceText?.trim() ?? "";
+  const level = body.level;
+
+  if (level !== "foundation" && level !== "core" && level !== "extension") {
+    return NextResponse.json(
+      { error: "level is required and must be foundation, core, or extension." },
+      { status: 400 },
+    );
+  }
 
   if (!topic || !subject || !grade || !learningObjectives) {
     return NextResponse.json(
@@ -58,6 +68,7 @@ export async function POST(req: Request) {
   }
 
   const userMessage = buildDiffPackUserMessage({
+    level,
     topic,
     subject,
     grade,
@@ -80,7 +91,7 @@ export async function POST(req: Request) {
         temperature: 0.45,
         max_tokens: DEEPSEEK_MAX_TOKENS,
         messages: [
-          { role: "system", content: DIFF_PACK_SYSTEM_PROMPT },
+          { role: "system", content: buildDiffPackLevelSystemPrompt(level) },
           { role: "user", content: userMessage },
         ],
       }),
@@ -111,11 +122,12 @@ export async function POST(req: Request) {
   const pack = parseDifferentiatedPack(content);
   const filled = countFilledPackSections(pack);
   const parseNotice =
-    filled < 8
-      ? `Only ${filled}/8 sections were detected from markers. You can regenerate or copy from filled sections.`
+    filled < 6
+      ? `Only ${filled}/6 expected sections were detected from markers for ${level}.`
       : undefined;
 
   return NextResponse.json({
+    level,
     pack,
     meta: { topic, subject, grade },
     ...(parseNotice ? { parseNotice } : {}),
