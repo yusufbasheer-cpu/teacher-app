@@ -4,6 +4,7 @@ import {
   buildDiffPackUserMessage,
   type DifferentiatedLevel,
 } from "@/lib/differentiated-pack-prompts";
+import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 import { countFilledPackSections, parseDifferentiatedPack } from "@/lib/parse-differentiated-pack";
 
@@ -124,10 +125,15 @@ export async function POST(req: Request) {
   }
 
   const rawBody = await deepseekResponse.text();
+  logDeepSeekRawResponse(`differentiated-pack:${level}`, deepseekResponse, rawBody);
   if (!deepseekResponse.ok) {
     const friendly = deepSeekHttpErrorMessage(deepseekResponse.status, rawBody);
     return NextResponse.json(
-      { error: friendly },
+      {
+        error: friendly,
+        rawResponse: rawBody.slice(0, 12_000),
+        httpStatus: deepseekResponse.status,
+      },
       { status: 502 },
     );
   }
@@ -135,7 +141,11 @@ export async function POST(req: Request) {
   const { content, errorMessage } = parseDeepSeekCompletionBody(rawBody);
   if (!content?.trim()) {
     return NextResponse.json(
-      { error: errorMessage ?? "Empty model response." },
+      {
+        error: errorMessage ?? "Empty model response.",
+        rawResponse: rawBody.slice(0, 12_000),
+        httpStatus: deepseekResponse.status,
+      },
       { status: 502 },
     );
   }

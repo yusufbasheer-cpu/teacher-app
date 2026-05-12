@@ -9,6 +9,7 @@ import {
   clearDiffPackSession,
   readDiffPackSession,
 } from "@/lib/differentiated-pack-session";
+import { tryParseApiJson } from "@/lib/try-parse-api-json";
 
 function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -150,16 +151,46 @@ export function DifferentiatedWorksheetPack() {
             lessonSourceText: lessonSourceText.trim(),
           }),
         });
-        const data = (await res.json().catch(() => ({}))) as {
+        const raw = await res.text();
+        console.log(
+          "[differentiated-pack client]",
+          level,
+          "HTTP",
+          res.status,
+          "body length",
+          raw.length,
+          "\npreview:\n",
+          raw.slice(0, 800),
+        );
+
+        type DiffPackApi = {
           error?: string;
           pack?: DifferentiatedPackContent;
           parseNotice?: string;
           recoveryNotice?: string;
+          rawResponse?: string;
+          httpStatus?: number;
         };
+
+        const parsed = tryParseApiJson<DiffPackApi>(raw, res.status);
+        if (!parsed.ok) {
+          setLevelProgress((prev) => ({ ...prev, [level]: "error" }));
+          failures.push(
+            `${level}: ${parsed.message}${parsed.rawPreview ? `\n\n--- Raw ---\n${parsed.rawPreview}` : ""}`,
+          );
+          continue;
+        }
+        const data = parsed.data;
 
         if (!res.ok || !data.pack) {
           setLevelProgress((prev) => ({ ...prev, [level]: "error" }));
-          failures.push(`${level}: ${data.error ?? "generation failed"}`);
+          const rawFromApi =
+            typeof data.rawResponse === "string" && data.rawResponse.trim()
+              ? data.rawResponse
+              : raw.slice(0, 12_000);
+          failures.push(
+            `${level}: ${data.error ?? "generation failed"}${rawFromApi ? `\n\n--- Raw from DeepSeek (via API) ---\n${rawFromApi}` : ""}`,
+          );
           continue;
         }
 
@@ -196,7 +227,14 @@ export function DifferentiatedWorksheetPack() {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/differentiated-pack/extract", { method: "POST", body: fd });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; extractedText?: string };
+      const raw = await res.text();
+      console.log("[differentiated-pack extract client] HTTP", res.status, raw.slice(0, 500));
+      type ExtractApi = { error?: string; extractedText?: string };
+      const parsed = tryParseApiJson<ExtractApi>(raw, res.status);
+      if (!parsed.ok) {
+        throw new Error(`${parsed.message}\n\n${parsed.rawPreview}`);
+      }
+      const data = parsed.data;
       if (!res.ok) throw new Error(data.error ?? "Extract failed.");
       if (!data.extractedText?.trim()) throw new Error("No text extracted.");
       setLessonSourceText(data.extractedText);
@@ -213,6 +251,7 @@ export function DifferentiatedWorksheetPack() {
       return;
     }
     setError(null);
+    setParseNotice(null);
     setInferring(true);
     try {
       const res = await fetch("/api/differentiated-pack/infer-meta", {
@@ -220,14 +259,39 @@ export function DifferentiatedWorksheetPack() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rawText: lessonSourceText.trim() }),
       });
-      const data = (await res.json().catch(() => ({}))) as {
+      const raw = await res.text();
+      console.log("[infer-meta client] HTTP", res.status, "len", raw.length, "\npreview:\n", raw.slice(0, 800));
+
+      type InferMetaApi = {
         error?: string;
         topic?: string;
         subject?: string;
         grade?: string;
         learningObjectives?: string;
+        parseNotice?: string;
+        rawResponse?: string;
       };
-      if (!res.ok) throw new Error(data.error ?? "Could not infer fields.");
+
+      const parsed = tryParseApiJson<InferMetaApi>(raw, res.status);
+      if (!parsed.ok) {
+        throw new Error(`${parsed.message}\n\n${parsed.rawPreview || ""}`);
+      }
+      const data = parsed.data;
+
+      if (!res.ok) {
+        throw new Error(
+          (data.error ?? "Could not infer fields.") +
+            (typeof data.rawResponse === "string" && data.rawResponse.trim()
+              ? `\n\n--- Raw from DeepSeek (via API) ---\n${data.rawResponse}`
+              : ""),
+        );
+      }
+
+      if (data.parseNotice?.trim()) {
+        setParseNotice(data.parseNotice.trim());
+      } else {
+        setParseNotice(null);
+      }
       if (data.topic) setTopic(data.topic);
       if (data.subject) setSubject(data.subject);
       if (data.grade) setGrade(data.grade);
@@ -317,6 +381,12 @@ export function DifferentiatedWorksheetPack() {
           <li>
             <strong className="text-blue-800">Way 2:</strong> Upload a PDF or Word (.docx) lesson plan,
             extract text, optionally <strong>Auto-fill form</strong>, edit fields, then generate.
+          </li>
+          <li className="text-xs text-slate-500">
+            If generation fails with an API error, open{" "}
+            <code className="rounded bg-slate-100 px-1">/api/deepseek-ping</code> in a new tab to verify
+            your <code className="rounded bg-slate-100 px-1">DEEPSEEK_API_KEY</code> (server logs also print
+            the raw DeepSeek response).
           </li>
         </ul>
       </div>
@@ -491,7 +561,9 @@ export function DifferentiatedWorksheetPack() {
         </p>
       ) : null}
       {error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{error}</p>
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm whitespace-pre-wrap break-words text-red-900">
+          {error}
+        </p>
       ) : null}
 
       {pack ? (

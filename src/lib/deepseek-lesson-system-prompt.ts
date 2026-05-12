@@ -115,7 +115,7 @@ Adjust pedagogy depending on:
 - Math
 - Science
 - English
-- Arabic
+- Arabic (Arabic language / لغة عربية — see separate mandatory addendum when this subject is selected)
 - Islamic Studies
 - Social Science
 - ICT
@@ -140,6 +140,27 @@ D. Assessment Questions — formative and summative mix: MCQs, short answers, HO
 E. Homework Task — aligned extended task with success criteria and expected time.
 F. Teacher Notes — differentiation reminders, common misconceptions, AFL moves, grouping, and quick contingency plans.`;
 
+/** When the teacher selects Arabic as the subject (تعليم اللغة العربية). */
+export const ARABIC_LANGUAGE_SUBJECT_ADDENDUM = `
+### MANDATORY — Subject is Arabic language (تعليم اللغة العربية)
+The teacher selected **Arabic** as the school subject. You are generating resources for **Arabic language teaching** (listening, speaking, reading, writing — الاستماع، التحدث، القراءة، الكتابة), not a generic lesson merely translated from English.
+
+**Output language**
+- Write **all** requested teacher-package sections in **Modern Standard Arabic (العربية الفصحى)** appropriate for UAE schools, unless the teacher explicitly wrote their objectives in another language (then mirror their language for objectives only).
+- Use clear classroom Arabic: objectives, questions, slide text, worksheet prompts, rubrics, and teacher notes must be **substantially in Arabic**.
+- You may add **short English glosses in parentheses** where useful for bilingual inspectors (optional, sparingly).
+
+**Pedagogy & content**
+- Align to Arabic curriculum skills: مهارات النص، الصرف والنحو، الإملاء، التعبير، النصوص الأدبية، القرآن/الحديث links only if they fit the topic, الثقافة العربية، الهوية الوطنية، سياقات من الإمارات والعالم العربي.
+- Vocabulary, examples, and texts must suit the **grade** and **topic** (e.g. مستوى الصياغة، طول الجمل، نوع النص).
+- Keep the **same pedagogical structure** as this prompt (starter, main phase, differentiation, plenary, etc.). Section **headings inside the lesson body** may be in Arabic.
+
+**CRITICAL — parsing markers (do not translate these lines)**
+- The machine-readable **START/END marker lines** for each block (e.g. LESSON PLAN START / LESSON PLAN END, PPT CONTENT START / PPT CONTENT END, etc.) must appear **exactly** as specified elsewhere in this prompt: same Latin spelling, uppercase, alone on their lines.
+- **Never** replace marker lines with Arabic. Put **all Arabic teaching content between** the correct START and END lines only.
+- Generate **full, non-empty** content for every requested section — do not return empty blocks or placeholder-only text.
+`.trim();
+
 export function buildTeacherPackageLabeledBlocksContract(
   sections: readonly TeacherPackageSectionKey[],
 ): string {
@@ -162,11 +183,18 @@ ${blocks}`;
 
 export function buildDeepseekLessonSystemPrompt(
   sections: readonly TeacherPackageSectionKey[],
-  options?: { curriculumFrameworkAddendum?: string | null },
+  options?: { curriculumFrameworkAddendum?: string | null; subject?: string | null },
 ): string {
-  const core = `${DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE.trim()}
+  let core = `${DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE.trim()}
 
 ${buildTeacherPackageLabeledBlocksContract(sections)}`;
+
+  if (options?.subject?.trim() === "Arabic") {
+    core = `${core}
+
+${ARABIC_LANGUAGE_SUBJECT_ADDENDUM}`;
+  }
+
   const extra = options?.curriculumFrameworkAddendum?.trim();
   if (!extra) return core;
   return `${core}

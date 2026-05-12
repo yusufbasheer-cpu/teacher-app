@@ -21,6 +21,7 @@ import {
   isValidSubjectOption,
 } from "@/lib/lesson-plan";
 import { formatAflForAiPrompt, sanitizeAflSelections } from "@/lib/afl-tools";
+import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 import {
   parseTeacherPackageResponse,
@@ -111,11 +112,20 @@ ${trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS)}
       ? `\n- **Curriculum framework (mandatory alignment):** ${getCurriculumFrameworkLabel(fw)} — apply the framework rules in the system prompt to every field you generate.`
       : "";
 
+  const arabicBlock =
+    input.subject.trim() === "Arabic"
+      ? `
+
+### Output language (mandatory)
+Subject is **Arabic language teaching**. Write the **Full Lesson Plan**, **PPT Slide Content**, and every other requested section in **Modern Standard Arabic**, with the same teaching structure as the system prompt. Keep START/END marker lines exactly as specified (Latin, uppercase). Do not leave sections empty.`
+      : "";
+
   return [
     {
       role: "system",
       content: buildDeepseekLessonSystemPrompt(sections, {
         curriculumFrameworkAddendum: frameworkAddendum,
+        subject: input.subject.trim(),
       }),
     },
     {
@@ -133,6 +143,7 @@ ${chapterLine}
 - Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}${frameworkUserLine}
 ${sourceBlock}
 ${aflPromptBlock}
+${arabicBlock}
 
 Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested section must be classroom-ready (not placeholders).
       `.trim(),
@@ -235,6 +246,7 @@ export async function POST(req: Request) {
     }
 
     const rawBody = await deepseekResponse.text();
+    logDeepSeekRawResponse(`lesson-plan:${section}`, deepseekResponse, rawBody);
     if (!deepseekResponse.ok) {
       console.warn(
         "[lesson-plan] DeepSeek HTTP error:",

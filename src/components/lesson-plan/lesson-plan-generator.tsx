@@ -42,6 +42,7 @@ import {
   type PptThemeId,
 } from "@/lib/ppt-themes";
 import { supabase } from "@/lib/supabase";
+import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import {
   AFL_PHASE_GROUPS,
   AFL_PHASE_IDS,
@@ -428,20 +429,44 @@ export function LessonPlanGenerator() {
         }),
       });
 
-      const data = (await response.json()) as {
+      const raw = await response.text();
+      console.log("[lesson-plan client] /api/lesson-plan HTTP", response.status, "body length", raw.length);
+      console.log("[lesson-plan client] raw preview:\n", raw.slice(0, 2500));
+
+      type LessonPlanApiResponse = {
         error?: string;
         lessonPlan?: LessonPlanResult;
         parseNotice?: string;
         sectionImages?: SectionImageMap;
         sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
+        rawResponse?: string;
       };
 
+      const parsed = tryParseApiJson<LessonPlanApiResponse>(raw, response.status);
+      if (!parsed.ok) {
+        throw new Error(
+          `${parsed.message}\n\n--- Raw response (truncated) ---\n${parsed.rawPreview || "(empty)"}`,
+        );
+      }
+      const data = parsed.data;
+
       if (!response.ok) {
-        throw new Error(data.error ?? "Failed to generate lesson plan.");
+        const extra =
+          typeof data.rawResponse === "string" && data.rawResponse.trim()
+            ? `\n\n--- Raw response from server ---\n${data.rawResponse}`
+            : "";
+        throw new Error(
+          (data.error ?? `Failed to generate lesson plan (HTTP ${response.status}).`) + extra,
+        );
       }
 
       if (!data.lessonPlan) {
-        throw new Error("No lesson plan returned.");
+        throw new Error(
+          (data.error ?? "No lesson plan returned.") +
+            (typeof data.rawResponse === "string" && data.rawResponse.trim()
+              ? `\n\n--- Raw response ---\n${data.rawResponse}`
+              : ""),
+        );
       }
 
       setLessonPlan(data.lessonPlan);
@@ -1015,7 +1040,9 @@ export function LessonPlanGenerator() {
           {loading ? "Generating..." : "Generate Lesson Plan"}
         </button>
 
-        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+        {error ? (
+          <p className="mt-3 whitespace-pre-wrap break-words text-sm text-red-600">{error}</p>
+        ) : null}
         </form>
 
         <section className="min-w-0 rounded-3xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6 md:p-7">

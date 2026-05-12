@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { looksLikeJsonObject, parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 
 export const runtime = "nodejs";
@@ -79,13 +80,28 @@ export async function POST(req: Request) {
   }
 
   const rawBody = await res.text();
+  logDeepSeekRawResponse("infer-meta", res, rawBody);
   if (!res.ok) {
-    return NextResponse.json({ error: deepSeekHttpErrorMessage(res.status, rawBody) }, { status: 502 });
+    return NextResponse.json(
+      {
+        error: deepSeekHttpErrorMessage(res.status, rawBody),
+        rawResponse: rawBody.slice(0, 12_000),
+        httpStatus: res.status,
+      },
+      { status: 502 },
+    );
   }
 
   const { content, errorMessage } = parseDeepSeekCompletionBody(rawBody);
   if (!content?.trim()) {
-    return NextResponse.json({ error: errorMessage ?? "Empty inference response." }, { status: 502 });
+    return NextResponse.json(
+      {
+        error: errorMessage ?? "Empty inference response.",
+        rawResponse: rawBody.slice(0, 12_000),
+        httpStatus: res.status,
+      },
+      { status: 502 },
+    );
   }
 
   const cleaned = content

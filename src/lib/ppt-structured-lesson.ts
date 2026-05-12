@@ -90,47 +90,145 @@ const STOP_OBJECTIVES = [
   "prior knowledge",
   "main teaching",
   "lesson",
+  "معايير النجاح",
+  "التمهيد",
+  "الاستهلال",
+  "نشاط البداية",
+  "التعلم السابق",
+  "المرحلة الأساسية",
 ];
-const STOP_STARTER = ["prior knowledge", "main teaching", "entry ticket", "diagnostic", "mini plenary"];
-const STOP_PRIOR = ["main teaching", "teaching phase", "guided practice"];
-const STOP_MAIN = ["guided practice", "group activity", "ccl", "differentiation"];
-const STOP_GUIDED = ["group activity", "ccl", "collaborative", "differentiation"];
-const STOP_GROUP = ["differentiation", "afl", "assessment for learning", "mini plenary"];
-const STOP_DIFF = ["afl", "assessment for learning", "mini plenary", "exit ticket"];
-const STOP_AFL = ["mini plenary", "exit ticket", "homework", "plenary"];
-const STOP_MINI = ["exit ticket", "homework", "extended task", "plenary"];
-const STOP_EXIT = ["homework", "extended task", "plenary", "reflection"];
-const STOP_HOME = ["plenary", "reflection", "summary"];
+const STOP_STARTER = [
+  "prior knowledge",
+  "main teaching",
+  "entry ticket",
+  "diagnostic",
+  "mini plenary",
+  "التعلم السابق",
+  "عرض المعلم",
+  "الشرح",
+  "المرحلة الأساسية",
+  "التشخيص",
+];
+const STOP_PRIOR = [
+  "main teaching",
+  "teaching phase",
+  "guided practice",
+  "الشرح",
+  "التدريس",
+  "المرحلة الأساسية",
+  "التطبيق المرشد",
+];
+const STOP_MAIN = [
+  "guided practice",
+  "group activity",
+  "ccl",
+  "differentiation",
+  "التطبيق المرشد",
+  "العمل الجماعي",
+  "التعلم التعاوني",
+  "التمايز",
+];
+const STOP_GUIDED = [
+  "group activity",
+  "ccl",
+  "collaborative",
+  "differentiation",
+  "العمل الجماعي",
+  "التعلم التعاوني",
+  "التمايز",
+];
+const STOP_GROUP = [
+  "differentiation",
+  "afl",
+  "assessment for learning",
+  "mini plenary",
+  "التمايز",
+  "التقويم",
+  "تقويم التعلم",
+  "التلخيص المختصر",
+];
+const STOP_DIFF = [
+  "afl",
+  "assessment for learning",
+  "mini plenary",
+  "exit ticket",
+  "التقويم",
+  "تقويم التعلم",
+  "التلخيص",
+  "بطاقة الخروج",
+];
+const STOP_AFL = [
+  "mini plenary",
+  "exit ticket",
+  "homework",
+  "plenary",
+  "التلخيص المختصر",
+  "بطاقة الخروج",
+  "الواجب",
+  "الختام",
+];
+const STOP_MINI = [
+  "exit ticket",
+  "homework",
+  "extended task",
+  "plenary",
+  "بطاقة الخروج",
+  "الواجب",
+  "الواجب المنزلي",
+  "الختام",
+];
+const STOP_EXIT = [
+  "homework",
+  "extended task",
+  "plenary",
+  "reflection",
+  "الواجب",
+  "الواجب المنزلي",
+  "الختام",
+  "التأمل",
+];
+const STOP_HOME = ["plenary", "reflection", "summary", "الختام", "التأمل", "التلخيص"];
 const STOP_PLENARY: string[] = [];
 
 const extractors = {
   objectives: (plan: string) =>
-    extractByHints(plan, ["learning objectives", "learning objective"], STOP_OBJECTIVES) ||
-    extractByHints(plan, ["success criteria"], STOP_STARTER),
-  starter: (plan: string) => extractByHints(plan, ["starter activity", "starter", "hook"], STOP_STARTER),
+    extractByHints(plan, ["learning objectives", "learning objective", "الأهداف التعليمية", "أهداف التعلم", "الأهداف", "الهداف"], STOP_OBJECTIVES) ||
+    extractByHints(plan, ["success criteria", "معايير النجاح"], STOP_STARTER),
+  starter: (plan: string) =>
+    extractByHints(plan, ["starter activity", "starter", "hook", "التمهيد", "الاستهلال", "نشاط البداية"], STOP_STARTER),
   prior: (plan: string) =>
-    extractByHints(plan, ["prior knowledge", "entry ticket", "diagnostic"], STOP_PRIOR),
+    extractByHints(plan, ["prior knowledge", "entry ticket", "diagnostic", "التعلم السابق", "المعرفة القبلية", "التشخيص"], STOP_PRIOR),
   main: (plan: string) =>
-    extractByHints(plan, ["main teaching", "main phase", "teaching phase"], STOP_MAIN),
+    extractByHints(plan, ["main teaching", "main phase", "teaching phase", "الشرح", "عرض المعلم", "التدريس", "المرحلة الأساسية"], STOP_MAIN),
   guided: (plan: string) =>
-    extractByHints(plan, ["guided practice", "guided instruction", "we do"], STOP_GUIDED),
+    extractByHints(plan, ["guided practice", "guided instruction", "we do", "التطبيق المرشد", "الممارسة مع المعلم"], STOP_GUIDED),
   group: (plan: string) =>
     extractByHints(
       plan,
-      ["classroom collaborative learning", "collaborative learning", "ccl", "group activity", "group task"],
+      [
+        "classroom collaborative learning",
+        "collaborative learning",
+        "ccl",
+        "group activity",
+        "group task",
+        "التعلم التعاوني",
+        "العمل الجماعي",
+        "نشاط المجموعات",
+      ],
       STOP_GROUP,
     ),
   diff: (plan: string) =>
-    extractByHints(plan, ["differentiation", "support for", "challenge task", "sen"], STOP_DIFF),
+    extractByHints(plan, ["differentiation", "support for", "challenge task", "sen", "التمايز", "التنويع", "دعم الطلبة"], STOP_DIFF),
   afl: (plan: string) =>
-    extractByHints(plan, ["assessment for learning", "afl", "questioning strategies"], STOP_AFL),
+    extractByHints(plan, ["assessment for learning", "afl", "questioning strategies", "تقويم التعلم", "التقويم"], STOP_AFL),
   mini: (plan: string) =>
-    extractByHints(plan, ["mini plenary", "quick check", "understanding check"], STOP_MINI),
-  exit: (plan: string) => extractByHints(plan, ["exit ticket", "closure"], STOP_EXIT),
+    extractByHints(plan, ["mini plenary", "quick check", "understanding check", "التلخيص المختصر", "فحص سريع"], STOP_MINI),
+  exit: (plan: string) =>
+    extractByHints(plan, ["exit ticket", "closure", "بطاقة الخروج", "الإغلاق"], STOP_EXIT),
   homework: (plan: string) =>
-    extractByHints(plan, ["homework", "extended task", "take-home"], STOP_HOME),
+    extractByHints(plan, ["homework", "extended task", "take-home", "الواجب المنزلي", "الواجب", "مهمة البيت"], STOP_HOME),
   plenary: (plan: string) =>
-    extractByHints(plan, ["plenary", "reflection", "summary activity", "self-assessment"], STOP_PLENARY),
+    extractByHints(plan, ["plenary", "reflection", "summary activity", "self-assessment", "الختام", "التأمل", "التلخيص"], STOP_PLENARY),
 };
 
 function extractFromFullPlan(fullPlan: string, kind: keyof typeof extractors): string {
@@ -160,7 +258,19 @@ function mergeBodies(primary: string, secondary: string, topicLine: string): str
 const AFL_GENERAL =
   "Rotate: cold calling, mini whiteboards, think-pair-share, thumbs up/down, peer assessment, hinge questions, and exit tickets.";
 
-function buildNotes(topic: string, phase: string, aflCallout?: string): string {
+const AFL_GENERAL_AR =
+  "تنويع: أسئلة عشوائية، السبورة الصغيرة، فكر-زاوج-شارك، إبهام لأعلى/أسفل، تقويم الأقران، أسئلة مفصلية، وبطاقة خروج.";
+
+function isArabicLanguageSubject(subject: string): boolean {
+  return subject.trim() === "Arabic";
+}
+
+function buildNotes(topic: string, phase: string, aflCallout?: string, isArabic?: boolean): string {
+  if (isArabic) {
+    const core = phase.trim() || `قيادة حصة حول «${topic}» مع فحوص واضحة للفهم.`;
+    const box = aflCallout ? `\n\nمقترح للتقويم في هذه الشريحة: ${aflCallout}` : "";
+    return `${core}${box}\n\n${AFL_GENERAL_AR}\n\nاضبط التوقيت والمجموعات بما يتوافق مع خطة الدرس الكاملة المحفوظة.`;
+  }
   const core = phase.trim() || `Facilitate ${topic} with clear checks for understanding.`;
   const box = aflCallout ? `\n\nSuggested AFL on this slide: ${aflCallout}` : "";
   return `${core}${box}\n\nBroader AFL toolkit: ${AFL_GENERAL}\n\nAlign timing and grouping with your saved Full Lesson Plan.`;
@@ -206,6 +316,41 @@ function applyAflToolInjections(slides: StructuredLessonSlideModel[], afl: AflSe
   append(12, "plenary", afl.plenary);
 }
 
+function applyArabicFullPlanBodyFallback(
+  slides: StructuredLessonSlideModel[],
+  fullPlan: string,
+  isArabic: boolean,
+): void {
+  if (!isArabic || !fullPlan || fullPlan.length < 400) return;
+  const contentSlides = slides.slice(1);
+  const thin = contentSlides.filter((s) => s.body.replace(/\s+/g, "").length < 80).length;
+  if (thin < 6) return;
+
+  const paras = fullPlan
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const n = contentSlides.length;
+
+  if (paras.length < 2) {
+    const chunk = polishBody(fullPlan, SECTION_MAX_CHARS);
+    for (let i = 0; i < contentSlides.length; i++) {
+      const slide = slides[i + 1]!;
+      if (slide.body.replace(/\s+/g, "").length < 80 && chunk) slide.body = chunk;
+    }
+    return;
+  }
+
+  const per = Math.max(1, Math.ceil(paras.length / n));
+  for (let i = 0; i < n; i++) {
+    const slide = slides[i + 1]!;
+    if (slide.body.replace(/\s+/g, "").length >= 120) continue;
+    const text = paras.slice(i * per, (i + 1) * per).join("\n\n");
+    if (text.trim()) slide.body = polishBody(text, SECTION_MAX_CHARS);
+  }
+}
+
 export type StructuredLessonPptContext = {
   subject: string;
   grade: string;
@@ -229,6 +374,42 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   const lo = (ctx.learningObjectivesText || "").trim();
   const hw = (ctx.homeworkTask || "").trim();
   const anchor = `Context: ${subj}, ${gr}, topic "${topic}". Ground every bullet in this lesson context.`;
+  const isAr = isArabicLanguageSubject(subj);
+  const contextAnchor = isAr
+    ? `السياق: مادة ${subj}، الصف ${gr}، الموضوع «${topic}». اربط كل فقرة بهذا السياق التعليمي.`
+    : anchor;
+
+  const T = isAr
+    ? {
+        title: "معلومات الدرس",
+        objectives: "الأهداف التعليمية",
+        starter: "نشاط التمهيد",
+        prior: "دخول الحصة — التعلم السابق",
+        main: "عرض المعلم — الشرح",
+        guided: "التطبيق المرشد",
+        group: "العمل التعاوني",
+        diff: "التمايز",
+        afl: "التقويم أثناء التعلم",
+        mini: "التلخيص المختصر",
+        exit: "بطاقة الخروج",
+        homework: "الواجب المنزلي",
+        plenary: "الختام والتأمل",
+      }
+    : {
+        title: "Lesson Title",
+        objectives: "Learning Objectives",
+        starter: "Starter Activity",
+        prior: "Entry Ticket — Prior Knowledge",
+        main: "Main Teaching Phase",
+        guided: "Guided Practice",
+        group: "Group Activity",
+        diff: "Differentiation",
+        afl: "AFL Tools in This Lesson",
+        mini: "Mini Plenary",
+        exit: "Exit Ticket",
+        homework: "Homework",
+        plenary: "Plenary & Reflection",
+      };
 
   const pick = (
     kind: keyof typeof extractors,
@@ -238,154 +419,220 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   ) => {
     const fromPlan = plan ? extractFromFullPlan(plan, kind) : "";
     const fromPpt = ppt ? extractFromPptContent(ppt, pptHints) : "";
-    const body = mergeBodies(fromPlan, fromPpt, `${anchor}\n${topicFallback}`);
-    return { body, notes: buildNotes(topic, fromPlan || fromPpt, afl), afl };
+    const body = mergeBodies(fromPlan, fromPpt, `${contextAnchor}\n${topicFallback}`);
+    return { body, notes: buildNotes(topic, fromPlan || fromPpt, afl, isAr), afl };
   };
 
   const slides: StructuredLessonSlideModel[] = [];
 
   // 0 Title — body lists meta; image optional
   slides.push({
-    slideTitle: "Lesson Title",
-    body: [
-      `Subject: ${subj}`,
-      `Grade: ${gr}`,
-      `Topic: ${topic}`,
-      `Teacher: ${teacher}`,
-    ].join("\n"),
-    speakerNotes: `Welcome learners to ${topic} in ${subj}.\n\nAFL: quick prior scan — show of hands or one-minute mind-map on "${topic}" before objectives.\n\n${AFL_GENERAL}`,
-    aflCallout: "Prior scan: thumbs up/down if you have heard of this topic before.",
+    slideTitle: T.title,
+    body: isAr
+      ? [`المادة: ${subj}`, `الصف: ${gr}`, `الموضوع: ${topic}`, `المعلم: ${teacher}`].join("\n")
+      : [`Subject: ${subj}`, `Grade: ${gr}`, `Topic: ${topic}`, `Teacher: ${teacher}`].join("\n"),
+    speakerNotes: isAr
+      ? `رحب بالطلاب في موضوع «${topic}» لمادة ${subj}.\n\nتقويم سريع قبل الأهداف: إظهار اليد أو خريطة ذهنية لدقيقة واحدة حول «${topic}».\n\n${AFL_GENERAL_AR}`
+      : `Welcome learners to ${topic} in ${subj}.\n\nAFL: quick prior scan — show of hands or one-minute mind-map on "${topic}" before objectives.\n\n${AFL_GENERAL}`,
+    aflCallout: isAr
+      ? "مسح سريع: إبهام لأعلى إن سمعت بهذا الموضوع من قبل."
+      : "Prior scan: thumbs up/down if you have heard of this topic before.",
     includeImageSlot: true,
   });
 
   // 1 Learning objectives
   const objPick = pick(
     "objectives",
-    ["learning objectives", "objectives"],
-    `State SMART objectives for ${topic}.`,
-    "Mini whiteboard: one keyword per objective.",
+    ["learning objectives", "objectives", "الأهداف", "أهداف"],
+    isAr
+      ? `صِغ أهدافًا ذكية وقابلة للقياس لموضوع «${topic}».`
+      : `State SMART objectives for ${topic}.`,
+    isAr ? "سبورة صغيرة: كلمة مفتاحية لكل هدف." : "Mini whiteboard: one keyword per objective.",
   );
   const objBody = mergeBodies(
     lo,
     objPick.body,
-    `${anchor}\nList 3–5 measurable objectives for ${topic} in ${subj} (${gr}).`,
+    isAr
+      ? `${contextAnchor}\nاذكر 3–5 أهدافًا قابلة للقياس لموضوع «${topic}» في مادة ${subj} (${gr}).`
+      : `${contextAnchor}\nList 3–5 measurable objectives for ${topic} in ${subj} (${gr}).`,
   );
   slides.push({
-    slideTitle: "Learning Objectives",
+    slideTitle: T.objectives,
     body: objBody,
     speakerNotes: objPick.notes,
-    aflCallout: "Mini whiteboard: students write one success indicator.",
+    aflCallout: isAr ? "سبورة صغيرة: يكتب الطلاب مؤشر نجاح واحد." : "Mini whiteboard: students write one success indicator.",
     includeImageSlot: false,
   });
 
-  const sStarter = pick("starter", ["starter", "hook", "engage"], `Starter hook for ${topic}: puzzling question or short stimulus.`, "Think-pair-share");
+  const sStarter = pick(
+    "starter",
+    ["starter", "hook", "engage", "التمهيد", "استهلال"],
+    isAr
+      ? `تمهيد لموضوع «${topic}»: سؤال مثير أو محفز قصير.`
+      : `Starter hook for ${topic}: puzzling question or short stimulus.`,
+    isAr ? "فكر-زاوج-شارك" : "Think-pair-share",
+  );
   slides.push({
-    slideTitle: "Starter Activity",
+    slideTitle: T.starter,
     body: sStarter.body,
     speakerNotes: sStarter.notes,
-    aflCallout: "Think–pair–share after the hook.",
+    aflCallout: isAr ? "فكر-زاوج-شارك بعد التمهيد." : "Think–pair–share after the hook.",
     includeImageSlot: false,
   });
 
-  const sPrior = pick("prior", ["prior", "entry", "diagnostic"], `Prior-knowledge questions about ${topic}.`, "Cold calling");
+  const sPrior = pick(
+    "prior",
+    ["prior", "entry", "diagnostic", "قبلي", "سابق"],
+    isAr ? `أسئلة عن المعرفة السابقة بخصوص «${topic}».` : `Prior-knowledge questions about ${topic}.`,
+    isAr ? "أسئلة عشوائية" : "Cold calling",
+  );
   slides.push({
-    slideTitle: "Entry Ticket — Prior Knowledge",
+    slideTitle: T.prior,
     body: sPrior.body,
     speakerNotes: sPrior.notes,
-    aflCallout: "Cold calling with wait time after each question.",
+    aflCallout: isAr ? "أسئلة عشوائية مع وقت انتظار بعد كل سؤال." : "Cold calling with wait time after each question.",
     includeImageSlot: false,
   });
 
-  const sMain = pick("main", ["main teaching", "explanation", "i do"], `Step-by-step teaching sequence for ${topic}.`, "Cold calling + checks");
+  const sMain = pick(
+    "main",
+    ["main teaching", "explanation", "i do", "شرح", "عرض"],
+    isAr ? `تسلسل شرح خطوة بخطوة لموضوع «${topic}».` : `Step-by-step teaching sequence for ${topic}.`,
+    isAr ? "أسئلة عشوائية وفحوص" : "Cold calling + checks",
+  );
   slides.push({
-    slideTitle: "Main Teaching Phase",
+    slideTitle: T.main,
     body: sMain.body,
     speakerNotes: sMain.notes,
-    aflCallout: "Use hinge questions every 3–5 minutes.",
+    aflCallout: isAr ? "استخدم أسئلة مفصلية كل 3–5 دقائق." : "Use hinge questions every 3–5 minutes.",
     includeImageSlot: true,
   });
 
-  const sGuided = pick("guided", ["guided", "we do"], `Guided practice for ${topic} — work a sample together.`, "Peer assessment");
+  const sGuided = pick(
+    "guided",
+    ["guided", "we do", "مرشد", "تطبيق"],
+    isAr
+      ? `تطبيق مرشد لموضوع «${topic}» — حل نموذجي معًا.`
+      : `Guided practice for ${topic} — work a sample together.`,
+    isAr ? "تقويم الأقران" : "Peer assessment",
+  );
   slides.push({
-    slideTitle: "Guided Practice",
+    slideTitle: T.guided,
     body: sGuided.body,
     speakerNotes: sGuided.notes,
-    aflCallout: "Peer check of first solution step.",
+    aflCallout: isAr ? "مراجعة الأقران لأول خطوة حل." : "Peer check of first solution step.",
     includeImageSlot: false,
   });
 
   const sGroup = pick(
     "group",
-    ["group", "collaborative", "ccl"],
-    `Collaborative task on ${topic} with clear roles and a product.`,
-    "Think-pair-share",
+    ["group", "collaborative", "ccl", "جماعي", "تعاوني"],
+    isAr
+      ? `مهمة جماعية حول «${topic}» بأدوار واضحة ومنتج نهائي.`
+      : `Collaborative task on ${topic} with clear roles and a product.`,
+    isAr ? "فكر-زاوج-شارك" : "Think-pair-share",
   );
   slides.push({
-    slideTitle: "Group Activity",
+    slideTitle: T.group,
     body: sGroup.body,
     speakerNotes: sGroup.notes,
-    aflCallout: "Gallery walk or reporter from each group.",
+    aflCallout: isAr ? "جولة معرض أو متحدث من كل مجموعة." : "Gallery walk or reporter from each group.",
     includeImageSlot: true,
   });
 
-  const sDiff = pick("diff", ["differentiation", "support", "challenge"], `Support and stretch paths for ${topic}.`, "Thumbs up/down");
+  const sDiff = pick(
+    "diff",
+    ["differentiation", "support", "challenge", "تمايز", "دعم"],
+    isAr ? `مسارات دعم وتحدي لموضوع «${topic}».` : `Support and stretch paths for ${topic}.`,
+    isAr ? "إبهام لأعلى/أسفل" : "Thumbs up/down",
+  );
   slides.push({
-    slideTitle: "Differentiation",
+    slideTitle: T.diff,
     body: sDiff.body,
     speakerNotes: sDiff.notes,
-    aflCallout: "Thumbs up/down on confidence before independent work.",
+    aflCallout: isAr
+      ? "إبهام لأعلى/أسفل عن الثقة قبل العمل المستقل."
+      : "Thumbs up/down on confidence before independent work.",
     includeImageSlot: false,
   });
 
-  const sAfl = pick("afl", ["afl", "formative", "questioning"], `Formative moves for this lesson on ${topic}.`, "Mixed AFL");
+  const sAfl = pick(
+    "afl",
+    ["afl", "formative", "questioning", "تقويم"],
+    isAr ? `أساليب تقويمية لهذا الدرس حول «${topic}».` : `Formative moves for this lesson on ${topic}.`,
+    isAr ? "تنويع في التقويم" : "Mixed AFL",
+  );
   slides.push({
-    slideTitle: "AFL Tools in This Lesson",
+    slideTitle: T.afl,
     body: sAfl.body,
     speakerNotes: sAfl.notes,
-    aflCallout: "Rotate: cold call, TPS, whiteboards.",
+    aflCallout: isAr ? "تناوب: سؤال عشوائي، فكر-زاوج-شارك، سبورات." : "Rotate: cold call, TPS, whiteboards.",
     includeImageSlot: false,
   });
 
-  const sMini = pick("mini", ["mini plenary", "check"], `Quick understanding check on ${topic}.`, "Exit-style oral");
+  const sMini = pick(
+    "mini",
+    ["mini plenary", "check", "تلخيص", "فحص"],
+    isAr ? `فحص سريع للفهم بخصوص «${topic}».` : `Quick understanding check on ${topic}.`,
+    isAr ? "سؤال شفهي ختامي" : "Exit-style oral",
+  );
   slides.push({
-    slideTitle: "Mini Plenary",
+    slideTitle: T.mini,
     body: sMini.body,
     speakerNotes: sMini.notes,
-    aflCallout: "One hinge question to whole class.",
+    aflCallout: isAr ? "سؤال مفصلي واحد للجميع." : "One hinge question to whole class.",
     includeImageSlot: false,
   });
 
-  const sExit = pick("exit", ["exit ticket", "closure"], `Exit questions aligned to ${topic} objectives.`, "Exit ticket");
+  const sExit = pick(
+    "exit",
+    ["exit ticket", "closure", "خروج", "إغلاق"],
+    isAr ? `أسئلة خروج متوافقة مع أهداف «${topic}».` : `Exit questions aligned to ${topic} objectives.`,
+    isAr ? "بطاقة خروج" : "Exit ticket",
+  );
   slides.push({
-    slideTitle: "Exit Ticket",
+    slideTitle: T.exit,
     body: sExit.body,
     speakerNotes: sExit.notes,
-    aflCallout: "Written exit ticket (2 questions max).",
+    aflCallout: isAr ? "بطاقة خروج كتابية (سؤالان كحد أقصى)." : "Written exit ticket (2 questions max).",
     includeImageSlot: false,
   });
 
   const hwBody = mergeBodies(
     hw,
-    pick("homework", ["homework", "assignment"], `Homework extension for ${topic}.`).body,
-    `${anchor}\nExtended practice or research on ${topic}.`,
+    pick("homework", ["homework", "assignment", "واجب", "منزلي"], isAr ? `توسعة واجب لموضوع «${topic}».` : `Homework extension for ${topic}.`).body,
+    isAr
+      ? `${contextAnchor}\nتمرين موسع أو بحث قصير حول «${topic}».`
+      : `${contextAnchor}\nExtended practice or research on ${topic}.`,
   );
   slides.push({
-    slideTitle: "Homework",
+    slideTitle: T.homework,
     body: hwBody,
-    speakerNotes: buildNotes(topic, hw || ppt, "Success criteria visible on board / LMS."),
-    aflCallout: "Peer review of criteria before leaving.",
+    speakerNotes: buildNotes(
+      topic,
+      hw || ppt,
+      isAr ? "معايير النجاح ظاهرة على السبورة / LMS." : "Success criteria visible on board / LMS.",
+      isAr,
+    ),
+    aflCallout: isAr ? "مراجعة الأقران للمعايير قبل المغادرة." : "Peer review of criteria before leaving.",
     includeImageSlot: false,
   });
 
-  const sPlen = pick("plenary", ["plenary", "reflection", "summary"], `Summary and reflection for ${topic}.`, "Self-assessment");
+  const sPlen = pick(
+    "plenary",
+    ["plenary", "reflection", "summary", "ختام", "تلخيص"],
+    isAr ? `تلخيص وتأمل لموضوع «${topic}».` : `Summary and reflection for ${topic}.`,
+    isAr ? "تقويم ذاتي" : "Self-assessment",
+  );
   slides.push({
-    slideTitle: "Plenary & Reflection",
+    slideTitle: T.plenary,
     body: sPlen.body,
     speakerNotes: sPlen.notes,
-    aflCallout: "Students rate confidence 1–4 on today's objectives.",
+    aflCallout: isAr ? "يقيّم الطلاب ثقتهم 1–4 في أهداف اليوم." : "Students rate confidence 1–4 on today's objectives.",
     includeImageSlot: true,
   });
 
+  applyArabicFullPlanBodyFallback(slides, plan, isAr);
   applyAflToolInjections(slides, ctx.aflSelections);
 
   return slides;
@@ -424,7 +671,17 @@ export function buildLessonPlanContextFromResult(
     learningObjectivesText:
       meta.learningObjectives?.trim() ||
       (typeof plan["Full Lesson Plan"] === "string"
-        ? extractByHints(plan["Full Lesson Plan"], ["learning objectives", "learning objective"], STOP_OBJECTIVES)
+        ? extractByHints(
+            plan["Full Lesson Plan"],
+            [
+              "learning objectives",
+              "learning objective",
+              "الأهداف التعليمية",
+              "أهداف التعلم",
+              "الأهداف",
+            ],
+            STOP_OBJECTIVES,
+          )
         : undefined),
     fullLessonPlan: typeof plan["Full Lesson Plan"] === "string" ? plan["Full Lesson Plan"] : undefined,
     pptContent: typeof plan["PPT Slide Content"] === "string" ? plan["PPT Slide Content"] : undefined,
