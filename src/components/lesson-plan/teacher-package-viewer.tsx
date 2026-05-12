@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   getLessonPlanDisplayOrder,
+  getPptSourceLessonText,
+  getPptSourceSlideOutline,
   getSectionTabLabel,
   hasTeacherPackageContent,
   type LessonPlanResult,
@@ -166,23 +168,40 @@ export function TeacherPackageViewer({
 
   const baseMeta = { subject, grade, topic };
 
-  const onDownloadPpt = () =>
-    runExport(
-      "ppt",
-      `${baseName}-ppt.pptx`,
-      "/api/lesson-plan/export/pptx",
-      {
-        ...baseMeta,
-        pptContent: lessonPlan["PPT Slide Content"] ?? "",
-        fullLessonPlan: lessonPlan["Full Lesson Plan"] ?? "",
-        learningObjectives: learningObjectives?.trim() || "",
-        homeworkTask: lessonPlan["Homework Task"] ?? "",
-        teacherName: teacherName?.trim() || "",
-        pptTheme: pptThemeId,
-        curriculumFramework: curriculumFramework?.trim() ?? "",
-        ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
-      },
-    );
+  const onDownloadPpt = () => {
+    const fullLessonPlan = getPptSourceLessonText(lessonPlan);
+    const pptContent = getPptSourceSlideOutline(lessonPlan);
+    const lo = learningObjectives?.trim() || "";
+    const hw = typeof lessonPlan["Homework Task"] === "string" ? lessonPlan["Homework Task"].trim() : "";
+
+    const sectionLengths = getLessonPlanDisplayOrder(lessonPlan).map((key) => ({
+      key,
+      len: typeof lessonPlan[key] === "string" ? (lessonPlan[key] as string).trim().length : 0,
+    }));
+
+    console.log("[PPT export] Download clicked — resolved payload for /api/lesson-plan/export/pptx:", {
+      fullLessonPlanChars: fullLessonPlan.length,
+      pptContentChars: pptContent.length,
+      learningObjectivesChars: lo.length,
+      homeworkTaskChars: hw.length,
+      subject,
+      grade,
+      topicPreview: topic.slice(0, 80),
+      sectionLengths,
+    });
+
+    return runExport("ppt", `${baseName}-ppt.pptx`, "/api/lesson-plan/export/pptx", {
+      ...baseMeta,
+      pptContent,
+      fullLessonPlan,
+      learningObjectives: lo,
+      homeworkTask: hw,
+      teacherName: teacherName?.trim() || "",
+      pptTheme: pptThemeId,
+      curriculumFramework: curriculumFramework?.trim() ?? "",
+      ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
+    });
+  };
 
   const onDownloadLessonPlan = () =>
     runExport(

@@ -1,6 +1,10 @@
 import type { AflPhaseId, AflSelectionsPayload } from "@/lib/afl-tools";
 import { AFL_PHASE_IDS, distributeIds, formatToolsBlockForSlide } from "@/lib/afl-tools";
-import type { LessonPlanResult } from "@/lib/lesson-plan";
+import {
+  type LessonPlanResult,
+  getPptSourceLessonText,
+  getPptSourceSlideOutline,
+} from "@/lib/lesson-plan";
 
 /** 0-based slide indices that may include one AI image each (max 4 per deck). */
 export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([0, 4, 6, 12]);
@@ -663,28 +667,33 @@ export function buildLessonPlanContextFromResult(
     aflSelections?: AflSelectionsPayload;
   },
 ): StructuredLessonPptContext {
+  const fullLessonText = getPptSourceLessonText(plan);
+  const pptOutlineText = getPptSourceSlideOutline(plan);
+
   return {
     subject: meta.subject,
     grade: meta.grade,
     topic: meta.topic,
     teacherName: meta.teacherName,
-    learningObjectivesText:
-      meta.learningObjectives?.trim() ||
-      (typeof plan["Full Lesson Plan"] === "string"
-        ? extractByHints(
-            plan["Full Lesson Plan"],
-            [
-              "learning objectives",
-              "learning objective",
-              "الأهداف التعليمية",
-              "أهداف التعلم",
-              "الأهداف",
-            ],
-            STOP_OBJECTIVES,
-          )
-        : undefined),
-    fullLessonPlan: typeof plan["Full Lesson Plan"] === "string" ? plan["Full Lesson Plan"] : undefined,
-    pptContent: typeof plan["PPT Slide Content"] === "string" ? plan["PPT Slide Content"] : undefined,
+    learningObjectivesText: (() => {
+      const fromMeta = meta.learningObjectives?.trim();
+      if (fromMeta) return fromMeta;
+      if (!fullLessonText) return undefined;
+      const extracted = extractByHints(
+        fullLessonText,
+        [
+          "learning objectives",
+          "learning objective",
+          "الأهداف التعليمية",
+          "أهداف التعلم",
+          "الأهداف",
+        ],
+        STOP_OBJECTIVES,
+      ).trim();
+      return extracted || undefined;
+    })(),
+    fullLessonPlan: fullLessonText || undefined,
+    pptContent: pptOutlineText || undefined,
     homeworkTask: typeof plan["Homework Task"] === "string" ? plan["Homework Task"] : undefined,
     ...(aflPayloadHasTools(meta.aflSelections) ? { aflSelections: meta.aflSelections } : {}),
   };

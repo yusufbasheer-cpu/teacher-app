@@ -69,6 +69,14 @@ export async function POST(req: Request) {
   }
 
   try {
+    console.log("[pptx export] POST body lengths (chars):", {
+      pptContent: pptContent.length,
+      fullLessonPlan: fullLessonPlan.length,
+      learningObjectives: learningObjectives.length,
+      homeworkTask: homeworkTask.length,
+      topicPreview: topic.slice(0, 120),
+    });
+
     const deck = buildStructuredLessonSlides({
       subject,
       grade,

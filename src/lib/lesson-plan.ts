@@ -283,3 +283,38 @@ export function getLessonPlanDisplayOrder(plan: LessonPlanResult): string[] {
     (key) => isNonEmptyString(plan[key]) && !isLessonPlanMetaStorageKey(key),
   );
 }
+
+/**
+ * Joins every non-empty section the UI can display (same order as `getLessonPlanDisplayOrder`)
+ * into one markdown-ish document. Used so PPT export matches on-screen content.
+ */
+export function buildCombinedTeacherPackageTextForPpt(plan: LessonPlanResult): string {
+  const keys = getLessonPlanDisplayOrder(plan);
+  const blocks: string[] = [];
+  for (const key of keys) {
+    if (isLessonPlanMetaStorageKey(key)) continue;
+    const raw = plan[key];
+    const text = typeof raw === "string" ? raw.trim() : "";
+    if (!text) continue;
+    blocks.push(`## ${key}\n\n${text}`);
+  }
+  return blocks.join("\n\n").trim();
+}
+
+/** Text used to mine lesson phases for structured slides (prefers Full Lesson Plan when long enough). */
+export function getPptSourceLessonText(plan: LessonPlanResult): string {
+  const full =
+    typeof plan["Full Lesson Plan"] === "string" ? plan["Full Lesson Plan"].trim() : "";
+  if (full.length >= 200) return full;
+  const merged = buildCombinedTeacherPackageTextForPpt(plan);
+  return merged.length > full.length ? merged : full || merged;
+}
+
+/** PPT outline text for extraction; falls back to full lesson text when the outline section is short. */
+export function getPptSourceSlideOutline(plan: LessonPlanResult): string {
+  const ppt =
+    typeof plan["PPT Slide Content"] === "string" ? plan["PPT Slide Content"].trim() : "";
+  if (ppt.length >= 80) return ppt;
+  const lesson = getPptSourceLessonText(plan);
+  return lesson || ppt;
+}

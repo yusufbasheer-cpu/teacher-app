@@ -8,7 +8,11 @@ import {
   type StructuredLessonSlideModel,
 } from "@/lib/ppt-structured-lesson";
 import { formatDocxAflAppendix, sanitizeAflSelections, type AflSelectionsPayload } from "@/lib/afl-tools";
-import { TEACHER_PACKAGE_SECTIONS, type LessonPlanResult } from "@/lib/lesson-plan";
+import {
+  getPptSourceSlideOutline,
+  TEACHER_PACKAGE_SECTIONS,
+  type LessonPlanResult,
+} from "@/lib/lesson-plan";
 import {
   DEFAULT_PPT_THEME_ID,
   type PptRenderTheme,
@@ -835,20 +839,21 @@ export async function buildTeacherPackageZipBuffer(params: {
 
   const zip = new JSZip();
 
-  const pptRaw = params.lessonPlan["PPT Slide Content"];
-  if (typeof pptRaw === "string" && pptRaw.trim().length > 0) {
-    const ctx = buildLessonPlanContextFromResult(params.lessonPlan, {
-      subject: meta.subject,
-      grade: meta.grade,
-      topic: meta.topic,
-      teacherName: "Teacher",
-      ...(Object.keys(afl).length > 0 ? { aflSelections: afl } : {}),
-    });
+  const ctx = buildLessonPlanContextFromResult(params.lessonPlan, {
+    subject: meta.subject,
+    grade: meta.grade,
+    topic: meta.topic,
+    teacherName: "Teacher",
+    ...(Object.keys(afl).length > 0 ? { aflSelections: afl } : {}),
+  });
+  const pptOutline = getPptSourceSlideOutline(params.lessonPlan).trim();
+  const fullForDeck = (ctx.fullLessonPlan ?? "").trim();
+  if (pptOutline.length > 0 || fullForDeck.length > 0) {
     zip.file(
       `${base}-ppt-content.pptx`,
       await buildPptxFromPptContent({
         ...meta,
-        pptContent: pptRaw,
+        pptContent: pptOutline || fullForDeck.slice(0, 1200),
         fullLessonPlan: ctx.fullLessonPlan,
         learningObjectives: ctx.learningObjectivesText,
         homeworkTask: ctx.homeworkTask,
