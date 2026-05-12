@@ -91,6 +91,25 @@ function extractJsonObject(text: string): string | null {
   return text.slice(first, last + 1);
 }
 
+function safeJsonParseRecord(json: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(json) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function safeJsonParseStringLiteral(rawLiteral: string): string | null {
+  try {
+    const decoded = JSON.parse(rawLiteral) as unknown;
+    return typeof decoded === "string" ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
 function parseJsonPlan(
   content: string,
   sections: readonly TeacherPackageSectionKey[],
@@ -111,33 +130,37 @@ function parseJsonPlan(
         const asJson = JSON.stringify(value, null, 2);
         if (asJson?.trim()) out[section] = asJson;
       } catch {
-        const asText = String(value);
-        if (asText.trim()) out[section] = asText.trim();
+        try {
+          const asText = String(value);
+          if (asText.trim()) out[section] = asText.trim();
+        } catch {
+          /* ignore */
+        }
       }
     }
     return out;
   };
 
-  try {
-    const parsed = JSON.parse(jsonCandidate) as Record<string, unknown>;
-    return mergeFromParsed(parsed);
-  } catch {
+  const parsedFull = safeJsonParseRecord(jsonCandidate);
+  if (parsedFull) {
+    return mergeFromParsed(parsedFull);
+  }
+
+  const out: Partial<Record<TeacherPackageSectionKey, string>> = {};
+  for (const section of sections) {
     try {
-      const out: Partial<Record<TeacherPackageSectionKey, string>> = {};
-      for (const section of sections) {
-        const escapedKey = section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const re = new RegExp(`\"${escapedKey}\"\\s*:\\s*(\"(?:\\\\.|[^\"\\\\])*\")`);
-        const m = jsonCandidate.match(re);
-        const rawStringLiteral = m?.[1];
-        if (!rawStringLiteral) continue;
-        const decoded = JSON.parse(rawStringLiteral) as unknown;
-        if (typeof decoded === "string" && decoded.trim()) out[section] = decoded.trim();
-      }
-      return out;
+      const escapedKey = section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`\"${escapedKey}\"\\s*:\\s*(\"(?:\\\\.|[^\"\\\\])*\")`);
+      const m = jsonCandidate.match(re);
+      const rawStringLiteral = m?.[1];
+      if (!rawStringLiteral) continue;
+      const decoded = safeJsonParseStringLiteral(rawStringLiteral);
+      if (decoded?.trim()) out[section] = decoded.trim();
     } catch {
-      return {};
+      /* skip section */
     }
   }
+  return out;
 }
 
 /** Split on lines that look like a section title (markdown heading or plain line). */
@@ -210,7 +233,7 @@ function countFilled(plan: LessonPlanResult, sections: readonly TeacherPackageSe
 const RAW_FALLBACK_INTRO =
   "The AI response could not be split into separate sections automatically. Below is the full raw output so you can still copy or edit it.\n\n---\n\n";
 
-function stripOuterMarkdownFences(text: string): string {
+export function stripOuterMarkdownFences(text: string): string {
   let s = text.trim();
   if (s.startsWith("```")) {
     s = s
@@ -224,6 +247,29 @@ export function parseTeacherPackageResponse(
   raw: string,
   sections: readonly TeacherPackageSectionKey[],
 ): ParseTeacherPackageResult {
+  try {
+    return parseTeacherPackageResponseImpl(raw, sections);
+  } catch (e) {
+    console.error("[parse-teacher-package] unexpected error:", e);
+    const trimmed = stripOuterMarkdownFences(raw?.trim() ?? "");
+    const firstKey = sections[0] ?? "Full Lesson Plan";
+    const plan: LessonPlanResult = {};
+    for (const k of sections) {
+      plan[k] = k === firstKey ? `${RAW_FALLBACK_INTRO}${trimmed || "(Parse error.)"}` : "";
+    }
+    return {
+      plan,
+      mode: "raw-fallback",
+      parseNotice:
+        "An unexpected parse error occurred; showing the raw model text in the first section when available.",
+    };
+  }
+}
+
+function parseTeacherPackageResponseImpl(
+  raw: string,
+  sections: readonly TeacherPackageSectionKey[],
+): ParseTeacherPackageResult {
   const trimmed = stripOuterMarkdownFences(raw?.trim() ?? "");
   if (!trimmed) {
     const first = sections[0] ?? "Full Lesson Plan";
@@ -234,8 +280,22 @@ export function parseTeacherPackageResponse(
     };
   }
 
-  const labeled = parseLabeledBlocks(trimmed, sections);
-  const json = parseJsonPlan(trimmed, sections);
+  const labeled = (() => {
+    try {
+      return parseLabeledBlocks(trimmed, sections);
+    } catch (e) {
+      console.error("[parse-teacher-package] labeled blocks parse failed:", e);
+      return {};
+    }
+  })();
+  const json = (() => {
+    try {
+      return parseJsonPlan(trimmed, sections);
+    } catch (e) {
+      console.error("[parse-teacher-package] JSON plan parse failed:", e);
+      return {};
+    }
+  })();
 
   const labeledOnly = mergePartials(sections, labeled);
   if (countFilled(labeledOnly, sections) === sections.length) {
@@ -257,7 +317,14 @@ export function parseTeacherPackageResponse(
     };
   }
 
-  const heuristic = parseHeuristicHeadings(trimmed, sections);
+  const heuristic = (() => {
+    try {
+      return parseHeuristicHeadings(trimmed, sections);
+    } catch (e) {
+      console.error("[parse-teacher-package] heuristic headings failed:", e);
+      return {};
+    }
+  })();
   const triple = mergePartials(sections, labeled, json, heuristic);
   if (countFilled(triple, sections) > 0) {
     const notice =

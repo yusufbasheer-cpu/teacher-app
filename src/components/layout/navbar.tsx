@@ -68,7 +68,7 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  className={`inline-flex min-h-10 items-center rounded-lg px-3 py-2 text-sm font-medium transition ${
                     active
                       ? "bg-blue-50 text-blue-700"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -82,14 +82,14 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={onLogout}
-                className="ml-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
+                className="ml-2 inline-flex min-h-10 items-center rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
               >
                 Logout
               </button>
             ) : (
               <Link
                 href="/auth"
-                className="ml-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
+                className="ml-2 inline-flex min-h-10 items-center rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
               >
                 Login
               </Link>
@@ -99,20 +99,21 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setMenuOpen((prev) => !prev)}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 md:hidden"
+            className="inline-flex min-h-11 min-w-[4.5rem] items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 md:hidden"
             aria-label="Toggle navigation menu"
+            aria-expanded={menuOpen}
           >
             Menu
           </button>
         </div>
 
         {menuOpen ? (
-          <nav className="mt-3 space-y-2 rounded-xl border border-blue-100 bg-white p-3 md:hidden">
+          <nav className="mt-3 space-y-1 rounded-xl border border-blue-100 bg-white p-3 md:hidden">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`block rounded-lg px-3 py-2 text-sm font-medium ${
+                className={`flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-medium ${
                   pathname === link.href
                     ? "bg-blue-50 text-blue-700"
                     : "text-slate-700 hover:bg-slate-50"
@@ -125,14 +126,14 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={onLogout}
-                className="mt-1 w-full rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
+                className="mt-1 flex min-h-11 w-full items-center justify-center rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
               >
                 Logout
               </button>
             ) : (
               <Link
                 href="/auth"
-                className="mt-1 block rounded-lg bg-blue-700 px-4 py-2 text-center text-sm font-semibold text-white"
+                className="mt-1 flex min-h-11 items-center justify-center rounded-lg bg-blue-700 px-4 py-2 text-center text-sm font-semibold text-white"
               >
                 Login
               </Link>

@@ -10,20 +10,28 @@ import {
   normalizeGenerationSections,
   SOURCE_MATERIAL_MAX_CHARS,
   TEACHER_PACKAGE_BLOCK_MARKERS,
+  TEACHER_PACKAGE_SECTIONS,
   type LessonPlanGenerateBody,
   type LessonPlanInput,
+  type LessonPlanResult,
   type SectionImageMap,
   type TeacherPackageSectionKey,
   isValidCurriculumType,
   isValidGradeYear,
   isValidSubjectOption,
 } from "@/lib/lesson-plan";
-import { parseTeacherPackageResponse } from "@/lib/parse-teacher-package-response";
+import { formatAflForAiPrompt, sanitizeAflSelections } from "@/lib/afl-tools";
+import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
+import {
+  parseTeacherPackageResponse,
+  stripOuterMarkdownFences,
+} from "@/lib/parse-teacher-package-response";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
+const DEEPSEEK_MAX_TOKENS = 8000;
 
 type DeepSeekMessage = {
   role: "system" | "user" | "assistant";
@@ -57,6 +65,7 @@ function buildMessages(
   sections: readonly TeacherPackageSectionKey[],
   sourceMaterial: string | undefined,
   frameworkAddendum: string | null,
+  aflPromptBlock: string,
 ): DeepSeekMessage[] {
   const sectionInstructions = sections
     .map((key) => {
@@ -109,11 +118,18 @@ ${chapterLine}
 - Topic (within the chapter): ${input.topic.trim()}
 - Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}${frameworkUserLine}
 ${sourceBlock}
+${aflPromptBlock}
 
 Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested section must be classroom-ready (not placeholders).
       `.trim(),
     },
   ];
+}
+
+function emptyLessonShell(sections: readonly TeacherPackageSectionKey[]): LessonPlanResult {
+  const out: LessonPlanResult = {};
+  for (const k of sections) out[k] = "";
+  return out;
 }
 
 export async function POST(req: Request) {
@@ -163,50 +179,87 @@ export async function POST(req: Request) {
 
   const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(input.curriculumFramework);
 
-  const deepseekResponse = await fetch(DEEPSEEK_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      temperature: 0.55,
-      messages: buildMessages(input, sections, sourceMaterial, frameworkAddendum),
-    }),
-  });
+  const aflSelections = sanitizeAflSelections(body.aflSelections);
+  const aflFormatted = formatAflForAiPrompt(aflSelections);
+  const aflPromptBlock = aflFormatted
+    ? `\n\n### Teacher-selected AFL tools (mandatory integration)\n${aflFormatted}`
+    : "";
 
-  if (!deepseekResponse.ok) {
-    const errorText = await deepseekResponse.text();
-    return NextResponse.json(
-      { error: `DeepSeek request failed: ${errorText}` },
-      { status: 502 },
-    );
+  const orderedSections = TEACHER_PACKAGE_SECTIONS.filter((k) => sections.includes(k));
+  const mergedPlan = emptyLessonShell(sections);
+  const parseNotices: string[] = [];
+
+  for (const section of orderedSections) {
+    let deepseekResponse: Response;
+    try {
+      deepseekResponse = await fetch(DEEPSEEK_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          temperature: 0.55,
+          max_tokens: DEEPSEEK_MAX_TOKENS,
+          messages: buildMessages(input, [section], sourceMaterial, frameworkAddendum, aflPromptBlock),
+        }),
+      });
+    } catch (err) {
+      console.error("[lesson-plan] DeepSeek fetch error:", section, err);
+      mergedPlan[section] = `_(This section could not be generated: network or server error.)_\n\n${String(
+        err instanceof Error ? err.message : err,
+      )}`.slice(0, 12_000);
+      parseNotices.push(`${section}: request failed before a response was received.`);
+      continue;
+    }
+
+    const rawBody = await deepseekResponse.text();
+    if (!deepseekResponse.ok) {
+      console.warn(
+        "[lesson-plan] DeepSeek HTTP error:",
+        section,
+        deepseekResponse.status,
+        rawBody.slice(0, 400),
+      );
+      mergedPlan[section] = `_(DeepSeek returned HTTP ${deepseekResponse.status} for this section.)_\n\n${rawBody.slice(0, 6000)}`;
+      parseNotices.push(`${section}: DeepSeek HTTP ${deepseekResponse.status}.`);
+      continue;
+    }
+
+    const { content, errorMessage } = parseDeepSeekCompletionBody(rawBody);
+    if (errorMessage) {
+      parseNotices.push(`${section}: ${errorMessage}`);
+    }
+    if (!content?.trim()) {
+      mergedPlan[section] = `(No usable text was returned for **${section}**.)${errorMessage ? `\n\n${errorMessage}` : ""}`;
+      continue;
+    }
+
+    console.log(`[lesson-plan] DeepSeek raw response (${section}):\n`, content);
+
+    const { plan: slicePlan, parseNotice: sliceNotice, mode } = parseTeacherPackageResponse(content, [
+      section,
+    ]);
+    console.log("[lesson-plan] Parsed teacher package mode:", section, mode);
+
+    let body = (slicePlan[section] ?? "").trim();
+    if (!body && content.trim()) {
+      body = stripOuterMarkdownFences(content.trim());
+      parseNotices.push(`${section}: Plain-text fallback used (markers not detected).`);
+    }
+    mergedPlan[section] = body || `(Empty after parsing for **${section}**.)`;
+    if (sliceNotice) parseNotices.push(`${section}: ${sliceNotice}`);
   }
 
-  const data = (await deepseekResponse.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    return NextResponse.json(
-      { error: "DeepSeek returned an empty response." },
-      { status: 502 },
-    );
-  }
-
-  console.log("[lesson-plan] DeepSeek raw response (full text):\n", content);
-
-  const { plan: parsedPlan, parseNotice, mode } = parseTeacherPackageResponse(content, sections);
-  console.log("[lesson-plan] Parsed teacher package mode:", mode);
+  const parseNotice = parseNotices.length > 0 ? parseNotices.join("\n\n") : undefined;
 
   let sectionImages: SectionImageMap = {};
   let sectionImageErrors: Partial<Record<TeacherPackageSectionKey, string>> = {};
   try {
     const fluxResult = await generateFluxSectionImages({
       input,
-      plan: parsedPlan,
+      plan: mergedPlan,
       sections,
     });
     sectionImages = fluxResult.sectionImages;
@@ -219,7 +272,7 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({
-    lessonPlan: parsedPlan,
+    lessonPlan: mergedPlan,
     ...(parseNotice ? { parseNotice } : {}),
     ...(Object.keys(sectionImages).length > 0 ? { sectionImages } : {}),
     ...(Object.keys(sectionImageErrors).length > 0 ? { sectionImageErrors } : {}),

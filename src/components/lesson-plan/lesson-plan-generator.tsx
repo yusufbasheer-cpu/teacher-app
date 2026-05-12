@@ -40,6 +40,12 @@ import {
   type PptThemeId,
 } from "@/lib/ppt-themes";
 import { supabase } from "@/lib/supabase";
+import {
+  AFL_PHASE_GROUPS,
+  AFL_PHASE_IDS,
+  AFL_RECOMMENDED_IDS,
+  type AflPhaseId,
+} from "@/lib/afl-tools";
 
 type SourceUploadChunk = {
   id: string;
@@ -97,6 +103,22 @@ function initialSectionSelection(): Record<TeacherPackageSectionKey, boolean> {
   >;
 }
 
+function emptyAflSelected(): Record<AflPhaseId, string[]> {
+  return Object.fromEntries(AFL_PHASE_IDS.map((p) => [p, [] as string[]])) as Record<
+    AflPhaseId,
+    string[]
+  >;
+}
+
+function toAflPayload(map: Record<AflPhaseId, string[]>) {
+  const out: Partial<Record<AflPhaseId, string[]>> = {};
+  for (const p of AFL_PHASE_IDS) {
+    const arr = map[p]?.filter(Boolean) ?? [];
+    if (arr.length) out[p] = arr;
+  }
+  return out;
+}
+
 export function LessonPlanGenerator() {
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
@@ -125,11 +147,16 @@ export function LessonPlanGenerator() {
 
   const [parseNotice, setParseNotice] = useState<string | null>(null);
   const [pptThemeId, setPptThemeId] = useState<PptThemeId>(DEFAULT_PPT_THEME_ID);
+  const [aflPanelOpen, setAflPanelOpen] = useState(false);
+  const [aflSelected, setAflSelected] = useState<Record<AflPhaseId, string[]>>(() => emptyAflSelected());
 
   const extractedMaterialPreview = useMemo(
     () => combineSourceChunks(uploadedChunks),
     [uploadedChunks],
   );
+
+  const aflSelectionsPayload = useMemo(() => toAflPayload(aflSelected), [aflSelected]);
+  const hasAflForExport = Object.keys(aflSelectionsPayload).length > 0;
 
   const loadPlanById = async (userId: string, planId: string) => {
     const { data, error: loadError } = await supabase
@@ -393,6 +420,7 @@ export function LessonPlanGenerator() {
         body: JSON.stringify({
           ...form,
           sections,
+          ...(hasAflForExport ? { aflSelections: aflSelectionsPayload } : {}),
           ...(combinedSource.length > 0 ? { sourceMaterial: combinedSource } : {}),
         }),
       });
@@ -515,11 +543,11 @@ export function LessonPlanGenerator() {
         Signed in as <span className="font-semibold">{user.email}</span>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+      <div className="grid min-w-0 gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <form
           onSubmit={onSubmit}
           aria-busy={loading}
-          className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm md:p-7"
+          className="min-w-0 rounded-3xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6 md:p-7"
         >
           <h2 className="text-xl font-semibold text-slate-900">Lesson Plan Generator</h2>
           <p className="mt-2 text-sm text-slate-600">
@@ -778,6 +806,110 @@ export function LessonPlanGenerator() {
           </div>
         </div>
 
+        {!aflPanelOpen ? (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setAflPanelOpen(true)}
+              className="w-full rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left text-sm font-semibold text-violet-950 shadow-sm transition hover:bg-violet-100"
+            >
+              Add AFL Tools to Your Lesson
+              <span className="mt-1 block text-xs font-normal text-violet-800/90">
+                Optional: pick Assessment for Learning tools by lesson phase. They are sent to the AI
+                and appear in your lesson plan and PowerPoint.
+              </span>
+            </button>
+          </div>
+        ) : (
+          <div className="mt-6 rounded-2xl border border-violet-200 bg-gradient-to-b from-violet-50/80 to-white p-4 shadow-sm md:p-5">
+            <div className="flex flex-col gap-3 border-b border-violet-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Select AFL Tools for Your Lesson
+                </h3>
+                <p className="mt-1 text-xs text-slate-600">
+                  Tick the tools you want in each phase. They are woven into the written plan and
+                  matched slides when you generate.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAflSelected(
+                      Object.fromEntries(
+                        AFL_PHASE_IDS.map((phase) => {
+                          const allowed = new Set(
+                            AFL_PHASE_GROUPS.find((g) => g.phase === phase)?.tools.map((t) => t.id) ??
+                              [],
+                          );
+                          const ids = AFL_RECOMMENDED_IDS[phase].filter((id) => allowed.has(id));
+                          return [phase, [...ids]];
+                        }),
+                      ) as Record<AflPhaseId, string[]>,
+                    );
+                  }}
+                  className="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-900 shadow-sm hover:bg-violet-50"
+                >
+                  Select Recommended
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAflSelected(emptyAflSelected())}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                  Clear All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAflPanelOpen(false)}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                >
+                  Hide
+                </button>
+              </div>
+            </div>
+            <div className="mt-4 max-h-[min(70vh,520px)] space-y-5 overflow-y-auto pr-1">
+              {AFL_PHASE_GROUPS.map((group) => (
+                <fieldset key={group.phase} className="rounded-xl border border-slate-200 bg-white/90 p-3">
+                  <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-violet-800">
+                    {group.title}
+                  </legend>
+                  <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {group.tools.map((t) => {
+                      const checked = (aflSelected[group.phase] ?? []).includes(t.id);
+                      return (
+                        <li key={t.id} className="flex items-start gap-2">
+                          <input
+                            id={`afl-${t.id}`}
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const on = e.target.checked;
+                              setAflSelected((prev) => {
+                                const cur = prev[group.phase] ?? [];
+                                const next = on
+                                  ? [...new Set([...cur, t.id])]
+                                  : cur.filter((id) => id !== t.id);
+                                return { ...prev, [group.phase]: next };
+                              });
+                            }}
+                            className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500"
+                          />
+                          <label htmlFor={`afl-${t.id}`} className="min-w-0 text-sm leading-snug text-slate-800">
+                            <span className="font-medium">{t.label}</span>
+                            <span className="mt-0.5 block text-[11px] text-slate-500">{t.howToUse}</span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </fieldset>
+              ))}
+            </div>
+          </div>
+        )}
+
         <fieldset className="mt-6 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
           <legend className="px-1 text-sm font-semibold text-slate-900">What to generate</legend>
           <p className="mt-1 text-xs text-slate-600">
@@ -860,7 +992,7 @@ export function LessonPlanGenerator() {
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
         </form>
 
-        <section className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm md:p-7">
+        <section className="min-w-0 rounded-3xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6 md:p-7">
         <h3 className="text-xl font-semibold text-slate-900">Generated teacher package</h3>
         <p className="mt-2 text-sm text-slate-600">
           Preview and download only the sections you generated (lesson plan, slides, worksheet, and
@@ -947,6 +1079,7 @@ export function LessonPlanGenerator() {
               curriculumFramework={form.curriculumFramework.trim() || undefined}
               pptThemeId={pptThemeId}
               learningObjectives={form.learningObjectives}
+              aflSelections={hasAflForExport ? aflSelectionsPayload : undefined}
               teacherName={
                 typeof user?.user_metadata?.full_name === "string"
                   ? user.user_metadata.full_name.trim()

@@ -5,6 +5,10 @@
   --foreground: #0f172a;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   min-height: 100vh;
   background:

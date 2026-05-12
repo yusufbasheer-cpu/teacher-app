@@ -13,6 +13,22 @@ export function MyLessonPlansList() {
   const [plans, setPlans] = useState<SavedLessonPlan[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const loadPlansForUser = async (sessionUser: User) => {
+    setError(null);
+    const { data, error: fetchError } = await supabase
+      .from("lesson_plans")
+      .select("*")
+      .eq("user_id", sessionUser.id)
+      .order("created_at", { ascending: false });
+
+    if (fetchError) {
+      setError(fetchError.message);
+      setPlans([]);
+    } else {
+      setPlans((data ?? []) as SavedLessonPlan[]);
+    }
+  };
+
   useEffect(() => {
     const load = async () => {
       const {
@@ -24,25 +40,33 @@ export function MyLessonPlansList() {
 
       if (!sessionUser) {
         setCheckingAuth(false);
+        setPlans([]);
         return;
       }
 
-      const { data, error: fetchError } = await supabase
-        .from("lesson_plans")
-        .select("*")
-        .eq("user_id", sessionUser.id)
-        .order("created_at", { ascending: false });
-
-      if (fetchError) {
-        setError(fetchError.message);
-      } else {
-        setPlans((data ?? []) as SavedLessonPlan[]);
-      }
-
+      await loadPlansForUser(sessionUser);
       setCheckingAuth(false);
     };
 
     void load();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const next = session?.user ?? null;
+      setUser(next);
+      if (!next) {
+        setPlans([]);
+        setError(null);
+        return;
+      }
+      if (event === "INITIAL_SESSION") {
+        return;
+      }
+      await loadPlansForUser(next);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   if (checkingAuth) {

@@ -7,6 +7,7 @@ import {
   PPT_IMAGE_SLIDE_INDEX_SET,
   type StructuredLessonSlideModel,
 } from "@/lib/ppt-structured-lesson";
+import { formatDocxAflAppendix, sanitizeAflSelections, type AflSelectionsPayload } from "@/lib/afl-tools";
 import { TEACHER_PACKAGE_SECTIONS, type LessonPlanResult } from "@/lib/lesson-plan";
 import {
   DEFAULT_PPT_THEME_ID,
@@ -497,6 +498,8 @@ export async function buildPptxFromPptContent(params: {
   /** Parallel to structured deck: URL only for slides that use images (title, main teaching, group, plenary). */
   slideImageUrls?: (string | null)[] | null;
   themeId?: PptThemeId;
+  /** When structuredSlides omitted, these are merged into the slide builder context. */
+  aflSelections?: AflSelectionsPayload;
 }): Promise<Buffer> {
   const theme = getPptRenderTheme(params.themeId);
   const pptx = new PptxGenJS();
@@ -506,6 +509,7 @@ export async function buildPptxFromPptContent(params: {
   pptx.subject = `${params.subject} — ${params.topic}`;
   pptx.title = `Slides — ${params.topic}`;
 
+  const afl = sanitizeAflSelections(params.aflSelections ?? {});
   const ctx = {
     subject: params.subject.trim(),
     grade: params.grade.trim(),
@@ -515,6 +519,7 @@ export async function buildPptxFromPptContent(params: {
     fullLessonPlan: params.fullLessonPlan?.trim(),
     pptContent: (params.pptContent || "").trim(),
     homeworkTask: params.homeworkTask?.trim(),
+    ...(Object.keys(afl).length > 0 ? { aflSelections: afl } : {}),
   };
   const deck = params.structuredSlides ?? buildStructuredLessonSlides(ctx);
   const slideUrls = normalizeDeckImageUrls(deck.length, params.slideImageUrls);
@@ -817,6 +822,7 @@ export async function buildTeacherPackageZipBuffer(params: {
   grade: string;
   topic: string;
   lessonPlan: LessonPlanResult;
+  aflSelections?: AflSelectionsPayload;
 }): Promise<Buffer> {
   const base = sanitizeExportFileName(`${params.grade}-${params.subject}-${params.topic}`) || "teacher-package";
   const meta = {
@@ -824,6 +830,8 @@ export async function buildTeacherPackageZipBuffer(params: {
     grade: params.grade,
     topic: params.topic,
   };
+  const afl = sanitizeAflSelections(params.aflSelections ?? {});
+  const aflDocAppendix = formatDocxAflAppendix(afl);
 
   const zip = new JSZip();
 
@@ -834,6 +842,7 @@ export async function buildTeacherPackageZipBuffer(params: {
       grade: meta.grade,
       topic: meta.topic,
       teacherName: "Teacher",
+      ...(Object.keys(afl).length > 0 ? { aflSelections: afl } : {}),
     });
     zip.file(
       `${base}-ppt-content.pptx`,
@@ -845,6 +854,7 @@ export async function buildTeacherPackageZipBuffer(params: {
         homeworkTask: ctx.homeworkTask,
         teacherName: ctx.teacherName,
         themeId: DEFAULT_PPT_THEME_ID,
+        structuredSlides: buildStructuredLessonSlides(ctx),
       }),
     );
   }
@@ -860,12 +870,14 @@ export async function buildTeacherPackageZipBuffer(params: {
   for (const part of docxParts) {
     const raw = params.lessonPlan[part.key];
     if (typeof raw === "string" && raw.trim().length > 0) {
+      const withAfl =
+        part.key === "Full Lesson Plan" && aflDocAppendix ? `${raw}${aflDocAppendix}` : raw;
       zip.file(
         part.file,
         await buildDocxBuffer({
           documentTitle: part.title,
           ...meta,
-          content: raw,
+          content: withAfl,
         }),
       );
     }

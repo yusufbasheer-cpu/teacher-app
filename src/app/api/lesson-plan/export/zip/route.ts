@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildTeacherPackageZipBuffer, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import { hasTeacherPackageContent } from "@/lib/lesson-plan";
 import type { LessonPlanResult } from "@/lib/lesson-plan";
@@ -10,6 +11,7 @@ type Body = {
   grade?: string;
   topic?: string;
   lessonPlan?: LessonPlanResult;
+  aflSelections?: unknown;
 };
 
 export async function POST(req: Request) {
@@ -24,6 +26,7 @@ export async function POST(req: Request) {
   const grade = body.grade?.trim();
   const topic = body.topic?.trim();
   const lessonPlan = body.lessonPlan;
+  const aflSelections = sanitizeAflSelections(body.aflSelections);
 
   if (!subject || !grade || !topic || !lessonPlan) {
     return NextResponse.json(
@@ -45,6 +48,7 @@ export async function POST(req: Request) {
       grade,
       topic,
       lessonPlan,
+      ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
     const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-package`) || "teacher-package";
 

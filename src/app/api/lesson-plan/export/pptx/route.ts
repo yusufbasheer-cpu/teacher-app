@@ -4,6 +4,7 @@ import {
   generateLessonPptSlideImages,
   type LessonPptImageGenerationSpec,
 } from "@/lib/fal-ppt-slide-images";
+import { sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildPptxFromPptContent, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import { buildStructuredLessonSlides, mapFourImagesToDeck } from "@/lib/ppt-structured-lesson";
 import { DEFAULT_PPT_THEME_ID, isValidPptThemeId } from "@/lib/ppt-themes";
@@ -22,6 +23,7 @@ type Body = {
   teacherName?: string;
   curriculumFramework?: string;
   pptTheme?: string;
+  aflSelections?: unknown;
 };
 
 export async function POST(req: Request) {
@@ -46,6 +48,7 @@ export async function POST(req: Request) {
     typeof body.curriculumFramework === "string" ? body.curriculumFramework.trim() : "";
   const pptThemeRaw = typeof body.pptTheme === "string" ? body.pptTheme.trim() : "";
   const pptTheme = isValidPptThemeId(pptThemeRaw) ? pptThemeRaw : DEFAULT_PPT_THEME_ID;
+  const aflSelections = sanitizeAflSelections(body.aflSelections);
 
   if (!subject || !grade || !topic) {
     return NextResponse.json(
@@ -75,25 +78,31 @@ export async function POST(req: Request) {
       fullLessonPlan: fullLessonPlan || undefined,
       pptContent: pptContent || undefined,
       homeworkTask: homeworkTask || undefined,
+      ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
 
-    const imageSpecs: LessonPptImageGenerationSpec[] = [
-      { slot: "title", slideTitle: deck[0]!.slideTitle, bodySnippet: deck[0]!.body },
-      { slot: "main_teaching", slideTitle: deck[4]!.slideTitle, bodySnippet: deck[4]!.body },
-      { slot: "group_activity", slideTitle: deck[6]!.slideTitle, bodySnippet: deck[6]!.body },
-      { slot: "plenary", slideTitle: deck[12]!.slideTitle, bodySnippet: deck[12]!.body },
-    ];
+    let slideImageUrls: (string | null)[] = Array.from({ length: deck.length }, () => null);
+    try {
+      const imageSpecs: LessonPptImageGenerationSpec[] = [
+        { slot: "title", slideTitle: deck[0]!.slideTitle, bodySnippet: deck[0]!.body },
+        { slot: "main_teaching", slideTitle: deck[4]!.slideTitle, bodySnippet: deck[4]!.body },
+        { slot: "group_activity", slideTitle: deck[6]!.slideTitle, bodySnippet: deck[6]!.body },
+        { slot: "plenary", slideTitle: deck[12]!.slideTitle, bodySnippet: deck[12]!.body },
+      ];
 
-    const fourUrls = await generateLessonPptSlideImages(
-      {
-        subject,
-        grade,
-        topic,
-        ...(curriculumFramework ? { curriculumFramework } : {}),
-      },
-      imageSpecs,
-    );
-    const slideImageUrls = mapFourImagesToDeck(deck.length, fourUrls);
+      const fourUrls = await generateLessonPptSlideImages(
+        {
+          subject,
+          grade,
+          topic,
+          ...(curriculumFramework ? { curriculumFramework } : {}),
+        },
+        imageSpecs,
+      );
+      slideImageUrls = mapFourImagesToDeck(deck.length, fourUrls);
+    } catch (imgErr) {
+      console.error("[pptx export] slide image generation failed; continuing without images:", imgErr);
+    }
 
     const buffer = await buildPptxFromPptContent({
       subject,

@@ -1,3 +1,5 @@
+import type { AflSelectionsPayload } from "@/lib/afl-tools";
+
 /** Current AI package: six top-level outputs from DeepSeek. */
 export const TEACHER_PACKAGE_SECTIONS = [
   "Full Lesson Plan",
@@ -135,6 +137,8 @@ export type LessonPlanGenerateBody = LessonPlanInput & {
   sections: TeacherPackageSectionKey[];
   /** Plain text from PDF extraction or image vision (optional). */
   sourceMaterial?: string;
+  /** Selected AFL tool ids by phase (see `afl-tools.ts`). */
+  aflSelections?: AflSelectionsPayload;
 };
 
 /** Stored JSON may be new package or legacy; treat as string map. */

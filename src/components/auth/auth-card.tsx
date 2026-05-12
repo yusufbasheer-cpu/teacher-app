@@ -23,12 +23,18 @@ export function AuthCard() {
 
     try {
       if (mode === "signup") {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: email.trim(),
           password,
         });
 
         if (signUpError) throw signUpError;
+
+        if (data.session) {
+          router.push("/lesson-plan");
+          router.refresh();
+          return;
+        }
 
         setMessage(
           "Account created. If email confirmation is enabled, check your inbox before logging in.",
@@ -36,7 +42,7 @@ export function AuthCard() {
         setMode("login");
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
         if (signInError) throw signInError;
@@ -72,6 +78,7 @@ export function AuthCard() {
           <input
             id="email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
@@ -86,6 +93,7 @@ export function AuthCard() {
           <input
             id="password"
             type="password"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={6}
@@ -97,7 +105,7 @@ export function AuthCard() {
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading
             ? "Please wait..."

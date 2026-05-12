@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatDocxAflAppendix, sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildDocxBuffer, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 
 export const runtime = "nodejs";
@@ -10,6 +11,7 @@ type Body = {
   documentTitle?: string;
   fileBaseName?: string;
   content?: string;
+  aflSelections?: unknown;
 };
 
 export async function POST(req: Request) {
@@ -26,6 +28,11 @@ export async function POST(req: Request) {
   const documentTitle = body.documentTitle?.trim();
   const fileBaseName = body.fileBaseName?.trim();
   const content = body.content?.trim();
+  const isFullLessonPlanExport =
+    body.fileBaseName?.trim() === "lesson-plan" || body.documentTitle?.trim() === "Lesson Plan";
+  const aflAppendix = isFullLessonPlanExport
+    ? formatDocxAflAppendix(sanitizeAflSelections(body.aflSelections))
+    : "";
 
   if (!subject || !grade || !topic || !documentTitle || !fileBaseName || !content) {
     return NextResponse.json(
@@ -40,7 +47,7 @@ export async function POST(req: Request) {
       subject,
       grade,
       topic,
-      content,
+      content: aflAppendix ? `${content}${aflAppendix}` : content,
     });
     const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-${fileBaseName}`) || "document";
 

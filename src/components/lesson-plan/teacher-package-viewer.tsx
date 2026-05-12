@@ -9,7 +9,13 @@ import {
   type SectionImageMap,
   type TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
+import { AFL_PHASE_IDS, type AflSelectionsPayload } from "@/lib/afl-tools";
 import { DEFAULT_PPT_THEME_ID, type PptThemeId } from "@/lib/ppt-themes";
+
+function hasAflSelections(s: AflSelectionsPayload | undefined): boolean {
+  if (!s) return false;
+  return AFL_PHASE_IDS.some((p) => (s[p]?.length ?? 0) > 0);
+}
 
 type TeacherPackageViewerProps = {
   lessonPlan: LessonPlanResult;
@@ -28,6 +34,8 @@ type TeacherPackageViewerProps = {
   teacherName?: string;
   /** Learning objectives line from the generator form (enriches PPT objectives slide). */
   learningObjectives?: string;
+  /** Teacher-selected AFL tools from the generator (PPT + lesson plan exports). */
+  aflSelections?: AflSelectionsPayload;
 };
 
 type ExportKey =
@@ -74,6 +82,7 @@ export function TeacherPackageViewer({
   pptThemeId = DEFAULT_PPT_THEME_ID,
   teacherName,
   learningObjectives,
+  aflSelections,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
@@ -111,11 +120,42 @@ export function TeacherPackageViewer({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+
+      const contentType = res.headers.get("content-type") ?? "";
+
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error ?? "Download failed.");
+        const raw = await res.text();
+        let msg = `Download failed (HTTP ${res.status}).`;
+        try {
+          const j = JSON.parse(raw) as { error?: string };
+          if (typeof j.error === "string" && j.error.trim()) msg = j.error.trim();
+        } catch {
+          if (raw.trim()) msg = raw.trim().slice(0, 600);
+        }
+        throw new Error(msg);
       }
+
+      const looksLikeBinary =
+        contentType.includes("application/vnd") ||
+        contentType.includes("application/zip") ||
+        contentType.includes("application/octet-stream") ||
+        contentType.includes("application/x-zip");
+
+      if (!looksLikeBinary && contentType.includes("application/json")) {
+        const raw = await res.text();
+        try {
+          const j = JSON.parse(raw) as { error?: string };
+          throw new Error(j.error ?? "Server returned JSON instead of a file.");
+        } catch (e) {
+          if (e instanceof Error && e.message.includes("Server returned")) throw e;
+          throw new Error("Unexpected response from download server.");
+        }
+      }
+
       const blob = await res.blob();
+      if (blob.size === 0) {
+        throw new Error("Downloaded file was empty.");
+      }
       triggerDownload(blob, filename);
     } catch (e) {
       setExportError(e instanceof Error ? e.message : "Download failed.");
@@ -139,9 +179,8 @@ export function TeacherPackageViewer({
         homeworkTask: lessonPlan["Homework Task"] ?? "",
         teacherName: teacherName?.trim() || "",
         pptTheme: pptThemeId,
-        ...(curriculumFramework?.trim()
-          ? { curriculumFramework: curriculumFramework.trim() }
-          : {}),
+        curriculumFramework: curriculumFramework?.trim() ?? "",
+        ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
       },
     );
 
@@ -155,6 +194,7 @@ export function TeacherPackageViewer({
         documentTitle: "Lesson Plan",
         fileBaseName: "lesson-plan",
         content: lessonPlan["Full Lesson Plan"] ?? "",
+        ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
       },
     );
 
@@ -214,6 +254,7 @@ export function TeacherPackageViewer({
     runExport("zip", `${baseName}-all.zip`, "/api/lesson-plan/export/zip", {
       ...baseMeta,
       lessonPlan,
+      ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
     });
 
   return (
@@ -230,11 +271,11 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadPpt}
-                className="rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
               >
                 {busy === "ppt" ? "Building your PPT… please wait" : "Download PPT"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">
-                  PowerPoint with text plus an AI image per slide (requires FAL_API_KEY)
+                  Structured deck with themes; slide images added when FAL_API_KEY is configured.
                 </span>
               </button>
               ) : null}
@@ -243,7 +284,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadLessonPlan}
-                className="rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
               >
                 {busy === "lesson" ? "Preparing…" : "Download Lesson Plan"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -254,7 +295,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadWorksheet}
-                className="rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
               >
                 {busy === "worksheet" ? "Preparing…" : "Download Worksheet"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -265,7 +306,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadAssessment}
-                className="rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
               >
                 {busy === "assessment" ? "Preparing…" : "Download Assessment"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -276,7 +317,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadHomework}
-                className="rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
               >
                 {busy === "homework" ? "Preparing…" : "Download Homework"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -287,7 +328,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadTeacherNotes}
-                className="rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
               >
                 {busy === "notes" ? "Preparing…" : "Download Teacher Notes"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -303,7 +344,7 @@ export function TeacherPackageViewer({
               type="button"
               disabled={busy !== null}
               onClick={onDownloadZip}
-              className="mt-3 w-full rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:opacity-50 sm:w-auto"
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:opacity-50 sm:w-auto"
             >
               {busy === "zip" ? "Building ZIP…" : "Download ZIP package"}
             </button>
@@ -355,7 +396,7 @@ export function TeacherPackageViewer({
                 role="tab"
                 aria-selected={selected}
                 onClick={() => setActiveKey(key)}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 min-h-10 ${
                   selected
                     ? "bg-blue-700 text-white shadow-md"
                     : "border border-blue-200 bg-white text-blue-900 hover:bg-blue-50"

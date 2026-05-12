@@ -16,16 +16,22 @@ export function HeroSection() {
             EduPlan AI helps teachers generate lesson plans, save them securely, and
             download polished classroom presentations in minutes.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
               href="/lesson-plan"
-              className="rounded-lg bg-blue-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-700 px-5 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800"
             >
               Generate Lesson Plan
             </Link>
             <Link
+              href="/auth"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-blue-200 bg-white px-5 py-3 text-center text-sm font-semibold text-blue-700 transition hover:border-blue-300"
+            >
+              Sign in
+            </Link>
+            <Link
               href="#features"
-              className="rounded-lg border border-blue-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 transition hover:border-blue-300"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-blue-200 bg-white px-5 py-3 text-center text-sm font-semibold text-blue-700 transition hover:border-blue-300"
             >
               Explore Features
             </Link>

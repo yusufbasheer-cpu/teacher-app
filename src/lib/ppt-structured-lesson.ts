@@ -1,3 +1,5 @@
+import type { AflPhaseId, AflSelectionsPayload } from "@/lib/afl-tools";
+import { AFL_PHASE_IDS, distributeIds, formatToolsBlockForSlide } from "@/lib/afl-tools";
 import type { LessonPlanResult } from "@/lib/lesson-plan";
 
 /** 0-based slide indices that may include one AI image each (max 4 per deck). */
@@ -164,6 +166,46 @@ function buildNotes(topic: string, phase: string, aflCallout?: string): string {
   return `${core}${box}\n\nBroader AFL toolkit: ${AFL_GENERAL}\n\nAlign timing and grouping with your saved Full Lesson Plan.`;
 }
 
+function aflPayloadHasTools(afl: AflSelectionsPayload | undefined): boolean {
+  if (!afl) return false;
+  return AFL_PHASE_IDS.some((p) => (afl[p]?.length ?? 0) > 0);
+}
+
+function appendAflToSlideBody(
+  slide: StructuredLessonSlideModel,
+  phase: AflPhaseId,
+  ids: string[] | undefined,
+) {
+  const block = formatToolsBlockForSlide(phase, ids);
+  if (!block) return;
+  slide.body = polishBody(`${slide.body.trim()}${block}`, SECTION_MAX_CHARS);
+}
+
+/** Map selected tools onto the structured 13-slide deck (see `buildStructuredLessonSlides` order). */
+function applyAflToolInjections(slides: StructuredLessonSlideModel[], afl: AflSelectionsPayload | undefined) {
+  if (!aflPayloadHasTools(afl) || !afl) return;
+
+  const append = (slideIndex: number, phase: AflPhaseId, ids?: string[]) => {
+    const slide = slides[slideIndex];
+    if (!slide || !ids?.length) return;
+    appendAflToSlideBody(slide, phase, ids);
+  };
+
+  append(2, "starter", afl.starter);
+  append(3, "connections", afl.connections);
+
+  const mainIds = afl.main ?? [];
+  if (mainIds.length > 0) {
+    const parts = distributeIds(mainIds, 5);
+    const mainSlideIndices = [4, 5, 6, 7, 9];
+    parts.forEach((chunk, i) => append(mainSlideIndices[i]!, "main", chunk));
+  }
+
+  append(8, "feedback", afl.feedback);
+  append(11, "extended", afl.extended);
+  append(12, "plenary", afl.plenary);
+}
+
 export type StructuredLessonPptContext = {
   subject: string;
   grade: string;
@@ -173,6 +215,8 @@ export type StructuredLessonPptContext = {
   fullLessonPlan?: string;
   pptContent?: string;
   homeworkTask?: string;
+  /** Teacher-selected AFL tools to append to matching slide bodies. */
+  aflSelections?: AflSelectionsPayload;
 };
 
 export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): StructuredLessonSlideModel[] {
@@ -342,6 +386,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     includeImageSlot: true,
   });
 
+  applyAflToolInjections(slides, ctx.aflSelections);
+
   return slides;
 }
 
@@ -361,7 +407,14 @@ export function mapFourImagesToDeck(
 
 export function buildLessonPlanContextFromResult(
   plan: LessonPlanResult,
-  meta: { subject: string; grade: string; topic: string; teacherName: string; learningObjectives?: string },
+  meta: {
+    subject: string;
+    grade: string;
+    topic: string;
+    teacherName: string;
+    learningObjectives?: string;
+    aflSelections?: AflSelectionsPayload;
+  },
 ): StructuredLessonPptContext {
   return {
     subject: meta.subject,
@@ -376,5 +429,6 @@ export function buildLessonPlanContextFromResult(
     fullLessonPlan: typeof plan["Full Lesson Plan"] === "string" ? plan["Full Lesson Plan"] : undefined,
     pptContent: typeof plan["PPT Slide Content"] === "string" ? plan["PPT Slide Content"] : undefined,
     homeworkTask: typeof plan["Homework Task"] === "string" ? plan["Homework Task"] : undefined,
+    ...(aflPayloadHasTools(meta.aflSelections) ? { aflSelections: meta.aflSelections } : {}),
   };
 }
