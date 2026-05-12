@@ -203,7 +203,7 @@ export function formatAflForAiPrompt(selections: AflSelectionsPayload): string {
     "",
     "**Full Lesson Plan:** For every selected tool, write the real activity: exact questions, prompts, item banks, MCQ stems with options and the correct answer marked, sorting cards text, brainstorming categories filled with 6–10 example items for this topic, quiz items, exit-ticket questions, etc. Do NOT write meta lines like “the teacher should…” or “pose an open question”; write the question itself.",
     "",
-    "**PPT Slide Content:** The export uses a **fixed order of 13 slides**. Map selected tools to these student-facing sections: Starter tools → slide 2 Starter; Main phase tools → slide 6 Main phase; Connections tools → slide 8 UAE and links; Plenary tools → slide 9 Plenary; Extended task tools → slide 10 Extended task; Feedback tools → slide 12 Success criteria. For each selected tool, output only what learners see: titles, bullets, prompts, quiz items — never “how to run brainstorming” coaching on the slide body.",
+    "**PPT Slide Content:** The export is **exactly 13 slides** in a fixed order. **Only** Starter AFL tools are embedded on **slide 2 (Starter)** and **only** Plenary AFL tools on **slide 9 (Plenary)**. Other AFL phases belong in the **Full Lesson Plan** and other resources, not as extra slides or injections elsewhere in the deck. For each selected Starter or Plenary tool, output finished learner-facing prompts on those slides only.",
     "",
     "**Picture in Time (if selected):** Write the **exact** comparison or prediction question and what changed between two moments so it can pair with the starter slide text.",
     "",
@@ -241,7 +241,7 @@ export function briefHowToUseForSlide(howToUse: string, maxLen = 160): string {
 
 export function formatToolsBlockForSlide(phase: AflPhaseId, selectedIds: string[] | undefined): string {
   if (!selectedIds?.length) return "";
-  const parts: string[] = ["\n\n— Selected AFL for this part of the lesson —"];
+  const parts: string[] = ["\n\nSelected AFL for this part of the lesson\n"];
   for (const id of selectedIds) {
     const tool = getAflToolById(id);
     if (!tool) continue;

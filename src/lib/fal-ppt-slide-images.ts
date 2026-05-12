@@ -14,13 +14,8 @@ export type PptSlideImageMeta = {
   topic: string;
 };
 
-/** Exactly five PPT slide types that receive images (indices 0, 5, 7, 8, 10 in the 13-slide structured deck). */
-export type LessonPptImageSlot =
-  | "title"
-  | "main_teaching"
-  | "group_activity"
-  | "afl_tools"
-  | "plenary";
+/** Four PPT slide types with FLUX images: slides 1, 2, 6, 9 → indices 0, 1, 5, 8. */
+export type LessonPptImageSlot = "title" | "starter" | "main_teaching" | "plenary";
 
 export type LessonPptImageGenerationSpec = {
   slot: LessonPptImageSlot;
@@ -46,14 +41,11 @@ export function buildLessonPptFluxPrompt(meta: PptSlideImageMeta, spec: LessonPp
     case "title":
       core = `professional educational illustration of ${subject} for grade ${grade} students, flat design style, colorful icons and symbols related to ${topic}, clean white background, vibrant colors, no humans, no faces, no text, Islamic appropriate, school suitable`;
       break;
+    case "starter":
+      core = `engaging lesson starter illustration for ${topic} in ${subject}, curiosity hooks, lightbulb and question motifs, clocks or timers, flat design, colorful, clean background, no human faces, school suitable`;
+      break;
     case "main_teaching":
       core = `detailed educational diagram explaining ${topic}, step by step visual breakdown, labeled diagram, arrows showing process, flat design, professional, colorful, clean white background, no humans, no faces`;
-      break;
-    case "group_activity":
-      core = `flat design illustration of collaborative learning icons, puzzle pieces connecting, teamwork symbols related to ${topic}, colorful, engaging, no human figures, no faces, clean background`;
-      break;
-    case "afl_tools":
-      core = `flat design illustration of assessment tools, checkboxes, quiz icons, thumbs up symbol, feedback arrows, colorful, clean background, no humans, no faces, professional educational style`;
       break;
     case "plenary":
       core = `flat design summary illustration related to ${topic}, key concepts shown as icons, light bulb idea symbol, reflection icons, colorful, clean background, no humans, no faces`;
@@ -69,7 +61,7 @@ const PPT_IMAGE_SIZE = "landscape_16_9" as const;
 const PPT_NUM_INFERENCE_STEPS = 28;
 const PPT_GUIDANCE_SCALE = 7.5;
 
-/** Generates up to five FLUX Pro images for lesson PPT (title, main phase, UAE links, plenary, exit ticket). */
+/** Generates up to four FLUX Pro images for lesson PPT (title, starter, main phase, plenary). */
 export async function generateLessonPptSlideImages(
   meta: PptSlideImageMeta,
   specs: LessonPptImageGenerationSpec[],

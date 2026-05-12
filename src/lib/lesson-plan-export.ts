@@ -4,6 +4,7 @@ import PptxGenJS from "pptxgenjs";
 import {
   buildLessonPlanContextFromResult,
   buildStructuredLessonSlides,
+  STRUCTURED_LESSON_DECK_SLIDE_COUNT,
   type StructuredLessonSlideModel,
 } from "@/lib/ppt-structured-lesson";
 import { formatDocxAflAppendix, sanitizeAflSelections, type AflSelectionsPayload } from "@/lib/afl-tools";
@@ -498,6 +499,9 @@ export async function buildPptxFromPptContent(params: {
   };
   const deck = params.structuredSlides ?? buildStructuredLessonSlides(ctx);
   const slideUrls = normalizeDeckImageUrls(deck.length, params.slideImageUrls);
+  const useStrictThirteenSlideDeck =
+    Array.isArray(params.structuredSlides) &&
+    params.structuredSlides.length === STRUCTURED_LESSON_DECK_SLIDE_COUNT;
 
   let slideNumber = 1;
   const innerPadX = IN_MARGIN + 0.85;
@@ -661,11 +665,13 @@ export async function buildPptxFromPptContent(params: {
     const titleBase = cleanSlideTitle(model.slideTitle);
     const bulletLines = normalizeBodyToBulletLines(model.body);
     const layoutForChunking = layoutContentMetrics(reserveImageColumn);
-    const chunks = chunkBulletLines(
+    const allChunks = chunkBulletLines(
       bulletLines,
       layoutForChunking.textW,
       maxBodyRows(layoutForChunking.contentMaxH),
     );
+    const chunks =
+      useStrictThirteenSlideDeck && allChunks.length > 0 ? [allChunks[0]!] : allChunks;
 
     for (let chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
       const chunk = chunks[chunkIdx]!;
