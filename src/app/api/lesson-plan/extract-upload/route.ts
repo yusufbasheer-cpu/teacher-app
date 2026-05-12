@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { createWorker, PSM, type Worker } from "tesseract.js";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 const log = (step: string, detail?: Record<string, unknown>) => {
   console.log("[extract-upload]", step, detail ?? "");

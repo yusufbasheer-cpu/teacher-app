@@ -10,7 +10,7 @@ import { buildStructuredLessonSlides, mapFourImagesToDeck } from "@/lib/ppt-stru
 import { DEFAULT_PPT_THEME_ID, isValidPptThemeId } from "@/lib/ppt-themes";
 
 export const runtime = "nodejs";
-export const maxDuration = 600;
+export const maxDuration = 60;
 
 type Body = {
   subject?: string;

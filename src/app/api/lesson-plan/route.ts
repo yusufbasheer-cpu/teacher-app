@@ -28,7 +28,7 @@ import {
 } from "@/lib/parse-teacher-package-response";
 
 export const runtime = "nodejs";
-export const maxDuration = 600;
+export const maxDuration = 60;
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const DEEPSEEK_MAX_TOKENS = 8000;

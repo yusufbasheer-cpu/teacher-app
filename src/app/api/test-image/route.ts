@@ -3,7 +3,7 @@ import { ApiError, ValidationError, createFalClient } from "@fal-ai/client";
 import { FAL_FLUX_MODEL_ID, formatFalError, getFalCredentials } from "@/lib/fal-flux-section-images";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 const TEST_PROMPT =
   "Simple flat educational illustration: pencil, ruler, and open notebook on a desk, soft pastel background, clean vector style. " +
