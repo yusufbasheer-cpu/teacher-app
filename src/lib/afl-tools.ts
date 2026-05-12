@@ -205,7 +205,7 @@ export function formatAflForAiPrompt(selections: AflSelectionsPayload): string {
     "",
     "**PPT Slide Content:** Slides are shown **directly to students**. For each selected tool that appears on a slide, output only what learners see: titles, bullets, prompts, diagrams described as text, quiz/exit items with options and answers on separate speaker-note lines if needed — never “how to run brainstorming” instructions on the slide body.",
     "",
-    "**Picture in Time (if selected):** Include one slide (or clear slide subsection) that names the image students will see, the **exact** comparison or prediction question, and a line the teacher can read aloud; the export pipeline will generate a matching illustration from that slide text.",
+    "**Picture in Time (if selected):** Write the **exact** comparison or prediction question and what changed between two moments so it can pair with the starter slide text.",
     "",
     "**Catalog reference (tool intent only — you replace with lesson-specific finished content):**",
     "",

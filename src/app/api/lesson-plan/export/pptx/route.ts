@@ -4,7 +4,7 @@ import {
   generateLessonPptSlideImages,
   type LessonPptImageGenerationSpec,
 } from "@/lib/fal-ppt-slide-images";
-import { sanitizeAflSelections, PICTURE_IN_TIME_AFL_TOOL_ID } from "@/lib/afl-tools";
+import { sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildPptxFromPptContent, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import { buildStructuredLessonSlides, mapLessonPptImagesToDeck } from "@/lib/ppt-structured-lesson";
 import { DEFAULT_PPT_THEME_ID, isValidPptThemeId } from "@/lib/ppt-themes";
@@ -96,34 +96,24 @@ export async function POST(req: Request) {
 
     let slideImageUrls: (string | null)[] = Array.from({ length: deck.length }, () => null);
     try {
-      const starterPictureInTime = (aflSelections.starter ?? []).includes(PICTURE_IN_TIME_AFL_TOOL_ID);
       const imageSpecs: LessonPptImageGenerationSpec[] = [
         { slot: "title", slideTitle: deck[0]!.slideTitle, bodySnippet: deck[0]!.body },
-        ...(starterPictureInTime
-          ? [
-              {
-                slot: "picture_in_time" as const,
-                slideTitle: deck[2]!.slideTitle,
-                bodySnippet: deck[2]!.body,
-              },
-            ]
-          : []),
         { slot: "main_teaching", slideTitle: deck[4]!.slideTitle, bodySnippet: deck[4]!.body },
         { slot: "group_activity", slideTitle: deck[6]!.slideTitle, bodySnippet: deck[6]!.body },
+        { slot: "afl_tools", slideTitle: deck[8]!.slideTitle, bodySnippet: deck[8]!.body },
         { slot: "plenary", slideTitle: deck[12]!.slideTitle, bodySnippet: deck[12]!.body },
       ];
-      const imageSlideIndices = starterPictureInTime ? [0, 2, 4, 6, 12] : [0, 4, 6, 12];
+      const imageSlideIndices = [0, 4, 6, 8, 12] as const;
 
       const fluxUrls = await generateLessonPptSlideImages(
         {
           subject,
           grade,
           topic,
-          ...(curriculumFramework ? { curriculumFramework } : {}),
         },
         imageSpecs,
       );
-      slideImageUrls = mapLessonPptImagesToDeck(deck.length, imageSlideIndices, fluxUrls);
+      slideImageUrls = mapLessonPptImagesToDeck(deck.length, [...imageSlideIndices], fluxUrls);
     } catch (imgErr) {
       console.error("[pptx export] slide image generation failed; continuing without images:", imgErr);
     }

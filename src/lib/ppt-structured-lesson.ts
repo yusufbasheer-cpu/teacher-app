@@ -1,5 +1,5 @@
 import type { AflSelectionsPayload } from "@/lib/afl-tools";
-import { AFL_PHASE_IDS, PICTURE_IN_TIME_AFL_TOOL_ID } from "@/lib/afl-tools";
+import { AFL_PHASE_IDS } from "@/lib/afl-tools";
 import {
   type LessonPlanResult,
   getPptSourceLessonText,
@@ -7,7 +7,7 @@ import {
 } from "@/lib/lesson-plan";
 
 /** Default slide indices that receive FLUX images when no Picture-in-Time slot is used. */
-export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([0, 4, 6, 12]);
+export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([0, 4, 6, 8, 12]);
 
 export type StructuredLessonSlideModel = {
   slideTitle: string;
@@ -516,7 +516,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     slideTitle: T.afl,
     body: sAfl.body,
     speakerNotes: sAfl.notes,
-    includeImageSlot: false,
+    includeImageSlot: true,
   });
 
   const sMini = pick(
@@ -569,10 +569,6 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     includeImageSlot: true,
   });
 
-  const starterPictureInTime =
-    ctx.aflSelections?.starter?.some((id) => id === PICTURE_IN_TIME_AFL_TOOL_ID) ?? false;
-  if (slides[2]) slides[2].includeImageSlot = starterPictureInTime;
-
   applyArabicFullPlanBodyFallback(slides, plan, isAr);
 
   if (aflPayloadHasTools(ctx.aflSelections)) {
@@ -597,7 +593,7 @@ export function mapLessonPptImagesToDeck(
   return out;
 }
 
-/** Maps four default FLUX slots to slides 0,4,6,12. Use mapLessonPptImagesToDeck when slide 2 may carry Picture-in-Time. */
+/** Maps five FLUX slots to slides 0, 4, 6, 8, 12 (title, main, group, AFL tools, plenary). */
 export function mapFourImagesToDeck(
   deckLength: number,
   orderedUrls: (string | null)[],

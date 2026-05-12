@@ -295,7 +295,7 @@ export function TeacherPackageViewer({
               >
                 {busy === "ppt" ? "Building your PPT… please wait" : "Download PPT"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">
-                  Structured deck with themes; slide images added when FAL_API_KEY is configured.
+                  Structured deck with themes; up to five FLUX Pro slide images (title, main, group, AFL, plenary) when FAL_API_KEY is configured.
                 </span>
               </button>
               ) : null}

@@ -1,96 +1,75 @@
 import { createFalClient } from "@fal-ai/client";
-import { buildCurriculumFrameworkImageHint } from "@/lib/curriculum-framework";
-import {
-  FAL_FLUX_MODEL_ID,
-  formatFalError,
-  getFalCredentials,
-} from "@/lib/fal-flux-section-images";
+import { formatFalError, getFalCredentials } from "@/lib/fal-flux-section-images";
 
-const PROMPT_MAX_LEN = 1900;
+/** Lesson PPT export uses FLUX Pro (higher quality than dev). Section images may still use dev elsewhere. */
+export const FAL_PPT_IMAGE_MODEL_ID = "fal-ai/flux-pro" as const;
 
-/** Appended to every lesson-PPT image prompt (layout + safety). */
-export const LESSON_PPT_IMAGE_STYLE_SUFFIX =
-  "flat design style, clean background, no circular crop, no round frame, rectangular image, professional educational illustration, no human figures, no faces, Islamic appropriate";
-
-function compressSnippet(text: string, maxLen: number): string {
-  const oneLine = text
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .map((line) =>
-      line
-        .replace(/^[\s>*•\-–—\d]+[\.\)]?\s*/, "")
-        .replace(/^#{1,6}\s*/, "")
-        .trim(),
-    )
-    .filter(Boolean)
-    .join(", ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const cleaned = oneLine.replace(/https?:\/\/\S+/gi, "").trim();
-  if (cleaned.length <= maxLen) return cleaned;
-  return `${cleaned.slice(0, maxLen).trim()}…`;
-}
+/** Always appended: rectangular landscape framing (never circular crop). */
+const LANDSCAPE_RECT_SUFFIX =
+  "rectangular landscape 16:9 composition, full rectangular frame, no circular crop, no round frame, no vignette circle, school suitable";
 
 export type PptSlideImageMeta = {
   subject: string;
   grade: string;
   topic: string;
-  curriculumFramework?: string;
 };
 
+/** Exactly five PPT slide types that receive images (indices 0, 4, 6, 8, 12 in the structured deck). */
 export type LessonPptImageSlot =
   | "title"
-  | "picture_in_time"
   | "main_teaching"
   | "group_activity"
+  | "afl_tools"
   | "plenary";
 
 export type LessonPptImageGenerationSpec = {
   slot: LessonPptImageSlot;
+  /** Retained for logging / future use; prompts are template-based on subject, grade, topic only. */
   slideTitle: string;
   bodySnippet: string;
 };
 
+function sanitizePhrase(s: string): string {
+  return s.replace(/\s+/g, " ").trim() || "lesson";
+}
+
 /**
- * Topic-specific FLUX prompt for one of the four allowed lesson-PPT images.
- * Example style: concrete nouns from topic (e.g. photosynthesis → leaf, chloroplasts, arrows for glucose/oxygen).
+ * Fixed prompt templates per slide type (subject / grade / topic from teacher input only).
  */
-export function buildLessonPptFluxPrompt(
-  meta: PptSlideImageMeta,
-  spec: LessonPptImageGenerationSpec,
-): string {
-  const subject = meta.subject.replace(/\s+/g, " ").trim();
-  const topic = meta.topic.replace(/\s+/g, " ").trim();
-  const grade = meta.grade.replace(/\s+/g, " ").trim();
-  const frameworkHint = buildCurriculumFrameworkImageHint(meta.curriculumFramework ?? "");
-  const detail = compressSnippet(`${spec.slideTitle}. ${spec.bodySnippet}`, 720);
+export function buildLessonPptFluxPrompt(meta: PptSlideImageMeta, spec: LessonPptImageGenerationSpec): string {
+  const subject = sanitizePhrase(meta.subject);
+  const grade = sanitizePhrase(meta.grade);
+  const topic = sanitizePhrase(meta.topic);
 
-  const slotIntro: Record<LessonPptImageSlot, string> = {
-    title: `Flat design educational hero illustration for opening slide: subject "${subject}", grade ${grade}, topic "${topic}". Show iconic symbols and diagrams that instantly signal this unit (no readable words in the artwork).`,
-    picture_in_time: `Flat design educational "picture in time" illustration for "${topic}" in ${subject} (${grade}): show two clear sequential panels OR a before-and-after split (left vs right) suggesting change over time, process stages, or contrasting states — purely symbolic icons and diagrams (no faces, no readable words). The image must visually match the lesson moment described in the cues.`,
-    main_teaching: `Flat design educational diagram for main teaching of "${topic}" in ${subject} (${grade}). Show clear instructional flow: stages, arrows, labeled-style shapes as icons only, schematic relationships (e.g. process, structure, or mechanism appropriate to the topic).`,
-    group_activity: `Flat design educational illustration for collaborative work on "${topic}" in ${subject}: shared task materials, icons, and cooperative workflow symbols only (no people, no faces).`,
-    plenary: `Flat design educational summary illustration for lesson closure on "${topic}" in ${subject}: recap icons, checklist motifs, reflection prompts as abstract symbols only (no text in image).`,
-  };
+  let core: string;
+  switch (spec.slot) {
+    case "title":
+      core = `professional educational illustration of ${subject} for grade ${grade} students, flat design style, colorful icons and symbols related to ${topic}, clean white background, vibrant colors, no humans, no faces, no text, Islamic appropriate, school suitable`;
+      break;
+    case "main_teaching":
+      core = `detailed educational diagram explaining ${topic}, step by step visual breakdown, labeled diagram, arrows showing process, flat design, professional, colorful, clean white background, no humans, no faces`;
+      break;
+    case "group_activity":
+      core = `flat design illustration of collaborative learning icons, puzzle pieces connecting, teamwork symbols related to ${topic}, colorful, engaging, no human figures, no faces, clean background`;
+      break;
+    case "afl_tools":
+      core = `flat design illustration of assessment tools, checkboxes, quiz icons, thumbs up symbol, feedback arrows, colorful, clean background, no humans, no faces, professional educational style`;
+      break;
+    case "plenary":
+      core = `flat design summary illustration related to ${topic}, key concepts shown as icons, light bulb idea symbol, reflection icons, colorful, clean background, no humans, no faces`;
+      break;
+    default:
+      core = `professional educational illustration related to ${topic}, flat design, clean background, no humans, no faces`;
+  }
 
-  const coreParts = [
-    slotIntro[spec.slot],
-    frameworkHint,
-    detail ? `Lesson content cues (non-literal, for symbolism only): ${detail}` : null,
-    "Vibrant colors, clean white or very light neutral background, crisp vector-like shapes, high clarity for projection.",
-    LESSON_PPT_IMAGE_STYLE_SUFFIX,
-  ].filter((p): p is string => Boolean(p));
-
-  const full = coreParts.join(" ");
-  return full.length > PROMPT_MAX_LEN ? `${full.slice(0, PROMPT_MAX_LEN)}…` : full;
+  return `${core}, ${LANDSCAPE_RECT_SUFFIX}`;
 }
 
-function imageSizeForSlot(slot: LessonPptImageSlot): "landscape_16_9" | "square_hd" {
-  if (slot === "group_activity" || slot === "picture_in_time") return "square_hd";
-  return "landscape_16_9";
-}
+const PPT_IMAGE_SIZE = "landscape_16_9" as const;
+const PPT_NUM_INFERENCE_STEPS = 28;
+const PPT_GUIDANCE_SCALE = 7.5;
 
-/** Generates FLUX images for lesson PPT (4 slots by default; 5 when Picture-in-Time is included in specs). */
+/** Generates up to five FLUX Pro images for lesson PPT (title, main, group, AFL, plenary). */
 export async function generateLessonPptSlideImages(
   meta: PptSlideImageMeta,
   specs: LessonPptImageGenerationSpec[],
@@ -105,21 +84,34 @@ export async function generateLessonPptSlideImages(
   const client = createFalClient({ credentials });
   const out: (string | null)[] = [];
 
-  console.log("[fal-ppt] generating", specs.length, "lesson PPT image(s), model:", FAL_FLUX_MODEL_ID);
+  console.log(
+    "[fal-ppt] generating",
+    specs.length,
+    "lesson PPT image(s), model:",
+    FAL_PPT_IMAGE_MODEL_ID,
+    "image_size:",
+    PPT_IMAGE_SIZE,
+  );
 
   for (let i = 0; i < specs.length; i++) {
     const spec = specs[i]!;
     const n = i + 1;
     try {
       const prompt = buildLessonPptFluxPrompt(meta, spec);
-      const image_size = imageSizeForSlot(spec.slot);
-      const result = await client.subscribe(FAL_FLUX_MODEL_ID, {
+      console.log("[fal-ppt] exact prompt for fal.ai", {
+        index: n,
+        total: specs.length,
+        slot: spec.slot,
+        prompt,
+      });
+
+      const result = await client.subscribe(FAL_PPT_IMAGE_MODEL_ID, {
         input: {
           prompt,
-          image_size,
+          image_size: PPT_IMAGE_SIZE,
           num_images: 1,
-          num_inference_steps: 28,
-          guidance_scale: 7.5,
+          num_inference_steps: PPT_NUM_INFERENCE_STEPS,
+          guidance_scale: PPT_GUIDANCE_SCALE,
           enable_safety_checker: true,
           output_format: "png",
         },
@@ -127,14 +119,26 @@ export async function generateLessonPptSlideImages(
       const url = result.data?.images?.[0]?.url;
       if (typeof url === "string" && url.length > 0) {
         out.push(url);
-        console.log("[fal-ppt] image", n, "/", specs.length, "ok", { slot: spec.slot, image_size });
+        console.log("[fal-ppt] image", n, "/", specs.length, "ok", { slot: spec.slot });
       } else {
         out.push(null);
-        console.error("[fal-ppt] image", n, "no URL", JSON.stringify(result.data).slice(0, 300));
+        console.error(
+          "[fal-ppt] image",
+          n,
+          "no URL in response; data:",
+          JSON.stringify(result.data).slice(0, 500),
+        );
       }
     } catch (e) {
       out.push(null);
-      console.error("[fal-ppt] image", n, "failed:", formatFalError(e));
+      const formatted = formatFalError(e);
+      const raw = e instanceof Error ? e.message : String(e);
+      console.error("[fal-ppt] image", n, "/", specs.length, "failed — skipping this image.", {
+        slot: spec.slot,
+        formatFalError: formatted,
+        message: raw,
+        error: e,
+      });
     }
   }
 
