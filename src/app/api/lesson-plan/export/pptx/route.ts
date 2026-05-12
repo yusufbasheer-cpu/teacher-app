@@ -75,6 +75,11 @@ export async function POST(req: Request) {
       learningObjectives: learningObjectives.length,
       homeworkTask: homeworkTask.length,
       topicPreview: topic.slice(0, 120),
+      aflPhases: Object.keys(aflSelections),
+      aflToolCounts: Object.fromEntries(
+        Object.entries(aflSelections).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0]),
+      ),
+      aflSelections,
     });
 
     const deck = buildStructuredLessonSlides({
@@ -124,6 +129,7 @@ export async function POST(req: Request) {
       structuredSlides: deck,
       slideImageUrls,
       themeId: pptTheme,
+      ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
     const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-ppt`) || "ppt-content";
 

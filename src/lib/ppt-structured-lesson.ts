@@ -1,5 +1,5 @@
 import type { AflPhaseId, AflSelectionsPayload } from "@/lib/afl-tools";
-import { AFL_PHASE_IDS, distributeIds, formatToolsBlockForSlide } from "@/lib/afl-tools";
+import { AFL_PHASE_IDS, distributeIds, formatToolsBlockForSlide, getAflToolById } from "@/lib/afl-tools";
 import {
   type LessonPlanResult,
   getPptSourceLessonText,
@@ -18,6 +18,8 @@ export type StructuredLessonSlideModel = {
 };
 
 const BULLET_MAX_LINES = 14;
+/** Extra lines when AFL tool blocks are appended so lesson bullets are not truncated away. */
+const BULLET_MAX_LINES_WITH_AFL = 24;
 const SECTION_MAX_CHARS = 3200;
 
 function truncateBody(s: string, maxLines: number): string {
@@ -26,11 +28,11 @@ function truncateBody(s: string, maxLines: number): string {
   return lines.slice(0, maxLines).join("\n").trim();
 }
 
-function polishBody(raw: string, maxChars: number): string {
+function polishBody(raw: string, maxChars: number, maxLines: number = BULLET_MAX_LINES): string {
   const t = raw.replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ").trim();
   if (!t) return "";
   const cap = t.length > maxChars ? `${t.slice(0, maxChars).trim()}…` : t;
-  return truncateBody(cap, BULLET_MAX_LINES);
+  return truncateBody(cap, maxLines);
 }
 
 function linesOfPlan(plan: string): string[] {
@@ -292,10 +294,17 @@ function appendAflToSlideBody(
 ) {
   const block = formatToolsBlockForSlide(phase, ids);
   if (!block) return;
-  slide.body = polishBody(`${slide.body.trim()}${block}`, SECTION_MAX_CHARS);
+  const base = (slide.body ?? "").trim();
+  const merged = `${base}${block}`.trim();
+  const polished = polishBody(merged, SECTION_MAX_CHARS + 800, BULLET_MAX_LINES_WITH_AFL);
+  slide.body = polished || merged.slice(0, SECTION_MAX_CHARS + 800).trim() || base;
 }
 
-/** Map selected tools onto the structured 13-slide deck (see `buildStructuredLessonSlides` order). */
+/**
+ * Map selected tools onto the 13-slide deck (indices):
+ * 0 title, 1 objectives, 2 starter, 3 prior/entry, 4–7 main family, 8 AFL/feedback,
+ * 9 mini plenary, 10 exit, 11 homework, 12 plenary.
+ */
 function applyAflToolInjections(slides: StructuredLessonSlideModel[], afl: AflSelectionsPayload | undefined) {
   if (!aflPayloadHasTools(afl) || !afl) return;
 
@@ -305,8 +314,26 @@ function applyAflToolInjections(slides: StructuredLessonSlideModel[], afl: AflSe
     appendAflToSlideBody(slide, phase, ids);
   };
 
+  // Starter tools → Starter slide
   append(2, "starter", afl.starter);
+  // Making connections → prior/entry; short reminder on first main teaching slide
   append(3, "connections", afl.connections);
+  const connIds = afl.connections;
+  if (connIds?.length) {
+    const mainSlide = slides[4];
+    if (mainSlide) {
+      const labels = connIds
+        .map((id) => getAflToolById(id)?.label)
+        .filter((x): x is string => Boolean(x && x.trim()));
+      if (labels.length) {
+        const reminder = `\n\n— Making connections —\n${labels.map((l) => `• ${l}`).join("\n")}\n(See Prior Knowledge slide for how to use each tool.)`;
+        const merged = `${(mainSlide.body ?? "").trim()}${reminder}`.trim();
+        mainSlide.body =
+          polishBody(merged, SECTION_MAX_CHARS + 600, BULLET_MAX_LINES_WITH_AFL) ||
+          merged.slice(0, SECTION_MAX_CHARS + 600).trim();
+      }
+    }
+  }
 
   const mainIds = afl.main ?? [];
   if (mainIds.length > 0) {
@@ -316,6 +343,7 @@ function applyAflToolInjections(slides: StructuredLessonSlideModel[], afl: AflSe
   }
 
   append(8, "feedback", afl.feedback);
+  // Extended-task picks → Homework slide
   append(11, "extended", afl.extended);
   append(12, "plenary", afl.plenary);
 }
@@ -369,6 +397,18 @@ export type StructuredLessonPptContext = {
 };
 
 export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): StructuredLessonSlideModel[] {
+  if (aflPayloadHasTools(ctx.aflSelections)) {
+    console.log("[ppt-structured-lesson] buildStructuredLessonSlides received AFL selections:", {
+      starter: ctx.aflSelections?.starter?.length ?? 0,
+      main: ctx.aflSelections?.main?.length ?? 0,
+      connections: ctx.aflSelections?.connections?.length ?? 0,
+      plenary: ctx.aflSelections?.plenary?.length ?? 0,
+      extended: ctx.aflSelections?.extended?.length ?? 0,
+      feedback: ctx.aflSelections?.feedback?.length ?? 0,
+      ids: ctx.aflSelections,
+    });
+  }
+
   const topic = ctx.topic.trim() || "this topic";
   const subj = ctx.subject.trim();
   const gr = ctx.grade.trim();
@@ -638,6 +678,11 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
 
   applyArabicFullPlanBodyFallback(slides, plan, isAr);
   applyAflToolInjections(slides, ctx.aflSelections);
+
+  if (aflPayloadHasTools(ctx.aflSelections)) {
+    const bodies = slides.map((s, i) => ({ i, title: s.slideTitle, chars: s.body.trim().length }));
+    console.log("[ppt-structured-lesson] Slide body lengths after AFL merge:", bodies);
+  }
 
   return slides;
 }

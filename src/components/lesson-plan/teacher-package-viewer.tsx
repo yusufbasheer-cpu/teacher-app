@@ -188,6 +188,7 @@ export function TeacherPackageViewer({
       grade,
       topicPreview: topic.slice(0, 80),
       sectionLengths,
+      ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
     });
 
     return runExport("ppt", `${baseName}-ppt.pptx`, "/api/lesson-plan/export/pptx", {

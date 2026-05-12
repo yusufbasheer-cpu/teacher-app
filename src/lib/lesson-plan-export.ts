@@ -514,6 +514,9 @@ export async function buildPptxFromPptContent(params: {
   pptx.title = `Slides — ${params.topic}`;
 
   const afl = sanitizeAflSelections(params.aflSelections ?? {});
+  if (Object.keys(afl).length > 0) {
+    console.log("[lesson-plan-export] buildPptxFromPptContent received AFL selections:", afl);
+  }
   const ctx = {
     subject: params.subject.trim(),
     grade: params.grade.trim(),

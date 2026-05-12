@@ -216,13 +216,24 @@ export function formatAflForAiPrompt(selections: AflSelectionsPayload): string {
   return lines.join("\n").trim();
 }
 
+/** One short classroom line for slide bullets (name + how-to). */
+export function briefHowToUseForSlide(howToUse: string, maxLen = 160): string {
+  const t = howToUse.replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  const end = t.search(/[.!?]\s/);
+  const firstSentence =
+    end > 6 && end < Math.min(140, t.length) ? t.slice(0, end + 1).trim() : t;
+  return firstSentence.length > maxLen ? `${firstSentence.slice(0, maxLen - 1).trim()}…` : firstSentence;
+}
+
 export function formatToolsBlockForSlide(phase: AflPhaseId, selectedIds: string[] | undefined): string {
   if (!selectedIds?.length) return "";
   const parts: string[] = ["\n\n— Selected AFL for this part of the lesson —"];
   for (const id of selectedIds) {
     const tool = getAflToolById(id);
     if (!tool) continue;
-    parts.push(`• ${tool.label}: ${tool.howToUse}`);
+    const how = briefHowToUseForSlide(tool.howToUse);
+    parts.push(`• ${tool.label}: ${how}`);
   }
   return parts.length > 1 ? parts.join("\n") : "";
 }
