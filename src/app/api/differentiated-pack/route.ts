@@ -13,6 +13,20 @@ export const maxDuration = 60;
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const DEEPSEEK_MAX_TOKENS = 2600;
 
+function deepSeekHttpErrorMessage(status: number, rawBody: string): string {
+  const trimmed = rawBody.trim();
+  if (status === 401) {
+    return "DeepSeek API key is invalid or expired. Please update DEEPSEEK_API_KEY.";
+  }
+  if (status === 402) {
+    return "DeepSeek account has insufficient credits. Please top up your DeepSeek balance.";
+  }
+  if (status === 429) {
+    return "DeepSeek rate limit reached. Please retry in a few moments.";
+  }
+  return `DeepSeek HTTP ${status}: ${trimmed.slice(0, 800) || "No response body."}`;
+}
+
 type GenerateBody = {
   level?: DifferentiatedLevel;
   topic?: string;
@@ -25,10 +39,16 @@ type GenerateBody = {
 };
 
 export async function POST(req: Request) {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
   if (!apiKey) {
     return NextResponse.json(
       { error: "Missing DEEPSEEK_API_KEY in environment variables." },
+      { status: 500 },
+    );
+  }
+  if (apiKey.length < 12) {
+    return NextResponse.json(
+      { error: "DEEPSEEK_API_KEY appears invalid (too short). Please check your environment variable." },
       { status: 500 },
     );
   }
@@ -105,8 +125,9 @@ export async function POST(req: Request) {
 
   const rawBody = await deepseekResponse.text();
   if (!deepseekResponse.ok) {
+    const friendly = deepSeekHttpErrorMessage(deepseekResponse.status, rawBody);
     return NextResponse.json(
-      { error: `DeepSeek HTTP ${deepseekResponse.status}: ${rawBody.slice(0, 800)}` },
+      { error: friendly },
       { status: 502 },
     );
   }

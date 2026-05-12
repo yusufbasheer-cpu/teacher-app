@@ -10,6 +10,11 @@ type DeepSeekOkBody = {
   error?: { message?: string };
 };
 
+export function looksLikeJsonObject(text: string): boolean {
+  const t = text.trim();
+  return t.startsWith("{");
+}
+
 /** Unescape a JSON string value scanned byte-by-byte (supports truncated tail). */
 function scanJsonStringContent(s: string, startIndex: number): { text: string; end: number } {
   let i = startIndex;
@@ -76,6 +81,13 @@ export function parseDeepSeekCompletionBody(raw: string): {
     return { errorMessage: "Empty response body from DeepSeek." };
   }
 
+  if (!looksLikeJsonObject(trimmed)) {
+    return {
+      content: trimmed,
+      errorMessage: "DeepSeek returned plain text instead of JSON; using raw text fallback.",
+    };
+  }
+
   try {
     const data = JSON.parse(trimmed) as DeepSeekOkBody;
     if (data.error?.message) {
@@ -96,8 +108,9 @@ export function parseDeepSeekCompletionBody(raw: string): {
       };
     }
     return {
+      content: trimmed,
       errorMessage:
-        "Could not parse DeepSeek response as JSON (response may be truncated). Try again or request fewer sections.",
+        "Could not parse DeepSeek response as JSON. Falling back to raw response text.",
     };
   }
 }

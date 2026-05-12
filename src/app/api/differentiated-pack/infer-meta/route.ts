@@ -1,19 +1,39 @@
 import { NextResponse } from "next/server";
-import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
+import { looksLikeJsonObject, parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 
+function deepSeekHttpErrorMessage(status: number, rawBody: string): string {
+  const trimmed = rawBody.trim();
+  if (status === 401) {
+    return "DeepSeek API key is invalid or expired. Please update DEEPSEEK_API_KEY.";
+  }
+  if (status === 402) {
+    return "DeepSeek account has insufficient credits. Please top up your DeepSeek balance.";
+  }
+  if (status === 429) {
+    return "DeepSeek rate limit reached. Please retry in a few moments.";
+  }
+  return trimmed.slice(0, 600) || `DeepSeek HTTP ${status} with empty response body.`;
+}
+
 const SYSTEM = `You read lesson plan text and return ONLY valid JSON (no markdown fences) with keys:
 topic (string), subject (string), grade (string), learningObjectives (string).
 Infer sensible values from headings and body if labels are missing. Use English. Grade examples: "Grade 7", "Year 9".`;
 
 export async function POST(req: Request) {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
   if (!apiKey) {
     return NextResponse.json({ error: "Missing DEEPSEEK_API_KEY." }, { status: 500 });
+  }
+  if (apiKey.length < 12) {
+    return NextResponse.json(
+      { error: "DEEPSEEK_API_KEY appears invalid (too short). Please check your environment variable." },
+      { status: 500 },
+    );
   }
 
   let rawText = "";
@@ -60,28 +80,52 @@ export async function POST(req: Request) {
 
   const rawBody = await res.text();
   if (!res.ok) {
-    return NextResponse.json({ error: rawBody.slice(0, 500) }, { status: 502 });
+    return NextResponse.json({ error: deepSeekHttpErrorMessage(res.status, rawBody) }, { status: 502 });
   }
 
-  const { content } = parseDeepSeekCompletionBody(rawBody);
+  const { content, errorMessage } = parseDeepSeekCompletionBody(rawBody);
   if (!content?.trim()) {
-    return NextResponse.json({ error: "Empty inference response." }, { status: 502 });
+    return NextResponse.json({ error: errorMessage ?? "Empty inference response." }, { status: 502 });
+  }
+
+  const cleaned = content
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "");
+
+  // Per requirement: only JSON.parse when the payload looks like a JSON object.
+  if (!looksLikeJsonObject(cleaned)) {
+    return NextResponse.json({
+      topic: "Topic (edit me)",
+      subject: "Subject (edit me)",
+      grade: "Grade (edit me)",
+      learningObjectives: cleaned.slice(0, 300) || "Learning objectives (edit me)",
+      parseNotice: "Model returned plain text instead of JSON. Raw text was used as a fallback.",
+    });
   }
 
   let parsed: unknown;
   try {
-    const cleaned = content
-      .trim()
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/\s*```$/i, "");
     parsed = JSON.parse(cleaned) as unknown;
   } catch {
-    return NextResponse.json({ error: "Model did not return valid JSON." }, { status: 502 });
+    return NextResponse.json({
+      topic: "Topic (edit me)",
+      subject: "Subject (edit me)",
+      grade: "Grade (edit me)",
+      learningObjectives: cleaned.slice(0, 300) || "Learning objectives (edit me)",
+      parseNotice: "JSON parsing failed. Falling back to raw model text.",
+    });
   }
 
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return NextResponse.json({ error: "Invalid JSON shape." }, { status: 502 });
+    return NextResponse.json({
+      topic: "Topic (edit me)",
+      subject: "Subject (edit me)",
+      grade: "Grade (edit me)",
+      learningObjectives: cleaned.slice(0, 300) || "Learning objectives (edit me)",
+      parseNotice: "Model returned an unexpected JSON shape. Falling back to raw text.",
+    });
   }
 
   const o = parsed as Record<string, unknown>;

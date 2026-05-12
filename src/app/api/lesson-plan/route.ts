@@ -33,6 +33,20 @@ export const maxDuration = 60;
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const DEEPSEEK_MAX_TOKENS = 8000;
 
+function deepSeekHttpErrorMessage(status: number, rawBody: string): string {
+  const trimmed = rawBody.trim();
+  if (status === 401) {
+    return "DeepSeek API key is invalid or expired. Please update DEEPSEEK_API_KEY.";
+  }
+  if (status === 402) {
+    return "DeepSeek account has insufficient credits. Please top up your DeepSeek balance.";
+  }
+  if (status === 429) {
+    return "DeepSeek rate limit reached. Please retry in a few moments.";
+  }
+  return `DeepSeek HTTP ${status}: ${trimmed.slice(0, 800) || "No response body."}`;
+}
+
 type DeepSeekMessage = {
   role: "system" | "user" | "assistant";
   content: string;
@@ -133,10 +147,16 @@ function emptyLessonShell(sections: readonly TeacherPackageSectionKey[]): Lesson
 }
 
 export async function POST(req: Request) {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
   if (!apiKey) {
     return NextResponse.json(
       { error: "Missing DEEPSEEK_API_KEY in environment variables." },
+      { status: 500 },
+    );
+  }
+  if (apiKey.length < 12) {
+    return NextResponse.json(
+      { error: "DEEPSEEK_API_KEY appears invalid (too short). Please check your environment variable." },
       { status: 500 },
     );
   }
@@ -222,8 +242,9 @@ export async function POST(req: Request) {
         deepseekResponse.status,
         rawBody.slice(0, 400),
       );
-      mergedPlan[section] = `_(DeepSeek returned HTTP ${deepseekResponse.status} for this section.)_\n\n${rawBody.slice(0, 6000)}`;
-      parseNotices.push(`${section}: DeepSeek HTTP ${deepseekResponse.status}.`);
+      const friendly = deepSeekHttpErrorMessage(deepseekResponse.status, rawBody);
+      mergedPlan[section] = `_(DeepSeek failed for this section.)_\n\n${friendly}`;
+      parseNotices.push(`${section}: ${friendly}`);
       continue;
     }
 
