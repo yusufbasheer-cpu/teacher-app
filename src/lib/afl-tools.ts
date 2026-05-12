@@ -203,7 +203,7 @@ export function formatAflForAiPrompt(selections: AflSelectionsPayload): string {
     "",
     "**Full Lesson Plan:** For every selected tool, write the real activity: exact questions, prompts, item banks, MCQ stems with options and the correct answer marked, sorting cards text, brainstorming categories filled with 6–10 example items for this topic, quiz items, exit-ticket questions, etc. Do NOT write meta lines like “the teacher should…” or “pose an open question”; write the question itself.",
     "",
-    "**PPT Slide Content:** Slides are shown **directly to students**. For each selected tool that appears on a slide, output only what learners see: titles, bullets, prompts, diagrams described as text, quiz/exit items with options and answers on separate speaker-note lines if needed — never “how to run brainstorming” instructions on the slide body.",
+    "**PPT Slide Content:** The export uses a **fixed order of 13 slides**. Map selected tools to these student-facing sections: Starter tools → slide 2 Starter; Main phase tools → slide 6 Main phase; Connections tools → slide 8 UAE and links; Plenary tools → slide 9 Plenary; Extended task tools → slide 10 Extended task; Feedback tools → slide 12 Success criteria. For each selected tool, output only what learners see: titles, bullets, prompts, quiz items — never “how to run brainstorming” coaching on the slide body.",
     "",
     "**Picture in Time (if selected):** Write the **exact** comparison or prediction question and what changed between two moments so it can pair with the starter slide text.",
     "",

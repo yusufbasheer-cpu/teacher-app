@@ -14,7 +14,7 @@ export type PptSlideImageMeta = {
   topic: string;
 };
 
-/** Exactly five PPT slide types that receive images (indices 0, 4, 6, 8, 12 in the structured deck). */
+/** Exactly five PPT slide types that receive images (indices 0, 5, 7, 8, 10 in the 13-slide structured deck). */
 export type LessonPptImageSlot =
   | "title"
   | "main_teaching"
@@ -69,7 +69,7 @@ const PPT_IMAGE_SIZE = "landscape_16_9" as const;
 const PPT_NUM_INFERENCE_STEPS = 28;
 const PPT_GUIDANCE_SCALE = 7.5;
 
-/** Generates up to five FLUX Pro images for lesson PPT (title, main, group, AFL, plenary). */
+/** Generates up to five FLUX Pro images for lesson PPT (title, main phase, UAE links, plenary, exit ticket). */
 export async function generateLessonPptSlideImages(
   meta: PptSlideImageMeta,
   specs: LessonPptImageGenerationSpec[],

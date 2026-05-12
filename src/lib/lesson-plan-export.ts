@@ -467,7 +467,7 @@ export async function buildPptxFromPptContent(params: {
   homeworkTask?: string;
   /** When set, skips rebuilding slide models from text fields. */
   structuredSlides?: StructuredLessonSlideModel[];
-  /** Parallel to structured deck: URL only for slides that use images (title, main teaching, group, plenary). */
+  /** Parallel to structured deck (before chunking): URL per deck index for slides that use images. */
   slideImageUrls?: (string | null)[] | null;
   themeId?: PptThemeId;
   /** When structuredSlides omitted, these are merged into the slide builder context. */
@@ -671,7 +671,7 @@ export async function buildPptxFromPptContent(params: {
       const chunk = chunks[chunkIdx]!;
       const useImageColumn = reserveImageColumn && chunkIdx === 0;
       const L = layoutContentMetrics(useImageColumn);
-      const titleText = chunkIdx > 0 ? `${titleBase} (continued)` : titleBase;
+      const titleText = chunkIdx > 0 ? `${titleBase} — Part ${chunkIdx + 1}` : titleBase;
       const titleY = IN_MARGIN + PPT_TOP_BAR_H + 0.05;
       const contentBottom = L.contentTop + L.contentMaxH;
 
@@ -776,7 +776,7 @@ export async function buildPptxFromPptContent(params: {
 
       const notes =
         chunkIdx > 0
-          ? `${model.speakerNotes}\n\n(Continued slide — same section.)`
+          ? `${model.speakerNotes}\n\n(Part ${chunkIdx + 1} — same section; adjust timing proportionally.)`
           : model.speakerNotes;
       slide.addNotes(notes);
       addSlideFooter(pptx, slide, theme, params.subject, params.grade, `Slide ${slideNumber}`);

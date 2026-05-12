@@ -98,12 +98,12 @@ export async function POST(req: Request) {
     try {
       const imageSpecs: LessonPptImageGenerationSpec[] = [
         { slot: "title", slideTitle: deck[0]!.slideTitle, bodySnippet: deck[0]!.body },
-        { slot: "main_teaching", slideTitle: deck[4]!.slideTitle, bodySnippet: deck[4]!.body },
-        { slot: "group_activity", slideTitle: deck[6]!.slideTitle, bodySnippet: deck[6]!.body },
-        { slot: "afl_tools", slideTitle: deck[8]!.slideTitle, bodySnippet: deck[8]!.body },
-        { slot: "plenary", slideTitle: deck[12]!.slideTitle, bodySnippet: deck[12]!.body },
+        { slot: "main_teaching", slideTitle: deck[5]!.slideTitle, bodySnippet: deck[5]!.body },
+        { slot: "group_activity", slideTitle: deck[7]!.slideTitle, bodySnippet: deck[7]!.body },
+        { slot: "plenary", slideTitle: deck[8]!.slideTitle, bodySnippet: deck[8]!.body },
+        { slot: "afl_tools", slideTitle: deck[10]!.slideTitle, bodySnippet: deck[10]!.body },
       ];
-      const imageSlideIndices = [0, 4, 6, 8, 12] as const;
+      const imageSlideIndices = [0, 5, 7, 8, 10] as const;
 
       const fluxUrls = await generateLessonPptSlideImages(
         {
