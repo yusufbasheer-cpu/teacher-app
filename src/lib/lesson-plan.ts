@@ -226,6 +226,21 @@ export function hasTeacherPackageContent(plan: Record<string, unknown>): boolean
   return getTeacherPackageKeysPresent(plan).length > 0;
 }
 
+/**
+ * Concatenate present teacher-package sections as plain text for the Differentiated Worksheet Pack
+ * (Way 1: send from generated lesson). Uses canonical section order; skips empty sections.
+ */
+export function buildDifferentiatedPackSourceText(plan: LessonPlanResult): string {
+  const parts: string[] = [];
+  for (const key of TEACHER_PACKAGE_SECTIONS) {
+    const v = plan[key];
+    if (typeof v !== "string" || !v.trim()) continue;
+    const label = getSectionTabLabel(key);
+    parts.push(`## ${label}\n\n${v.trim()}`);
+  }
+  return parts.join("\n\n---\n\n");
+}
+
 /** Normalise and validate `sections` from the client; returns null if invalid or empty. */
 export function normalizeGenerationSections(raw: unknown): TeacherPackageSectionKey[] | null {
   if (!Array.isArray(raw)) return null;

@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
@@ -26,6 +26,7 @@ import {
   GRADE_YEAR_OPTIONS,
   SUBJECT_OPTIONS,
   TEACHER_PACKAGE_SECTIONS,
+  buildDifferentiatedPackSourceText,
   getGenerationTimeEstimate,
   isValidCurriculumType,
   isValidGradeYear,
@@ -33,6 +34,7 @@ import {
   mergeSectionImagesMeta,
   parseSectionImagesMeta,
 } from "@/lib/lesson-plan";
+import { writeDiffPackSession } from "@/lib/differentiated-pack-session";
 import { CURRICULUM_FRAMEWORK_OPTIONS, isValidCurriculumFramework } from "@/lib/curriculum-framework";
 import {
   DEFAULT_PPT_THEME_ID,
@@ -120,6 +122,7 @@ function toAflPayload(map: Record<AflPhaseId, string[]>) {
 }
 
 export function LessonPlanGenerator() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -507,6 +510,29 @@ export function LessonPlanGenerator() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const onSendToDifferentiatedPack = () => {
+    if (!lessonPlan) return;
+    setError(null);
+    const { planTextOnly } = parseSectionImagesMeta(lessonPlan);
+    const lessonSourceText = buildDifferentiatedPackSourceText(planTextOnly);
+    if (!lessonSourceText.trim()) {
+      setError(
+        "Your package has no text sections yet. Generate at least one section (for example the lesson plan), then try again.",
+      );
+      return;
+    }
+    writeDiffPackSession({
+      topic: form.topic.trim(),
+      subject: form.subject.trim(),
+      grade: form.grade.trim(),
+      learningObjectives: form.learningObjectives.trim(),
+      curriculumType: form.curriculumType.trim() || undefined,
+      curriculumFramework: form.curriculumFramework.trim() || undefined,
+      lessonSourceText,
+    });
+    router.push("/differentiated-worksheets");
   };
 
   if (checkingAuth) {
@@ -1014,6 +1040,7 @@ export function LessonPlanGenerator() {
                 {parseNotice}
               </p>
             ) : null}
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button
               type="button"
               onClick={onSaveLessonPlan}
@@ -1022,6 +1049,14 @@ export function LessonPlanGenerator() {
             >
               {saving ? "Saving..." : "Save Lesson Plan"}
             </button>
+            <button
+              type="button"
+              onClick={onSendToDifferentiatedPack}
+              className="inline-flex w-full items-center justify-center rounded-xl border-2 border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-100 sm:w-auto"
+            >
+              Generate Differentiated Worksheet Pack
+            </button>
+            </div>
             {typeof lessonPlan["PPT Slide Content"] === "string" &&
             lessonPlan["PPT Slide Content"].trim().length > 0 ? (
               <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4 shadow-inner md:p-5">

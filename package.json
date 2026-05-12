@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "latest",
     "docx": "latest",
     "jszip": "latest",
+    "mammoth": "^1.12.0",
     "next": "latest",
     "pdf-parse": "^1.1.1",
     "pptxgenjs": "latest",
