@@ -1,5 +1,6 @@
 import {
   buildProgrammaticSlide1Body,
+  buildTeacherObjectivesSlide4Body,
   parseDeckBodiesFromPptOutline,
   sanitizeEarlyPptSlideBody,
   type EarlySlideSanitizeContext,
@@ -868,6 +869,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     topic,
     chapter: ctx.chapter?.trim(),
     dateStr,
+    teacherObjectives: lo,
     isAr,
   };
 
@@ -876,9 +878,15 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     pick: { body: string; notes: string },
     loFallback?: string,
   ): { body: string; notes: string } => {
+    if (slideNumber1Based === 4) {
+      const raw = loFallback?.trim() || earlyCtx.teacherObjectives?.trim() || "";
+      return {
+        body: stripMarkdownSymbolsForStudents(buildTeacherObjectivesSlide4Body(raw)),
+        notes: pick.notes,
+      };
+    }
     const fromOutline = parsedDeckBodies?.[slideNumber1Based - 1]?.trim() ?? "";
-    let raw = fromOutline || pick.body.trim();
-    if (!raw && slideNumber1Based === 4 && loFallback?.trim()) raw = loFallback.trim();
+    const raw = fromOutline || pick.body.trim();
     return {
       body: stripMarkdownSymbolsForStudents(sanitizeEarlyPptSlideBody(slideNumber1Based, raw, earlyCtx)),
       notes: pick.notes,
@@ -926,19 +934,20 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   const s3Final = finalizeEarlySlideBody(3, s3);
   slides.push({ slideTitle: T[2]!, body: s3Final.body, speakerNotes: s3Final.notes, includeImageSlot: false });
 
-  const s4Pick = pickDeck(
-    "learningObjectives",
-    ["learning objectives", "objectives", "الأهداف", "أهداف"],
-    isAr
-      ? `فقط أهداف التعلم لدرس «${topic}»: 3 إلى 5 أهداف بأفعال من تصنيف بلوم (مثل تحليل، تطبيق، تقييم). لا نواتج ولا أنشطة ولا أمثلة طويلة ولا شرح إضافي.`
-      : `Learning objectives only for "${topic}": 3–5 lines using Bloom action verbs (e.g. analyse, justify, design). No outcomes, activities, worked examples, or extra notes on this slide.`,
-    "3 minutes",
-    isAr,
-    plan,
-    ppt,
-    contextAnchor,
+  const s4Final = finalizeEarlySlideBody(
+    4,
+    {
+      body: "",
+      notes: buildTeacherSlideNotes(
+        "3 minutes",
+        isAr
+          ? "اعرض أهداف المعلم كما أدخلها في النموذج حرفياً دون تعديل."
+          : "Display the teacher's form objectives verbatim — no AI edits or additions.",
+        isAr,
+      ),
+    },
+    lo,
   );
-  const s4Final = finalizeEarlySlideBody(4, s4Pick, lo);
   slides.push({ slideTitle: T[3]!, body: s4Final.body, speakerNotes: s4Final.notes, includeImageSlot: false });
 
   const s5 = pickDeck(
@@ -1110,23 +1119,7 @@ export function buildLessonPlanContextFromResult(
     grade: meta.grade,
     topic: meta.topic,
     teacherName: meta.teacherName,
-    learningObjectivesText: (() => {
-      const fromMeta = meta.learningObjectives?.trim();
-      if (fromMeta) return fromMeta;
-      if (!fullLessonText) return undefined;
-      const extracted = extractByHints(
-        fullLessonText,
-        [
-          "learning objectives",
-          "learning objective",
-          "الأهداف التعليمية",
-          "أهداف التعلم",
-          "الأهداف",
-        ],
-        STOP_OBJECTIVES,
-      ).trim();
-      return extracted || undefined;
-    })(),
+    learningObjectivesText: meta.learningObjectives?.trim() || undefined,
     fullLessonPlan: fullLessonText || undefined,
     pptContent: pptOutlineText || undefined,
     homeworkTask: typeof plan["Homework Task"] === "string" ? plan["Homework Task"] : undefined,

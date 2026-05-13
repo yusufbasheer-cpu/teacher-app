@@ -38,9 +38,11 @@ import {
   assembleFullPptFromSlideBodies,
   buildProgrammaticSlide1Body,
   buildSinglePptSlideUserMessage,
+  buildTeacherObjectivesSlide4Body,
   parseDeckBodiesFromPptOutline,
   parseSinglePptSlideModelResponse,
   sanitizeEarlyPptSlideBody,
+  slide5OutcomesAlignWithTeacherObjectives,
   slideBodyPassesQualityGate,
   type EarlySlideSanitizeContext,
 } from "@/lib/ppt-slide-by-slide";
@@ -224,6 +226,7 @@ async function generatePptSlideContentSlideBySlide(params: {
     topic: input.topic.trim(),
     chapter: input.chapter.trim(),
     dateStr,
+    teacherObjectives: input.learningObjectives.trim(),
     isAr,
   };
 
@@ -232,6 +235,11 @@ async function generatePptSlideContentSlideBySlide(params: {
 
     if (slide === 1) {
       bodies.push(buildProgrammaticSlide1Body(input.grade.trim(), dateStr));
+      continue;
+    }
+
+    if (slide === 4) {
+      bodies.push(buildTeacherObjectivesSlide4Body(input.learningObjectives));
       continue;
     }
 
@@ -260,7 +268,9 @@ async function generatePptSlideContentSlideBySlide(params: {
             aflForThisSlide: aflForSlide,
             regenerateHint:
               attempt > 1
-                ? "Regenerate: previous attempt was too short, missing markers, or failed validation. Produce a fuller on-brief slide body for THIS slide only; keep strict isolation."
+                ? slide === 5
+                  ? "Regenerate: write one measurable outcome per teacher objective only — never more outcomes than objectives; stay within Bloom verbs and objective scope; no verbatim objective copy."
+                  : "Regenerate: previous attempt was too short, missing markers, or failed validation. Produce a fuller on-brief slide body for THIS slide only; keep strict isolation."
                 : undefined,
           }),
         },
@@ -309,6 +319,18 @@ async function generatePptSlideContentSlideBySlide(params: {
       if (!chosen && (content ?? "").trim()) {
         chosen = stripOuterMarkdownFences((content ?? "").trim());
         notices.push(`PPT Slide Content slide ${slide} attempt ${attempt}: marker fallback used.`);
+      }
+      if (slide === 5) {
+        if (
+          slideBodyPassesQualityGate(slide, chosen) &&
+          slide5OutcomesAlignWithTeacherObjectives(chosen, input.learningObjectives)
+        ) {
+          break;
+        }
+        notices.push(
+          `PPT Slide Content slide ${slide} attempt ${attempt}: outcomes must align to teacher objectives (count/scope).`,
+        );
+        continue;
       }
       if (slideBodyPassesQualityGate(slide, chosen)) {
         break;

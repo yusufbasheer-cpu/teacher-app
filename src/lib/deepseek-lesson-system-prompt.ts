@@ -102,8 +102,8 @@ The app builds **exactly 13 slides** in this **fixed order**. **Each slide has o
 1. **Subject Grade Date** — Body lines only: **grade** and **date** (two lines). The slide **title** already carries subject — do **not** repeat the subject name or write Subject/Grade/Date headings inside the body. Nothing else (no topic, objectives, chapter, or activities).
 2. **Starter Activity** — Starter hook and activity text **only** (once). Do **not** write “Starter Activity” inside the body. No chapter, topic, SDG, objectives, or outcomes.
 3. **Chapter Topic and SDG Goal** — Chapter name, topic name, and one SDG (number + title) — **each once**. Do **not** repeat the slide title inside the body. No objectives, outcomes, or explanations.
-4. **Learning Objectives** — Objective lines only (3–5); **each once**. Do **not** write “Learning Objectives” inside the body. No outcomes, topic recap, or extra notes.
-5. **Learning Outcomes** — Outcome lines only; **each once**. Do **not** write “Learning Outcomes” inside the body. No objective repetition, topic text, or extra notes.
+4. **Learning Objectives** — **Only** the teacher’s form objectives, **verbatim** (same count, same wording). Do **not** generate, edit, paraphrase, or add objectives. Do **not** write “Learning Objectives” inside the body.
+5. **Learning Outcomes** — Measurable outcomes generated **only** from the teacher’s verbatim objectives; typically one per objective; Bloom verbs; **no** scope beyond those objectives. Do **not** write “Learning Outcomes” inside the body.
 6. **Main Phase Core Teaching** — First the **full core teaching content** (concepts, vocabulary, explanation, concise worked meaning). **After** that, learning activities (I Do / We Do / You Do, stations, jigsaw, etc.) that **apply** the taught content. Activities must not replace the explanation. No plenary, differentiation, or exit ticket here.
 7. **Differentiated Activity Mini Plenary** — Only differentiated tasks for higher, middle, and lower attainers plus one mini plenary checkpoint. No core teaching, homework, or outcomes.
 8. **UAE Real Life Cross Curricular Link** — **Only one** of: a UAE connection, OR a real-life application, OR a cross-curricular link (whichever is strongest for this topic). Do not combine all three on one slide.
@@ -276,11 +276,11 @@ ${SINGLE_PPT_SLIDE_BODY_END}
           : n === 4
             ? `
 
-**Slide 4 body rule:** Objective lines only — **do not** write “Learning Objectives” inside the body. No outcomes, topic recap, or explanations.`
+**Slide 4:** Filled from the teacher form — not generated in API calls.`
             : n === 5
               ? `
 
-**Slide 5 body rule:** Outcome lines only — **do not** write “Learning Outcomes” inside the body. No objective repetition or topic text.`
+**Slide 5 body rule:** Write measurable learning outcomes aligned **only** to the teacher’s verbatim objectives in the user message — typically **one outcome per objective**, never more outcomes than objectives. Use Bloom’s Taxonomy verbs without broadening scope. Do **not** copy objectives verbatim. Do **not** write “Learning Outcomes” inside the body.`
               : ""
   }`;
 

@@ -40,14 +40,32 @@ export function parseSinglePptSlideModelResponse(raw: string): string {
 
 /** Minimum trimmed length to accept a slide (avoid empty / one-word failures). */
 const MIN_LEN: readonly number[] = [
-  8, 40, 24, 24, 24, 140, 60, 72, 50, 40, 24, 40, 20,
+  8, 40, 24, 4, 24, 140, 60, 72, 50, 40, 24, 40, 20,
 ];
 
 export function slideBodyPassesQualityGate(slideNumber1Based: number, body: string): boolean {
   const t = body.trim();
   if (!t) return false;
+  if (slideNumber1Based === 4) return t.length >= 4;
   const min = MIN_LEN[slideNumber1Based - 1] ?? 28;
   return t.length >= min;
+}
+
+/** Slide 5: outcomes count should not exceed teacher objective count (when objectives are known). */
+export function slide5OutcomesAlignWithTeacherObjectives(
+  outcomesBody: string,
+  teacherObjectivesRaw: string,
+): boolean {
+  const objectiveCount = countTeacherObjectiveLines(teacherObjectivesRaw);
+  if (objectiveCount === 0) return outcomesBody.trim().length >= 24;
+  const outcomeLines = outcomesBody
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !lineIsSlideTitleEcho(5, l, false) && !lineIsSlideTitleEcho(5, l, true));
+  if (outcomeLines.length === 0) return false;
+  if (outcomeLines.length !== objectiveCount) return false;
+  return true;
 }
 
 /**
@@ -77,12 +95,38 @@ export function buildProgrammaticSlide1Body(grade: string, dateStr: string): str
   return [g, d].filter(Boolean).join("\n");
 }
 
+/**
+ * Slide 4 body: teacher form objectives verbatim (line breaks preserved; empty lines dropped only).
+ * Does not paraphrase, expand, or add objectives.
+ */
+export function buildTeacherObjectivesSlide4Body(teacherObjectivesRaw: string): string {
+  const lines = teacherObjectivesRaw.replace(/\r\n/g, "\n").split("\n");
+  const kept: string[] = [];
+  for (const line of lines) {
+    const t = line.replace(/\s+$/g, "");
+    if (!t.trim()) continue;
+    if (lineIsSlideTitleEcho(4, t.trim(), false) || lineIsSlideTitleEcho(4, t.trim(), true)) continue;
+    kept.push(t);
+  }
+  if (kept.length > 0) return kept.join("\n");
+  return teacherObjectivesRaw.replace(/\r\n/g, "\n").trim();
+}
+
+/** Non-empty objective lines after verbatim normalisation (for slide 5 alignment). */
+export function countTeacherObjectiveLines(teacherObjectivesRaw: string): number {
+  const body = buildTeacherObjectivesSlide4Body(teacherObjectivesRaw);
+  if (!body.trim()) return 0;
+  return body.split("\n").filter((l) => l.trim().length > 0).length;
+}
+
 export type EarlySlideSanitizeContext = {
   subject: string;
   grade: string;
   topic: string;
   chapter?: string;
   dateStr?: string;
+  /** Verbatim objectives from the lesson generator form. */
+  teacherObjectives?: string;
   isAr: boolean;
 };
 
@@ -176,6 +220,10 @@ export function sanitizeEarlyPptSlideBody(
     return buildProgrammaticSlide1Body(ctx.grade, ctx.dateStr ?? "");
   }
 
+  if (slideNumber1Based === 4 && ctx.teacherObjectives?.trim()) {
+    return buildTeacherObjectivesSlide4Body(ctx.teacherObjectives);
+  }
+
   const deny = LINE_CONTAMINATION_DENY[slideNumber1Based] ?? [];
   const topicLc = ctx.topic.trim().toLowerCase();
   const chapterLc = (ctx.chapter ?? "").trim().toLowerCase();
@@ -248,8 +296,8 @@ export const SINGLE_SLIDE_USER_FOCUS_EN: readonly string[] = [
   "Body: two lines only — grade value, then date value. Do NOT write the subject name, Subject/Grade/Date labels, or repeat the slide title (the title already covers subject).",
   "Starter hook and activity text only — once. Do NOT write 'Starter Activity' inside the body. No chapter, topic, SDG, objectives, or outcomes.",
   "Exactly three items once each: chapter name, topic name, one SDG (number + title). No 'Chapter Topic and SDG Goal' heading inside the body. No objectives, outcomes, or explanations.",
-  "Objective lines only (3–5), each once. Do NOT write 'Learning Objectives' inside the body. No outcomes, topic recap, or extra explanation.",
-  "Outcome lines only, each once. Do NOT write 'Learning Outcomes' inside the body. No objective repetition, topic text, or extra explanation.",
+  "(Slide 4 is filled from the teacher form automatically — not generated in this call.)",
+  "Measurable learning outcomes ONLY — exactly one outcome per teacher objective (same count). Bloom verbs; stay within objective scope. No 'Learning Outcomes' heading in body. Do not copy objectives verbatim.",
   "Main phase only: full explanation first, then I/We/You-style activities — no plenary, differentiation, or exit ticket.",
   "Differentiated tasks (high/mid/low) plus one mini plenary checkpoint only — no UAE link, homework, or core re-teach.",
   "Exactly ONE link type only: UAE **or** real life **or** cross-curricular — pick the strongest only.",
@@ -305,15 +353,31 @@ ${trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS)}
       : "";
 
   const lessonBlock =
-    sn >= 4 && fullLessonPlan.trim().length > 0
+    sn >= 6 && fullLessonPlan.trim().length > 0
       ? `
 
-### Full lesson plan (continuity for objectives/outcomes only — do not paste unrelated sections onto this slide)
+### Full lesson plan (continuity — do not paste unrelated sections onto this slide)
 Use only what you need for this slide’s purpose. Do not copy large blocks verbatim from here unless they truly belong on this slide type.
 
 ${fullLessonPlan.trim().slice(0, 14_000)}
 `
       : "";
+
+  const teacherObjectivesVerbatim = buildTeacherObjectivesSlide4Body(input.learningObjectives);
+
+  const slide5ObjectivesBlock =
+    sn === 5
+      ? `
+
+### Teacher learning objectives (SOLE authorised basis — outcomes must not exceed this scope)
+Write measurable learning outcomes that align **directly** with these objectives only — **exactly one outcome per objective** (same number of lines as objectives). Use Bloom's Taxonomy verbs; do not broaden scope beyond what the teacher wrote.
+
+${teacherObjectivesVerbatim}
+`
+      : "";
+
+  const objectivesContextLine =
+    sn === 5 ? "" : `\n- Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}`;
 
   const focus = SINGLE_SLIDE_USER_FOCUS_EN[sn - 1] ?? "";
 
@@ -330,10 +394,10 @@ Generate **only slide ${sn} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}** for the t
 - Grade / Year group: ${input.grade.trim()}
 - Subject: ${input.subject.trim()}
 ${chapterLine}
-- Topic (within the chapter): ${input.topic.trim()}
-- Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}${frameworkUserLine}
+- Topic (within the chapter): ${input.topic.trim()}${objectivesContextLine}${frameworkUserLine}
 ${sourceBlock}
 ${lessonBlock}
+${slide5ObjectivesBlock}
 ${arabicExtraBlock ? `\n${arabicExtraBlock}\n` : ""}
 ${aflForThisSlide ? `\n${aflForThisSlide}\n` : ""}
 
