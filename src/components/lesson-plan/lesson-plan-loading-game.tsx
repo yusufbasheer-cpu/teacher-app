@@ -16,6 +16,8 @@ type Obstacle = {
 type LessonPlanLoadingGameProps = {
   /** While true, the game runs; when false, unmounts (AI finished or errored). */
   active: boolean;
+  /** Optional status line (e.g. slide-by-slide PPT progress). */
+  statusText?: string | null;
 };
 
 const OB_TYPES: ObstacleType[] = ["book", "pencil", "bag"];
@@ -129,7 +131,7 @@ function rectsOverlap(
   return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
 }
 
-export function LessonPlanLoadingGame({ active }: LessonPlanLoadingGameProps) {
+export function LessonPlanLoadingGame({ active, statusText }: LessonPlanLoadingGameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const activeRef = useRef(active);
   const [score, setScore] = useState(0);
@@ -346,6 +348,14 @@ export function LessonPlanLoadingGame({ active }: LessonPlanLoadingGameProps) {
         <p className="mb-3 text-center text-sm font-semibold leading-snug text-blue-900">
           Your lesson plan is being prepared… keep the teacher running!
         </p>
+        {statusText ? (
+          <p
+            role="status"
+            className="mb-3 text-center text-sm font-medium tabular-nums text-slate-800"
+          >
+            {statusText}
+          </p>
+        ) : null}
         <div className="flex justify-center rounded-xl border border-blue-100 bg-sky-50 p-2">
           <canvas
             ref={canvasRef}

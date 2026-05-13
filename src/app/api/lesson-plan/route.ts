@@ -4,7 +4,10 @@ import {
   getCurriculumFrameworkLabel,
   isValidCurriculumFramework,
 } from "@/lib/curriculum-framework";
-import { buildDeepseekLessonSystemPrompt } from "@/lib/deepseek-lesson-system-prompt";
+import {
+  buildDeepseekLessonSystemPrompt,
+  buildSinglePptSlideDeepseekSystemPrompt,
+} from "@/lib/deepseek-lesson-system-prompt";
 import { generateFluxSectionImages, formatFalError } from "@/lib/fal-flux-section-images";
 import {
   normalizeGenerationSections,
@@ -20,19 +23,38 @@ import {
   isValidGradeYear,
   isValidSubjectOption,
 } from "@/lib/lesson-plan";
-import { formatAflForAiPrompt, sanitizeAflSelections } from "@/lib/afl-tools";
+import {
+  formatAflForAiPrompt,
+  formatAflForSinglePptSlidePrompt,
+  sanitizeAflSelections,
+} from "@/lib/afl-tools";
 import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 import {
   parseTeacherPackageResponse,
   stripOuterMarkdownFences,
 } from "@/lib/parse-teacher-package-response";
+import {
+  assembleFullPptFromSlideBodies,
+  buildSinglePptSlideUserMessage,
+  parseSinglePptSlideModelResponse,
+  slideBodyPassesQualityGate,
+} from "@/lib/ppt-slide-by-slide";
+import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+/** Thirteen sequential slide calls plus other sections may exceed the default 60s cap. */
+export const maxDuration = 300;
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const DEEPSEEK_MAX_TOKENS = 8000;
+const DEEPSEEK_MAX_TOKENS_PPT_SLIDE = 2400;
+const PPT_SLIDE_MAX_ATTEMPTS = 3;
+
+const NDJSON_HEADERS = {
+  "Content-Type": "application/x-ndjson; charset=utf-8",
+  "Cache-Control": "no-store",
+} as const;
 
 function deepSeekHttpErrorMessage(status: number, rawBody: string): string {
   const trimmed = rawBody.trim();
@@ -157,68 +179,170 @@ function emptyLessonShell(sections: readonly TeacherPackageSectionKey[]): Lesson
   return out;
 }
 
-export async function POST(req: Request) {
-  const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "Missing DEEPSEEK_API_KEY in environment variables." },
-      { status: 500 },
-    );
-  }
-  if (apiKey.length < 12) {
-    return NextResponse.json(
-      { error: "DEEPSEEK_API_KEY appears invalid (too short). Please check your environment variable." },
-      { status: 500 },
-    );
+function frameworkUserLineForPpt(input: LessonPlanInput): string {
+  const fw = input.curriculumFramework.trim();
+  if (fw.length === 0) return "";
+  return `\n- **Curriculum framework (mandatory alignment):** ${getCurriculumFrameworkLabel(fw)} — apply the framework rules in the system prompt to every field you generate.`;
+}
+
+function arabicSlideExtraBlock(input: LessonPlanInput): string {
+  if (input.subject.trim() !== "Arabic") return "";
+  return `### Output language (mandatory)
+Subject is **Arabic language teaching**. Write **this slide body** in **Modern Standard Arabic** for learners.`;
+}
+
+async function generatePptSlideContentSlideBySlide(params: {
+  apiKey: string;
+  input: LessonPlanInput;
+  sourceMaterial: string | undefined;
+  frameworkAddendum: string | null;
+  aflSelections: ReturnType<typeof sanitizeAflSelections>;
+  fullLessonPlan: string;
+  onProgress: (message: string) => void;
+}): Promise<{ text: string; notices: string[] }> {
+  const { apiKey, input, sourceMaterial, frameworkAddendum, aflSelections, fullLessonPlan, onProgress } =
+    params;
+  const notices: string[] = [];
+  const bodies: string[] = [];
+  const isAr = input.subject.trim() === "Arabic";
+  const fwLine = frameworkUserLineForPpt(input);
+  const arabicExtra = arabicSlideExtraBlock(input);
+
+  for (let slide = 1; slide <= STRUCTURED_LESSON_DECK_SLIDE_COUNT; slide++) {
+    onProgress(`Generating Slide ${slide} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
+    const aflForSlide = formatAflForSinglePptSlidePrompt(slide, aflSelections);
+    let chosen = "";
+    let lastHttpError: string | null = null;
+
+    for (let attempt = 1; attempt <= PPT_SLIDE_MAX_ATTEMPTS; attempt++) {
+      const messages: DeepSeekMessage[] = [
+        {
+          role: "system",
+          content: buildSinglePptSlideDeepseekSystemPrompt(slide, {
+            curriculumFrameworkAddendum: frameworkAddendum,
+            subject: input.subject.trim(),
+          }),
+        },
+        {
+          role: "user",
+          content: buildSinglePptSlideUserMessage({
+            slideNumber1Based: slide,
+            input,
+            sourceMaterial,
+            frameworkUserLine: fwLine,
+            fullLessonPlan,
+            arabicExtraBlock: arabicExtra,
+            aflForThisSlide: aflForSlide,
+            regenerateHint:
+              attempt > 1
+                ? "Regenerate: previous attempt was too short, missing markers, or failed validation. Produce a fuller on-brief slide body for THIS slide only; keep strict isolation."
+                : undefined,
+          }),
+        },
+      ];
+
+      let deepseekResponse: Response;
+      try {
+        deepseekResponse = await fetch(DEEPSEEK_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "deepseek-chat",
+            temperature: 0.55,
+            max_tokens: DEEPSEEK_MAX_TOKENS_PPT_SLIDE,
+            messages,
+          }),
+        });
+      } catch (err) {
+        lastHttpError = String(err instanceof Error ? err.message : err);
+        notices.push(`PPT Slide Content slide ${slide} attempt ${attempt}: network error — ${lastHttpError}`);
+        continue;
+      }
+
+      const rawBody = await deepseekResponse.text();
+      logDeepSeekRawResponse(
+        `lesson-plan:PPT-slide-${slide}-a${attempt}`,
+        deepseekResponse,
+        rawBody,
+      );
+
+      if (!deepseekResponse.ok) {
+        lastHttpError = deepSeekHttpErrorMessage(deepseekResponse.status, rawBody);
+        notices.push(`PPT Slide Content slide ${slide} attempt ${attempt}: ${lastHttpError}`);
+        continue;
+      }
+
+      const { content, errorMessage } = parseDeepSeekCompletionBody(rawBody);
+      if (errorMessage) {
+        notices.push(`PPT Slide Content slide ${slide} attempt ${attempt}: ${errorMessage}`);
+      }
+      const parsed = parseSinglePptSlideModelResponse(content ?? "");
+      chosen = parsed.trim();
+      if (!chosen && (content ?? "").trim()) {
+        chosen = stripOuterMarkdownFences((content ?? "").trim());
+        notices.push(`PPT Slide Content slide ${slide} attempt ${attempt}: marker fallback used.`);
+      }
+      if (slideBodyPassesQualityGate(slide, chosen)) {
+        break;
+      }
+      notices.push(
+        `PPT Slide Content slide ${slide} attempt ${attempt}: quality gate not satisfied (length or empty).`,
+      );
+    }
+
+    if (!chosen.trim()) {
+      chosen = `_(This slide could not be generated after ${PPT_SLIDE_MAX_ATTEMPTS} attempts.)_${lastHttpError ? `\n\n${lastHttpError}` : ""}`;
+    }
+    bodies.push(chosen.trim());
   }
 
-  let body: LessonPlanGenerateBody;
-  try {
-    body = (await req.json()) as LessonPlanGenerateBody;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
-
-  const sections = normalizeGenerationSections(body.sections);
-  if (!sections) {
-    return NextResponse.json(
-      { error: "Provide a non-empty \"sections\" array of valid teacher-package keys." },
-      { status: 400 },
-    );
-  }
-
-  const input: LessonPlanInput = {
-    curriculumType: body.curriculumType ?? "",
-    curriculumFramework:
-      typeof body.curriculumFramework === "string" ? body.curriculumFramework.trim() : "",
-    grade: body.grade ?? "",
-    subject: body.subject ?? "",
-    chapter: typeof body.chapter === "string" ? body.chapter : "",
-    topic: body.topic ?? "",
-    learningObjectives: body.learningObjectives ?? "",
+  return {
+    text: assembleFullPptFromSlideBodies(bodies, isAr),
+    notices,
   };
+}
 
-  const rawSource =
-    typeof body.sourceMaterial === "string" ? body.sourceMaterial.trim() : "";
-  const sourceMaterial =
-    rawSource.length > 0 ? rawSource.slice(0, SOURCE_MATERIAL_MAX_CHARS) : undefined;
+type GeneratePackageParams = {
+  apiKey: string;
+  input: LessonPlanInput;
+  sections: readonly TeacherPackageSectionKey[];
+  sourceMaterial: string | undefined;
+  frameworkAddendum: string | null;
+  aflSelections: ReturnType<typeof sanitizeAflSelections>;
+  aflPromptBlock: string;
+  onProgress?: (message: string) => void;
+};
 
-  const validationError = validateInput(input);
-  if (validationError) {
-    return NextResponse.json({ error: validationError }, { status: 400 });
-  }
-
-  const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(input.curriculumFramework);
-
-  const aflSelections = sanitizeAflSelections(body.aflSelections);
-  const aflFormatted = formatAflForAiPrompt(aflSelections);
-  const aflPromptBlock = aflFormatted ? `\n\n${aflFormatted}` : "";
-
+async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
+  mergedPlan: LessonPlanResult;
+  parseNotices: string[];
+}> {
+  const { apiKey, input, sections, sourceMaterial, frameworkAddendum, aflSelections, aflPromptBlock, onProgress } =
+    params;
   const orderedSections = TEACHER_PACKAGE_SECTIONS.filter((k) => sections.includes(k));
   const mergedPlan = emptyLessonShell(sections);
   const parseNotices: string[] = [];
 
   for (const section of orderedSections) {
+    if (section === "PPT Slide Content") {
+      const fullLesson = (mergedPlan["Full Lesson Plan"] ?? "").trim();
+      const { text, notices } = await generatePptSlideContentSlideBySlide({
+        apiKey,
+        input,
+        sourceMaterial,
+        frameworkAddendum,
+        aflSelections,
+        fullLessonPlan: fullLesson,
+        onProgress: onProgress ?? (() => {}),
+      });
+      mergedPlan[section] = text;
+      for (const n of notices) parseNotices.push(n);
+      continue;
+    }
+
     let deepseekResponse: Response;
     try {
       deepseekResponse = await fetch(DEEPSEEK_API_URL, {
@@ -283,6 +407,20 @@ export async function POST(req: Request) {
     if (sliceNotice) parseNotices.push(`${section}: ${sliceNotice}`);
   }
 
+  return { mergedPlan, parseNotices };
+}
+
+async function runFluxAndBuildResponsePayload(
+  input: LessonPlanInput,
+  sections: readonly TeacherPackageSectionKey[],
+  mergedPlan: LessonPlanResult,
+  parseNotices: string[],
+): Promise<{
+  lessonPlan: LessonPlanResult;
+  parseNotice?: string;
+  sectionImages?: SectionImageMap;
+  sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
+}> {
   const parseNotice = parseNotices.length > 0 ? parseNotices.join("\n\n") : undefined;
 
   let sectionImages: SectionImageMap = {};
@@ -302,10 +440,119 @@ export async function POST(req: Request) {
     console.error("[lesson-plan] FLUX section images failed:", formatFalError(e), e);
   }
 
-  return NextResponse.json({
+  return {
     lessonPlan: mergedPlan,
     ...(parseNotice ? { parseNotice } : {}),
     ...(Object.keys(sectionImages).length > 0 ? { sectionImages } : {}),
     ...(Object.keys(sectionImageErrors).length > 0 ? { sectionImageErrors } : {}),
-  });
+  };
+}
+
+export async function POST(req: Request) {
+  const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "Missing DEEPSEEK_API_KEY in environment variables." },
+      { status: 500 },
+    );
+  }
+  if (apiKey.length < 12) {
+    return NextResponse.json(
+      { error: "DEEPSEEK_API_KEY appears invalid (too short). Please check your environment variable." },
+      { status: 500 },
+    );
+  }
+
+  let body: LessonPlanGenerateBody;
+  try {
+    body = (await req.json()) as LessonPlanGenerateBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const sections = normalizeGenerationSections(body.sections);
+  if (!sections) {
+    return NextResponse.json(
+      { error: "Provide a non-empty \"sections\" array of valid teacher-package keys." },
+      { status: 400 },
+    );
+  }
+
+  const input: LessonPlanInput = {
+    curriculumType: body.curriculumType ?? "",
+    curriculumFramework:
+      typeof body.curriculumFramework === "string" ? body.curriculumFramework.trim() : "",
+    grade: body.grade ?? "",
+    subject: body.subject ?? "",
+    chapter: typeof body.chapter === "string" ? body.chapter : "",
+    topic: body.topic ?? "",
+    learningObjectives: body.learningObjectives ?? "",
+  };
+
+  const rawSource =
+    typeof body.sourceMaterial === "string" ? body.sourceMaterial.trim() : "";
+  const sourceMaterial =
+    rawSource.length > 0 ? rawSource.slice(0, SOURCE_MATERIAL_MAX_CHARS) : undefined;
+
+  const validationError = validateInput(input);
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 });
+  }
+
+  const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(input.curriculumFramework);
+
+  const aflSelections = sanitizeAflSelections(body.aflSelections);
+  const aflFormatted = formatAflForAiPrompt(aflSelections);
+  const aflPromptBlock = aflFormatted ? `\n\n${aflFormatted}` : "";
+
+  const wantsNdjsonStream =
+    Boolean(body.streamProgress) && sections.includes("PPT Slide Content");
+
+  if (wantsNdjsonStream) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const send = (obj: object) => controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+        try {
+          const { mergedPlan, parseNotices } = await generateTeacherPackage({
+            apiKey,
+            input,
+            sections,
+            sourceMaterial,
+            frameworkAddendum,
+            aflSelections,
+            aflPromptBlock,
+            onProgress: (message) => send({ type: "progress", message }),
+          });
+          const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
+          send({ type: "complete", ...payload });
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
+          console.error("[lesson-plan] stream generation failed:", e);
+          send({ type: "error", message });
+        } finally {
+          controller.close();
+        }
+      },
+    });
+    return new Response(stream, { status: 200, headers: NDJSON_HEADERS });
+  }
+
+  try {
+    const { mergedPlan, parseNotices } = await generateTeacherPackage({
+      apiKey,
+      input,
+      sections,
+      sourceMaterial,
+      frameworkAddendum,
+      aflSelections,
+      aflPromptBlock,
+    });
+    const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
+    return NextResponse.json(payload);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[lesson-plan] generation failed:", e);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

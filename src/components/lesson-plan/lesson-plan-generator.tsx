@@ -135,6 +135,7 @@ export function LessonPlanGenerator() {
   > | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -403,6 +404,7 @@ export function LessonPlanGenerator() {
     setError(null);
     setSuccessMessage(null);
     setParseNotice(null);
+    setGenerationProgress(null);
     setLessonPlan(null);
     setSectionImages(null);
     setSectionImageErrors(null);
@@ -415,9 +417,11 @@ export function LessonPlanGenerator() {
     }
 
     setLoading(true);
+    setGenerationProgress(null);
 
     try {
       const combinedSource = combineSourceChunks(uploadedChunks);
+      const pptSelected = sectionSelection["PPT Slide Content"];
       const response = await fetch("/api/lesson-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -426,12 +430,11 @@ export function LessonPlanGenerator() {
           sections,
           ...(hasAflForExport ? { aflSelections: aflSelectionsPayload } : {}),
           ...(combinedSource.length > 0 ? { sourceMaterial: combinedSource } : {}),
+          ...(pptSelected ? { streamProgress: true } : {}),
         }),
       });
 
-      const raw = await response.text();
-      console.log("[lesson-plan client] /api/lesson-plan HTTP", response.status, "body length", raw.length);
-      console.log("[lesson-plan client] raw preview:\n", raw.slice(0, 2500));
+      const contentType = response.headers.get("content-type") ?? "";
 
       type LessonPlanApiResponse = {
         error?: string;
@@ -442,45 +445,94 @@ export function LessonPlanGenerator() {
         rawResponse?: string;
       };
 
-      const parsed = tryParseApiJson<LessonPlanApiResponse>(raw, response.status);
-      if (!parsed.ok) {
-        throw new Error(
-          `${parsed.message}\n\n--- Raw response (truncated) ---\n${parsed.rawPreview || "(empty)"}`,
+      const applySuccessPayload = (data: LessonPlanApiResponse) => {
+        if (!data.lessonPlan) {
+          throw new Error(
+            (data.error ?? "No lesson plan returned.") +
+              (typeof data.rawResponse === "string" && data.rawResponse.trim()
+                ? `\n\n--- Raw response ---\n${data.rawResponse}`
+                : ""),
+          );
+        }
+        setLessonPlan(data.lessonPlan);
+        setParseNotice(typeof data.parseNotice === "string" && data.parseNotice.trim() ? data.parseNotice.trim() : null);
+        setSectionImages(
+          data.sectionImages && Object.keys(data.sectionImages).length > 0 ? data.sectionImages : null,
         );
-      }
-      const data = parsed.data;
-
-      if (!response.ok) {
-        const extra =
-          typeof data.rawResponse === "string" && data.rawResponse.trim()
-            ? `\n\n--- Raw response from server ---\n${data.rawResponse}`
-            : "";
-        throw new Error(
-          (data.error ?? `Failed to generate lesson plan (HTTP ${response.status}).`) + extra,
+        setSectionImageErrors(
+          data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0
+            ? data.sectionImageErrors
+            : null,
         );
-      }
+        if (data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0) {
+          console.warn("[lesson-plan] section image errors from API:", data.sectionImageErrors);
+        }
+      };
 
-      if (!data.lessonPlan) {
-        throw new Error(
-          (data.error ?? "No lesson plan returned.") +
-            (typeof data.rawResponse === "string" && data.rawResponse.trim()
-              ? `\n\n--- Raw response ---\n${data.rawResponse}`
-              : ""),
-        );
-      }
+      if (response.ok && pptSelected && contentType.includes("application/x-ndjson")) {
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("The server returned an NDJSON stream but no response body was available.");
+        }
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let completePayload: LessonPlanApiResponse | null = null;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let nl: number;
+          while ((nl = buffer.indexOf("\n")) >= 0) {
+            const line = buffer.slice(0, nl).trim();
+            buffer = buffer.slice(nl + 1);
+            if (!line) continue;
+            let ev: Record<string, unknown>;
+            try {
+              ev = JSON.parse(line) as Record<string, unknown>;
+            } catch {
+              console.warn("[lesson-plan client] skipped non-JSON NDJSON line:", line.slice(0, 200));
+              continue;
+            }
+            const t = ev.type;
+            if (t === "progress" && typeof ev.message === "string") {
+              setGenerationProgress(ev.message);
+            } else if (t === "error" && typeof ev.message === "string") {
+              throw new Error(ev.message);
+            } else if (t === "complete") {
+              completePayload = ev as unknown as LessonPlanApiResponse;
+            }
+          }
+        }
+        if (!completePayload?.lessonPlan) {
+          throw new Error(
+            "Stream ended without a complete lesson package. Please try again or deselect PPT to use the non-streaming path.",
+          );
+        }
+        applySuccessPayload(completePayload);
+      } else {
+        const raw = await response.text();
+        console.log("[lesson-plan client] /api/lesson-plan HTTP", response.status, "body length", raw.length);
+        console.log("[lesson-plan client] raw preview:\n", raw.slice(0, 2500));
 
-      setLessonPlan(data.lessonPlan);
-      setParseNotice(typeof data.parseNotice === "string" && data.parseNotice.trim() ? data.parseNotice.trim() : null);
-      setSectionImages(
-        data.sectionImages && Object.keys(data.sectionImages).length > 0 ? data.sectionImages : null,
-      );
-      setSectionImageErrors(
-        data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0
-          ? data.sectionImageErrors
-          : null,
-      );
-      if (data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0) {
-        console.warn("[lesson-plan] section image errors from API:", data.sectionImageErrors);
+        const parsed = tryParseApiJson<LessonPlanApiResponse>(raw, response.status);
+        if (!parsed.ok) {
+          throw new Error(
+            `${parsed.message}\n\n--- Raw response (truncated) ---\n${parsed.rawPreview || "(empty)"}`,
+          );
+        }
+        const data = parsed.data;
+
+        if (!response.ok) {
+          const extra =
+            typeof data.rawResponse === "string" && data.rawResponse.trim()
+              ? `\n\n--- Raw response from server ---\n${data.rawResponse}`
+              : "";
+          throw new Error(
+            (data.error ?? `Failed to generate lesson plan (HTTP ${response.status}).`) + extra,
+          );
+        }
+
+        applySuccessPayload(data);
       }
     } catch (err) {
       const message =
@@ -489,6 +541,7 @@ export function LessonPlanGenerator() {
       setParseNotice(null);
     } finally {
       setLoading(false);
+      setGenerationProgress(null);
     }
   };
 
@@ -1159,7 +1212,7 @@ export function LessonPlanGenerator() {
         </div>
       ) : null}
 
-      {loading ? <LessonPlanLoadingGame active /> : null}
+      {loading ? <LessonPlanLoadingGame active statusText={generationProgress} /> : null}
     </div>
   );
 }

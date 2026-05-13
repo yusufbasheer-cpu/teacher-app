@@ -139,6 +139,12 @@ export type LessonPlanGenerateBody = LessonPlanInput & {
   sourceMaterial?: string;
   /** Selected AFL tool ids by phase (see `afl-tools.ts`). */
   aflSelections?: AflSelectionsPayload;
+  /**
+   * When true and **PPT Slide Content** is requested, the API responds with **NDJSON** lines:
+   * `{"type":"progress","message":"…"}` then `{"type":"complete",…}` (or `{"type":"error",…}`).
+   * Otherwise the API returns a single JSON object as before.
+   */
+  streamProgress?: boolean;
 };
 
 /** Stored JSON may be new package or legacy; treat as string map. */

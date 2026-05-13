@@ -479,16 +479,177 @@ function stripLinesDuplicatedFromEarlierSlides(body: string, previousBodies: str
     .trim();
 }
 
+/** Lines that look like *other* slide section titles (drop if they appear on the wrong slide index). */
+const MISPLACE_SECTION_HEADING_DENY: Record<number, readonly RegExp[]> = {
+  1: [
+    /^#*\s*learning\s+objectives?\s*:?\s*$/i,
+    /^#*\s*learning\s+outcomes?\s*:?\s*$/i,
+    /^#*\s*success\s+criteria\b/i,
+    /^#*\s*exit\s+ticket\b/i,
+    /^#*\s*plenary\b/i,
+    /^#*\s*(extended\s+task|homework|home\s+learning)\b/i,
+    /^#*\s*differentiated(\s+activity)?\b/i,
+    /^#*\s*main\s+phase\b/i,
+    /^#*\s*uae\b/i,
+    /^#*\s*(cross[\s-]*curricular|real\s+life)\b/i,
+    /^(الأهداف التعليمية|أهداف التعلم|النواتج|الختام|بطاقة الخروج|معايير النجاح|الواجب)\s*:?\s*$/i,
+  ],
+  2: [
+    /^#*\s*starter(\s+activity)?\s*:?\s*$/i,
+    /^#*\s*learning\s+objectives?\s*:?\s*$/i,
+    /^#*\s*learning\s+outcomes?\s*:?\s*$/i,
+    /^#*\s*main\s+phase\b/i,
+    /^#*\s*differentiated\b/i,
+    /^#*\s*plenary\b/i,
+    /^#*\s*(extended\s+task|homework)\b/i,
+    /^#*\s*exit\s+ticket\b/i,
+    /^#*\s*success\s+criteria\b/i,
+    /^(التمهيد|الأهداف|النواتج|المرحلة الأساسية|الختام|بطاقة الخروج|معايير النجاح)\s*:?\s*$/i,
+  ],
+  3: [
+    /^#*\s*learning\s+outcomes?\s*:?\s*$/i,
+    /^#*\s*success\s+criteria\b/i,
+    /^#*\s*exit\s+ticket\b/i,
+    /^#*\s*plenary\b/i,
+    /^#*\s*(extended\s+task|homework)\b/i,
+    /^#*\s*differentiated\b/i,
+    /^#*\s*main\s+phase\b/i,
+    /^#*\s*starter(\s+activity)?\s*:?\s*$/i,
+    /^#*\s*chapter\b/i,
+    /^(النواتج|الختام|بطاقة الخروج|معايير النجاح|المرحلة الأساسية|التمهيد)\s*:?\s*$/i,
+  ],
+  4: [
+    /^#*\s*learning\s+objectives?\s*:?\s*$/i,
+    /^#*\s*success\s+criteria\b/i,
+    /^#*\s*exit\s+ticket\b/i,
+    /^#*\s*plenary\b/i,
+    /^#*\s*(extended\s+task|homework)\b/i,
+    /^#*\s*differentiated\b/i,
+    /^#*\s*main\s+phase\b/i,
+    /^#*\s*starter(\s+activity)?\s*:?\s*$/i,
+    /^(الأهداف التعليمية|الختام|بطاقة الخروج|معايير النجاح)\s*:?\s*$/i,
+  ],
+  5: [
+    /^#*\s*plenary\b/i,
+    /^#*\s*(extended\s+task|homework)\b/i,
+    /^#*\s*exit\s+ticket\b/i,
+    /^#*\s*success\s+criteria\b/i,
+    /^#*\s*differentiated(\s+activity)?\b/i,
+    /^#*\s*uae\b/i,
+    /^#*\s*(cross[\s-]*curricular|real\s+life)\b/i,
+    /^#*\s*learning\s+objectives?\s*:?\s*$/i,
+    /^#*\s*learning\s+outcomes?\s*:?\s*$/i,
+    /^#*\s*starter(\s+activity)?\s*:?\s*$/i,
+    /^#*\s*chapter\b/i,
+    /^(الختام|بطاقة الخروج|معايير النجاح|التمايز|الإمارات)\s*:?\s*$/i,
+  ],
+  6: [
+    /^#*\s*uae\b/i,
+    /^#*\s*(cross[\s-]*curricular|real\s+life)\b/i,
+    /^#*\s*plenary\b/i,
+    /^#*\s*(extended\s+task|homework)\b/i,
+    /^#*\s*exit\s+ticket\b/i,
+    /^#*\s*success\s+criteria\b/i,
+    /^#*\s*main\s+phase\b/i,
+    /^#*\s*learning\s+objectives?\s*:?\s*$/i,
+    /^#*\s*learning\s+outcomes?\s*:?\s*$/i,
+    /^#*\s*starter(\s+activity)?\s*:?\s*$/i,
+    /^(الإمارات|الختام|بطاقة الخروج|معايير النجاح|المرحلة الأساسية)\s*:?\s*$/i,
+  ],
+  7: [
+    /^#*\s*plenary\b/i,
+    /^#*\s*(extended\s+task|homework)\b/i,
+    /^#*\s*exit\s+ticket\b/i,
+    /^#*\s*success\s+criteria\b/i,
+    /^#*\s*differentiated(\s+activity)?\b/i,
+    /^#*\s*main\s+phase\b/i,
+    /^#*\s*learning\s+objectives?\s*:?\s*$/i,
+    /^#*\s*learning\s+outcomes?\s*:?\s*$/i,
+    /^#*\s*starter(\s+activity)?\s*:?\s*$/i,
+    /^#*\s*chapter\b/i,
+    /^(الختام|بطاقة الخروج|معايير النجاح|التمايز|المرحلة الأساسية)\s*:?\s*$/i,
+  ],
+  8: [
+    /^#*\s*(extended\s+task|homework)\b/i,
+    /^#*\s*exit\s+ticket\b/i,
+    /^#*\s*success\s+criteria\b/i,
+    /^#*\s*learning\s+objectives?\s*:?\s*$/i,
+    /^#*\s*learning\s+outcomes?\s*:?\s*$/i,
+    /^#*\s*main\s+phase\b/i,
+    /^#*\s*differentiated\b/i,
+    /^#*\s*starter(\s+activity)?\s*:?\s*$/i,
+    /^#*\s*chapter\b/i,
+    /^(الواجب|بطاقة الخروج|معايير النجاح|الأهداف|النواتج)\s*:?\s*$/i,
+  ],
+  9: [
+    /^#*\s*exit\s+ticket\b/i,
+    /^#*\s*success\s+criteria\b/i,
+    /^#*\s*plenary\b/i,
+    /^#*\s*learning\s+objectives?\s*:?\s*$/i,
+    /^#*\s*learning\s+outcomes?\s*:?\s*$/i,
+    /^#*\s*main\s+phase\b/i,
+    /^#*\s*differentiated\b/i,
+    /^#*\s*uae\b/i,
+    /^#*\s*starter(\s+activity)?\s*:?\s*$/i,
+    /^#*\s*chapter\b/i,
+    /^(بطاقة الخروج|معايير النجاح|الختام|الأهداف|النواتج)\s*:?\s*$/i,
+  ],
+  10: [
+    /^#*\s*success\s+criteria\b/i,
+    /^#*\s*plenary\b/i,
+    /^#*\s*(extended\s+task|homework)\b/i,
+    /^#*\s*learning\s+objectives?\s*:?\s*$/i,
+    /^#*\s*learning\s+outcomes?\s*:?\s*$/i,
+    /^#*\s*main\s+phase\b/i,
+    /^#*\s*differentiated\b/i,
+    /^#*\s*uae\b/i,
+    /^#*\s*starter(\s+activity)?\s*:?\s*$/i,
+    /^#*\s*chapter\b/i,
+    /^(معايير النجاح|الختام|الواجب|الأهداف|النواتج)\s*:?\s*$/i,
+  ],
+  11: [
+    /^#*\s*exit\s+ticket\b/i,
+    /^#*\s*plenary\b/i,
+    /^#*\s*(extended\s+task|homework)\b/i,
+    /^#*\s*learning\s+objectives?\s*:?\s*$/i,
+    /^#*\s*learning\s+outcomes?\s*:?\s*$/i,
+    /^#*\s*main\s+phase\b/i,
+    /^#*\s*differentiated\b/i,
+    /^#*\s*uae\b/i,
+    /^#*\s*starter(\s+activity)?\s*:?\s*$/i,
+    /^#*\s*chapter\b/i,
+    /^(بطاقة الخروج|الختام|الواجب|الأهداف|النواتج)\s*:?\s*$/i,
+  ],
+};
+
+function stripMisplacedSectionHeadingLines(slideIndex: number, body: string): string {
+  const rules = MISPLACE_SECTION_HEADING_DENY[slideIndex];
+  if (!rules?.length) return body;
+  return body
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((line) => {
+      const t = line.trim();
+      if (t.length > 96) return true;
+      if (t.length < 4) return true;
+      return !rules.some((re) => re.test(t));
+    })
+    .join("\n")
+    .trim();
+}
+
 /**
  * Rules 1–3: strip forward references, dedupe within slide, drop lines copied from earlier slides;
  * run after AFL merge, before length clamp.
  */
 function applyPptIsolationValidationToDeck(slides: StructuredLessonSlideModel[]): void {
   const prevBodies: string[] = [];
-  for (const slide of slides) {
+  for (let i = 0; i < slides.length; i++) {
+    const slide = slides[i]!;
     let b = slide.body;
     b = stripFutureSlideLeakageFromBody(b);
     b = dedupeRepeatedContentInSlideBody(b);
+    b = stripMisplacedSectionHeadingLines(i, b);
     b = stripLinesDuplicatedFromEarlierSlides(b, prevBodies);
     slide.body = stripMarkdownSymbolsForStudents(b);
     prevBodies.push(slide.body);
@@ -638,7 +799,8 @@ export type StructuredLessonPptContext = {
   aflSelections?: AflSelectionsPayload;
 };
 
-const SLIDE_TITLES_EN: readonly string[] = [
+/** Fixed English slide titles (deck order). Exported for slide-by-slide generation. */
+export const STRUCTURED_LESSON_SLIDE_TITLES_EN: readonly string[] = [
   "Subject Grade Date",
   "Starter Activity",
   "Chapter Topic and SDG Goal",
@@ -654,7 +816,8 @@ const SLIDE_TITLES_EN: readonly string[] = [
   "Thank You Slide",
 ];
 
-const SLIDE_TITLES_AR: readonly string[] = [
+/** Arabic slide titles (same order as English). */
+export const STRUCTURED_LESSON_SLIDE_TITLES_AR: readonly string[] = [
   "المادة والصف والتاريخ",
   "نشاط التمهيد",
   "الفصل والموضوع وهدف التنمية المستدامة",
@@ -690,7 +853,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     day: "numeric",
   });
 
-  const T = isAr ? SLIDE_TITLES_AR : SLIDE_TITLES_EN;
+  const T = isAr ? STRUCTURED_LESSON_SLIDE_TITLES_AR : STRUCTURED_LESSON_SLIDE_TITLES_EN;
   const slides: StructuredLessonSlideModel[] = [];
 
   slides.push({

@@ -7,6 +7,15 @@ import {
   TEACHER_PACKAGE_SECTIONS,
   type TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
+import {
+  SINGLE_PPT_SLIDE_BODY_END,
+  SINGLE_PPT_SLIDE_BODY_START,
+} from "@/lib/ppt-slide-by-slide";
+import {
+  STRUCTURED_LESSON_DECK_SLIDE_COUNT,
+  STRUCTURED_LESSON_SLIDE_TITLES_AR,
+  STRUCTURED_LESSON_SLIDE_TITLES_EN,
+} from "@/lib/ppt-structured-lesson";
 
 /** Pedagogy and quality rules; labeled-block contract is appended per request. */
 export const DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE = `You are an expert teacher and instructional designer with deep knowledge of CBSE/NCERT, British, American, UAE MOE, and IB curricula. When generating lesson plans, PPTs, worksheets and all resources, align the content accurately with the selected curriculum, grade level, subject, chapter and topic. Use your knowledge of these curricula to generate accurate, curriculum-aligned, classroom-ready content without needing any textbook to be uploaded. Generate content as if you are a senior teacher who knows this curriculum and chapter deeply.
@@ -108,12 +117,15 @@ The app builds **exactly 13 slides** in this **fixed order**. **Each slide has o
 
 **Formatting:** no markdown on slide text; avoid hyphen-led list markers (use plain lines or 1. 2. 3.).
 
-**CRITICAL — PPT validation (mandatory for every slide body):**
-1. **No future slide content leakage:** Never place content from a later slide inside an earlier one. Do not preview, summarise, or announce what appears on the next slide. Do not append “next we will…” or “on slide X…” after finishing the current slide’s content. Each slide body must contain **only** that slide’s assigned material (no cross-slide leakage).
-2. **No repetition inside the same slide:** Do not repeat the same block, heading, or paragraph multiple times on one slide (e.g. success criteria stated twice). Present each idea **once**, clearly and completely.
-3. **Full isolation:** Each slide is self-contained. Do not paste earlier slide text again, do not blend two slide templates into one body, and do not let sections bleed together (e.g. exit ticket wording mixed into success criteria). One slide equals one purpose and one clean output.
+**CRITICAL — Slide boundary enforcement (mandatory; no exceptions):**
+1. **Strict content isolation (no cross-leakage):** Every slide contains **only** its assigned content type. No borrowing, repeating, or mixing from other slides or sections. Examples: **Learning Objectives** must not contain outcomes or extra explanations; **Differentiated Activity** must not contain UAE links or homework; **Exit Ticket** must not contain success criteria; **Plenary** must not contain extended homework. Each slide stays inside its correct boundary.
+2. **No content shuffling (fixed slide map):** Do **not** move or relocate content between slides. **UAE / real life / cross-curricular link** appears **only** on slide 8. **Extended Task / homework** appears **only** on slide 10. **Success criteria / self-evaluation** appears **only** on slide 12. **Exit ticket** appears **only** on slide 11. **Plenary** appears **only** on slide 9. Each content type has **one** fixed slide—no exceptions.
+3. **No extra or unwanted additions:** Each slide contains **only** what that slide explicitly requires—no bonus sections, no unrelated pedagogy, no “helpful” homework inside plenary, no success criteria inside exit ticket, and no hidden second copy of objectives, outcomes, or criteria elsewhere in the deck.
+4. **Clean structure (structured lesson designer):** Act as a **structured lesson designer**, not a free-form content generator: **one function per slide**; no duplication of the same idea across slides; no drifting between categories; **do not** rearrange, merge, or “improve” the fixed 13-slide structure—the order and slide purposes are **fixed** and must not be changed by the model.
 
-**Before you finish the PPT block:** mentally verify no overlap between slides, main teaching appears only on slide 6, slide 8 uses a single link type only, and the three validation rules above are satisfied for every slide.
+**Also mandatory (line-level):** No next-slide previews or “on slide X…”; no repeated paragraphs inside one slide; do not paste long identical lines from an earlier slide into a later slide body.
+
+**Before you finish the PPT block:** verify slide 6 is the only place for full core teaching sequence, slide 8 uses a single link type only, and **all** rules in this section are satisfied for every slide.
 
 16. AI Teaching Enhancements
 Automatically generate:
@@ -151,7 +163,7 @@ Adjust pedagogy depending on:
 
 20. Deliverable reference (map content quality to the sections you are asked to output)
 A. **Full Lesson Plan** — integrate items 1–14 above using clear subheadings; include **actionable timing** and teacher moves here (this document is mainly for the teacher).
-B. **PPT Slide Content** — exactly **13 slides** with the **exact titles** and **single-purpose bodies** in section 15; AFL embedded only where section 15 specifies (starter, main, connections, plenary, extended, feedback). Obey the **CRITICAL — PPT validation** rules in section 15 (no future-slide leakage, no in-slide repetition, full isolation).
+B. **PPT Slide Content** — exactly **13 slides** with the **exact titles** and **single-purpose bodies** in section 15; AFL embedded only where section 15 specifies. Obey **CRITICAL — Slide boundary enforcement** and line-level rules in section 15 with **no exceptions**.
 C. Worksheet — print-ready student-facing tasks (include space cues like lines or numbered response areas described in text).
 D. Assessment Questions — formative and summative mix: MCQs, short answers, HOTS, oral prompts, exit ticket, and a simple rubric or mark scheme.
 E. Homework Task — aligned extended task with success criteria and expected time.
@@ -218,6 +230,51 @@ ${ARABIC_LANGUAGE_SUBJECT_ADDENDUM}`;
   return `${core}
 
 ${extra}`;
+}
+
+/**
+ * System prompt for one DeepSeek call = one PPT slide body (slide index 1–13).
+ * Reuses the global pedagogy + section 15 rules; adds strict single-slide output contract.
+ */
+export function buildSinglePptSlideDeepseekSystemPrompt(
+  slideNumber1Based: number,
+  options?: { curriculumFrameworkAddendum?: string | null; subject?: string | null },
+): string {
+  const n = slideNumber1Based;
+  const enTitle = STRUCTURED_LESSON_SLIDE_TITLES_EN[n - 1] ?? `Slide ${n}`;
+  const arTitle = STRUCTURED_LESSON_SLIDE_TITLES_AR[n - 1] ?? enTitle;
+  const isAr = options?.subject?.trim() === "Arabic";
+
+  let core = `${DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE.trim()}
+
+### THIS API CALL — SINGLE SLIDE ONLY (slide ${n} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT})
+- Produce **one slide only** for **PPT Slide Content**. Do **not** output other slides, slide outlines, or “slide 1 / slide 2” lists for the whole deck.
+- Do **not** use PPT CONTENT START / PPT CONTENT END. Use **only** the single-slide markers below.
+- Deck index ${n}: official title **(English):** ${enTitle} — **(Arabic):** ${arTitle}
+- **Body language:** ${isAr ? "Write the slide body in **Modern Standard Arabic** (classroom Arabic), unless the teacher’s objectives are explicitly in another language (mirror that language for objective lines only)." : "Write the slide body in clear English appropriate for the grade."}
+- Wrap **only** the learner-facing body lines between:
+${SINGLE_PPT_SLIDE_BODY_START}
+…content…
+${SINGLE_PPT_SLIDE_BODY_END}
+- **Inside the markers:** plain text suitable for projection (short lines or 1. 2. 3. lists). No markdown code fence around the **whole** answer. No JSON.
+- Apply **CRITICAL — Slide boundary enforcement** (section 15) to **this slide index only**: no cross-leakage, no other slide’s job, no “next slide” previews, no duplicated paragraphs.
+
+### This slide’s role (do not exceed it)
+- You are generating **slide ${n}** only. Every other slide type has a **fixed** slot elsewhere; do not substitute or merge them here.`;
+
+  if (isAr) {
+    core = `${core}
+
+${ARABIC_LANGUAGE_SUBJECT_ADDENDUM}`;
+  }
+
+  const extra = options?.curriculumFrameworkAddendum?.trim();
+  if (extra) {
+    core = `${core}
+
+${extra}`;
+  }
+  return core;
 }
 
 /** Full six-part package (backwards-compatible export for tooling/tests). */

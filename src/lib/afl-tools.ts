@@ -195,6 +195,44 @@ export function sanitizeAflSelections(raw: unknown): AflSelectionsPayload {
   return out;
 }
 
+/** Map deck slide number (1-based) to AFL phase when that slide may embed tools. */
+export function getAflPhaseForPptSlideNumber1Based(slideNumber1Based: number): AflPhaseId | undefined {
+  const m: Partial<Record<number, AflPhaseId>> = {
+    2: "starter",
+    6: "main",
+    8: "connections",
+    9: "plenary",
+    10: "extended",
+    12: "feedback",
+  };
+  return m[slideNumber1Based];
+}
+
+/** AFL instructions for a single PPT slide API call (one phase only). */
+export function formatAflForSinglePptSlidePrompt(
+  slideNumber1Based: number,
+  selections: AflSelectionsPayload,
+): string {
+  const phase = getAflPhaseForPptSlideNumber1Based(slideNumber1Based);
+  if (!phase) return "";
+  const ids = selections[phase];
+  if (!ids?.length) return "";
+
+  const lines: string[] = [
+    "### AFL tools for THIS slide only (mandatory when listed)",
+    "Embed each tool below as **finished learner-facing lines** in the slide body. Write the real prompts/questions/items — not meta instructions to the teacher.",
+    "",
+  ];
+  const group = AFL_PHASE_GROUPS.find((g) => g.phase === phase);
+  lines.push(`**${group?.title ?? phase}**`);
+  for (const id of ids) {
+    const tool = getAflToolById(id);
+    if (!tool) continue;
+    lines.push(`- ${tool.label} (${id}): ${tool.howToUse}`);
+  }
+  return lines.join("\n").trim();
+}
+
 export function formatAflForAiPrompt(selections: AflSelectionsPayload): string {
   const lines: string[] = [];
   lines.push(
@@ -205,7 +243,7 @@ export function formatAflForAiPrompt(selections: AflSelectionsPayload): string {
     "",
     "**PPT Slide Content:** The deck is **exactly 13 slides**, one purpose per slide. Embed selected AFL tools as finished learner-facing text on these slides only: **Starter** tools on slide 2 (Starter Activity), **Main phase** tools on slide 6 (Main Phase Core Teaching), **Connections** tools on slide 8 (single contextual link slide), **Plenary** tools on slide 9 (Plenary), **Extended task** tools on slide 10 (Extended Task), **Feedback** tools on slide 12 (Success Criteria Self Evaluation). Do not duplicate the same AFL block on multiple slides.",
     "",
-    "**PPT validation (mandatory when writing any slide):** (1) No future-slide leakage: never preview or include content that belongs on a later slide; no “next slide” or “coming up” lines. (2) No repetition inside the same slide: do not repeat the same section or paragraph twice on one slide. (3) Full isolation: each slide body is self-contained only; do not re-paste earlier slides or mix two slide purposes in one body.",
+    "**PPT validation (mandatory when writing any slide):** (1) Strict isolation: only that slide’s content type; no cross-leakage (e.g. no outcomes inside objectives, no UAE inside differentiation, no success criteria inside exit ticket). (2) No shuffling: UAE/real-life/cross link **only** slide 8; Extended Task **only** slide 10; Success criteria **only** slide 12; Exit ticket **only** slide 11; Plenary **only** slide 9. (3) No extras: no unrelated sections or hidden duplicates of objectives/outcomes/criteria. (4) Fixed structure: one function per slide; do not rearrange or merge slides. Also: no next-slide previews; no repeated blocks on one slide; no pasted lines from earlier slides.",
     "",
     "**Picture in Time (if selected):** Write the **exact** comparison or prediction question and what changed between two moments so it can pair with the starter slide text.",
     "",
