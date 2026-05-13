@@ -108,7 +108,12 @@ The app builds **exactly 13 slides** in this **fixed order**. **Each slide has o
 
 **Formatting:** no markdown on slide text; avoid hyphen-led list markers (use plain lines or 1. 2. 3.).
 
-**Before you finish the PPT block:** mentally verify no overlap between slides, main teaching appears only on slide 6, and slide 8 uses a single link type only.
+**CRITICAL — PPT validation (mandatory for every slide body):**
+1. **No future slide content leakage:** Never place content from a later slide inside an earlier one. Do not preview, summarise, or announce what appears on the next slide. Do not append “next we will…” or “on slide X…” after finishing the current slide’s content. Each slide body must contain **only** that slide’s assigned material (no cross-slide leakage).
+2. **No repetition inside the same slide:** Do not repeat the same block, heading, or paragraph multiple times on one slide (e.g. success criteria stated twice). Present each idea **once**, clearly and completely.
+3. **Full isolation:** Each slide is self-contained. Do not paste earlier slide text again, do not blend two slide templates into one body, and do not let sections bleed together (e.g. exit ticket wording mixed into success criteria). One slide equals one purpose and one clean output.
+
+**Before you finish the PPT block:** mentally verify no overlap between slides, main teaching appears only on slide 6, slide 8 uses a single link type only, and the three validation rules above are satisfied for every slide.
 
 16. AI Teaching Enhancements
 Automatically generate:
@@ -146,7 +151,7 @@ Adjust pedagogy depending on:
 
 20. Deliverable reference (map content quality to the sections you are asked to output)
 A. **Full Lesson Plan** — integrate items 1–14 above using clear subheadings; include **actionable timing** and teacher moves here (this document is mainly for the teacher).
-B. **PPT Slide Content** — exactly **13 slides** with the **exact titles** and **single-purpose bodies** in section 15; AFL embedded only where section 15 specifies (starter, main, connections, plenary, extended, feedback).
+B. **PPT Slide Content** — exactly **13 slides** with the **exact titles** and **single-purpose bodies** in section 15; AFL embedded only where section 15 specifies (starter, main, connections, plenary, extended, feedback). Obey the **CRITICAL — PPT validation** rules in section 15 (no future-slide leakage, no in-slide repetition, full isolation).
 C. Worksheet — print-ready student-facing tasks (include space cues like lines or numbered response areas described in text).
 D. Assessment Questions — formative and summative mix: MCQs, short answers, HOTS, oral prompts, exit ticket, and a simple rubric or mark scheme.
 E. Homework Task — aligned extended task with success criteria and expected time.

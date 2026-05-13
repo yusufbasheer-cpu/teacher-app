@@ -404,6 +404,97 @@ function stripMarkdownSymbolsForStudents(text: string): string {
   return s.replace(/\n{4,}/g, "\n\n\n").trim();
 }
 
+/** Rule 1: remove lines that preview or reference later slides (EN + AR). */
+const LINE_FUTURE_SLIDE_LEAK_EN =
+  /\b(?:next\s+slide|following\s+slide|on\s+slide\s*\d+|slide\s*\d+|slides?\s*\d+|coming\s*(?:up|next)|later\s+in\s+this\s+lesson|after\s+(?:this|the)\s+slide|we\s+will\s+(?:then|next|move)|before\s+we\s+(?:go|move)\s+to)\b/i;
+const LINE_FUTURE_SLIDE_LEAK_AR =
+  /الشريحة\s*(?:التالية|القادمة)(?:\s|$)|سننتقل\s*إلى\s*الشريحة|في\s*الشريحة\s*(?:التالية|القادمة)|رقم\s*الشريحة\s*(?:التالية|القادمة)/i;
+
+function stripFutureSlideLeakageFromBody(body: string): string {
+  return body
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((line) => {
+      const t = line.trim();
+      if (!t) return false;
+      if (LINE_FUTURE_SLIDE_LEAK_EN.test(t)) return false;
+      if (LINE_FUTURE_SLIDE_LEAK_AR.test(t)) return false;
+      return true;
+    })
+    .join("\n")
+    .trim();
+}
+
+/** Rule 2: drop duplicate paragraph blocks and duplicate long lines within one slide. */
+function dedupeRepeatedContentInSlideBody(body: string): string {
+  let s = body.replace(/\r\n/g, "\n").trim();
+  const blocks = s.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+  const seenBlock = new Set<string>();
+  const outBlocks: string[] = [];
+  for (const b of blocks) {
+    const k = b.replace(/\s+/g, " ").trim().toLowerCase();
+    if (k.length < 18) {
+      outBlocks.push(b);
+      continue;
+    }
+    if (seenBlock.has(k)) continue;
+    seenBlock.add(k);
+    outBlocks.push(b);
+  }
+  s = outBlocks.join("\n\n");
+  const lines = s.split("\n");
+  const seenLine = new Set<string>();
+  const outLines: string[] = [];
+  for (const line of lines) {
+    const k = line.replace(/\s+/g, " ").trim().toLowerCase();
+    if (k.length < 32) {
+      outLines.push(line);
+      continue;
+    }
+    if (seenLine.has(k)) continue;
+    seenLine.add(k);
+    outLines.push(line);
+  }
+  return outLines.join("\n").trim();
+}
+
+/** Rule 3: remove long lines identical to a line already finalized on an earlier slide. */
+function stripLinesDuplicatedFromEarlierSlides(body: string, previousBodies: string[]): string {
+  const earlier = new Set<string>();
+  for (const pb of previousBodies) {
+    for (const line of pb.replace(/\r\n/g, "\n").split("\n")) {
+      const k = line.replace(/\s+/g, " ").trim().toLowerCase();
+      if (k.length >= 40) earlier.add(k);
+    }
+  }
+  return body
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((line) => {
+      const k = line.replace(/\s+/g, " ").trim().toLowerCase();
+      if (k.length < 40) return true;
+      return !earlier.has(k);
+    })
+    .join("\n")
+    .trim();
+}
+
+/**
+ * Rules 1–3: strip forward references, dedupe within slide, drop lines copied from earlier slides;
+ * run after AFL merge, before length clamp.
+ */
+function applyPptIsolationValidationToDeck(slides: StructuredLessonSlideModel[]): void {
+  const prevBodies: string[] = [];
+  for (const slide of slides) {
+    let b = slide.body;
+    b = stripFutureSlideLeakageFromBody(b);
+    b = dedupeRepeatedContentInSlideBody(b);
+    b = stripLinesDuplicatedFromEarlierSlides(b, prevBodies);
+    slide.body = stripMarkdownSymbolsForStudents(b);
+    prevBodies.push(slide.body);
+  }
+}
+
 function isArabicLanguageSubject(subject: string): boolean {
   return subject.trim() === "Arabic";
 }
@@ -784,6 +875,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   });
 
   applyAflDeckInjections(slides, ctx.aflSelections);
+  applyPptIsolationValidationToDeck(slides);
   clampSlideBodyToDeckRules(slides);
 
   if (slides.length !== STRUCTURED_LESSON_DECK_SLIDE_COUNT) {

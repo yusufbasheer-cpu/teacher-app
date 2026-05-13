@@ -205,6 +205,8 @@ export function formatAflForAiPrompt(selections: AflSelectionsPayload): string {
     "",
     "**PPT Slide Content:** The deck is **exactly 13 slides**, one purpose per slide. Embed selected AFL tools as finished learner-facing text on these slides only: **Starter** tools on slide 2 (Starter Activity), **Main phase** tools on slide 6 (Main Phase Core Teaching), **Connections** tools on slide 8 (single contextual link slide), **Plenary** tools on slide 9 (Plenary), **Extended task** tools on slide 10 (Extended Task), **Feedback** tools on slide 12 (Success Criteria Self Evaluation). Do not duplicate the same AFL block on multiple slides.",
     "",
+    "**PPT validation (mandatory when writing any slide):** (1) No future-slide leakage: never preview or include content that belongs on a later slide; no “next slide” or “coming up” lines. (2) No repetition inside the same slide: do not repeat the same section or paragraph twice on one slide. (3) Full isolation: each slide body is self-contained only; do not re-paste earlier slides or mix two slide purposes in one body.",
+    "",
     "**Picture in Time (if selected):** Write the **exact** comparison or prediction question and what changed between two moments so it can pair with the starter slide text.",
     "",
     "**Catalog reference (tool intent only — you replace with lesson-specific finished content):**",
