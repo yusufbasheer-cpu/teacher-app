@@ -1,5 +1,5 @@
 import type { LessonPlanInput } from "@/lib/lesson-plan";
-import { SOURCE_MATERIAL_MAX_CHARS } from "@/lib/lesson-plan";
+import { buildSourceMaterialPromptBlock, SOURCE_MATERIAL_MAX_CHARS } from "@/lib/lesson-plan";
 import { stripOuterMarkdownFences } from "@/lib/parse-teacher-package-response";
 import {
   STRUCTURED_LESSON_DECK_SLIDE_COUNT,
@@ -345,11 +345,7 @@ export function buildSinglePptSlideUserMessage(params: {
   const trimmedSource = sourceMaterial?.trim();
   const sourceBlock =
     trimmedSource && trimmedSource.length > 0
-      ? `
-
-### Source material (primary factual basis when present)
-${trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS)}
-`
+      ? buildSourceMaterialPromptBlock(trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS))
       : "";
 
   const lessonBlock =

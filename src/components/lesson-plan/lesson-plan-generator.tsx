@@ -21,12 +21,15 @@ import type {
   TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
 import {
+  CORE_SUBJECT_OPTIONS,
   CURRICULUM_TYPE_OPTIONS,
   GENERATION_CHECKBOX_LABELS,
   GRADE_YEAR_OPTIONS,
+  LANGUAGE_SUBJECT_OPTIONS,
   SUBJECT_OPTIONS,
   TEACHER_PACKAGE_SECTIONS,
   buildDifferentiatedPackSourceText,
+  buildGenerationSourceMaterial,
   getGenerationTimeEstimate,
   isValidCurriculumType,
   isValidGradeYear,
@@ -143,8 +146,10 @@ export function LessonPlanGenerator() {
   const [sectionSelection, setSectionSelection] =
     useState<Record<TeacherPackageSectionKey, boolean>>(initialSectionSelection);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [uploadedChunks, setUploadedChunks] = useState<SourceUploadChunk[]>([]);
+  const [pastedContent, setPastedContent] = useState("");
   const [uploadExtracting, setUploadExtracting] = useState(false);
   const [uploadInfo, setUploadInfo] = useState<string | null>(null);
   const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
@@ -158,6 +163,15 @@ export function LessonPlanGenerator() {
   const extractedMaterialPreview = useMemo(
     () => combineSourceChunks(uploadedChunks),
     [uploadedChunks],
+  );
+
+  const combinedSourcePreview = useMemo(
+    () =>
+      buildGenerationSourceMaterial({
+        pastedContent,
+        uploadedExtractedText: extractedMaterialPreview,
+      }) ?? "",
+    [pastedContent, extractedMaterialPreview],
   );
 
   const aflSelectionsPayload = useMemo(() => toAflPayload(aflSelected), [aflSelected]);
@@ -205,9 +219,8 @@ export function LessonPlanGenerator() {
     setUploadInfo(null);
     setUploadWarnings([]);
     setUploadExtractionError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (pdfInputRef.current) pdfInputRef.current.value = "";
+    if (imageInputRef.current) imageInputRef.current.value = "";
   };
 
   useEffect(() => {
@@ -256,9 +269,12 @@ export function LessonPlanGenerator() {
     setUploadInfo(null);
     setUploadWarnings([]);
     setUploadExtractionError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (pdfInputRef.current) pdfInputRef.current.value = "";
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+
+  const clearPastedContent = () => {
+    setPastedContent("");
   };
 
   const removeUploadedChunk = (id: string) => {
@@ -268,7 +284,10 @@ export function LessonPlanGenerator() {
     setUploadExtractionError(null);
   };
 
-  const onUploadFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+  const onUploadFileChange = async (
+    e: ChangeEvent<HTMLInputElement>,
+    allowedKind: "pdf" | "image",
+  ) => {
     const list = e.target.files;
     if (!list || list.length === 0) {
       console.log("[lesson-plan upload] onChange skipped: no files in event");
@@ -285,20 +304,23 @@ export function LessonPlanGenerator() {
 
     const isAllowed = (file: File) => {
       const lower = file.name.toLowerCase();
-      const allowedExt =
-        lower.endsWith(".pdf") ||
+      if (allowedKind === "pdf") {
+        return lower.endsWith(".pdf") || file.type === "application/pdf";
+      }
+      return (
         lower.endsWith(".jpg") ||
         lower.endsWith(".jpeg") ||
-        lower.endsWith(".png");
-      const allowedMime =
-        file.type === "application/pdf" ||
+        lower.endsWith(".png") ||
         file.type === "image/jpeg" ||
-        file.type === "image/png";
-      return allowedExt || allowedMime;
+        file.type === "image/png"
+      );
     };
     const invalid = files.filter((f) => !isAllowed(f));
     if (invalid.length > 0) {
-      const msg = `Unsupported file type(s): ${invalid.map((f) => f.name).join(", ")}. Use PDF, JPG, or PNG only.`;
+      const msg =
+        allowedKind === "pdf"
+          ? `Unsupported file type(s): ${invalid.map((f) => f.name).join(", ")}. Use PDF only for Option 1.`
+          : `Unsupported file type(s): ${invalid.map((f) => f.name).join(", ")}. Use JPG or PNG only for Option 2.`;
       console.error("[lesson-plan upload] validation failed", msg);
       setUploadExtractionError(msg);
       e.target.value = "";
@@ -421,6 +443,7 @@ export function LessonPlanGenerator() {
 
     try {
       const combinedSource = combineSourceChunks(uploadedChunks);
+      const pasted = pastedContent.trim();
       const pptSelected = sectionSelection["PPT Slide Content"];
       const response = await fetch("/api/lesson-plan", {
         method: "POST",
@@ -430,6 +453,7 @@ export function LessonPlanGenerator() {
           sections,
           ...(hasAflForExport ? { aflSelections: aflSelectionsPayload } : {}),
           ...(combinedSource.length > 0 ? { sourceMaterial: combinedSource } : {}),
+          ...(pasted.length > 0 ? { pastedContent: pasted } : {}),
           ...(pptSelected ? { streamProgress: true } : {}),
         }),
       });
@@ -658,38 +682,87 @@ export function LessonPlanGenerator() {
             Fill in class details, choose which materials to generate, then run the AI.
           </p>
 
-        <div className="mt-6 rounded-2xl border border-dashed border-blue-200 bg-blue-50/50 p-4">
-          <p className="text-sm font-semibold text-blue-950">
-            Upload a PDF or image to generate resources from your own content.
-          </p>
-          <p className="mt-1 text-xs text-slate-600">
-            You can select <strong>multiple PDFs and images in one go</strong> (Ctrl/Cmd+click or
-            shift-select). Each file may be up to 12 MB; total up to 48 MB and 24 files per batch.
-            Text is extracted from PDFs; JPG and PNG use on-server OCR (Tesseract.js). Everything you
-            keep below is combined
-            and sent to the AI when you generate.
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-6 rounded-2xl border border-dashed border-blue-200 bg-blue-50/50 p-4 space-y-5">
+          <div>
+            <p className="text-sm font-semibold text-blue-950">
+              Provide your own teaching content (optional)
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              Use any combination of PDF upload, image upload, or pasted text. Pasted content is
+              treated as the <strong>primary</strong> source when present.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-blue-100 bg-white/80 p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
+              Option 1 — Upload PDF
+            </p>
             <input
-              ref={fileInputRef}
+              ref={pdfInputRef}
               type="file"
               multiple
-              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-              onChange={onUploadFileChange}
+              accept=".pdf,application/pdf"
+              onChange={(e) => onUploadFileChange(e, "pdf")}
               disabled={uploadExtracting || loading}
-              className="block w-full min-w-0 text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-800 disabled:opacity-60 sm:w-auto"
+              className="mt-2 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-800 disabled:opacity-60"
             />
-            {uploadedChunks.length > 0 ? (
-              <button
-                type="button"
-                onClick={clearUploadedSource}
-                disabled={uploadExtracting || loading}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
-              >
-                Clear all uploads
-              </button>
-            ) : null}
           </div>
+
+          <div className="rounded-xl border border-blue-100 bg-white/80 p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
+              Option 2 — Upload Image
+            </p>
+            <input
+              ref={imageInputRef}
+              type="file"
+              multiple
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+              onChange={(e) => onUploadFileChange(e, "image")}
+              disabled={uploadExtracting || loading}
+              className="mt-2 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-800 disabled:opacity-60"
+            />
+          </div>
+
+          <div className="rounded-xl border border-blue-100 bg-white/80 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
+                Option 3 — Paste Your Content
+              </p>
+              {pastedContent.trim().length > 0 ? (
+                <button
+                  type="button"
+                  onClick={clearPastedContent}
+                  disabled={uploadExtracting || loading}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Clear pasted content
+                </button>
+              ) : null}
+            </div>
+            <label htmlFor="pasted-content" className="mt-2 block text-sm font-medium text-slate-800">
+              Paste Your Own Content Here (Optional)
+            </label>
+            <textarea
+              id="pasted-content"
+              value={pastedContent}
+              onChange={(e) => setPastedContent(e.target.value)}
+              disabled={uploadExtracting || loading}
+              rows={8}
+              placeholder="Paste your textbook content, notes, chapter text, or any material here and the AI will generate all resources based on your content."
+              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-blue-500 focus:ring-2 disabled:opacity-60"
+            />
+          </div>
+
+          {uploadedChunks.length > 0 ? (
+            <button
+              type="button"
+              onClick={clearUploadedSource}
+              disabled={uploadExtracting || loading}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+            >
+              Clear all uploads
+            </button>
+          ) : null}
           {uploadExtracting ? (
             <p className="mt-2 text-xs font-medium text-blue-800">
               Extracting text from your files…
@@ -740,31 +813,31 @@ export function LessonPlanGenerator() {
             </ul>
           ) : null}
           {uploadedChunks.length > 0 ? (
-            <p className="mt-2 text-xs text-slate-500">
-              Combined:{" "}
-              {extractedMaterialPreview.length.toLocaleString()} characters across{" "}
+            <p className="text-xs text-slate-500">
+              Uploads: {extractedMaterialPreview.length.toLocaleString()} characters across{" "}
               {uploadedChunks.length} file(s).
             </p>
           ) : null}
-          {extractedMaterialPreview.length > 0 ? (
-            <div className="mt-4">
+          {combinedSourcePreview.length > 0 ? (
+            <div className="mt-2">
               <label
-                htmlFor="extracted-upload-preview"
+                htmlFor="combined-source-preview"
                 className="mb-1 block text-xs font-semibold text-slate-800"
               >
-                Extracted content (review before generating)
+                Combined source preview (review before generating)
               </label>
               <textarea
-                id="extracted-upload-preview"
+                id="combined-source-preview"
                 readOnly
-                value={extractedMaterialPreview}
+                value={combinedSourcePreview}
                 rows={12}
                 spellCheck={false}
                 className="max-h-80 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-xs leading-relaxed text-slate-800 outline-none ring-blue-500 focus:ring-2"
               />
               <p className="mt-1 text-xs text-slate-500">
-                This text is what the AI will use as your uploaded source material when you click
-                Generate.
+                {pastedContent.trim().length > 0
+                  ? "Pasted content is sent as the primary source; uploads are included as supplementary context."
+                  : "Uploaded extract text sent to the AI when you click Generate."}
               </p>
             </div>
           ) : null}
@@ -853,11 +926,20 @@ export function LessonPlanGenerator() {
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
               required
             >
-              {SUBJECT_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
+              <optgroup label="Subjects">
+                {CORE_SUBJECT_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Language Subjects">
+                {LANGUAGE_SUBJECT_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
 

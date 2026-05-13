@@ -52,12 +52,11 @@ export const GRADE_YEAR_OPTIONS = [
 ] as const;
 export type GradeYearOption = (typeof GRADE_YEAR_OPTIONS)[number];
 
-/** Subject dropdown (lesson generator). */
-export const SUBJECT_OPTIONS = [
+/** Core (non-language) subjects in the lesson generator dropdown. */
+export const CORE_SUBJECT_OPTIONS = [
   "Math",
   "Science",
   "English",
-  "Arabic",
   "Islamic Studies",
   "Social Science",
   "ICT",
@@ -65,7 +64,48 @@ export const SUBJECT_OPTIONS = [
   "PE",
   "Other",
 ] as const;
+
+/** Language subjects — separate group in the dropdown. */
+export const LANGUAGE_SUBJECT_OPTIONS = [
+  "Hindi",
+  "Urdu",
+  "Malayalam",
+  "Tamil",
+  "Telugu",
+  "Kannada",
+  "Bengali",
+  "Punjabi",
+  "Gujarati",
+  "Marathi",
+  "Spanish",
+  "French",
+  "German",
+  "Mandarin Chinese",
+  "Japanese",
+  "Korean",
+  "Portuguese",
+  "Italian",
+  "Russian",
+  "Arabic",
+] as const;
+
+/** All valid subject dropdown values (core + language). */
+export const SUBJECT_OPTIONS = [
+  ...CORE_SUBJECT_OPTIONS,
+  ...LANGUAGE_SUBJECT_OPTIONS,
+] as const;
+export type CoreSubjectOption = (typeof CORE_SUBJECT_OPTIONS)[number];
+export type LanguageSubjectOption = (typeof LANGUAGE_SUBJECT_OPTIONS)[number];
 export type SubjectOption = (typeof SUBJECT_OPTIONS)[number];
+
+export function isLanguageTeachingSubject(value: string): value is LanguageSubjectOption {
+  return (LANGUAGE_SUBJECT_OPTIONS as readonly string[]).includes(value.trim());
+}
+
+/** Arabic lessons use Arabic PPT slide titles; other languages keep English slide titles. */
+export function usesArabicPptSlideTitles(subject: string): boolean {
+  return subject.trim() === "Arabic";
+}
 
 /** Earlier app versions saved this six-part legacy shape. */
 export const LEGACY_LESSON_PLAN_SECTIONS = [
@@ -129,14 +169,62 @@ export function isValidSubjectOption(value: string): value is SubjectOption {
   return (SUBJECT_OPTIONS as readonly string[]).includes(value);
 }
 
+const TEACHER_PASTED_SOURCE_MARKER = "===== Teacher-pasted content (PRIMARY — mandatory basis) =====";
+
+/**
+ * Merges pasted text (primary) with upload-extracted text for DeepSeek prompts.
+ * Truncates to {@link SOURCE_MATERIAL_MAX_CHARS} total.
+ */
+export function buildGenerationSourceMaterial(params: {
+  pastedContent?: string;
+  uploadedExtractedText?: string;
+}): string | undefined {
+  const pasted = params.pastedContent?.trim() ?? "";
+  const uploaded = params.uploadedExtractedText?.trim() ?? "";
+  const parts: string[] = [];
+  if (pasted) {
+    parts.push(`${TEACHER_PASTED_SOURCE_MARKER}\n${pasted}`);
+  }
+  if (uploaded) parts.push(uploaded);
+  const combined = parts.join("\n\n").trim();
+  if (!combined) return undefined;
+  return combined.slice(0, SOURCE_MATERIAL_MAX_CHARS);
+}
+
+export function generationSourceIncludesTeacherPaste(sourceMaterial: string | undefined): boolean {
+  return Boolean(sourceMaterial?.includes(TEACHER_PASTED_SOURCE_MARKER));
+}
+
+export function buildSourceMaterialPromptBlock(sourceMaterial: string): string {
+  const trimmed = sourceMaterial.trim().slice(0, SOURCE_MATERIAL_MAX_CHARS);
+  if (generationSourceIncludesTeacherPaste(trimmed)) {
+    return `
+
+### Teacher-provided source material (MANDATORY — pasted content is PRIMARY)
+The teacher pasted content below deliberately. When pasted content is present, treat it as the **authoritative basis** for the **entire** teacher package: lesson plan, PPT, worksheet, assessment questions, homework, and teacher notes. Generate **strictly** from what they provided — do **not** ignore, override, contradict, or replace it with generic curriculum filler. Use curriculum, grade, topic, and objectives only where they align with and do not contradict the pasted material.
+
+${trimmed}
+`;
+  }
+  return `
+
+### Source material (from teacher-uploaded file(s): PDF and/or images — primary content basis)
+Use the following extracted text as the main factual and instructional basis for every section you generate. Ground examples, definitions, sequencing, and practice tasks in this material while still honoring the curriculum, grade, topic, and learning objectives below. If the source is partial, infer sensible teaching structure and label reasonable inferences clearly.
+
+${trimmed}
+`;
+}
+
 /** Max characters of upload-derived text sent into generation (truncated server-side). */
 export const SOURCE_MATERIAL_MAX_CHARS = 80_000;
 
 /** POST /api/lesson-plan body: class context plus which teacher-package sections to generate. */
 export type LessonPlanGenerateBody = LessonPlanInput & {
   sections: TeacherPackageSectionKey[];
-  /** Plain text from PDF extraction or image vision (optional). */
+  /** Plain text extracted from uploaded PDFs/images (optional). */
   sourceMaterial?: string;
+  /** Teacher-pasted notes/chapter text (optional; takes priority over uploads when present). */
+  pastedContent?: string;
   /** Selected AFL tool ids by phase (see `afl-tools.ts`). */
   aflSelections?: AflSelectionsPayload;
   /**

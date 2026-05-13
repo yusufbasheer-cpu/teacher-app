@@ -7,6 +7,7 @@ import {
 } from "@/lib/ppt-slide-by-slide";
 import { AFL_PHASE_IDS, formatToolsBlockForSlide, type AflPhaseId, type AflSelectionsPayload } from "@/lib/afl-tools";
 import {
+  usesArabicPptSlideTitles,
   type LessonPlanResult,
   getPptSourceLessonText,
   getPptSourceSlideOutline,
@@ -662,8 +663,8 @@ function applyPptIsolationValidationToDeck(slides: StructuredLessonSlideModel[])
   }
 }
 
-function isArabicLanguageSubject(subject: string): boolean {
-  return subject.trim() === "Arabic";
+function usesArabicPptDeck(subject: string): boolean {
+  return usesArabicPptSlideTitles(subject);
 }
 
 /** Timing plus one short teacher focus line only (no filler tips). */
@@ -849,7 +850,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   const lo = (ctx.learningObjectivesText || "").trim();
   const hw = (ctx.homeworkTask || "").trim();
   const anchor = `Context: ${subj}, ${gr}, topic "${topic}".`;
-  const isAr = isArabicLanguageSubject(subj);
+  const isAr = usesArabicPptDeck(subj);
   const contextAnchor = isAr ? `السياق: مادة ${subj}، الصف ${gr}، الموضوع «${topic}».` : anchor;
 
   const locale = isAr ? "ar-AE" : "en-GB";

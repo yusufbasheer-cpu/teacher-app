@@ -14,6 +14,10 @@ import {
   SOURCE_MATERIAL_MAX_CHARS,
   TEACHER_PACKAGE_BLOCK_MARKERS,
   TEACHER_PACKAGE_SECTIONS,
+  buildGenerationSourceMaterial,
+  buildSourceMaterialPromptBlock,
+  isLanguageTeachingSubject,
+  usesArabicPptSlideTitles,
   type LessonPlanGenerateBody,
   type LessonPlanInput,
   type LessonPlanResult,
@@ -125,13 +129,7 @@ function buildMessages(
   const trimmedSource = sourceMaterial?.trim();
   const sourceBlock =
     trimmedSource && trimmedSource.length > 0
-      ? `
-
-### Source material (from teacher-uploaded file(s): PDF and/or images — primary content basis)
-Use the following extracted text as the main factual and instructional basis for every section you generate. Ground examples, definitions, sequencing, and practice tasks in this material while still honoring the curriculum, grade, topic, and learning objectives below. If the source is partial, infer sensible teaching structure and label reasonable inferences clearly.
-
-${trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS)}
-`
+      ? buildSourceMaterialPromptBlock(trimmedSource)
       : "";
 
   const fw = input.curriculumFramework.trim();
@@ -140,13 +138,7 @@ ${trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS)}
       ? `\n- **Curriculum framework (mandatory alignment):** ${getCurriculumFrameworkLabel(fw)} — apply the framework rules in the system prompt to every field you generate.`
       : "";
 
-  const arabicBlock =
-    input.subject.trim() === "Arabic"
-      ? `
-
-### Output language (mandatory)
-Subject is **Arabic language teaching**. Write the **Full Lesson Plan**, **PPT Slide Content**, and every other requested section in **Modern Standard Arabic**, with the same teaching structure as the system prompt. Keep START/END marker lines exactly as specified (Latin, uppercase). Do not leave sections empty.`
-      : "";
+  const languageUserBlock = buildLanguageSubjectUserBlock(input.subject.trim());
 
   return [
     {
@@ -171,7 +163,7 @@ ${chapterLine}
 - Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}${frameworkUserLine}
 ${sourceBlock}
 ${aflPromptBlock}
-${arabicBlock}
+${languageUserBlock}
 
 Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested section must be classroom-ready (not placeholders). **PPT Slide Content** must read as finished on-screen text for learners (no teacher coaching phrases in the slide body).
       `.trim(),
@@ -191,8 +183,29 @@ function frameworkUserLineForPpt(input: LessonPlanInput): string {
   return `\n- **Curriculum framework (mandatory alignment):** ${getCurriculumFrameworkLabel(fw)} — apply the framework rules in the system prompt to every field you generate.`;
 }
 
+function buildLanguageSubjectUserBlock(subject: string): string {
+  if (!isLanguageTeachingSubject(subject)) return "";
+  if (subject === "Arabic") {
+    return `
+
+### Output language (mandatory)
+Subject is **Arabic language teaching**. Write the **Full Lesson Plan**, **PPT Slide Content**, and every other requested section in **Modern Standard Arabic**, with the same teaching structure as the system prompt. Keep START/END marker lines exactly as specified (Latin, uppercase). Do not leave sections empty.`;
+  }
+  return `
+
+### Output language (mandatory)
+Subject is **${subject} language teaching**. Write every requested section **substantially in ${subject}**, appropriate for the grade. Keep START/END marker lines exactly as specified (Latin, uppercase). Do not leave sections empty.`;
+}
+
 function arabicSlideExtraBlock(input: LessonPlanInput): string {
-  if (input.subject.trim() !== "Arabic") return "";
+  if (!usesArabicPptSlideTitles(input.subject.trim())) {
+    if (isLanguageTeachingSubject(input.subject.trim())) {
+      const subj = input.subject.trim();
+      return `### Output language (mandatory)
+Subject is **${subj} language teaching**. Write **this slide body** substantially in **${subj}** for learners.`;
+    }
+    return "";
+  }
   return `### Output language (mandatory)
 Subject is **Arabic language teaching**. Write **this slide body** in **Modern Standard Arabic** for learners.`;
 }
@@ -210,7 +223,7 @@ async function generatePptSlideContentSlideBySlide(params: {
     params;
   const notices: string[] = [];
   const bodies: string[] = [];
-  const isAr = input.subject.trim() === "Arabic";
+  const isAr = usesArabicPptSlideTitles(input.subject.trim());
   const fwLine = frameworkUserLineForPpt(input);
   const arabicExtra = arabicSlideExtraBlock(input);
   const locale = isAr ? "ar-AE" : "en-GB";
@@ -541,8 +554,12 @@ export async function POST(req: Request) {
 
   const rawSource =
     typeof body.sourceMaterial === "string" ? body.sourceMaterial.trim() : "";
-  const sourceMaterial =
-    rawSource.length > 0 ? rawSource.slice(0, SOURCE_MATERIAL_MAX_CHARS) : undefined;
+  const rawPasted =
+    typeof body.pastedContent === "string" ? body.pastedContent.trim() : "";
+  const sourceMaterial = buildGenerationSourceMaterial({
+    pastedContent: rawPasted.slice(0, SOURCE_MATERIAL_MAX_CHARS),
+    uploadedExtractedText: rawSource.slice(0, SOURCE_MATERIAL_MAX_CHARS),
+  });
 
   const validationError = validateInput(input);
   if (validationError) {

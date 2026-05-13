@@ -5,6 +5,8 @@
 import {
   TEACHER_PACKAGE_BLOCK_MARKERS,
   TEACHER_PACKAGE_SECTIONS,
+  isLanguageTeachingSubject,
+  usesArabicPptSlideTitles,
   type TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
 import {
@@ -191,6 +193,48 @@ The teacher selected **Arabic** as the school subject. You are generating resour
 - Generate **full, non-empty** content for every requested section — do not return empty blocks or placeholder-only text.
 `.trim();
 
+/** Generic addendum for non-Arabic world-language subjects. */
+export function buildWorldLanguageSubjectAddendum(subject: string): string {
+  const name = subject.trim();
+  return `
+### MANDATORY — Subject is ${name} language teaching
+The teacher selected **${name}** as the school subject. You are generating resources for **${name} language teaching** (listening, speaking, reading, writing), not a generic lesson merely translated from English unless teacher-pasted content requires otherwise.
+
+**Output language**
+- Write **all** requested teacher-package sections **substantially in ${name}**, appropriate for the grade and curriculum, unless the teacher explicitly wrote their objectives in another language (then mirror their language for objectives only).
+- Vocabulary, examples, and texts must suit the **grade** and **topic**.
+
+**Pedagogy & content**
+- Align to ${name} curriculum skills: vocabulary, grammar, phonics/script where relevant, reading comprehension, writing, speaking, and listening.
+- Keep the **same pedagogical structure** as this prompt (starter, main phase, differentiation, plenary, etc.).
+
+**CRITICAL — parsing markers (do not translate these lines)**
+- START/END marker lines must appear **exactly** as specified (Latin, uppercase, alone on their lines).
+- Put all ${name} teaching content **between** the correct START and END lines only.
+- Generate **full, non-empty** content for every requested section.
+`.trim();
+}
+
+export function buildLanguageSubjectSystemAddendum(subject: string | null | undefined): string | null {
+  const s = subject?.trim() ?? "";
+  if (!s) return null;
+  if (s === "Arabic") return ARABIC_LANGUAGE_SUBJECT_ADDENDUM;
+  if (isLanguageTeachingSubject(s)) return buildWorldLanguageSubjectAddendum(s);
+  return null;
+}
+
+/** Slide/body output language hint for single-slide PPT calls. */
+export function buildPptSlideBodyLanguageHint(subject: string | null | undefined): string {
+  const s = subject?.trim() ?? "";
+  if (usesArabicPptSlideTitles(s)) {
+    return "Write the slide body in **Modern Standard Arabic** (classroom Arabic), unless the teacher’s objectives are explicitly in another language (mirror that language for objective lines only).";
+  }
+  if (isLanguageTeachingSubject(s)) {
+    return `Write the slide body **substantially in ${s}**, appropriate for the grade, unless the teacher’s objectives are explicitly in another language.`;
+  }
+  return "Write the slide body in clear English appropriate for the grade.";
+}
+
 export function buildTeacherPackageLabeledBlocksContract(
   sections: readonly TeacherPackageSectionKey[],
 ): string {
@@ -219,10 +263,11 @@ export function buildDeepseekLessonSystemPrompt(
 
 ${buildTeacherPackageLabeledBlocksContract(sections)}`;
 
-  if (options?.subject?.trim() === "Arabic") {
+  const langAddendum = buildLanguageSubjectSystemAddendum(options?.subject);
+  if (langAddendum) {
     core = `${core}
 
-${ARABIC_LANGUAGE_SUBJECT_ADDENDUM}`;
+${langAddendum}`;
   }
 
   const extra = options?.curriculumFrameworkAddendum?.trim();
@@ -243,7 +288,7 @@ export function buildSinglePptSlideDeepseekSystemPrompt(
   const n = slideNumber1Based;
   const enTitle = STRUCTURED_LESSON_SLIDE_TITLES_EN[n - 1] ?? `Slide ${n}`;
   const arTitle = STRUCTURED_LESSON_SLIDE_TITLES_AR[n - 1] ?? enTitle;
-  const isAr = options?.subject?.trim() === "Arabic";
+  const bodyLangHint = buildPptSlideBodyLanguageHint(options?.subject);
 
   let core = `${DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE.trim()}
 
@@ -251,7 +296,7 @@ export function buildSinglePptSlideDeepseekSystemPrompt(
 - Produce **one slide only** for **PPT Slide Content**. Do **not** output other slides, slide outlines, or “slide 1 / slide 2” lists for the whole deck.
 - Do **not** use PPT CONTENT START / PPT CONTENT END. Use **only** the single-slide markers below.
 - Deck index ${n}: official title **(English):** ${enTitle} — **(Arabic):** ${arTitle}
-- **Body language:** ${isAr ? "Write the slide body in **Modern Standard Arabic** (classroom Arabic), unless the teacher’s objectives are explicitly in another language (mirror that language for objective lines only)." : "Write the slide body in clear English appropriate for the grade."}
+- **Body language:** ${bodyLangHint}
 - Wrap **only** the learner-facing body lines between:
 ${SINGLE_PPT_SLIDE_BODY_START}
 …content…
@@ -284,10 +329,11 @@ ${SINGLE_PPT_SLIDE_BODY_END}
               : ""
   }`;
 
-  if (isAr) {
+  const langAddendumSlide = buildLanguageSubjectSystemAddendum(options?.subject);
+  if (langAddendumSlide) {
     core = `${core}
 
-${ARABIC_LANGUAGE_SUBJECT_ADDENDUM}`;
+${langAddendumSlide}`;
   }
 
   const extra = options?.curriculumFrameworkAddendum?.trim();
