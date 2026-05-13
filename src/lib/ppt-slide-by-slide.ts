@@ -299,12 +299,12 @@ export const SINGLE_SLIDE_USER_FOCUS_EN: readonly string[] = [
   "(Slide 4 is filled from the teacher form automatically — not generated in this call.)",
   "Measurable learning outcomes ONLY — exactly one outcome per teacher objective (same count). Bloom verbs; stay within objective scope. No 'Learning Outcomes' heading in body. Do not copy objectives verbatim.",
   "Main phase: FULL core teaching content FIRST, then AFL-based activities (fully implemented classroom process). No plenary, differentiation, or exit ticket.",
-  "Differentiated tasks for lower, middle, and higher achievers plus one mini plenary AFL checkpoint — aligned with lesson content. No UAE link, homework, or core re-teach.",
+  "Differentiation AFL tool: tasks for lower, middle, and higher achievers — fully implemented classroom activity. No UAE link, homework, or core re-teach.",
   "Exactly ONE link type only: UAE **or** real life **or** cross-curricular — pick the strongest only. No extra sections.",
   "Plenary: real classroom activity using teacher-selected or AI-selected Plenary AFL tool — full implementation. No homework, future references, or new teaching.",
   "Extended task or homework only — embed Extended AFL if selected or auto-selected. No plenary re-teach.",
-  "Exit ticket: short focused AFL assessment only — immediate understanding check. No success criteria or homework paragraph.",
-  "Success criteria and self-evaluation — embed Feedback AFL if selected or auto-selected. Help students assess their own learning. No exit ticket repeat.",
+  "Exit ticket AFL tool: short focused assessment — immediate understanding check. No success criteria or homework paragraph.",
+  "Success criteria AFL tool: students assess their own learning — fully implemented. No exit ticket repeat.",
   "Thank you plus one short positive closing line for students — no recap or new tasks.",
 ];
 

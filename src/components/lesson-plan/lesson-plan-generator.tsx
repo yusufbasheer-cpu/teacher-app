@@ -1084,7 +1084,7 @@ export function LessonPlanGenerator() {
                           />
                           <label htmlFor={`afl-${t.id}`} className="min-w-0 text-sm leading-snug text-slate-800">
                             <span className="font-medium">{t.label}</span>
-                            <span className="mt-0.5 block text-[11px] text-slate-500">{t.howToUse}</span>
+                            <span className="mt-0.5 block text-[11px] text-slate-500">{t.purpose}</span>
                           </label>
                         </li>
                       );

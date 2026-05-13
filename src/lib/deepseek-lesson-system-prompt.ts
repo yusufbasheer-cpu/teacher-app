@@ -108,12 +108,12 @@ The app builds **exactly 13 slides** in this **fixed order**. **Each slide has o
 4. **Learning Objectives** — **Only** the teacher’s form objectives, **verbatim** (same count, same wording). Do **not** generate, edit, paraphrase, or add objectives. Do **not** write “Learning Objectives” inside the body.
 5. **Learning Outcomes** — Measurable outcomes generated **only** from the teacher’s verbatim objectives; typically one per objective; Bloom verbs; **no** scope beyond those objectives. Do **not** write “Learning Outcomes” inside the body.
 6. **Main Phase Core Teaching** — **First** the **full core teaching content** (concepts, vocabulary, explanation, concise worked meaning). **After** that, **AFL-based** learning activities (I Do / We Do / You Do, stations, etc.) that **apply** the taught content — fully implemented classroom process, not a tool label. Activities must not replace the explanation. No plenary, differentiation, or exit ticket here.
-7. **Differentiated Activity Mini Plenary** — Differentiated tasks for **lower**, **middle**, and **higher** attainers **plus** one **mini plenary** AFL checkpoint — all aligned with lesson content. No core teaching, homework, UAE link, or outcomes.
+7. **Differentiated Activity Mini Plenary** — **Differentiation** AFL tool: tasks for **lower**, **middle**, and **higher** attainers aligned with lesson content (e.g. Must/Should/Could, tiered tasks, choice board). No core teaching, homework, UAE link, or outcomes.
 8. **UAE Real Life Cross Curricular Link** — **Only one** of: a UAE connection, OR a real-life application, OR a cross-curricular link (whichever is strongest for this topic). Do not combine all three on one slide. No extra sections.
 9. **Plenary** — One **real classroom plenary activity** using teacher-selected **or** AI-selected **Plenary** AFL tool — fully implemented (student tasks, prompts, interaction). No new teaching, homework, objectives, or future-slide references.
 10. **Extended Task** — Extended task or homework only (research, rubric task, creative, practice, investigation). Embed **Extended** AFL when selected or auto-selected. No plenary or re-teaching.
-11. **Exit Ticket** — Exit ticket only: short, focused **AFL assessment** activity — immediate understanding check (teacher-selected **or** AI-selected tool). No homework paragraph, success criteria, or lesson explanation.
-12. **Success Criteria Self Evaluation** — Success criteria and self evaluation only (I can…, checklist, scale). Embed **Feedback** AFL tools when selected or auto-selected — help students assess their own learning. No new teaching and no repeating the exit ticket.
+11. **Exit Ticket** — **Exit ticket** AFL tool only: short, focused assessment — immediate understanding check (teacher-selected **or** AI-selected). No homework paragraph, success criteria, or lesson explanation.
+12. **Success Criteria Self Evaluation** — **Success criteria** AFL tool: help students assess their own learning (traffic lights, checklist, two stars and a wish, rubric scale). No new teaching and no repeating the exit ticket.
 13. **Thank You Slide** — Thank you plus one short positive closing line for students only. No recap, objectives, or activities.
 
 **Images (automatic):** up to **three** images on slides **2, 6, and 9** only (Starter, Main Phase Core Teaching, Plenary). Slide 1 has **no** image.
@@ -338,7 +338,7 @@ ${PPT_AFL_DRIVEN_SYSTEM_RULES}
                 : n === 7
                   ? `
 
-**Slide 7 body rule:** Differentiated tasks (lower/middle/higher) plus mini plenary AFL checkpoint only. No UAE, homework, or core re-teach.`
+**Slide 7 body rule:** Differentiation AFL tool — tasks for lower/middle/higher achievers (fully implemented). No UAE, homework, or core re-teach.`
                   : n === 9
                     ? `
 
@@ -350,7 +350,7 @@ ${PPT_AFL_DRIVEN_SYSTEM_RULES}
                       : n === 12
                         ? `
 
-**Slide 12 body rule:** Success criteria and self-evaluation with Feedback AFL when applicable — no exit ticket repeat.`
+**Slide 12 body rule:** Success criteria AFL tool — self-evaluation fully implemented. No exit ticket repeat.`
                         : ""
   }`;
 

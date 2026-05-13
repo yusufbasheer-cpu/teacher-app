@@ -1,26 +1,32 @@
 /**
- * AFL (Assessment for Learning) tool catalog for the lesson generator and exports.
- * Each tool has a stable `id` (slug), display `label`, and `howToUse` for slides and AI prompts.
+ * AFL (Assessment for Learning) tool catalog — 31 tools across six lesson phases.
+ * Each tool includes how it works, classroom use, and purpose for full AI implementation.
  */
 
 export const AFL_PHASE_IDS = [
   "starter",
   "main",
-  "connections",
+  "differentiation",
   "plenary",
-  "extended",
-  "feedback",
+  "exitTicket",
+  "successCriteria",
 ] as const;
 
 export type AflPhaseId = (typeof AFL_PHASE_IDS)[number];
 
-/** When selected, starter slide may receive a dedicated FLUX image (Picture in Time). */
-export const PICTURE_IN_TIME_AFL_TOOL_ID = "st-picture-in-time" as const;
+/** When selected, starter slide may receive a dedicated FLUX image (Picture Prompt). */
+export const PICTURE_PROMPT_AFL_TOOL_ID = "st-picture-prompt" as const;
+
+/** @deprecated Use PICTURE_PROMPT_AFL_TOOL_ID */
+export const PICTURE_IN_TIME_AFL_TOOL_ID = PICTURE_PROMPT_AFL_TOOL_ID;
 
 export type AflToolDefinition = {
   id: string;
   label: string;
-  /** Short classroom instruction for this lesson. */
+  howItWorks: string;
+  classroomUse: string;
+  purpose: string;
+  /** Combined line for UI subtitles and compact prompts */
   howToUse: string;
 };
 
@@ -30,123 +36,277 @@ export type AflPhaseGroup = {
   tools: readonly AflToolDefinition[];
 };
 
-function tool(id: string, label: string, howToUse: string): AflToolDefinition {
-  return { id, label, howToUse };
+function tool(
+  id: string,
+  label: string,
+  howItWorks: string,
+  classroomUse: string,
+  purpose: string,
+): AflToolDefinition {
+  const howToUse = `${howItWorks} ${classroomUse} Purpose: ${purpose}`;
+  return { id, label, howItWorks, classroomUse, purpose, howToUse };
 }
 
 export const AFL_PHASE_GROUPS: readonly AflPhaseGroup[] = [
   {
     phase: "starter",
-    title: "Starter and Pre-Assessment Tools",
+    title: "Starter Activity AFL Tools",
     tools: [
-      tool("st-brainstorming", "Brainstorming", "Pose an open prompt; capture ideas on board; cluster themes before teaching."),
-      tool("st-picture-in-time", "Picture in Time", "Show one image; ask what changed or what comes next to activate curiosity."),
-      tool("st-what-do-you-know", "What do you know", "Quick round: one fact or question per student about the topic."),
-      tool("st-word-or-phrase", "Word or Phrase activity", "Give a key term; pairs produce related words, then share."),
-      tool("st-unscramble-words", "Unscramble the Words", "Scramble vocabulary; teams reorder to reveal the lesson focus."),
-      tool("st-odd-one-out", "Odd One Out", "Present four items; justify which does not belong and why."),
-      tool("st-insta-hashtags", "Insta Hashtags", "Learners invent hashtags for the topic; discuss tone and key ideas."),
-      tool("st-navigation-map", "Navigation Map Activity", "Sketch a simple map of concepts; add nodes as prior links."),
-      tool("st-kwl-chart", "KWL Chart", "Complete K and W columns; revisit L at plenary."),
-      tool("st-hand-signals", "Hand Signals", "Use agreed signals (A/B/C or confidence) for fast whole-class response."),
-      tool("st-abcd-cards", "ABCD Cards", "Each learner holds A–D for MCQ checks during starter."),
-      tool("st-traffic-signal", "Traffic Signal", "Red/amber/green for confidence or agreement on a starter claim."),
-      tool("st-thumbs-up-down", "Thumbs Up Down", "Thumbs for agree/disagree or ready/not on a short prior-knowledge item."),
-      tool("st-show-tell-whiteboard", "Show and Tell Whiteboard Technique", "30-second whiteboard show-and-tell of one idea."),
-      tool("st-self-assessment", "Self Assessment", "One criterion self-score before instruction begins."),
-      tool("st-peer-assessment", "Peer Assessment", "Pair swap starter answers against a simple checklist."),
-      tool("st-online-offline-quiz", "Online Offline Quiz", "One low-stakes digital or paper item to baseline understanding."),
-      tool("st-whiteboards", "Whiteboards", "Individual boards for quick answers you can scan across the room."),
+      tool(
+        "st-think-pair-share",
+        "Think Pair Share",
+        "Teacher asks a focused question.",
+        "Students think individually, discuss with a partner (1–2 minutes), then selected pairs share answers with the class. Allow silent individual thinking time first.",
+        "Builds confidence, activates prior knowledge, and encourages participation.",
+      ),
+      tool(
+        "st-kwl-chart",
+        "KWL Chart",
+        "Students organise thinking into K (what I already know), W (what I want to know), and L (what I learned — completed later).",
+        "Before the lesson, students fill K and W columns; after the lesson, complete L during plenary or closure.",
+        "Activates prior knowledge and builds curiosity.",
+      ),
+      tool(
+        "st-brain-dump",
+        "Brain Dump",
+        "Students write everything they know about the topic.",
+        "2–5 minutes silent writing, then share ideas with peers or the class.",
+        "Quick assessment of prior knowledge.",
+      ),
+      tool(
+        "st-odd-one-out",
+        "Odd One Out",
+        "Students are given 3–4 items; one is different.",
+        "Students identify the odd item and explain their reasoning to a partner or the class.",
+        "Develops critical thinking and comparison skills.",
+      ),
+      tool(
+        "st-picture-prompt",
+        "Picture Prompt Image Analysis",
+        "Teacher shows an image related to the lesson.",
+        "Students observe carefully, describe what they see, and predict the lesson topic before the reveal.",
+        "Builds curiosity and visual thinking.",
+      ),
+      tool(
+        "st-true-false-challenge",
+        "True or False Challenge",
+        "Teacher gives statements about the topic.",
+        "Students decide true or false and justify their answers (thumbs, cards, or mini whiteboards).",
+        "Reveals misconceptions and activates prior knowledge.",
+      ),
+      tool(
+        "st-predict-reveal",
+        "Predict and Reveal",
+        "Teacher gives hints step by step.",
+        "Students predict the topic after each hint; final reveal of the lesson topic.",
+        "Builds curiosity and engagement.",
+      ),
+      tool(
+        "st-kahoot-quizizz-warm-up",
+        "Kahoot Quizizz Warm Up",
+        "Digital quiz-based starter.",
+        "Students answer MCQs on a device with instant feedback shown on screen.",
+        "Engages students and checks prior knowledge.",
+      ),
+      tool(
+        "st-entry-ticket",
+        "Entry Ticket",
+        "Short question before the lesson starts.",
+        "Students answer 1–2 quick questions on paper or digitally; teacher reviews responses before teaching.",
+        "Checks readiness for learning.",
+      ),
     ],
   },
   {
     phase: "main",
     title: "Main Phase AFL Tools",
     tools: [
-      tool("mn-wait-time", "Wait Time", "After each question, count 3–5 seconds before accepting hands."),
-      tool("mn-pre-reading", "Pre-reading Material Discussion", "Short text or diagram; pairs predict main idea before input."),
-      tool("mn-muddiest-point", "Muddiest Point", "Ask what is still unclear mid-lesson; address top themes."),
-      tool("mn-devise-questions", "Devise Questions Strategy", "Groups write questions they would ask an expert on the topic."),
-      tool("mn-questioning-techniques", "Questioning Techniques", "Mix cold call, bounce, and probe with why/how follow-ups."),
-      tool("mn-open-questions", "Open Questions", "Use how/why prompts that require explanation, not single-word answers."),
-      tool("mn-closed-questions", "Closed Questions", "Use for hinge checks of facts or procedures after explanation."),
-      tool("mn-blooms-questioning", "Blooms Taxonomy Questioning", "Move from remember/understand to apply/analyse within the phase."),
-      tool("mn-placemat", "Placemat Method", "Corners contribute; centre synthesises one group output."),
-      tool("mn-frayer-model", "Frayer Model", "Define term, facts, examples, non-examples on a four-quadrant template."),
-      tool("mn-four-corners", "Four Corners Activity", "Label corners with stances; move and justify choices."),
-      tool("mn-group-roles", "Group Roles Strategy", "Assign speaker, scribe, timekeeper for structured tasks."),
-      tool("mn-graphic-organisers", "Graphic Organisers", "Use tables, timelines, or cause–effect frames to organise thinking."),
-      tool("mn-flow-charts", "Flow Charts", "Sequence steps of a process or algorithm visibly."),
-      tool("mn-venn-diagram", "Venn Diagram", "Compare two concepts; justify overlaps and differences."),
-      tool("mn-mid-unit-assessment", "Mid-Unit Assessment", "Short formative task aligned to today’s sub-goals."),
-      tool("mn-mini-plenary", "Mini Plenary", "Two-minute check: hinge question or show-me response."),
-      tool("mn-find-the-fib", "Find the Fib", "Three statements—one false; discuss evidence for each."),
-      tool("mn-differentiated-tasks", "Differentiated Tasks", "Offer tiered prompts or scaffolds while same learning goal."),
+      tool(
+        "mn-i-do-we-do-you-do",
+        "I Do We Do You Do",
+        "Gradual release teaching model.",
+        "I Do: teacher demonstrates. We Do: teacher and students work together. You Do: students work independently on aligned tasks.",
+        "Builds understanding step by step.",
+      ),
+      tool(
+        "mn-jigsaw",
+        "Jigsaw Activity",
+        "Students become experts on one part of the content.",
+        "Group A learns part A, Group B learns part B; students then teach each other in mixed expert groups.",
+        "Encourages peer teaching and collaboration.",
+      ),
+      tool(
+        "mn-learning-stations",
+        "Learning Stations",
+        "Different classroom stations with tasks.",
+        "Students rotate between stations; each station has a different activity linked to the same learning goal.",
+        "Active learning and engagement.",
+      ),
+      tool(
+        "mn-gallery-walk",
+        "Gallery Walk",
+        "Students display work around the classroom.",
+        "Students move around, observe peer work, and give brief feedback or annotations on sticky notes.",
+        "Peer learning and reflection.",
+      ),
+      tool(
+        "mn-concept-mapping",
+        "Concept Mapping",
+        "Students visually connect ideas.",
+        "Create diagrams linking concepts and show relationships between ideas on paper or boards.",
+        "Improves understanding of connections.",
+      ),
+      tool(
+        "mn-socratic-questioning",
+        "Socratic Questioning",
+        "Teacher asks deep thinking questions.",
+        "Use open-ended questioning; students justify reasoning and build on each other's answers.",
+        "Develops critical thinking.",
+      ),
     ],
   },
   {
-    phase: "connections",
-    title: "Making Connections Tools",
+    phase: "differentiation",
+    title: "Differentiated Activity AFL Tools",
     tools: [
-      tool("cn-prior-knowledge", "Prior Knowledge Connection", "Explicitly link today’s idea to last lesson or schema."),
-      tool("cn-real-life", "Real Life Application", "One authentic context where the idea matters outside school."),
-      tool("cn-cross-curricular", "Cross Curricular Link", "Name another subject where the same skill or idea appears."),
-      tool("cn-uae-link", "UAE Link", "Tie example or context to UAE context where appropriate."),
-      tool("cn-sdg", "SDG Connection", "Relate learning to a relevant UN Sustainable Development Goal."),
-      tool("cn-research-tasks", "Research Tasks", "Micro-research prompt with a trusted source or keyword list."),
-      tool("cn-spinning-wheel", "Spinning Wheel", "Random prompt or group role from a simple spinner for variety."),
-      tool("cn-popsicle-sticks", "Popsicle Sticks", "Random sticks for equitable participation during discussion."),
+      tool(
+        "df-must-should-could",
+        "Must Should Could",
+        "Three levels of tasks on the same objective.",
+        "Must: basic task all students complete. Should: expected level. Could: challenge task for ready learners.",
+        "Differentiation by ability.",
+      ),
+      tool(
+        "df-choice-board",
+        "Choice Board",
+        "Students choose tasks from a grid.",
+        "Provide multiple activity options; students pick based on interest while meeting the same learning goal.",
+        "Student autonomy and differentiation.",
+      ),
+      tool(
+        "df-tiered-tasks",
+        "Tiered Tasks",
+        "Same concept at different difficulty levels.",
+        "Level 1 basic, Level 2 medium, Level 3 advanced — all aligned to today's objective.",
+        "Supports mixed-ability learners.",
+      ),
+      tool(
+        "df-learning-menus",
+        "Learning Menus",
+        "Students order learning tasks like a menu.",
+        "Starter, main, and dessert tasks; student selects their path through the menu.",
+        "Engagement and choice-based learning.",
+      ),
     ],
   },
   {
     phase: "plenary",
-    title: "Plenary Tools",
+    title: "Plenary AFL Tools",
     tools: [
-      tool("pl-different-shoes", "Different Shoes Reflection", "How would another stakeholder view today’s learning?"),
-      tool("pl-if-reflection", "If Reflection Activity", "If you could change one thing about your work today…"),
-      tool("pl-5-5-1", "5-5-1 Strategy", "Five ideas alone, five in pair, one shared with class."),
-      tool("pl-5-5-1-deluxe", "5-5-1 Deluxe", "Extend with whole-class refinement of the best pair idea."),
-      tool("pl-pyramid-learning", "Pyramid of Learning", "Build from words to sentences to paragraph summary of learning."),
-      tool("pl-exit-reflection", "Exit Reflection Questions", "Two printed or oral prompts tied to objectives."),
-      tool("pl-questions-still-have", "Questions you still have", "Sticky note or board column for unresolved questions."),
-      tool("pl-things-reminded", "Things reminded of", "Connect today’s learning to something familiar or personal."),
-      tool("pl-things-learned", "Things learned today", "Each learner states one new thing in a closing round."),
+      tool(
+        "pl-3-2-1-reflection",
+        "3-2-1 Reflection",
+        "Structured end-of-lesson reflection.",
+        "Students record 3 things learned, 2 interesting points, and 1 question they still have.",
+        "Structured reflection.",
+      ),
+      tool(
+        "pl-hot-seat",
+        "Hot Seat",
+        "One student answers class questions.",
+        "Class asks quick-fire questions; the student in the hot seat responds — rotate volunteers.",
+        "Active recall and engagement.",
+      ),
+      tool(
+        "pl-one-word-summary",
+        "One Word Summary",
+        "Students summarise the lesson in one word.",
+        "Each learner writes one word, then explains their choice in a sentence when called.",
+        "Quick reflection.",
+      ),
+      tool(
+        "pl-snowball",
+        "Snowball Activity",
+        "Students write answers, crumple paper, throw, and discuss.",
+        "Write response, crumple, toss to another student, unfold, read, and discuss in pairs.",
+        "Fun reflection and participation.",
+      ),
     ],
   },
   {
-    phase: "extended",
-    title: "Extended Task AFL Tools",
+    phase: "exitTicket",
+    title: "Exit Ticket AFL Tools",
     tools: [
-      tool("ex-homework-tasks", "Homework Tasks", "Single clear task with success criteria and estimated time."),
-      tool("ex-research-work", "Research Work", "Guided question plus two suggested search terms or sources."),
-      tool("ex-checklists", "Checklists", "Student self-check before submission against criteria."),
-      tool("ex-rubrics", "Rubrics", "Share level descriptors; optional self-mark against one criterion."),
-      tool("ex-best-piece", "Best Piece Reflection", "Identify strongest part of work and one improvement."),
-      tool("ex-prep-next", "Preparation for Next Lesson", "One concrete preview task or question."),
-      tool("ex-placard", "Placard", "One summary sentence on card held up for gallery view."),
-      tool("ex-flipped-class", "Flipped Class", "Short video or reading with a note-taking frame before next lesson."),
+      tool(
+        "et-one-minute-paper",
+        "One Minute Paper",
+        "Students write a quick response at the end of the lesson.",
+        "One minute timed write answering a focused prompt on paper or digitally before leaving.",
+        "Fast understanding check.",
+      ),
+      tool(
+        "et-muddiest-point",
+        "Muddiest Point",
+        "Students write what they did not understand.",
+        "Each learner names their muddiest point; teacher collects and addresses top themes next lesson.",
+        "Identifies confusion.",
+      ),
+      tool(
+        "et-exit-card",
+        "Exit Card",
+        "1–2 questions at the end of class.",
+        "Printed or digital exit card with 1–2 short questions tied to today's objectives.",
+        "Quick formative assessment.",
+      ),
+      tool(
+        "et-emoji-scale",
+        "Emoji Scale",
+        "Students rate understanding using emojis.",
+        "Show emoji scale (e.g. confused → confident); students circle or tap their level and optionally add one line why.",
+        "Simple self-assessment.",
+      ),
     ],
   },
   {
-    phase: "feedback",
-    title: "Feedback and Assessment Strategies",
+    phase: "successCriteria",
+    title: "Success Criteria AFL Tools",
     tools: [
-      tool("fb-effective-feedback", "Effective Feedback", "Specific, actionable comments tied to criteria—not grades alone."),
-      tool("fb-peer-feedback", "Peer Feedback", "Two stars and a wish or structured rubric swap."),
-      tool("fb-self-assessment", "Self Assessment", "Traffic lights or rubric row against learning objective."),
-      tool("fb-teacher-feedback", "Teacher Feedback", "Whole-class micro-feedback on a common misconception."),
-      tool("fb-formative-assessment", "Formative Assessment", "Use results to adjust next explanation or grouping."),
-      tool("fb-assessment-as-learning", "Assessment as Learning", "Students track their own progress toward goals."),
-      tool("fb-assessment-for-learning", "Assessment for Learning", "Evidence used only to improve teaching and learning now."),
-      tool("fb-diagnostic-assessment", "Diagnostic Assessment", "Identify gaps early; do not count toward summative grade."),
+      tool(
+        "sc-traffic-light",
+        "Traffic Light System",
+        "Green = fully understand, Yellow = partially understand, Red = need help.",
+        "Students colour or mark traffic light against each success criterion on a checklist.",
+        "Self-assessment.",
+      ),
+      tool(
+        "sc-checklist-can-do",
+        "Checklist Can Do Statements",
+        "Students tick what they can do.",
+        "Provide I-can statements aligned to objectives; students tick achieved criteria honestly.",
+        "Tracks learning progress.",
+      ),
+      tool(
+        "sc-two-stars-wish",
+        "Two Stars and a Wish",
+        "Two strengths and one improvement point.",
+        "Students write two things they did well and one wish for improvement against the lesson goal.",
+        "Feedback and reflection.",
+      ),
+      tool(
+        "sc-rubric-scale",
+        "Rubric Scale",
+        "Levels of achievement from basic to advanced.",
+        "Share rubric descriptors; students place their work or understanding on the scale with brief evidence.",
+        "Clear success measurement.",
+      ),
     ],
   },
 ] as const;
 
 const ALL_BY_ID: Map<string, AflToolDefinition> = new Map();
 for (const g of AFL_PHASE_GROUPS) {
-  for (const tool of g.tools) {
-    ALL_BY_ID.set(tool.id, tool);
+  for (const t of g.tools) {
+    ALL_BY_ID.set(t.id, t);
   }
 }
 
@@ -158,21 +318,14 @@ export function isValidAflPhaseId(v: string): v is AflPhaseId {
   return (AFL_PHASE_IDS as readonly string[]).includes(v);
 }
 
-/** Recommended “one click” picks per phase (tool ids). */
+/** One recommended pick per phase for the “Select Recommended” UI action. */
 export const AFL_RECOMMENDED_IDS: Record<AflPhaseId, readonly string[]> = {
-  starter: ["st-thumbs-up-down", "st-kwl-chart", "st-whiteboards", "st-brainstorming", "st-self-assessment"],
-  main: [
-    "mn-wait-time",
-    "mn-open-questions",
-    "mn-mini-plenary",
-    "mn-graphic-organisers",
-    "mn-placemat",
-    "mn-differentiated-tasks",
-  ],
-  connections: ["cn-prior-knowledge", "cn-real-life", "cn-cross-curricular", "cn-uae-link"],
-  plenary: ["pl-exit-reflection", "pl-things-learned", "pl-pyramid-learning", "pl-5-5-1"],
-  extended: ["ex-homework-tasks", "ex-rubrics", "ex-checklists"],
-  feedback: ["fb-formative-assessment", "fb-assessment-for-learning", "fb-peer-feedback", "fb-self-assessment"],
+  starter: ["st-think-pair-share", "st-kwl-chart", "st-entry-ticket"],
+  main: ["mn-i-do-we-do-you-do", "mn-socratic-questioning", "mn-concept-mapping"],
+  differentiation: ["df-must-should-could", "df-tiered-tasks"],
+  plenary: ["pl-3-2-1-reflection", "pl-one-word-summary"],
+  exitTicket: ["et-exit-card", "et-one-minute-paper"],
+  successCriteria: ["sc-traffic-light", "sc-checklist-can-do", "sc-two-stars-wish"],
 };
 
 /**
@@ -180,29 +333,28 @@ export const AFL_RECOMMENDED_IDS: Record<AflPhaseId, readonly string[]> = {
  */
 export const PPT_AFL_DRIVEN_SYSTEM_RULES = `
 ### CORE SYSTEM RULE — PPT generation is AFL-driven
-The PPT generation system is **driven by AFL tools**. Each lesson stage — **Starter**, **Main Phase**, **Differentiation**, **Plenary**, **Exit Ticket**, **Success Criteria** — must be **powered by AFL activities** where that stage appears on a slide. You must understand every AFL tool deeply: its **purpose**, **classroom execution**, **student interaction structure**, and **learning-outcome strategy**.
+The PPT generation system is **driven by AFL tools** from the **31-tool catalog** (six phases). Each lesson stage — **Starter**, **Main Phase**, **Differentiation**, **Plenary**, **Exit Ticket**, **Success Criteria** — must be **powered by AFL activities** on the matching slide. Understand every tool deeply: **how it works**, **classroom use**, and **purpose**.
 
 ### TEACHER CONTROL RULE (mandatory)
-- If the teacher **selected** an AFL tool for a stage, you **MUST** use **exactly** that tool — **do NOT** replace it with another tool.
-- You **MUST** fully implement the selected AFL tool in **finished classroom format** on the correct slide.
-- If the teacher **did NOT** select an AFL tool, you **MUST automatically select** the most suitable AFL tool from the catalog for that stage based on **subject**, **topic**, **grade level**, **learning objectives**, **lesson stage**, and **student engagement needs** — then implement it fully.
+- If the teacher **selected** an AFL tool for a phase, you **MUST** use **exactly** that tool — **do NOT** replace it.
+- Implement the selected tool as a **full classroom activity** with complete teacher facilitation steps and student tasks.
+- If the teacher **did NOT** select a tool, **automatically select** the best tool for that phase based on **subject**, **grade**, **topic**, and **learning objectives** — then implement it fully.
 
 ### GENERAL AFL UNDERSTANDING RULE (mandatory)
-- **Do NOT** treat AFL tools as labels or name-drops.
-- Each AFL tool is a **teaching method**, **classroom process**, **student interaction structure**, and **learning outcome strategy**.
-- Generate **actual classroom instructions**, **student tasks**, **teacher facilitation steps**, and **meaningful educational content** — **NOT** a line like “Use Think Pair Share” without the full classroom implementation (prompts, timing, grouping, share-out, success check).
+- **Do NOT** mention a tool name without implementing it.
+- Generate **actual classroom instructions**, **student tasks**, **teacher steps**, and **meaningful content** — not labels like “Use Think Pair Share” alone.
 
 ### LESSON STAGE AFL RULES (slide map)
 | Slide | Stage | AFL rule |
 |-------|-------|----------|
-| 2 | Starter Activity | Teacher-selected **or** AI-selected starter AFL tool. Engaging, interactive, topic-related. **No** objectives, outcomes, or future-slide content. |
-| 6 | Main Phase | **First** present full teaching content (concepts, vocabulary, explanation). **Then** embed AFL-based activities that support understanding and interaction. |
-| 7 | Differentiated Activity + Mini Plenary | Differentiated tasks for **lower**, **middle**, and **higher** achievers aligned with lesson content; include a **mini plenary** checkpoint (AFL-based when a main-phase tool applies). |
-| 8 | UAE / Real Life / Cross-curricular | **Only one** connection type (UAE **or** real life **or** cross-curricular). No extra sections. Connections AFL tools apply **only** if teacher selected them. |
-| 9 | Plenary | Real classroom plenary using teacher-selected **or** AI-selected **plenary** AFL tool. No future references; no extra sections. |
-| 10 | Extended Task | Extended/homework task; embed **extended** AFL tools when selected or auto-selected. |
-| 11 | Exit Ticket | Short, focused assessment activity only — immediate understanding check (teacher-selected plenary exit AFL **or** AI-selected suitable exit/formative tool). **No** success criteria duplication. |
-| 12 | Success Criteria | Help students assess their own learning; embed **feedback** AFL tools when selected or auto-selected. **No** duplication of other slides. |
+| 2 | Starter Activity | Teacher-selected **or** AI-selected **starter** AFL tool. Engaging, interactive, topic-related. **No** objectives, outcomes, or future-slide content. |
+| 6 | Main Phase | **First** full core teaching content. **Then** embed **main phase** AFL tool(s) as interactive activities. |
+| 7 | Differentiated Activity | **Differentiation** AFL tool — tasks for lower, middle, and higher achievers aligned with lesson content. |
+| 8 | UAE / Real Life / Cross-curricular | **Only one** connection type. **No** AFL tool phase on this slide — content link only. |
+| 9 | Plenary | **Plenary** AFL tool — real classroom activity, fully implemented. |
+| 10 | Extended Task | Homework/extended task content only — **no** AFL tool phase in catalog. |
+| 11 | Exit Ticket | **Exit ticket** AFL tool — short focused assessment, immediate understanding check. |
+| 12 | Success Criteria | **Success criteria** AFL tool — students assess their own learning. **No** duplication of exit ticket. |
 
 ### CRITICAL CONTENT RULES (mandatory — every slide)
 1. **No slide** may contain content belonging to **another** slide.
@@ -213,7 +365,7 @@ The PPT generation system is **driven by AFL tools**. Each lesson stage — **St
 6. Each slide must remain **strictly self-contained**.
 
 ### FINAL OUTPUT REQUIREMENT
-Generate structured PPT slides with **pedagogically correct AFL integration**. Use **teacher-controlled** AFL tools when provided; otherwise **AI-selected** AFL tools. Maintain **clean separation** of content per slide. Every AFL-powered slide must contain **classroom-ready activities**, not meta-instructions to the teacher.
+Generate structured PPT slides with **pedagogically correct AFL integration** from the **31-tool catalog only**. Teacher selections override AI picks. Every AFL-powered slide must be **classroom-ready**, not meta-instructions.
 `.trim();
 
 export type PptSlideAflContext = {
@@ -224,35 +376,28 @@ export type PptSlideAflContext = {
 };
 
 type PptSlideAflBinding = {
-  /** Phase key for teacher selections in the UI payload. */
   selectionPhase: AflPhaseId;
-  /** Catalog phase offered when the teacher did not select (may differ for exit ticket). */
   autoSelectPhase: AflPhaseId;
-  /** Restrict auto-pick pool; defaults to all tools in autoSelectPhase. */
   autoSelectCandidateIds?: readonly string[];
   stageLabel: string;
 };
 
-/** AFL bindings per deck slide (1-based). Slides without bindings are not AFL-stage slides. */
+/** AFL bindings per deck slide (1-based). Slides 8 and 10 have no AFL phase. */
 export const PPT_SLIDE_AFL_BINDINGS: Partial<Record<number, PptSlideAflBinding>> = {
   2: { selectionPhase: "starter", autoSelectPhase: "starter", stageLabel: "Starter Activity" },
   6: { selectionPhase: "main", autoSelectPhase: "main", stageLabel: "Main Phase" },
   7: {
-    selectionPhase: "main",
-    autoSelectPhase: "main",
-    autoSelectCandidateIds: ["mn-differentiated-tasks", "mn-mini-plenary", "mn-graphic-organisers"],
-    stageLabel: "Differentiated Activity and Mini Plenary",
+    selectionPhase: "differentiation",
+    autoSelectPhase: "differentiation",
+    stageLabel: "Differentiated Activity",
   },
-  8: { selectionPhase: "connections", autoSelectPhase: "connections", stageLabel: "UAE / Real Life / Cross-curricular Link" },
   9: { selectionPhase: "plenary", autoSelectPhase: "plenary", stageLabel: "Plenary" },
-  10: { selectionPhase: "extended", autoSelectPhase: "extended", stageLabel: "Extended Task" },
-  11: {
-    selectionPhase: "plenary",
-    autoSelectPhase: "plenary",
-    autoSelectCandidateIds: ["pl-exit-reflection", "pl-questions-still-have", "pl-things-learned"],
-    stageLabel: "Exit Ticket",
+  11: { selectionPhase: "exitTicket", autoSelectPhase: "exitTicket", stageLabel: "Exit Ticket" },
+  12: {
+    selectionPhase: "successCriteria",
+    autoSelectPhase: "successCriteria",
+    stageLabel: "Success Criteria and Self Evaluation",
   },
-  12: { selectionPhase: "feedback", autoSelectPhase: "feedback", stageLabel: "Success Criteria and Self Evaluation" },
 };
 
 function hashPickIndex(seed: string, length: number): number {
@@ -267,7 +412,16 @@ function toolsForPhase(phase: AflPhaseId): readonly AflToolDefinition[] {
 }
 
 function formatToolCatalogLines(tools: readonly AflToolDefinition[]): string {
-  return tools.map((t) => `- **${t.label}** (\`${t.id}\`): ${t.howToUse}`).join("\n");
+  return tools
+    .map(
+      (t) =>
+        `- **${t.label}** (\`${t.id}\`)\n  - How it works: ${t.howItWorks}\n  - Classroom use: ${t.classroomUse}\n  - Purpose: ${t.purpose}`,
+    )
+    .join("\n");
+}
+
+function formatToolPromptLine(t: AflToolDefinition): string {
+  return `- **${t.label}** (\`${t.id}\`): How it works — ${t.howItWorks} Classroom use — ${t.classroomUse} Purpose — ${t.purpose}`;
 }
 
 /** Suggested default tool id when the teacher did not select (deterministic from lesson context). */
@@ -312,13 +466,10 @@ export function getAflPhaseForPptSlideNumber1Based(slideNumber1Based: number): A
   return PPT_SLIDE_AFL_BINDINGS[slideNumber1Based]?.selectionPhase;
 }
 
-function formatTeacherSelectedAflBlock(
-  binding: PptSlideAflBinding,
-  ids: string[],
-): string {
+function formatTeacherSelectedAflBlock(binding: PptSlideAflBinding, ids: string[]): string {
   const lines: string[] = [
     `### AFL for THIS slide — ${binding.stageLabel} (MANDATORY — teacher selected)`,
-    "The teacher **selected** the AFL tool(s) below. You **MUST** use **exactly** these tools — **do NOT** replace them with another tool. Implement each as a **full classroom process**: student tasks, teacher facilitation steps, interaction structure, timing, and finished learner-facing prompts/questions/items — **not** a label or meta line.",
+    "The teacher **selected** the AFL tool(s) below. You **MUST** use **exactly** these tools — **do NOT** replace them. Implement each as a **full classroom activity**: how it works, classroom use steps, student tasks, teacher facilitation, timing, and finished learner-facing prompts — **not** a label.",
     "",
   ];
   const group = AFL_PHASE_GROUPS.find((g) => g.phase === binding.selectionPhase);
@@ -326,7 +477,7 @@ function formatTeacherSelectedAflBlock(
   for (const id of ids) {
     const t = getAflToolById(id);
     if (!t) continue;
-    lines.push(`- **${t.label}** (\`${id}\`): ${t.howToUse}`);
+    lines.push(formatToolPromptLine(t));
   }
   return lines.join("\n").trim();
 }
@@ -343,13 +494,10 @@ function formatAutoSelectAflBlock(
 
   const lines: string[] = [
     `### AFL for THIS slide — ${binding.stageLabel} (AI must auto-select — teacher did not choose)`,
-    "The teacher did **not** select an AFL tool for this stage. You **MUST automatically select** the **most suitable** AFL tool from the catalog below based on **subject**, **topic**, **grade**, **learning objectives**, this **lesson stage**, and **student engagement needs** — then implement it **fully** as classroom-ready content (not a label).",
+    "The teacher did **not** select an AFL tool. Pick the **most suitable** tool from the catalog below for **subject**, **topic**, **grade**, and **objectives** — implement it **fully** as classroom-ready content.",
   ];
   if (suggested) {
-    lines.push(
-      "",
-      `**Suggested default (you may keep or choose a better fit from the same catalog):** **${suggested.label}** (\`${suggestedId}\`) — ${suggested.howToUse}`,
-    );
+    lines.push("", `**Suggested default:** ${formatToolPromptLine(suggested)}`);
   }
   lines.push(
     "",
@@ -360,35 +508,26 @@ function formatAutoSelectAflBlock(
   if (slideNumber1Based === 6) {
     lines.push(
       "",
-      "**Main Phase structure (mandatory):** Present the **full core teaching content first** (concepts, vocabulary, explanation). **After** that, embed your chosen AFL tool as interactive activities that support understanding.",
+      "**Main Phase structure (mandatory):** Present **full core teaching content first**, then embed your chosen main-phase AFL tool as interactive activities.",
     );
   }
   if (slideNumber1Based === 7) {
     lines.push(
       "",
-      "**Differentiation structure (mandatory):** Write differentiated tasks for **lower**, **middle**, and **higher** achievers aligned with the lesson — then add one **mini plenary** checkpoint (use your chosen AFL tool for the checkpoint).",
-    );
-  }
-  if (slideNumber1Based === 8) {
-    lines.push(
-      "",
-      "**Connections rule:** Include **only one** connection type on this slide — UAE **or** real life **or** cross-curricular (whichever is strongest). AFL connection tools apply **only** if you selected one from the catalog above.",
+      "**Differentiation structure (mandatory):** Use your chosen differentiation AFL tool to set tasks for **lower**, **middle**, and **higher** achievers aligned with the lesson.",
     );
   }
   if (slideNumber1Based === 11) {
     lines.push(
       "",
-      "**Exit Ticket rule:** Short, focused assessment only — immediate understanding check. **No** success criteria or homework paragraph.",
+      "**Exit Ticket rule:** Short, focused assessment only — immediate understanding check. **No** success criteria.",
     );
   }
 
   return lines.join("\n").trim();
 }
 
-/**
- * AFL instructions for one slide-only DeepSeek call.
- * Teacher selections override; otherwise instructs AI auto-selection with full catalog.
- */
+/** AFL instructions for one slide-only DeepSeek call. */
 export function formatAflForSinglePptSlidePrompt(
   slideNumber1Based: number,
   selections: AflSelectionsPayload,
@@ -411,21 +550,18 @@ export function formatAflForAiPrompt(
   ctx?: PptSlideAflContext,
 ): string {
   const hasTeacherPicks = AFL_PHASE_IDS.some((p) => (selections[p]?.length ?? 0) > 0);
-
   const lines: string[] = [PPT_AFL_DRIVEN_SYSTEM_RULES, ""];
 
   if (hasTeacherPicks) {
     lines.push(
       "### Teacher-selected AFL tools (MANDATORY — override AI selection)",
-      "The teacher picked specific AFL tools below. For **every** selected tool you **MUST** use **exactly** that tool — **do NOT** substitute another. Embed each as **fully written, ready-to-project classroom material** for this exact topic, grade, and subject.",
+      "Use **exactly** the teacher's picks — **do NOT** substitute. Implement each as **full classroom activities** with teacher instructions and student tasks for this topic, grade, and subject.",
       "",
-      "**Full Lesson Plan:** Write the real activity — exact questions, prompts, item banks, MCQ stems with options, brainstorming lists, quiz items, exit-ticket questions, facilitation steps, and student tasks. **No** meta lines like “the teacher should…”.",
+      "**PPT Slide Content:** Embed tools on slide **2** Starter, **6** Main Phase (after teaching), **7** Differentiation, **9** Plenary, **11** Exit Ticket, **12** Success Criteria. Slide **8** = one connection only (no AFL phase). Slide **10** = extended task only (no AFL phase).",
       "",
-      "**PPT Slide Content (13 slides):** Embed teacher-selected AFL tools on: slide **2** Starter, slide **6** Main Phase (after core teaching), slide **7** Differentiation/Mini Plenary (main-phase tools when selected), slide **8** Connections (if selected), slide **9** Plenary, slide **10** Extended, slide **11** Exit Ticket (plenary exit tools when selected), slide **12** Success Criteria (feedback tools). **Do not** duplicate the same AFL block on multiple slides.",
+      "**Picture Prompt Image Analysis (if selected):** Write the exact observation and prediction prompts for the starter image.",
       "",
-      "**Picture in Time (if selected):** Write the **exact** comparison or prediction question and what changed between two moments so it can pair with the starter slide text.",
-      "",
-      "**Catalog reference (teacher picks — implement fully, do not replace):**",
+      "**Teacher selections (implement fully):**",
       "",
     );
     let listedAny = false;
@@ -437,7 +573,7 @@ export function formatAflForAiPrompt(
       for (const id of ids) {
         const t = getAflToolById(id);
         if (!t) continue;
-        lines.push(`- **${t.label}** (\`${id}\`): ${t.howToUse}`);
+        lines.push(formatToolPromptLine(t));
       }
       lines.push("");
     }
@@ -448,29 +584,25 @@ export function formatAflForAiPrompt(
   if (!ctx) return "";
 
   lines.push(
-    "### No teacher AFL selections — AI must auto-select per slide",
-    "The teacher did **not** select AFL tools. For **each AFL-powered slide** (2, 6, 7, 9, 10, 11, 12), automatically select the most suitable tool from the catalog for that stage and implement it fully. Slide **8** uses one connection type only (AFL optional).",
+    "### No teacher AFL selections — AI must auto-select per AFL-powered slide",
+    "Auto-select the best tool per phase for slides **2, 6, 7, 9, 11, 12** and implement fully.",
     "",
-    "**Per-slide auto-select guidance:**",
+    "**Per-slide guidance:**",
   );
 
-  for (const slideNum of [2, 6, 7, 8, 9, 10, 11, 12] as const) {
+  for (const slideNum of [2, 6, 7, 9, 11, 12] as const) {
     const binding = PPT_SLIDE_AFL_BINDINGS[slideNum];
     if (!binding) continue;
     const suggestedId = suggestAutoAflToolId(slideNum, ctx);
     const suggested = suggestedId ? getAflToolById(suggestedId) : undefined;
     lines.push(
-      `- Slide **${slideNum}** (${binding.stageLabel}): auto-select from **${binding.autoSelectPhase}** catalog${
-        suggested ? ` — suggested: **${suggested.label}** (\`${suggestedId}\`)` : ""
+      `- Slide **${slideNum}** (${binding.stageLabel}): auto-select from **${binding.autoSelectPhase}**${
+        suggested ? ` — suggested: **${suggested.label}**` : ""
       }`,
     );
   }
 
-  lines.push(
-    "",
-    "**Full catalog (purpose reference — replace with lesson-specific finished content):**",
-    "",
-  );
+  lines.push("", "**Full 31-tool catalog:**", "");
   for (const group of AFL_PHASE_GROUPS) {
     lines.push(`**${group.title}**`);
     lines.push(formatToolCatalogLines(group.tools));
@@ -480,24 +612,22 @@ export function formatAflForAiPrompt(
   return lines.join("\n").trim();
 }
 
-/** One short classroom line for slide bullets (name + how-to). */
+/** One short classroom line for slide bullets (name + purpose). */
 export function briefHowToUseForSlide(howToUse: string, maxLen = 160): string {
   const t = howToUse.replace(/\s+/g, " ").trim();
   if (!t) return "";
-  const end = t.search(/[.!?]\s/);
-  const firstSentence =
-    end > 6 && end < Math.min(140, t.length) ? t.slice(0, end + 1).trim() : t;
-  return firstSentence.length > maxLen ? `${firstSentence.slice(0, maxLen - 1).trim()}…` : firstSentence;
+  const purposeIdx = t.toLowerCase().indexOf("purpose:");
+  const slice = purposeIdx > 0 ? t.slice(purposeIdx) : t;
+  return slice.length > maxLen ? `${slice.slice(0, maxLen - 1).trim()}…` : slice;
 }
 
 export function formatToolsBlockForSlide(phase: AflPhaseId, selectedIds: string[] | undefined): string {
   if (!selectedIds?.length) return "";
   const parts: string[] = ["\n\nSelected AFL for this part of the lesson\n"];
   for (const id of selectedIds) {
-    const tool = getAflToolById(id);
-    if (!tool) continue;
-    const how = briefHowToUseForSlide(tool.howToUse);
-    parts.push(`• ${tool.label}: ${how}`);
+    const t = getAflToolById(id);
+    if (!t) continue;
+    parts.push(`• ${t.label}: ${t.purpose}`);
   }
   return parts.length > 1 ? parts.join("\n") : "";
 }
@@ -527,9 +657,12 @@ export function formatDocxAflAppendix(selections: AflSelectionsPayload): string 
     any = true;
     lines.push(group.title);
     for (const id of ids) {
-      const tool = getAflToolById(id);
-      if (!tool) continue;
-      lines.push(`• ${tool.label}: ${tool.howToUse}`);
+      const t = getAflToolById(id);
+      if (!t) continue;
+      lines.push(`• ${t.label}`);
+      lines.push(`  How it works: ${t.howItWorks}`);
+      lines.push(`  Classroom use: ${t.classroomUse}`);
+      lines.push(`  Purpose: ${t.purpose}`);
     }
     lines.push("");
   }

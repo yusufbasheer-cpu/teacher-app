@@ -766,7 +766,7 @@ function appendAflToSlideBody(slide: StructuredLessonSlideModel, phase: AflPhase
 }
 
 /**
- * AFL on deck: starter →2, main →6, differentiation →7, connections →8, plenary →9, extended →10, exit →11, feedback →12.
+ * AFL on deck: starter →2, main →6, differentiation →7, plenary →9, exitTicket →11, successCriteria →12.
  */
 function applyAflDeckInjections(slides: StructuredLessonSlideModel[], afl: AflSelectionsPayload | undefined) {
   if (!aflPayloadHasTools(afl) || !afl) return;
@@ -777,18 +777,10 @@ function applyAflDeckInjections(slides: StructuredLessonSlideModel[], afl: AflSe
   };
   go(1, "starter", afl.starter);
   go(5, "main", afl.main);
-  const diffMainTools = afl.main?.filter(
-    (id) => id === "mn-differentiated-tasks" || id === "mn-mini-plenary" || id === "mn-graphic-organisers",
-  );
-  if (diffMainTools?.length) go(6, "main", diffMainTools);
-  go(7, "connections", afl.connections);
+  go(6, "differentiation", afl.differentiation);
   go(8, "plenary", afl.plenary);
-  go(9, "extended", afl.extended);
-  const exitPlenaryTools = afl.plenary?.filter(
-    (id) => id === "pl-exit-reflection" || id === "pl-questions-still-have",
-  );
-  if (exitPlenaryTools?.length) go(10, "plenary", exitPlenaryTools);
-  go(11, "feedback", afl.feedback);
+  go(10, "exitTicket", afl.exitTicket);
+  go(11, "successCriteria", afl.successCriteria);
 }
 
 function clampSlideBodyToDeckRules(slides: StructuredLessonSlideModel[]): void {
