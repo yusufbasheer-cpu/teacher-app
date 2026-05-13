@@ -167,12 +167,124 @@ export const AFL_RECOMMENDED_IDS: Record<AflPhaseId, readonly string[]> = {
     "mn-mini-plenary",
     "mn-graphic-organisers",
     "mn-placemat",
+    "mn-differentiated-tasks",
   ],
-  connections: ["cn-prior-knowledge", "cn-real-life", "cn-cross-curricular"],
-  plenary: ["pl-exit-reflection", "pl-things-learned", "pl-pyramid-learning"],
+  connections: ["cn-prior-knowledge", "cn-real-life", "cn-cross-curricular", "cn-uae-link"],
+  plenary: ["pl-exit-reflection", "pl-things-learned", "pl-pyramid-learning", "pl-5-5-1"],
   extended: ["ex-homework-tasks", "ex-rubrics", "ex-checklists"],
-  feedback: ["fb-formative-assessment", "fb-assessment-for-learning", "fb-peer-feedback", "fb-effective-feedback"],
+  feedback: ["fb-formative-assessment", "fb-assessment-for-learning", "fb-peer-feedback", "fb-self-assessment"],
 };
+
+/**
+ * Mandatory AFL-driven PPT generation rules — injected into DeepSeek system prompts for all PPT work.
+ */
+export const PPT_AFL_DRIVEN_SYSTEM_RULES = `
+### CORE SYSTEM RULE — PPT generation is AFL-driven
+The PPT generation system is **driven by AFL tools**. Each lesson stage — **Starter**, **Main Phase**, **Differentiation**, **Plenary**, **Exit Ticket**, **Success Criteria** — must be **powered by AFL activities** where that stage appears on a slide. You must understand every AFL tool deeply: its **purpose**, **classroom execution**, **student interaction structure**, and **learning-outcome strategy**.
+
+### TEACHER CONTROL RULE (mandatory)
+- If the teacher **selected** an AFL tool for a stage, you **MUST** use **exactly** that tool — **do NOT** replace it with another tool.
+- You **MUST** fully implement the selected AFL tool in **finished classroom format** on the correct slide.
+- If the teacher **did NOT** select an AFL tool, you **MUST automatically select** the most suitable AFL tool from the catalog for that stage based on **subject**, **topic**, **grade level**, **learning objectives**, **lesson stage**, and **student engagement needs** — then implement it fully.
+
+### GENERAL AFL UNDERSTANDING RULE (mandatory)
+- **Do NOT** treat AFL tools as labels or name-drops.
+- Each AFL tool is a **teaching method**, **classroom process**, **student interaction structure**, and **learning outcome strategy**.
+- Generate **actual classroom instructions**, **student tasks**, **teacher facilitation steps**, and **meaningful educational content** — **NOT** a line like “Use Think Pair Share” without the full classroom implementation (prompts, timing, grouping, share-out, success check).
+
+### LESSON STAGE AFL RULES (slide map)
+| Slide | Stage | AFL rule |
+|-------|-------|----------|
+| 2 | Starter Activity | Teacher-selected **or** AI-selected starter AFL tool. Engaging, interactive, topic-related. **No** objectives, outcomes, or future-slide content. |
+| 6 | Main Phase | **First** present full teaching content (concepts, vocabulary, explanation). **Then** embed AFL-based activities that support understanding and interaction. |
+| 7 | Differentiated Activity + Mini Plenary | Differentiated tasks for **lower**, **middle**, and **higher** achievers aligned with lesson content; include a **mini plenary** checkpoint (AFL-based when a main-phase tool applies). |
+| 8 | UAE / Real Life / Cross-curricular | **Only one** connection type (UAE **or** real life **or** cross-curricular). No extra sections. Connections AFL tools apply **only** if teacher selected them. |
+| 9 | Plenary | Real classroom plenary using teacher-selected **or** AI-selected **plenary** AFL tool. No future references; no extra sections. |
+| 10 | Extended Task | Extended/homework task; embed **extended** AFL tools when selected or auto-selected. |
+| 11 | Exit Ticket | Short, focused assessment activity only — immediate understanding check (teacher-selected plenary exit AFL **or** AI-selected suitable exit/formative tool). **No** success criteria duplication. |
+| 12 | Success Criteria | Help students assess their own learning; embed **feedback** AFL tools when selected or auto-selected. **No** duplication of other slides. |
+
+### CRITICAL CONTENT RULES (mandatory — every slide)
+1. **No slide** may contain content belonging to **another** slide.
+2. **No** duplicated headings inside a slide body.
+3. **No** repetition of the same content inside one slide.
+4. **No** previewing future slides.
+5. **No** mixing lesson components across slides.
+6. Each slide must remain **strictly self-contained**.
+
+### FINAL OUTPUT REQUIREMENT
+Generate structured PPT slides with **pedagogically correct AFL integration**. Use **teacher-controlled** AFL tools when provided; otherwise **AI-selected** AFL tools. Maintain **clean separation** of content per slide. Every AFL-powered slide must contain **classroom-ready activities**, not meta-instructions to the teacher.
+`.trim();
+
+export type PptSlideAflContext = {
+  subject: string;
+  grade: string;
+  topic: string;
+  learningObjectives: string;
+};
+
+type PptSlideAflBinding = {
+  /** Phase key for teacher selections in the UI payload. */
+  selectionPhase: AflPhaseId;
+  /** Catalog phase offered when the teacher did not select (may differ for exit ticket). */
+  autoSelectPhase: AflPhaseId;
+  /** Restrict auto-pick pool; defaults to all tools in autoSelectPhase. */
+  autoSelectCandidateIds?: readonly string[];
+  stageLabel: string;
+};
+
+/** AFL bindings per deck slide (1-based). Slides without bindings are not AFL-stage slides. */
+export const PPT_SLIDE_AFL_BINDINGS: Partial<Record<number, PptSlideAflBinding>> = {
+  2: { selectionPhase: "starter", autoSelectPhase: "starter", stageLabel: "Starter Activity" },
+  6: { selectionPhase: "main", autoSelectPhase: "main", stageLabel: "Main Phase" },
+  7: {
+    selectionPhase: "main",
+    autoSelectPhase: "main",
+    autoSelectCandidateIds: ["mn-differentiated-tasks", "mn-mini-plenary", "mn-graphic-organisers"],
+    stageLabel: "Differentiated Activity and Mini Plenary",
+  },
+  8: { selectionPhase: "connections", autoSelectPhase: "connections", stageLabel: "UAE / Real Life / Cross-curricular Link" },
+  9: { selectionPhase: "plenary", autoSelectPhase: "plenary", stageLabel: "Plenary" },
+  10: { selectionPhase: "extended", autoSelectPhase: "extended", stageLabel: "Extended Task" },
+  11: {
+    selectionPhase: "plenary",
+    autoSelectPhase: "plenary",
+    autoSelectCandidateIds: ["pl-exit-reflection", "pl-questions-still-have", "pl-things-learned"],
+    stageLabel: "Exit Ticket",
+  },
+  12: { selectionPhase: "feedback", autoSelectPhase: "feedback", stageLabel: "Success Criteria and Self Evaluation" },
+};
+
+function hashPickIndex(seed: string, length: number): number {
+  if (length <= 0) return 0;
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return h % length;
+}
+
+function toolsForPhase(phase: AflPhaseId): readonly AflToolDefinition[] {
+  return AFL_PHASE_GROUPS.find((g) => g.phase === phase)?.tools ?? [];
+}
+
+function formatToolCatalogLines(tools: readonly AflToolDefinition[]): string {
+  return tools.map((t) => `- **${t.label}** (\`${t.id}\`): ${t.howToUse}`).join("\n");
+}
+
+/** Suggested default tool id when the teacher did not select (deterministic from lesson context). */
+export function suggestAutoAflToolId(
+  slideNumber1Based: number,
+  ctx: PptSlideAflContext,
+): string | undefined {
+  const binding = PPT_SLIDE_AFL_BINDINGS[slideNumber1Based];
+  if (!binding) return undefined;
+  const pool =
+    binding.autoSelectCandidateIds ??
+    AFL_RECOMMENDED_IDS[binding.autoSelectPhase] ??
+    toolsForPhase(binding.autoSelectPhase).map((t) => t.id);
+  if (!pool.length) return undefined;
+  const seed = `${slideNumber1Based}|${ctx.subject}|${ctx.grade}|${ctx.topic}|${ctx.learningObjectives}`;
+  return pool[hashPickIndex(seed, pool.length)];
+}
 
 export type AflSelectionsPayload = Partial<Record<AflPhaseId, string[]>>;
 
@@ -195,77 +307,176 @@ export function sanitizeAflSelections(raw: unknown): AflSelectionsPayload {
   return out;
 }
 
-/** Map deck slide number (1-based) to AFL phase when that slide may embed tools. */
+/** Map deck slide number (1-based) to AFL phase for teacher selections. */
 export function getAflPhaseForPptSlideNumber1Based(slideNumber1Based: number): AflPhaseId | undefined {
-  const m: Partial<Record<number, AflPhaseId>> = {
-    2: "starter",
-    6: "main",
-    8: "connections",
-    9: "plenary",
-    10: "extended",
-    12: "feedback",
-  };
-  return m[slideNumber1Based];
+  return PPT_SLIDE_AFL_BINDINGS[slideNumber1Based]?.selectionPhase;
 }
 
-/** AFL instructions for a single PPT slide API call (one phase only). */
-export function formatAflForSinglePptSlidePrompt(
-  slideNumber1Based: number,
-  selections: AflSelectionsPayload,
+function formatTeacherSelectedAflBlock(
+  binding: PptSlideAflBinding,
+  ids: string[],
 ): string {
-  const phase = getAflPhaseForPptSlideNumber1Based(slideNumber1Based);
-  if (!phase) return "";
-  const ids = selections[phase];
-  if (!ids?.length) return "";
-
   const lines: string[] = [
-    "### AFL tools for THIS slide only (mandatory when listed)",
-    "Embed each tool below as **finished learner-facing lines** in the slide body. Write the real prompts/questions/items — not meta instructions to the teacher.",
+    `### AFL for THIS slide — ${binding.stageLabel} (MANDATORY — teacher selected)`,
+    "The teacher **selected** the AFL tool(s) below. You **MUST** use **exactly** these tools — **do NOT** replace them with another tool. Implement each as a **full classroom process**: student tasks, teacher facilitation steps, interaction structure, timing, and finished learner-facing prompts/questions/items — **not** a label or meta line.",
     "",
   ];
-  const group = AFL_PHASE_GROUPS.find((g) => g.phase === phase);
-  lines.push(`**${group?.title ?? phase}**`);
+  const group = AFL_PHASE_GROUPS.find((g) => g.phase === binding.selectionPhase);
+  lines.push(`**${group?.title ?? binding.selectionPhase}**`);
   for (const id of ids) {
-    const tool = getAflToolById(id);
-    if (!tool) continue;
-    lines.push(`- ${tool.label} (${id}): ${tool.howToUse}`);
+    const t = getAflToolById(id);
+    if (!t) continue;
+    lines.push(`- **${t.label}** (\`${id}\`): ${t.howToUse}`);
   }
   return lines.join("\n").trim();
 }
 
-export function formatAflForAiPrompt(selections: AflSelectionsPayload): string {
-  const lines: string[] = [];
+function formatAutoSelectAflBlock(
+  slideNumber1Based: number,
+  binding: PptSlideAflBinding,
+  ctx: PptSlideAflContext,
+): string {
+  const catalogPhase = binding.autoSelectPhase;
+  const catalogTools = toolsForPhase(catalogPhase);
+  const suggestedId = suggestAutoAflToolId(slideNumber1Based, ctx);
+  const suggested = suggestedId ? getAflToolById(suggestedId) : undefined;
+
+  const lines: string[] = [
+    `### AFL for THIS slide — ${binding.stageLabel} (AI must auto-select — teacher did not choose)`,
+    "The teacher did **not** select an AFL tool for this stage. You **MUST automatically select** the **most suitable** AFL tool from the catalog below based on **subject**, **topic**, **grade**, **learning objectives**, this **lesson stage**, and **student engagement needs** — then implement it **fully** as classroom-ready content (not a label).",
+  ];
+  if (suggested) {
+    lines.push(
+      "",
+      `**Suggested default (you may keep or choose a better fit from the same catalog):** **${suggested.label}** (\`${suggestedId}\`) — ${suggested.howToUse}`,
+    );
+  }
   lines.push(
-    "### Teacher-selected AFL tools (mandatory — finished classroom content, not coaching)",
-    "The teacher picked specific AFL tools below. You MUST embed each tool as **fully written, ready-to-project material** for this exact topic, grade, and subject.",
     "",
-    "**Full Lesson Plan:** For every selected tool, write the real activity: exact questions, prompts, item banks, MCQ stems with options and the correct answer marked, sorting cards text, brainstorming categories filled with 6–10 example items for this topic, quiz items, exit-ticket questions, etc. Do NOT write meta lines like “the teacher should…” or “pose an open question”; write the question itself.",
+    `**Catalog — ${AFL_PHASE_GROUPS.find((g) => g.phase === catalogPhase)?.title ?? catalogPhase}:**`,
+    formatToolCatalogLines(catalogTools),
+  );
+
+  if (slideNumber1Based === 6) {
+    lines.push(
+      "",
+      "**Main Phase structure (mandatory):** Present the **full core teaching content first** (concepts, vocabulary, explanation). **After** that, embed your chosen AFL tool as interactive activities that support understanding.",
+    );
+  }
+  if (slideNumber1Based === 7) {
+    lines.push(
+      "",
+      "**Differentiation structure (mandatory):** Write differentiated tasks for **lower**, **middle**, and **higher** achievers aligned with the lesson — then add one **mini plenary** checkpoint (use your chosen AFL tool for the checkpoint).",
+    );
+  }
+  if (slideNumber1Based === 8) {
+    lines.push(
+      "",
+      "**Connections rule:** Include **only one** connection type on this slide — UAE **or** real life **or** cross-curricular (whichever is strongest). AFL connection tools apply **only** if you selected one from the catalog above.",
+    );
+  }
+  if (slideNumber1Based === 11) {
+    lines.push(
+      "",
+      "**Exit Ticket rule:** Short, focused assessment only — immediate understanding check. **No** success criteria or homework paragraph.",
+    );
+  }
+
+  return lines.join("\n").trim();
+}
+
+/**
+ * AFL instructions for one slide-only DeepSeek call.
+ * Teacher selections override; otherwise instructs AI auto-selection with full catalog.
+ */
+export function formatAflForSinglePptSlidePrompt(
+  slideNumber1Based: number,
+  selections: AflSelectionsPayload,
+  ctx?: PptSlideAflContext,
+): string {
+  const binding = PPT_SLIDE_AFL_BINDINGS[slideNumber1Based];
+  if (!binding) return "";
+
+  const teacherIds = selections[binding.selectionPhase];
+  if (teacherIds?.length) {
+    return formatTeacherSelectedAflBlock(binding, teacherIds);
+  }
+
+  if (!ctx) return "";
+  return formatAutoSelectAflBlock(slideNumber1Based, binding, ctx);
+}
+
+export function formatAflForAiPrompt(
+  selections: AflSelectionsPayload,
+  ctx?: PptSlideAflContext,
+): string {
+  const hasTeacherPicks = AFL_PHASE_IDS.some((p) => (selections[p]?.length ?? 0) > 0);
+
+  const lines: string[] = [PPT_AFL_DRIVEN_SYSTEM_RULES, ""];
+
+  if (hasTeacherPicks) {
+    lines.push(
+      "### Teacher-selected AFL tools (MANDATORY — override AI selection)",
+      "The teacher picked specific AFL tools below. For **every** selected tool you **MUST** use **exactly** that tool — **do NOT** substitute another. Embed each as **fully written, ready-to-project classroom material** for this exact topic, grade, and subject.",
+      "",
+      "**Full Lesson Plan:** Write the real activity — exact questions, prompts, item banks, MCQ stems with options, brainstorming lists, quiz items, exit-ticket questions, facilitation steps, and student tasks. **No** meta lines like “the teacher should…”.",
+      "",
+      "**PPT Slide Content (13 slides):** Embed teacher-selected AFL tools on: slide **2** Starter, slide **6** Main Phase (after core teaching), slide **7** Differentiation/Mini Plenary (main-phase tools when selected), slide **8** Connections (if selected), slide **9** Plenary, slide **10** Extended, slide **11** Exit Ticket (plenary exit tools when selected), slide **12** Success Criteria (feedback tools). **Do not** duplicate the same AFL block on multiple slides.",
+      "",
+      "**Picture in Time (if selected):** Write the **exact** comparison or prediction question and what changed between two moments so it can pair with the starter slide text.",
+      "",
+      "**Catalog reference (teacher picks — implement fully, do not replace):**",
+      "",
+    );
+    let listedAny = false;
+    for (const group of AFL_PHASE_GROUPS) {
+      const ids = selections[group.phase];
+      if (!ids?.length) continue;
+      listedAny = true;
+      lines.push(`**${group.title}**`);
+      for (const id of ids) {
+        const t = getAflToolById(id);
+        if (!t) continue;
+        lines.push(`- **${t.label}** (\`${id}\`): ${t.howToUse}`);
+      }
+      lines.push("");
+    }
+    if (!listedAny) return "";
+    return lines.join("\n").trim();
+  }
+
+  if (!ctx) return "";
+
+  lines.push(
+    "### No teacher AFL selections — AI must auto-select per slide",
+    "The teacher did **not** select AFL tools. For **each AFL-powered slide** (2, 6, 7, 9, 10, 11, 12), automatically select the most suitable tool from the catalog for that stage and implement it fully. Slide **8** uses one connection type only (AFL optional).",
     "",
-    "**PPT Slide Content:** The deck is **exactly 13 slides**, one purpose per slide. Embed selected AFL tools as finished learner-facing text on these slides only: **Starter** tools on slide 2 (Starter Activity), **Main phase** tools on slide 6 (Main Phase Core Teaching), **Connections** tools on slide 8 (single contextual link slide), **Plenary** tools on slide 9 (Plenary), **Extended task** tools on slide 10 (Extended Task), **Feedback** tools on slide 12 (Success Criteria Self Evaluation). Do not duplicate the same AFL block on multiple slides.",
+    "**Per-slide auto-select guidance:**",
+  );
+
+  for (const slideNum of [2, 6, 7, 8, 9, 10, 11, 12] as const) {
+    const binding = PPT_SLIDE_AFL_BINDINGS[slideNum];
+    if (!binding) continue;
+    const suggestedId = suggestAutoAflToolId(slideNum, ctx);
+    const suggested = suggestedId ? getAflToolById(suggestedId) : undefined;
+    lines.push(
+      `- Slide **${slideNum}** (${binding.stageLabel}): auto-select from **${binding.autoSelectPhase}** catalog${
+        suggested ? ` — suggested: **${suggested.label}** (\`${suggestedId}\`)` : ""
+      }`,
+    );
+  }
+
+  lines.push(
     "",
-    "**PPT validation (mandatory when writing any slide):** (1) Strict isolation: only that slide’s content type; no cross-leakage (e.g. no outcomes inside objectives, no UAE inside differentiation, no success criteria inside exit ticket). (2) No shuffling: UAE/real-life/cross link **only** slide 8; Extended Task **only** slide 10; Success criteria **only** slide 12; Exit ticket **only** slide 11; Plenary **only** slide 9. (3) No extras: no unrelated sections or hidden duplicates of objectives/outcomes/criteria. (4) Fixed structure: one function per slide; do not rearrange or merge slides. Also: no next-slide previews; no repeated blocks on one slide; no pasted lines from earlier slides.",
-    "",
-    "**Picture in Time (if selected):** Write the **exact** comparison or prediction question and what changed between two moments so it can pair with the starter slide text.",
-    "",
-    "**Catalog reference (tool intent only — you replace with lesson-specific finished content):**",
+    "**Full catalog (purpose reference — replace with lesson-specific finished content):**",
     "",
   );
-  let listedAny = false;
   for (const group of AFL_PHASE_GROUPS) {
-    const ids = selections[group.phase];
-    if (!ids?.length) continue;
-    listedAny = true;
     lines.push(`**${group.title}**`);
-    for (const id of ids) {
-      const tool = getAflToolById(id);
-      if (!tool) continue;
-      lines.push(`- ${tool.label} (${id}): ${tool.howToUse}`);
-    }
+    lines.push(formatToolCatalogLines(group.tools));
     lines.push("");
   }
-  if (!listedAny) {
-    return "";
-  }
+
   return lines.join("\n").trim();
 }
 

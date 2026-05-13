@@ -256,7 +256,12 @@ async function generatePptSlideContentSlideBySlide(params: {
       continue;
     }
 
-    const aflForSlide = formatAflForSinglePptSlidePrompt(slide, aflSelections);
+    const aflForSlide = formatAflForSinglePptSlidePrompt(slide, aflSelections, {
+      subject: input.subject.trim(),
+      grade: input.grade.trim(),
+      topic: input.topic.trim(),
+      learningObjectives: input.learningObjectives.trim(),
+    });
     let chosen = "";
     let lastHttpError: string | null = null;
 
@@ -569,7 +574,13 @@ export async function POST(req: Request) {
   const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(input.curriculumFramework);
 
   const aflSelections = sanitizeAflSelections(body.aflSelections);
-  const aflFormatted = formatAflForAiPrompt(aflSelections);
+  const aflCtx = {
+    subject: input.subject.trim(),
+    grade: input.grade.trim(),
+    topic: input.topic.trim(),
+    learningObjectives: input.learningObjectives.trim(),
+  };
+  const aflFormatted = formatAflForAiPrompt(aflSelections, aflCtx);
   const aflPromptBlock = aflFormatted ? `\n\n${aflFormatted}` : "";
 
   const wantsNdjsonStream =

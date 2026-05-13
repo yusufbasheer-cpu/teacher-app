@@ -9,6 +9,7 @@ import {
   usesArabicPptSlideTitles,
   type TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
+import { PPT_AFL_DRIVEN_SYSTEM_RULES } from "@/lib/afl-tools";
 import {
   SINGLE_PPT_SLIDE_BODY_END,
   SINGLE_PPT_SLIDE_BODY_START,
@@ -102,22 +103,24 @@ The app builds **exactly 13 slides** in this **fixed order**. **Each slide has o
 
 **Slide titles and bodies (use these exact English titles in order; Arabic plans may use Arabic titles but same order):**
 1. **Subject Grade Date** — Body lines only: **grade** and **date** (two lines). The slide **title** already carries subject — do **not** repeat the subject name or write Subject/Grade/Date headings inside the body. Nothing else (no topic, objectives, chapter, or activities).
-2. **Starter Activity** — Starter hook and activity text **only** (once). Do **not** write “Starter Activity” inside the body. No chapter, topic, SDG, objectives, or outcomes.
+2. **Starter Activity** — **AFL-powered** starter hook and activity (teacher-selected **or** AI-selected tool) — fully implemented classroom process, not a label. Do **not** write “Starter Activity” inside the body. No chapter, topic, SDG, objectives, or outcomes.
 3. **Chapter Topic and SDG Goal** — Chapter name, topic name, and one SDG (number + title) — **each once**. Do **not** repeat the slide title inside the body. No objectives, outcomes, or explanations.
 4. **Learning Objectives** — **Only** the teacher’s form objectives, **verbatim** (same count, same wording). Do **not** generate, edit, paraphrase, or add objectives. Do **not** write “Learning Objectives” inside the body.
 5. **Learning Outcomes** — Measurable outcomes generated **only** from the teacher’s verbatim objectives; typically one per objective; Bloom verbs; **no** scope beyond those objectives. Do **not** write “Learning Outcomes” inside the body.
-6. **Main Phase Core Teaching** — First the **full core teaching content** (concepts, vocabulary, explanation, concise worked meaning). **After** that, learning activities (I Do / We Do / You Do, stations, jigsaw, etc.) that **apply** the taught content. Activities must not replace the explanation. No plenary, differentiation, or exit ticket here.
-7. **Differentiated Activity Mini Plenary** — Only differentiated tasks for higher, middle, and lower attainers plus one mini plenary checkpoint. No core teaching, homework, or outcomes.
-8. **UAE Real Life Cross Curricular Link** — **Only one** of: a UAE connection, OR a real-life application, OR a cross-curricular link (whichever is strongest for this topic). Do not combine all three on one slide.
-9. **Plenary** — One plenary activity only (reflection, recap, discussion; groups allowed). Embed **Plenary** AFL tools as finished learner text. No new teaching, homework, or objectives.
-10. **Extended Task** — Extended task or homework only (research, rubric task, creative, practice, investigation). No plenary or re-teaching.
-11. **Exit Ticket** — Exit ticket only: short formative questions. No homework paragraph or lesson explanation.
-12. **Success Criteria Self Evaluation** — Success criteria and self evaluation only (I can…, checklist, scale). Embed **Feedback** AFL tools if selected. No new teaching and no repeating the exit ticket.
+6. **Main Phase Core Teaching** — **First** the **full core teaching content** (concepts, vocabulary, explanation, concise worked meaning). **After** that, **AFL-based** learning activities (I Do / We Do / You Do, stations, etc.) that **apply** the taught content — fully implemented classroom process, not a tool label. Activities must not replace the explanation. No plenary, differentiation, or exit ticket here.
+7. **Differentiated Activity Mini Plenary** — Differentiated tasks for **lower**, **middle**, and **higher** attainers **plus** one **mini plenary** AFL checkpoint — all aligned with lesson content. No core teaching, homework, UAE link, or outcomes.
+8. **UAE Real Life Cross Curricular Link** — **Only one** of: a UAE connection, OR a real-life application, OR a cross-curricular link (whichever is strongest for this topic). Do not combine all three on one slide. No extra sections.
+9. **Plenary** — One **real classroom plenary activity** using teacher-selected **or** AI-selected **Plenary** AFL tool — fully implemented (student tasks, prompts, interaction). No new teaching, homework, objectives, or future-slide references.
+10. **Extended Task** — Extended task or homework only (research, rubric task, creative, practice, investigation). Embed **Extended** AFL when selected or auto-selected. No plenary or re-teaching.
+11. **Exit Ticket** — Exit ticket only: short, focused **AFL assessment** activity — immediate understanding check (teacher-selected **or** AI-selected tool). No homework paragraph, success criteria, or lesson explanation.
+12. **Success Criteria Self Evaluation** — Success criteria and self evaluation only (I can…, checklist, scale). Embed **Feedback** AFL tools when selected or auto-selected — help students assess their own learning. No new teaching and no repeating the exit ticket.
 13. **Thank You Slide** — Thank you plus one short positive closing line for students only. No recap, objectives, or activities.
 
 **Images (automatic):** up to **three** images on slides **2, 6, and 9** only (Starter, Main Phase Core Teaching, Plenary). Slide 1 has **no** image.
 
 **Formatting:** no markdown on slide text; avoid hyphen-led list markers (use plain lines or 1. 2. 3.).
+
+**AFL-driven PPT (mandatory for slides 2, 6, 7, 9, 10, 11, 12):** The deck is powered by AFL tools. Teacher-selected AFL tools **override** AI selection and must be **fully implemented** as classroom processes — not labels. When the teacher did not select a tool, **auto-select** the most suitable AFL tool per stage (subject, topic, grade, objectives, engagement). See the dedicated AFL system rules block in the system prompt for full requirements.
 
 **CRITICAL — Slide boundary enforcement (mandatory; no exceptions):**
 1. **Strict content isolation (no cross-leakage):** Every slide contains **only** its assigned content type. No borrowing, repeating, or mixing from other slides or sections. Examples: **Learning Objectives** must not contain outcomes or extra explanations; **Differentiated Activity** must not contain UAE links or homework; **Exit Ticket** must not contain success criteria; **Plenary** must not contain extended homework. Each slide stays inside its correct boundary.
@@ -165,7 +168,7 @@ Adjust pedagogy depending on:
 
 20. Deliverable reference (map content quality to the sections you are asked to output)
 A. **Full Lesson Plan** — integrate items 1–14 above using clear subheadings; include **actionable timing** and teacher moves here (this document is mainly for the teacher).
-B. **PPT Slide Content** — exactly **13 slides** with the **exact titles** and **single-purpose bodies** in section 15; AFL embedded only where section 15 specifies. Obey **CRITICAL — Slide boundary enforcement** and line-level rules in section 15 with **no exceptions**.
+B. **PPT Slide Content** — exactly **13 slides** with the **exact titles** and **single-purpose bodies** in section 15; **AFL-driven** integration per section 15 and the AFL system rules. Teacher-selected AFL tools are mandatory when provided; otherwise auto-select per stage. Obey **CRITICAL — Slide boundary enforcement** and line-level rules in section 15 with **no exceptions**.
 C. Worksheet — print-ready student-facing tasks (include space cues like lines or numbered response areas described in text).
 D. Assessment Questions — formative and summative mix: MCQs, short answers, HOTS, oral prompts, exit ticket, and a simple rubric or mark scheme.
 E. Homework Task — aligned extended task with success criteria and expected time.
@@ -304,6 +307,8 @@ ${SINGLE_PPT_SLIDE_BODY_END}
 - **Inside the markers:** plain text suitable for projection (short lines or 1. 2. 3. lists). No markdown code fence around the **whole** answer. No JSON.
 - Apply **CRITICAL — Slide boundary enforcement** (section 15) to **this slide index only**: no cross-leakage, no other slide’s job, no “next slide” previews, no duplicated paragraphs.
 
+${PPT_AFL_DRIVEN_SYSTEM_RULES}
+
 ### This slide’s role (do not exceed it)
 - You are generating **slide ${n}** only. Every other slide type has a **fixed** slot elsewhere; do not substitute or merge them here.${
     n === 1
@@ -313,7 +318,7 @@ ${SINGLE_PPT_SLIDE_BODY_END}
       : n === 2
         ? `
 
-**Slide 2 body rule:** Starter activity content only — **do not** repeat the heading “Starter Activity” inside the body. **Never** include chapter, topic, SDG, objectives, or outcomes.`
+**Slide 2 body rule:** Starter activity powered by **teacher-selected or AI-selected Starter AFL tool** — full classroom implementation (prompts, tasks, interaction), not a label. **Do not** repeat the heading “Starter Activity” inside the body. **Never** include chapter, topic, SDG, objectives, or outcomes.`
         : n === 3
           ? `
 
@@ -326,7 +331,27 @@ ${SINGLE_PPT_SLIDE_BODY_END}
               ? `
 
 **Slide 5 body rule:** Write measurable learning outcomes aligned **only** to the teacher’s verbatim objectives in the user message — typically **one outcome per objective**, never more outcomes than objectives. Use Bloom’s Taxonomy verbs without broadening scope. Do **not** copy objectives verbatim. Do **not** write “Learning Outcomes” inside the body.`
-              : ""
+              : n === 6
+                ? `
+
+**Slide 6 body rule:** **First** full core teaching content, **then** AFL-based activities — fully implemented, not labels. No plenary, differentiation, or exit ticket.`
+                : n === 7
+                  ? `
+
+**Slide 7 body rule:** Differentiated tasks (lower/middle/higher) plus mini plenary AFL checkpoint only. No UAE, homework, or core re-teach.`
+                  : n === 9
+                    ? `
+
+**Slide 9 body rule:** Real classroom plenary with teacher-selected or AI-selected Plenary AFL tool — full implementation. No homework or future references.`
+                    : n === 11
+                      ? `
+
+**Slide 11 body rule:** Short exit-ticket AFL assessment only — immediate understanding check. No success criteria.`
+                      : n === 12
+                        ? `
+
+**Slide 12 body rule:** Success criteria and self-evaluation with Feedback AFL when applicable — no exit ticket repeat.`
+                        : ""
   }`;
 
   const langAddendumSlide = buildLanguageSubjectSystemAddendum(options?.subject);

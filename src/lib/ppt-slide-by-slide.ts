@@ -294,17 +294,17 @@ export function parseDeckBodiesFromPptOutline(ppt: string, useArabicTitles: bool
 /** One-line reminder per slide (English) for the single-slide user message. */
 export const SINGLE_SLIDE_USER_FOCUS_EN: readonly string[] = [
   "Body: two lines only — grade value, then date value. Do NOT write the subject name, Subject/Grade/Date labels, or repeat the slide title (the title already covers subject).",
-  "Starter hook and activity text only — once. Do NOT write 'Starter Activity' inside the body. No chapter, topic, SDG, objectives, or outcomes.",
+  "Starter AFL-powered activity only — teacher-selected or AI-selected tool, fully implemented (prompts, tasks, interaction), not a label. Do NOT write 'Starter Activity' inside the body. No chapter, topic, SDG, objectives, or outcomes.",
   "Exactly three items once each: chapter name, topic name, one SDG (number + title). No 'Chapter Topic and SDG Goal' heading inside the body. No objectives, outcomes, or explanations.",
   "(Slide 4 is filled from the teacher form automatically — not generated in this call.)",
   "Measurable learning outcomes ONLY — exactly one outcome per teacher objective (same count). Bloom verbs; stay within objective scope. No 'Learning Outcomes' heading in body. Do not copy objectives verbatim.",
-  "Main phase only: full explanation first, then I/We/You-style activities — no plenary, differentiation, or exit ticket.",
-  "Differentiated tasks (high/mid/low) plus one mini plenary checkpoint only — no UAE link, homework, or core re-teach.",
-  "Exactly ONE link type only: UAE **or** real life **or** cross-curricular — pick the strongest only.",
-  "Plenary only: reflection/recap/discussion — embed Plenary AFL if selected — no homework or new teaching.",
-  "Extended task or homework only — embed Extended AFL if selected — no plenary re-teach.",
-  "Exit ticket questions only — no homework paragraph or success criteria.",
-  "Success criteria and self evaluation only — embed Feedback AFL if selected — no exit ticket repeat.",
+  "Main phase: FULL core teaching content FIRST, then AFL-based activities (fully implemented classroom process). No plenary, differentiation, or exit ticket.",
+  "Differentiated tasks for lower, middle, and higher achievers plus one mini plenary AFL checkpoint — aligned with lesson content. No UAE link, homework, or core re-teach.",
+  "Exactly ONE link type only: UAE **or** real life **or** cross-curricular — pick the strongest only. No extra sections.",
+  "Plenary: real classroom activity using teacher-selected or AI-selected Plenary AFL tool — full implementation. No homework, future references, or new teaching.",
+  "Extended task or homework only — embed Extended AFL if selected or auto-selected. No plenary re-teach.",
+  "Exit ticket: short focused AFL assessment only — immediate understanding check. No success criteria or homework paragraph.",
+  "Success criteria and self-evaluation — embed Feedback AFL if selected or auto-selected. Help students assess their own learning. No exit ticket repeat.",
   "Thank you plus one short positive closing line for students — no recap or new tasks.",
 ];
 

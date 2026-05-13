@@ -766,7 +766,7 @@ function appendAflToSlideBody(slide: StructuredLessonSlideModel, phase: AflPhase
 }
 
 /**
- * AFL on deck: starter →2, main →6, connections →8, plenary →9, extended →10, feedback →12.
+ * AFL on deck: starter →2, main →6, differentiation →7, connections →8, plenary →9, extended →10, exit →11, feedback →12.
  */
 function applyAflDeckInjections(slides: StructuredLessonSlideModel[], afl: AflSelectionsPayload | undefined) {
   if (!aflPayloadHasTools(afl) || !afl) return;
@@ -777,14 +777,22 @@ function applyAflDeckInjections(slides: StructuredLessonSlideModel[], afl: AflSe
   };
   go(1, "starter", afl.starter);
   go(5, "main", afl.main);
+  const diffMainTools = afl.main?.filter(
+    (id) => id === "mn-differentiated-tasks" || id === "mn-mini-plenary" || id === "mn-graphic-organisers",
+  );
+  if (diffMainTools?.length) go(6, "main", diffMainTools);
   go(7, "connections", afl.connections);
   go(8, "plenary", afl.plenary);
   go(9, "extended", afl.extended);
+  const exitPlenaryTools = afl.plenary?.filter(
+    (id) => id === "pl-exit-reflection" || id === "pl-questions-still-have",
+  );
+  if (exitPlenaryTools?.length) go(10, "plenary", exitPlenaryTools);
   go(11, "feedback", afl.feedback);
 }
 
 function clampSlideBodyToDeckRules(slides: StructuredLessonSlideModel[]): void {
-  const aflHeavy = new Set([1, 5, 7, 8, 9, 11]);
+  const aflHeavy = new Set([1, 5, 6, 7, 8, 9, 10, 11]);
   for (let i = 0; i < slides.length; i++) {
     const lim = SLIDE_BODY_LIMIT[i] ?? { chars: 2200, lines: 16 };
     const maxLines = aflHeavy.has(i) ? BULLET_MAX_LINES_WITH_AFL : BULLET_MAX_LINES;
