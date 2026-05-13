@@ -203,7 +203,7 @@ export function formatAflForAiPrompt(selections: AflSelectionsPayload): string {
     "",
     "**Full Lesson Plan:** For every selected tool, write the real activity: exact questions, prompts, item banks, MCQ stems with options and the correct answer marked, sorting cards text, brainstorming categories filled with 6–10 example items for this topic, quiz items, exit-ticket questions, etc. Do NOT write meta lines like “the teacher should…” or “pose an open question”; write the question itself.",
     "",
-    "**PPT Slide Content:** The export is **exactly 13 slides** in a fixed order. **Only** Starter AFL tools are embedded on **slide 2 (Starter)** and **only** Plenary AFL tools on **slide 9 (Plenary)**. Other AFL phases belong in the **Full Lesson Plan** and other resources, not as extra slides or injections elsewhere in the deck. For each selected Starter or Plenary tool, output finished learner-facing prompts on those slides only.",
+    "**PPT Slide Content:** The deck is **exactly 13 slides**, one purpose per slide. Embed selected AFL tools as finished learner-facing text on these slides only: **Starter** tools on slide 2 (Starter Activity), **Main phase** tools on slide 6 (Main Phase Core Teaching), **Connections** tools on slide 8 (single contextual link slide), **Plenary** tools on slide 9 (Plenary), **Extended task** tools on slide 10 (Extended Task), **Feedback** tools on slide 12 (Success Criteria Self Evaluation). Do not duplicate the same AFL block on multiple slides.",
     "",
     "**Picture in Time (if selected):** Write the **exact** comparison or prediction question and what changed between two moments so it can pair with the starter slide text.",
     "",

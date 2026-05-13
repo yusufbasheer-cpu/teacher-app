@@ -14,8 +14,8 @@ export type PptSlideImageMeta = {
   topic: string;
 };
 
-/** Four PPT slide types with FLUX images: slides 1, 2, 6, 9 → indices 0, 1, 5, 8. */
-export type LessonPptImageSlot = "title" | "starter" | "main_teaching" | "plenary";
+/** Three PPT slide types with FLUX images: slides 2, 6, 9 → indices 1, 5, 8. Slide 1 has no image. */
+export type LessonPptImageSlot = "starter" | "main_teaching" | "plenary";
 
 export type LessonPptImageGenerationSpec = {
   slot: LessonPptImageSlot;
@@ -38,9 +38,6 @@ export function buildLessonPptFluxPrompt(meta: PptSlideImageMeta, spec: LessonPp
 
   let core: string;
   switch (spec.slot) {
-    case "title":
-      core = `professional educational illustration of ${subject} for grade ${grade} students, flat design style, colorful icons and symbols related to ${topic}, clean white background, vibrant colors, no humans, no faces, no text, Islamic appropriate, school suitable`;
-      break;
     case "starter":
       core = `engaging lesson starter illustration for ${topic} in ${subject}, curiosity hooks, lightbulb and question motifs, clocks or timers, flat design, colorful, clean background, no human faces, school suitable`;
       break;
@@ -61,7 +58,7 @@ const PPT_IMAGE_SIZE = "landscape_16_9" as const;
 const PPT_NUM_INFERENCE_STEPS = 28;
 const PPT_GUIDANCE_SCALE = 7.5;
 
-/** Generates up to four FLUX Pro images for lesson PPT (title, starter, main phase, plenary). */
+/** Generates up to three FLUX Pro images for lesson PPT (starter, main phase, plenary). */
 export async function generateLessonPptSlideImages(
   meta: PptSlideImageMeta,
   specs: LessonPptImageGenerationSpec[],

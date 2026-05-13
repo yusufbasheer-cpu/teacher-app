@@ -6,14 +6,11 @@ import {
   getPptSourceSlideOutline,
 } from "@/lib/lesson-plan";
 
-/** Exactly 13 slides in the lesson deck (asserted when building). */
+/** Exactly thirteen slides; single instructional purpose per slide; no overflow slides. */
 export const STRUCTURED_LESSON_DECK_SLIDE_COUNT = 13 as const;
 
-/**
- * FLUX images only on slides 1, 2, 6, and 9 (1-based) → zero-based indices 0, 1, 5, 8.
- * Maximum four images per export.
- */
-export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([0, 1, 5, 8]);
+/** FLUX images only on slides 2, 6, and 9 (1-based) → indices 1, 5, 8. Slide 1 is text-only. */
+export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([1, 5, 8]);
 
 export type StructuredLessonSlideModel = {
   slideTitle: string;
@@ -23,25 +20,25 @@ export type StructuredLessonSlideModel = {
   includeImageSlot: boolean;
 };
 
-const BULLET_MAX_LINES = 14;
-const BULLET_MAX_LINES_WITH_AFL = 18;
-const SECTION_MAX_CHARS = 3200;
+const BULLET_MAX_LINES = 16;
+const BULLET_MAX_LINES_WITH_AFL = 22;
+const SECTION_MAX_CHARS = 4000;
 
-/** Per-slide caps after merge + AFL: keep each slide self-contained (no overflow slides). */
+/** Per-slide caps: rich content allowed; still one physical slide (export truncates tail if needed). */
 const SLIDE_BODY_LIMIT: readonly { chars: number; lines: number }[] = [
-  { chars: 420, lines: 8 },
+  { chars: 220, lines: 4 },
+  { chars: 3400, lines: 22 },
+  { chars: 1200, lines: 12 },
+  { chars: 2200, lines: 16 },
   { chars: 2600, lines: 18 },
-  { chars: 1700, lines: 14 },
-  { chars: 1900, lines: 14 },
+  { chars: 4800, lines: 26 },
+  { chars: 3600, lines: 22 },
+  { chars: 1600, lines: 14 },
+  { chars: 3400, lines: 22 },
   { chars: 2800, lines: 18 },
-  { chars: 3000, lines: 20 },
-  { chars: 2700, lines: 18 },
-  { chars: 1900, lines: 14 },
-  { chars: 2700, lines: 18 },
-  { chars: 2300, lines: 16 },
-  { chars: 1700, lines: 14 },
-  { chars: 2300, lines: 16 },
-  { chars: 900, lines: 12 },
+  { chars: 1200, lines: 12 },
+  { chars: 2600, lines: 18 },
+  { chars: 420, lines: 6 },
 ];
 
 function truncateBody(s: string, maxLines: number): string {
@@ -312,20 +309,22 @@ const deckExtractors = {
     const m = extractByHints(plan, ["mini plenary", "quick check", "التلخيص المختصر"], DECK_STOP_DIFF);
     return [d, m].filter(Boolean).join("\n\n").trim();
   },
-  uaeCrossCurricular: (plan: string) =>
+  uaeOnly: (plan: string) =>
     extractByHints(
       plan,
-      [
-        "uae",
-        "cross curricular",
-        "cross-curricular",
-        "real life",
-        "career",
-        "authentic",
-        "الإمارات",
-        "الربط",
-        "الحياة الواقعية",
-      ],
+      ["uae connection", "uae context", "uae link", "united arab emirates", "national identity", "الإمارات", "الهوية"],
+      DECK_STOP_UAE,
+    ),
+  realLifeOnly: (plan: string) =>
+    extractByHints(
+      plan,
+      ["real life", "real world", "real-life", "authentic context", "everyday application", "الحياة الواقعية"],
+      DECK_STOP_UAE,
+    ),
+  crossOnly: (plan: string) =>
+    extractByHints(
+      plan,
+      ["cross curricular", "cross-curricular", "cross curricular link", "another subject", "الربط بين المواد"],
       DECK_STOP_UAE,
     ),
   plenary: (plan: string) =>
@@ -369,7 +368,7 @@ function extractFromPptContent(ppt: string, needles: string[]): string {
     const needle = h.toLowerCase();
     const pos = lower.indexOf(needle);
     if (pos === -1) continue;
-    return polishBody(ppt.slice(pos, pos + 2800), SECTION_MAX_CHARS);
+    return polishBody(ppt.slice(pos, pos + 3200), SECTION_MAX_CHARS);
   }
   return "";
 }
@@ -383,10 +382,6 @@ function mergeBodies(primary: string, secondary: string, topicLine: string): str
   return polishBody(topicLine, 800);
 }
 
-/**
- * Student-facing cleanup: no markdown symbols, no hyphen/en-dash bullets at line start.
- * Preserves line breaks.
- */
 function stripMarkdownSymbolsForStudents(text: string): string {
   if (!text) return "";
   let s = text
@@ -413,26 +408,13 @@ function isArabicLanguageSubject(subject: string): boolean {
   return subject.trim() === "Arabic";
 }
 
-function buildTeacherSlideNotes(suggestedTiming: string, teacherContext: string, isAr: boolean): string {
-  const t = teacherContext.replace(/\s+/g, " ").trim().slice(0, 1100);
+/** Timing plus one short teacher focus line only (no filler tips). */
+function buildTeacherSlideNotes(suggestedTiming: string, teacherFocusOneLine: string, isAr: boolean): string {
+  const t = teacherFocusOneLine.replace(/\s+/g, " ").trim().slice(0, 600);
   if (isAr) {
-    return [
-      `التوقيت المقترح: ${suggestedTiming}`,
-      "",
-      "نصائح التقديم: صغ التعليمات، راقب التقدم في المهمة، استخدم وقت انتظار قصير بعد الأسئلة، انتقل للخطوة التالية عندما يكون أغلب الطلاب جاهزين.",
-      "",
-      `ملاحظات المعلم: ${t || "اضبط حسب الحصة."}`,
-    ]
-      .join("\n")
-      .trim();
+    return [`التوقيت المقترح: ${suggestedTiming}`, `تركيز المعلم: ${t || "اضبط حسب الحصة."}`].join("\n").trim();
   }
-  return [
-    `Suggested timing: ${suggestedTiming}`,
-    "",
-    "Delivery tips: give crisp instructions, scan the room while students work, use brief wait time after questions, and only advance when most learners are ready.",
-    "",
-    `Teacher notes: ${t || "Adjust to your period length."}`,
-  ]
+  return [`Suggested timing: ${suggestedTiming}`, `Teacher focus: ${t || "Adjust to your period length."}`]
     .join("\n")
     .trim();
 }
@@ -459,6 +441,58 @@ function pickDeck(
   return { body, notes };
 }
 
+const MIN_SINGLE_LINK_CHARS = 72;
+
+/** Slide 8: exactly one of UAE, real life, or cross-curricular — longest substantive extract wins. */
+function pickSingleContextualLink(
+  plan: string,
+  ppt: string,
+  topic: string,
+  subj: string,
+  gr: string,
+  isAr: boolean,
+  contextAnchor: string,
+  suggestedTiming: string,
+): { body: string; notes: string } {
+  type Key = "uae" | "realLife" | "cross";
+  const fromPlan = (k: Key) => {
+    if (!plan) return "";
+    if (k === "uae") return extractFromFullPlanDeck(plan, "uaeOnly");
+    if (k === "realLife") return extractFromFullPlanDeck(plan, "realLifeOnly");
+    return extractFromFullPlanDeck(plan, "crossOnly");
+  };
+  const fromPptBlocks: Record<Key, string> = {
+    uae: ppt ? extractFromPptContent(ppt, ["uae", "emirates", "الإمارات"]) : "",
+    realLife: ppt ? extractFromPptContent(ppt, ["real life", "real world", "الحياة"]) : "",
+    cross: ppt ? extractFromPptContent(ppt, ["cross curricular", "cross-curricular", "الربط"]) : "",
+  };
+  const merged = (k: Key) =>
+    stripMarkdownSymbolsForStudents(mergeBodies(fromPlan(k), fromPptBlocks[k], "").trim());
+
+  const scored: { key: Key; text: string; len: number }[] = (["uae", "realLife", "cross"] as const).map((key) => {
+    const text = merged(key);
+    return { key, text, len: text.replace(/\s+/g, "").length };
+  });
+  scored.sort((a, b) => b.len - a.len);
+  const best = scored.find((s) => s.len >= MIN_SINGLE_LINK_CHARS) ?? scored[0]!;
+  let body = best.text;
+  if (body.replace(/\s+/g, "").length < MIN_SINGLE_LINK_CHARS) {
+    body = stripMarkdownSymbolsForStudents(
+      isAr
+        ? `ربط واحد فقط: اربط «${topic}» بمادة أخرى أو سياق واقعي أو قيمة من الإمارات في فقرة واحدة واضحة من خطة الدرس.`
+        : `Single link only: one clear paragraph for "${topic}" (${subj}, ${gr}) choosing either a UAE connection, a real-life application, or one cross-curricular subject link from your lesson plan.`,
+    );
+  }
+  const notes = buildTeacherSlideNotes(
+    suggestedTiming,
+    isAr
+      ? `هذه الشريحة لربط واحد فقط (${best.key === "uae" ? "الإمارات" : best.key === "realLife" ? "حياة واقعية" : "ربط بين المواد"}).`
+      : `This slide holds one link type only (${best.key === "uae" ? "UAE" : best.key === "realLife" ? "real life" : "cross-curricular"}).`,
+    isAr,
+  );
+  return { body, notes };
+}
+
 function aflPayloadHasTools(afl: AflSelectionsPayload | undefined): boolean {
   if (!afl) return false;
   return AFL_PHASE_IDS.some((p) => (afl[p]?.length ?? 0) > 0);
@@ -468,11 +502,13 @@ function appendAflToSlideBody(slide: StructuredLessonSlideModel, phase: AflPhase
   const block = formatToolsBlockForSlide(phase, ids);
   if (!block) return;
   const merged = `${(slide.body ?? "").trim()}${block}`.trim();
-  const polished = polishBody(merged, SECTION_MAX_CHARS + 400, BULLET_MAX_LINES_WITH_AFL);
+  const polished = polishBody(merged, SECTION_MAX_CHARS + 500, BULLET_MAX_LINES_WITH_AFL);
   slide.body = stripMarkdownSymbolsForStudents(polished || merged);
 }
 
-/** Rule 7: Starter AFL only on slide 2 (index 1); Plenary AFL only on slide 9 (index 8). */
+/**
+ * AFL on deck: starter →2, main →6, connections →8, plenary →9, extended →10, feedback →12.
+ */
 function applyAflDeckInjections(slides: StructuredLessonSlideModel[], afl: AflSelectionsPayload | undefined) {
   if (!aflPayloadHasTools(afl) || !afl) return;
   const go = (idx: number, phase: AflPhaseId, ids?: string[]) => {
@@ -481,13 +517,18 @@ function applyAflDeckInjections(slides: StructuredLessonSlideModel[], afl: AflSe
     appendAflToSlideBody(slide, phase, ids);
   };
   go(1, "starter", afl.starter);
+  go(5, "main", afl.main);
+  go(7, "connections", afl.connections);
   go(8, "plenary", afl.plenary);
+  go(9, "extended", afl.extended);
+  go(11, "feedback", afl.feedback);
 }
 
 function clampSlideBodyToDeckRules(slides: StructuredLessonSlideModel[]): void {
+  const aflHeavy = new Set([1, 5, 7, 8, 9, 11]);
   for (let i = 0; i < slides.length; i++) {
-    const lim = SLIDE_BODY_LIMIT[i] ?? { chars: 2200, lines: 14 };
-    const maxLines = i === 1 || i === 8 ? BULLET_MAX_LINES_WITH_AFL : BULLET_MAX_LINES;
+    const lim = SLIDE_BODY_LIMIT[i] ?? { chars: 2200, lines: 16 };
+    const maxLines = aflHeavy.has(i) ? BULLET_MAX_LINES_WITH_AFL : BULLET_MAX_LINES;
     slides[i]!.body = stripMarkdownSymbolsForStudents(
       polishBody(slides[i]!.body ?? "", lim.chars, Math.min(maxLines, lim.lines)),
     );
@@ -507,14 +548,14 @@ export type StructuredLessonPptContext = {
 };
 
 const SLIDE_TITLES_EN: readonly string[] = [
-  "Title Slide",
-  "Starter",
-  "Chapter and Topic with SDG Goal",
+  "Subject Grade Date",
+  "Starter Activity",
+  "Chapter Topic and SDG Goal",
   "Learning Objectives",
   "Learning Outcomes",
-  "Main Phase",
-  "Differentiated Activity with Mini Plenary",
-  "UAE Real Life and Cross Curricular Link",
+  "Main Phase Core Teaching",
+  "Differentiated Activity Mini Plenary",
+  "UAE Real Life Cross Curricular Link",
   "Plenary",
   "Extended Task",
   "Exit Ticket",
@@ -523,14 +564,14 @@ const SLIDE_TITLES_EN: readonly string[] = [
 ];
 
 const SLIDE_TITLES_AR: readonly string[] = [
-  "شريحة العنوان",
-  "التمهيد",
+  "المادة والصف والتاريخ",
+  "نشاط التمهيد",
   "الفصل والموضوع وهدف التنمية المستدامة",
   "الأهداف التعليمية",
   "نواتج التعلم",
-  "المرحلة الأساسية",
-  "نشاط متمايز مع تلخيص مصغر",
-  "الإمارات والحياة الواقعية والربط بين المواد",
+  "المرحلة الأساسية للتعليم",
+  "نشاط متمايز وتلخيص مصغر",
+  "الإمارات أو الحياة الواقعية أو الربط بين المواد",
   "الختام",
   "مهمة موسعة",
   "بطاقة الخروج",
@@ -538,18 +579,7 @@ const SLIDE_TITLES_AR: readonly string[] = [
   "شريحة الشكر",
 ];
 
-/**
- * Builds exactly thirteen lesson slides: fixed order, fixed titles, topic-specific bodies,
- * speaker notes with timing and delivery tips, AFL only on slides 2 and 9, images only on 1, 2, 6, 9.
- */
 export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): StructuredLessonSlideModel[] {
-  if (aflPayloadHasTools(ctx.aflSelections)) {
-    console.log("[ppt-structured-lesson] AFL on deck (starter → slide 2, plenary → slide 9):", {
-      starter: ctx.aflSelections?.starter?.length ?? 0,
-      plenary: ctx.aflSelections?.plenary?.length ?? 0,
-    });
-  }
-
   const topic = ctx.topic.trim() || "this topic";
   const subj = ctx.subject.trim();
   const gr = ctx.grade.trim();
@@ -557,11 +587,9 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   const ppt = (ctx.pptContent || "").trim();
   const lo = (ctx.learningObjectivesText || "").trim();
   const hw = (ctx.homeworkTask || "").trim();
-  const anchor = `Context: ${subj}, ${gr}, topic "${topic}". Ground every line in this lesson context.`;
+  const anchor = `Context: ${subj}, ${gr}, topic "${topic}".`;
   const isAr = isArabicLanguageSubject(subj);
-  const contextAnchor = isAr
-    ? `السياق: مادة ${subj}، الصف ${gr}، الموضوع «${topic}». اربط كل سطر بهذا السياق.`
-    : anchor;
+  const contextAnchor = isAr ? `السياق: مادة ${subj}، الصف ${gr}، الموضوع «${topic}».` : anchor;
 
   const locale = isAr ? "ar-AE" : "en-GB";
   const dateStr = new Date().toLocaleDateString(locale, {
@@ -572,7 +600,6 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   });
 
   const T = isAr ? SLIDE_TITLES_AR : SLIDE_TITLES_EN;
-
   const slides: StructuredLessonSlideModel[] = [];
 
   slides.push({
@@ -582,20 +609,18 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ),
     speakerNotes: buildTeacherSlideNotes(
       "1 minute",
-      isAr
-        ? `افتتاحية: رحب بالطلاب، راجع الحضور، اعرض عنوان الدرس «${topic}» على اللوح دون إدراجه في نص هذه الشريحة.`
-        : `Opening: welcome the class, mark the register, display the lesson title "${topic}" on the board (title line is not repeated on this slide body).`,
+      isAr ? `رحب بالطلاب وابدأ دون إضافة أي نص على هذه الشريحة سوى المادة والصف والتاريخ.` : `Welcome the class; keep this slide limited to subject, grade, and date only.`,
       isAr,
     ),
-    includeImageSlot: true,
+    includeImageSlot: false,
   });
 
   const s2 = pickDeck(
     "starter",
-    ["starter", "hook", "warm up", "التمهيد", "استهلال"],
+    ["starter", "hook", "warm up", "predict", "guess", "التمهيد", "استهلال"],
     isAr
-      ? `تمهيد 5–10 دقائق لموضوع «${topic}»: نشاط خطاف سريع تفاعلي قليل التجهيز يشغل الانتباه أو يسترجع معرفة سابقة. اكتب النشاط كاملاً بخطوات واضحة على الشريحة.`
-      : `5–10 minute hook starter for "${topic}": fast, interactive, minimal setup; one concrete activity with clear on-slide steps for learners.`,
+      ? `تمهيد غني لموضوع «${topic}»: يشوق الطلاب ويدفعهم للتنبؤ بالموضوع دون كشف الفصل أو الأهداف. نشاط تفاعلي مفصل بخطوات زمنية واضحة ومهام يقوم بها كل طالب.`
+      : `Rich starter for "${topic}": hook learners, invite predictions about what today is about, without naming the chapter or listing objectives. Interactive, detailed, timed steps; no objectives or chapter reveal on this slide.`,
     "5–10 minutes",
     isAr,
     plan,
@@ -608,9 +633,9 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "chapterTopicSdg",
     ["chapter", "unit", "sdg", "الفصل", "الوحدة"],
     isAr
-      ? `اكتب اسم الفصل والموضوع «${topic}» واذكر هدف التنمية المستدامة (رقم واسم) المرتبط بهذا التعلم بصياغة واضحة للطلاب.`
-      : `Chapter name, topic "${topic}", and one specific Sustainable Development Goal (number and title) linked to this learning, in student-friendly wording.`,
-    "2–3 minutes",
+      ? `فقط: اسم الفصل، اسم الموضوع «${topic}»، وهدف تنمية مستدامة واحد مرتبط (رقم واسم). بلا أنشطة ولا أهداف ولا شرح إضافي.`
+      : `Only: chapter name, topic name "${topic}", and one SDG goal (number and title) linked to this learning. No activities, objectives, or extra explanation.`,
+    "2 minutes",
     isAr,
     plan,
     ppt,
@@ -622,9 +647,9 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "learningObjectives",
     ["learning objectives", "objectives", "الأهداف", "أهداف"],
     isAr
-      ? `ثلاثة أهداف على الأقل لموضوع «${topic}» بصيغة To understand / To explore وتركز على الصورة الكبيرة للدرس.`
-      : `At least 3 objectives for "${topic}" using To understand… and/or To explore…; big-picture lesson intention only on this slide.`,
-    "3–4 minutes",
+      ? `فقط أهداف التعلم لدرس «${topic}»: 3 إلى 5 أهداف بأفعال من تصنيف بلوم (مثل تحليل، تطبيق، تقييم). لا نواتج ولا أنشطة ولا أمثلة طويلة ولا شرح إضافي.`
+      : `Learning objectives only for "${topic}": 3–5 lines using Bloom action verbs (e.g. analyse, justify, design). No outcomes, activities, worked examples, or extra notes on this slide.`,
+    "3 minutes",
     isAr,
     plan,
     ppt,
@@ -634,20 +659,18 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     mergeBodies(
       lo,
       s4Pick.body,
-      isAr
-        ? `${contextAnchor}\nأدرج 3 أهداف على الأقل بصياغة للطلاب.`
-        : `${contextAnchor}\nInclude at least 3 objectives in student-facing wording.`,
+      isAr ? `${contextAnchor}\nأهداف فقط.` : `${contextAnchor}\nObjectives only; align to the lesson but do not paste outcomes here.`,
     ),
   );
   slides.push({ slideTitle: T[3]!, body: s4Body, speakerNotes: s4Pick.notes, includeImageSlot: false });
 
   const s5 = pickDeck(
     "learningOutcomes",
-    ["learning outcomes", "must should", "bronze silver", "النواتج"],
+    ["learning outcomes", "students will", "النواتج"],
     isAr
-      ? `ثلاثة نواتج على الأقل لكل مستوى (Must / Should / Could أو Bronze / Silver / Gold) بأفعال قابلة للقياس من تصنيف بلوم، كلها خاصة بموضوع «${topic}».`
-      : `At least 3 measurable outcomes per band (Must / Should / Could OR Bronze / Silver / Gold) using Bloom verbs, all specific to "${topic}".`,
-    "3–4 minutes",
+      ? `فقط نواتج قابلة للقياس لدرس «${topic}» بعد التعلم. صاغها بصيغة أفعال قابلة للملاحظة وتتوافق مع الأهداف دون نسخ صياغتها حرفياً. لا أنشطة ولا ملخص فصل.`
+      : `Learning outcomes only: measurable, observable statements of what learners will be able to do after this lesson, aligned with objectives but not copied verbatim. No activities or chapter summary.`,
+    "3 minutes",
     isAr,
     plan,
     ppt,
@@ -657,10 +680,10 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
 
   const s6 = pickDeck(
     "mainPhase",
-    ["main phase", "main teaching", "i do", "we do", "you do", "المرحلة الأساسية", "شرح"],
+    ["main phase", "main teaching", "core teaching", "المرحلة الأساسية", "شرح"],
     isAr
-      ? `المرحلة الأساسية لموضوع «${topic}» مقسمة حصراً إلى: I Do (نمذجة المعلم بخطوات)، We Do (تطبيق مرشد)، You Do (تطبيق مستقل). محتوى حقيقي لكل جزء.`
-      : `Main phase for "${topic}" split strictly into: I Do (teacher modelling with steps), We Do (guided practice), You Do (independent practice). Concrete content for each on this slide only.`,
+      ? `المرحلة الأساسية لموضوع «${topic}»: أولاً المحتوى التعليمي الكامل (مفاهيم، مصطلحات، شرح واضح، مثال معنى). بعد ذلك فقط أنشطة تطبيق (مثل I Do / We Do / You Do أو محطات تعلم) تدعم ما تم شرحه ولا تحل محله. لا اختتام ولا تمايز ولا بطاقة خروج.`
+      : `Main phase core teaching for "${topic}": first deliver the full lesson content (concepts, key terms, clear explanation, concise worked meaning). Only after that, add learning activities (e.g. I Do, We Do, You Do, stations, jigsaw) that apply the taught ideas and do not replace the explanation. No plenary, differentiation, or exit ticket on this slide.`,
     "25–35 minutes",
     isAr,
     plan,
@@ -673,8 +696,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "differentiated",
     ["differentiation", "mini plenary", "support", "extension", "التمايز", "تلخيص"],
     isAr
-      ? `لموضوع «${topic}»: Support وCore وExtension بمهام واضحة، مع تلخيص مصغر سريع للتحقق من الفهم في نهاية الشريحة.`
-      : `For "${topic}": Support, Core, and Extension tasks with clear wording, plus one short mini plenary check at the end of this slide only.`,
+      ? `فقط: مهام متمايزة لذوي التحصيل الأعلى والأوسط والأدنى لموضوع «${topic}»، ثم فقرة واحدة كتلخيص مصغر للتحقق السريع. لا محتوى الشرح الرئيسي ولا واجب ولا نواتج.`
+      : `Differentiated tasks only for higher, middle, and lower attainers on "${topic}", then one short mini plenary checkpoint. No core teaching content, homework, or outcomes on this slide.`,
     "10–12 minutes",
     isAr,
     plan,
@@ -683,26 +706,15 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   );
   slides.push({ slideTitle: T[6]!, body: s7.body, speakerNotes: s7.notes, includeImageSlot: false });
 
-  const s8 = pickDeck(
-    "uaeCrossCurricular",
-    ["uae", "cross curricular", "real life", "الإمارات", "الربط"],
-    isAr
-      ? `اربط «${topic}» بسياق من الإمارات، ثم تطبيق في الحياة الواقعية، ثم ربط مع مادة أخرى. ثلاثة فقرات واضحة على هذه الشريحة فقط.`
-      : `On this slide only: UAE connection for "${topic}", real-life application, and one cross-curricular link to another subject. Three distinct, concrete blocks.`,
-    "5–7 minutes",
-    isAr,
-    plan,
-    ppt,
-    contextAnchor,
-  );
+  const s8 = pickSingleContextualLink(plan, ppt, topic, subj, gr, isAr, contextAnchor, "4–6 minutes");
   slides.push({ slideTitle: T[7]!, body: s8.body, speakerNotes: s8.notes, includeImageSlot: false });
 
   const s9 = pickDeck(
     "plenary",
-    ["plenary", "reflection", "summary", "quiz", "الختام", "تلخيص"],
+    ["plenary", "reflection", "recap", "الختام", "تلخيص"],
     isAr
-      ? `ختام لموضوع «${topic}»: تلخيص نهائي أو بطاقة خروج أو نشاط قصير يغلق الدرس. المهمة كاملة للطلاب على هذه الشريحة.`
-      : `Plenary for "${topic}": final wrap-up, ticket to leave, or short closing task. Full student-facing instructions on this slide only.`,
+      ? `فقط نشاط ختامي واحد لموضوع «${topic}» للتأمل أو التلخيص أو النقاش. يمكن العمل الجماعي. لا تعليم جديد ولا واجب ولا أهداف.`
+      : `Plenary activity only for "${topic}": reflection, recap, or discussion task; group formats allowed. No new teaching, homework, or objectives on this slide.`,
     "8–10 minutes",
     isAr,
     plan,
@@ -715,32 +727,26 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "extendedTask",
     ["extended task", "homework", "early finisher", "الواجب", "توسعة"],
     isAr
-      ? `مهمة موسعة لموضوع «${topic}» للمنزل أو للمتقدمين: أعمق من نسخ إضافي، تربط بالدرس القادم، وتتطلب بحثاً مختصراً أو تطبيقاً إبداعياً.`
-      : `Extended task for "${topic}" for home learning or early finishers: deeper than extra copying, bridges to the next lesson, needs short research or creative application.`,
-    "2 minutes in class + independent time",
+      ? `فقط مهمة موسعة أو واجب لموضوع «${topic}»: بحث، تطبيق إبداعي، تدريب، أو مهمة تحقيقية مع معايير نجاح مختصرة. لا شرح درس كامل ولا ختام.`
+      : `Extended task or homework only for "${topic}": research, creative application, practice, or investigative work with brief success criteria. No full lesson explanation or plenary on this slide.`,
+    "set expectations only",
     isAr,
     plan,
     ppt,
     contextAnchor,
   );
   const s10Body = stripMarkdownSymbolsForStudents(
-    mergeBodies(
-      hw,
-      s10Pick.body,
-      isAr
-        ? `${contextAnchor}\nصِغ مهمة واحدة واضحة المعايير.`
-        : `${contextAnchor}\nOne clear task with success criteria on this slide only.`,
-    ),
+    mergeBodies(hw, s10Pick.body, isAr ? `${contextAnchor}\nمهمة واحدة فقط.` : `${contextAnchor}\nSingle extended task only.`),
   );
   slides.push({ slideTitle: T[9]!, body: s10Body, speakerNotes: s10Pick.notes, includeImageSlot: false });
 
   const s11 = pickDeck(
     "exitTicket",
-    ["exit ticket", "ticket to leave", "closure", "بطاقة الخروج"],
+    ["exit ticket", "ticket to leave", "بطاقة الخروج"],
     isAr
-      ? `بطاقة خروج قصيرة لموضوع «${topic}» مرتبطة بالنواتج: سؤال أو اثنان أو 3-2-1. تعليمات كاملة على هذه الشريحة.`
-      : `Exit ticket for "${topic}" tied to outcomes: one or two quick questions or a 3-2-1. Full instructions on this slide only.`,
-    "3–5 minutes",
+      ? `فقط بطاقة خروج قصيرة لموضوع «${topic}» لقياس سريع. لا شرح ولا واجب موسع.`
+      : `Exit ticket only for "${topic}": concise formative questions. No lesson explanation or homework text on this slide.`,
+    "3–4 minutes",
     isAr,
     plan,
     ppt,
@@ -752,8 +758,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "successCriteria",
     ["success criteria", "self-evaluation", "i can", "معايير النجاح"],
     isAr
-      ? `معايير نجاح لموضوع «${topic}»: جمل أستطيع أن… مع مقياس (إشارات مرور أو قبضة إلى خمسة) للتقييم الذاتي مقابل نواتج التعلم.`
-      : `Success criteria for "${topic}": I can… statements and a simple scale (traffic lights or fist-to-five) so students self-evaluate against the learning outcomes.`,
+      ? `فقط معايير النجاح والتقييم الذاتي لموضوع «${topic}» (مثل أستطيع أن، قائمة تحقق، مقياس). لا محتوى جديد ولا تكرار بطاقة الخروج.`
+      : `Success criteria and self evaluation only for "${topic}": I can statements, checklist, or rating scale. No new teaching content and no exit ticket repetition.`,
     "3–4 minutes",
     isAr,
     plan,
@@ -766,14 +772,12 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     slideTitle: T[12]!,
     body: stripMarkdownSymbolsForStudents(
       isAr
-        ? `شكراً لكم.\nقبل المغادرة: راجع مكتبك وأعد الأدوات بصمت.`
-        : `Thank you.\nBefore you leave: tidy your desk and return materials quietly.`,
+        ? `شكراً لكم على تركيزكم ومشاركتكم البناءة في درس اليوم.\nأنتم قادرون على مواصلة التعلم بثقة.`
+        : `Thank you for your focus and constructive participation in today’s lesson.\nYou are ready to keep building on what you learned.`,
     ),
     speakerNotes: buildTeacherSlideNotes(
-      "1–2 minutes",
-      isAr
-        ? `اختتام بسيط وإيجابي؛ راجع روتين المغادرة.`
-        : `Simple positive close; reinforce exit routine.`,
+      "1 minute",
+      isAr ? `إغلاق إيجابي قصير فقط.` : `Brief positive close only; no new content on this slide.`,
       isAr,
     ),
     includeImageSlot: false,
@@ -783,12 +787,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   clampSlideBodyToDeckRules(slides);
 
   if (slides.length !== STRUCTURED_LESSON_DECK_SLIDE_COUNT) {
-    console.error(
-      "[ppt-structured-lesson] Deck length invariant failed:",
-      slides.length,
-      "expected",
-      STRUCTURED_LESSON_DECK_SLIDE_COUNT,
-    );
+    console.error("[ppt-structured-lesson] expected 13 slides, got", slides.length);
   }
 
   return slides;
@@ -807,7 +806,7 @@ export function mapLessonPptImagesToDeck(
   return out;
 }
 
-/** Maps four FLUX URLs to slides 1, 2, 6, 9 (indices 0, 1, 5, 8). */
+/** Maps three FLUX URLs to slides 2, 6, 9 (indices 1, 5, 8). */
 export function mapFourImagesToDeck(deckLength: number, orderedUrls: (string | null)[]): (string | null)[] {
   const imageIndices = [...PPT_IMAGE_SLIDE_INDEX_SET].sort((a, b) => a - b);
   return mapLessonPptImagesToDeck(deckLength, imageIndices, orderedUrls);

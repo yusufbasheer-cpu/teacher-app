@@ -86,30 +86,29 @@ The lesson plan must include:
 - Student grouping strategy
 - Behavioral engagement ideas
 
-15. PPT Slide Content (student-facing — CRITICAL; exactly 13 slides, no extras)
-The app builds **exactly 13 slides** in this **fixed order** and **no other slides**. Do not add a fourteenth slide, a cover slide, duplicates, or “Part 2” continuations: if text would be too long, **shorten** so each section fits **one** slide. Use **these exact slide titles** as headings in your PPT block (English titles below; Arabic lesson plans may use the Arabic title set but must keep the same order and one block per slide):
+15. PPT Slide Content (student-facing — CRITICAL; exactly 13 slides, strict separation)
+The app builds **exactly 13 slides** in this **fixed order**. **Each slide has one purpose only:** do not put objectives on the starter, do not put chapter names on slide 1, do not repeat the same paragraph on multiple slides, and do not add decorative filler, transition phrases, “next we will…”, or summaries of other slides. Content must be **rich, detailed, and classroom-ready** while staying on-brief for that slide.
 
-1. **Title Slide** — Body: Subject, Grade, Date only (no topic line in the body).
-2. **Starter** — Hook to engage; 5–10 minutes; fast, interactive, minimal setup; **Starter AFL tools** embedded here only as finished learner tasks.
-3. **Chapter and Topic with SDG Goal** — Chapter name, topic, one specific SDG (number and title).
-4. **Learning Objectives** — At least three lines using **To understand…** and/or **To explore…** for this topic only.
-5. **Learning Outcomes** — At least three per band using Bloom verbs; **Must / Should / Could** OR **Bronze / Silver / Gold**; topic-specific only.
-6. **Main Phase** — Strictly **I Do**, **We Do**, **You Do** with real content for this topic only on this slide.
-7. **Differentiated Activity with Mini Plenary** — Support, Core, Extension for this topic **and** one short mini plenary check on the **same** slide.
-8. **UAE Real Life and Cross Curricular Link** — Three parts only on this slide: UAE connection, real life application, cross-curricular link (another subject).
-9. **Plenary** — Final wrap-up or ticket to leave; **Plenary AFL tools** embedded here only as finished learner tasks.
-10. **Extended Task** — Home learning or early finisher; deeper task for this topic only.
-11. **Exit Ticket** — Quick check before leaving; tied to outcomes.
-12. **Success Criteria Self Evaluation** — **I can…** statements plus traffic lights or fist-to-five.
-13. **Thank You Slide** — Simple closing message only.
+**Slide titles and bodies (use these exact English titles in order; Arabic plans may use Arabic titles but same order):**
+1. **Subject Grade Date** — Body lines only: Subject name, Grade, Date. Nothing else (no topic, no objectives, no chapter, no activities).
+2. **Starter Activity** — Starter only: hook and prediction about the lesson; engaging interactive task for this topic; embed **Starter** AFL tools as finished learner text. Do not reveal chapter or list objectives here.
+3. **Chapter Topic and SDG Goal** — Only chapter name, topic name, one relevant SDG (number + title). No activities or objectives.
+4. **Learning Objectives** — Objectives only: Bloom action verbs; 3–5 lines. No outcomes, examples, activities, or notes.
+5. **Learning Outcomes** — Outcomes only: measurable “able to…” statements aligned with objectives; do not copy objective wording verbatim. No activities or chapter summary.
+6. **Main Phase Core Teaching** — First the **full core teaching content** (concepts, vocabulary, explanation, concise worked meaning). **After** that, learning activities (I Do / We Do / You Do, stations, jigsaw, etc.) that **apply** the taught content. Activities must not replace the explanation. No plenary, differentiation, or exit ticket here.
+7. **Differentiated Activity Mini Plenary** — Only differentiated tasks for higher, middle, and lower attainers plus one mini plenary checkpoint. No core teaching, homework, or outcomes.
+8. **UAE Real Life Cross Curricular Link** — **Only one** of: a UAE connection, OR a real-life application, OR a cross-curricular link (whichever is strongest for this topic). Do not combine all three on one slide.
+9. **Plenary** — One plenary activity only (reflection, recap, discussion; groups allowed). Embed **Plenary** AFL tools as finished learner text. No new teaching, homework, or objectives.
+10. **Extended Task** — Extended task or homework only (research, rubric task, creative, practice, investigation). No plenary or re-teaching.
+11. **Exit Ticket** — Exit ticket only: short formative questions. No homework paragraph or lesson explanation.
+12. **Success Criteria Self Evaluation** — Success criteria and self evaluation only (I can…, checklist, scale). Embed **Feedback** AFL tools if selected. No new teaching and no repeating the exit ticket.
+13. **Thank You Slide** — Thank you plus one short positive closing line for students only. No recap, objectives, or activities.
 
-**Images (automatic):** at most **four** images are generated, **only** for slides **1, 2, 6, and 9** (Title, Starter, Main Phase, Plenary). No images on other slides.
+**Images (automatic):** up to **three** images on slides **2, 6, and 9** only (Starter, Main Phase Core Teaching, Plenary). Slide 1 has **no** image.
 
-**Formatting rules for slide text:** no markdown (no asterisks, hashtags, underscores, code fences). Do not use hyphen-minus or dash characters as line-leading bullets; use plain lines or numbered items if needed.
+**Formatting:** no markdown on slide text; avoid hyphen-led list markers (use plain lines or 1. 2. 3.).
 
-**Forbidden on slides:** teacher-coaching phrasing (“Teacher should…”, “Ask students to…”) unless rewritten as the exact line learners read.
-
-**Speaker notes** inside the PPT block are optional; the app adds timing and delivery notes in the exported file.
+**Before you finish the PPT block:** mentally verify no overlap between slides, main teaching appears only on slide 6, and slide 8 uses a single link type only.
 
 16. AI Teaching Enhancements
 Automatically generate:
@@ -147,7 +146,7 @@ Adjust pedagogy depending on:
 
 20. Deliverable reference (map content quality to the sections you are asked to output)
 A. **Full Lesson Plan** — integrate items 1–14 above using clear subheadings; include **actionable timing** and teacher moves here (this document is mainly for the teacher).
-B. **PPT Slide Content** — exactly **13 slides** using the **exact titles** listed in section 15, in that order, one section per slide; **titles and visible body text only**; Starter AFL only on slide 2 and Plenary AFL only on slide 9 as filled-in tasks.
+B. **PPT Slide Content** — exactly **13 slides** with the **exact titles** and **single-purpose bodies** in section 15; AFL embedded only where section 15 specifies (starter, main, connections, plenary, extended, feedback).
 C. Worksheet — print-ready student-facing tasks (include space cues like lines or numbered response areas described in text).
 D. Assessment Questions — formative and summative mix: MCQs, short answers, HOTS, oral prompts, exit ticket, and a simple rubric or mark scheme.
 E. Homework Task — aligned extended task with success criteria and expected time.

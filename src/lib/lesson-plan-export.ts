@@ -518,7 +518,29 @@ export async function buildPptxFromPptContent(params: {
   }
 
   const titleSlide = pptx.addSlide();
-  if (titleImgData) {
+
+  if (useStrictThirteenSlideDeck) {
+    titleSlide.background = { color: theme.heroDeep };
+    titleSlide.addShape(pptx.ShapeType.rect, {
+      x: 0,
+      y: 0,
+      w: IN_SLIDE_W,
+      h: IN_SLIDE_H,
+      fill: { color: theme.heroMid, transparency: 14 },
+      line: { color: theme.heroMid, transparency: 100 },
+    });
+    titleSlide.addText(titleModel.body, {
+      x: innerPadX,
+      y: 2.2,
+      w: IN_SLIDE_W - 2 * innerPadX,
+      h: 4.2,
+      fontSize: 30,
+      color: theme.heroSubtitle,
+      fontFace: "Calibri",
+      align: "center",
+      valign: "middle",
+    });
+  } else if (titleImgData) {
     titleSlide.background = { color: theme.heroDeep };
     titleSlide.addShape(pptx.ShapeType.rect, {
       x: 0,
