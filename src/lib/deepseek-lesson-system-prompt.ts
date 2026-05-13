@@ -99,11 +99,11 @@ The lesson plan must include:
 The app builds **exactly 13 slides** in this **fixed order**. **Each slide has one purpose only:** do not put objectives on the starter, do not put chapter names on slide 1, do not repeat the same paragraph on multiple slides, and do not add decorative filler, transition phrases, “next we will…”, or summaries of other slides. Content must be **rich, detailed, and classroom-ready** while staying on-brief for that slide.
 
 **Slide titles and bodies (use these exact English titles in order; Arabic plans may use Arabic titles but same order):**
-1. **Subject Grade Date** — Body lines only: Subject name, Grade, Date. Nothing else (no topic, no objectives, no chapter, no activities).
-2. **Starter Activity** — Starter only: hook and prediction about the lesson; engaging interactive task for this topic; embed **Starter** AFL tools as finished learner text. Do not reveal chapter or list objectives here.
-3. **Chapter Topic and SDG Goal** — Only chapter name, topic name, one relevant SDG (number + title). No activities or objectives.
-4. **Learning Objectives** — Objectives only: Bloom action verbs; 3–5 lines. No outcomes, examples, activities, or notes.
-5. **Learning Outcomes** — Outcomes only: measurable “able to…” statements aligned with objectives; do not copy objective wording verbatim. No activities or chapter summary.
+1. **Subject Grade Date** — Body lines only: **grade** and **date** (two lines). The slide **title** already carries subject — do **not** repeat the subject name or write Subject/Grade/Date headings inside the body. Nothing else (no topic, objectives, chapter, or activities).
+2. **Starter Activity** — Starter hook and activity text **only** (once). Do **not** write “Starter Activity” inside the body. No chapter, topic, SDG, objectives, or outcomes.
+3. **Chapter Topic and SDG Goal** — Chapter name, topic name, and one SDG (number + title) — **each once**. Do **not** repeat the slide title inside the body. No objectives, outcomes, or explanations.
+4. **Learning Objectives** — Objective lines only (3–5); **each once**. Do **not** write “Learning Objectives” inside the body. No outcomes, topic recap, or extra notes.
+5. **Learning Outcomes** — Outcome lines only; **each once**. Do **not** write “Learning Outcomes” inside the body. No objective repetition, topic text, or extra notes.
 6. **Main Phase Core Teaching** — First the **full core teaching content** (concepts, vocabulary, explanation, concise worked meaning). **After** that, learning activities (I Do / We Do / You Do, stations, jigsaw, etc.) that **apply** the taught content. Activities must not replace the explanation. No plenary, differentiation, or exit ticket here.
 7. **Differentiated Activity Mini Plenary** — Only differentiated tasks for higher, middle, and lower attainers plus one mini plenary checkpoint. No core teaching, homework, or outcomes.
 8. **UAE Real Life Cross Curricular Link** — **Only one** of: a UAE connection, OR a real-life application, OR a cross-curricular link (whichever is strongest for this topic). Do not combine all three on one slide.
@@ -260,7 +260,29 @@ ${SINGLE_PPT_SLIDE_BODY_END}
 - Apply **CRITICAL — Slide boundary enforcement** (section 15) to **this slide index only**: no cross-leakage, no other slide’s job, no “next slide” previews, no duplicated paragraphs.
 
 ### This slide’s role (do not exceed it)
-- You are generating **slide ${n}** only. Every other slide type has a **fixed** slot elsewhere; do not substitute or merge them here.`;
+- You are generating **slide ${n}** only. Every other slide type has a **fixed** slot elsewhere; do not substitute or merge them here.${
+    n === 1
+      ? `
+
+**Slide 1 body rule:** Output **only** the grade on line 1 and the date on line 2. The slide title already names the subject — **never** put the subject name or “Subject:” / “Grade:” / “Date:” labels in the body.`
+      : n === 2
+        ? `
+
+**Slide 2 body rule:** Starter activity content only — **do not** repeat the heading “Starter Activity” inside the body. **Never** include chapter, topic, SDG, objectives, or outcomes.`
+        : n === 3
+          ? `
+
+**Slide 3 body rule:** Chapter, topic, and one SDG only — each **once**. **Do not** repeat the slide title inside the body. No objectives or outcomes.`
+          : n === 4
+            ? `
+
+**Slide 4 body rule:** Objective lines only — **do not** write “Learning Objectives” inside the body. No outcomes, topic recap, or explanations.`
+            : n === 5
+              ? `
+
+**Slide 5 body rule:** Outcome lines only — **do not** write “Learning Outcomes” inside the body. No objective repetition or topic text.`
+              : ""
+  }`;
 
   if (isAr) {
     core = `${core}

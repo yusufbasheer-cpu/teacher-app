@@ -1,5 +1,10 @@
-import type { AflPhaseId, AflSelectionsPayload } from "@/lib/afl-tools";
-import { AFL_PHASE_IDS, formatToolsBlockForSlide } from "@/lib/afl-tools";
+import {
+  buildProgrammaticSlide1Body,
+  parseDeckBodiesFromPptOutline,
+  sanitizeEarlyPptSlideBody,
+  type EarlySlideSanitizeContext,
+} from "@/lib/ppt-slide-by-slide";
+import { AFL_PHASE_IDS, formatToolsBlockForSlide, type AflPhaseId, type AflSelectionsPayload } from "@/lib/afl-tools";
 import {
   type LessonPlanResult,
   getPptSourceLessonText,
@@ -791,6 +796,7 @@ export type StructuredLessonPptContext = {
   subject: string;
   grade: string;
   topic: string;
+  chapter?: string;
   teacherName: string;
   learningObjectivesText?: string;
   fullLessonPlan?: string;
@@ -855,12 +861,33 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
 
   const T = isAr ? STRUCTURED_LESSON_SLIDE_TITLES_AR : STRUCTURED_LESSON_SLIDE_TITLES_EN;
   const slides: StructuredLessonSlideModel[] = [];
+  const parsedDeckBodies = ppt.length >= 40 ? parseDeckBodiesFromPptOutline(ppt, isAr) : null;
+  const earlyCtx: EarlySlideSanitizeContext = {
+    subject: subj,
+    grade: gr,
+    topic,
+    chapter: ctx.chapter?.trim(),
+    dateStr,
+    isAr,
+  };
+
+  const finalizeEarlySlideBody = (
+    slideNumber1Based: 2 | 3 | 4 | 5,
+    pick: { body: string; notes: string },
+    loFallback?: string,
+  ): { body: string; notes: string } => {
+    const fromOutline = parsedDeckBodies?.[slideNumber1Based - 1]?.trim() ?? "";
+    let raw = fromOutline || pick.body.trim();
+    if (!raw && slideNumber1Based === 4 && loFallback?.trim()) raw = loFallback.trim();
+    return {
+      body: stripMarkdownSymbolsForStudents(sanitizeEarlyPptSlideBody(slideNumber1Based, raw, earlyCtx)),
+      notes: pick.notes,
+    };
+  };
 
   slides.push({
     slideTitle: T[0]!,
-    body: stripMarkdownSymbolsForStudents(
-      isAr ? `المادة: ${subj}\nالصف: ${gr}\nالتاريخ: ${dateStr}` : `Subject: ${subj}\nGrade: ${gr}\nDate: ${dateStr}`,
-    ),
+    body: stripMarkdownSymbolsForStudents(buildProgrammaticSlide1Body(gr, dateStr)),
     speakerNotes: buildTeacherSlideNotes(
       "1 minute",
       isAr ? `رحب بالطلاب وابدأ دون إضافة أي نص على هذه الشريحة سوى المادة والصف والتاريخ.` : `Welcome the class; keep this slide limited to subject, grade, and date only.`,
@@ -881,7 +908,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ppt,
     contextAnchor,
   );
-  slides.push({ slideTitle: T[1]!, body: s2.body, speakerNotes: s2.notes, includeImageSlot: true });
+  const s2Final = finalizeEarlySlideBody(2, s2);
+  slides.push({ slideTitle: T[1]!, body: s2Final.body, speakerNotes: s2Final.notes, includeImageSlot: true });
 
   const s3 = pickDeck(
     "chapterTopicSdg",
@@ -895,7 +923,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ppt,
     contextAnchor,
   );
-  slides.push({ slideTitle: T[2]!, body: s3.body, speakerNotes: s3.notes, includeImageSlot: false });
+  const s3Final = finalizeEarlySlideBody(3, s3);
+  slides.push({ slideTitle: T[2]!, body: s3Final.body, speakerNotes: s3Final.notes, includeImageSlot: false });
 
   const s4Pick = pickDeck(
     "learningObjectives",
@@ -909,14 +938,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ppt,
     contextAnchor,
   );
-  const s4Body = stripMarkdownSymbolsForStudents(
-    mergeBodies(
-      lo,
-      s4Pick.body,
-      isAr ? `${contextAnchor}\nأهداف فقط.` : `${contextAnchor}\nObjectives only; align to the lesson but do not paste outcomes here.`,
-    ),
-  );
-  slides.push({ slideTitle: T[3]!, body: s4Body, speakerNotes: s4Pick.notes, includeImageSlot: false });
+  const s4Final = finalizeEarlySlideBody(4, s4Pick, lo);
+  slides.push({ slideTitle: T[3]!, body: s4Final.body, speakerNotes: s4Final.notes, includeImageSlot: false });
 
   const s5 = pickDeck(
     "learningOutcomes",
@@ -930,7 +953,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ppt,
     contextAnchor,
   );
-  slides.push({ slideTitle: T[4]!, body: s5.body, speakerNotes: s5.notes, includeImageSlot: false });
+  const s5Final = finalizeEarlySlideBody(5, s5);
+  slides.push({ slideTitle: T[4]!, body: s5Final.body, speakerNotes: s5Final.notes, includeImageSlot: false });
 
   const s6 = pickDeck(
     "mainPhase",

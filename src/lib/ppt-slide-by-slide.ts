@@ -70,13 +70,186 @@ export function assembleFullPptFromSlideBodies(
   return parts.join("\n").trim();
 }
 
+/** Slide 1 body: grade + date only (subject lives in the slide title, not the body). */
+export function buildProgrammaticSlide1Body(grade: string, dateStr: string): string {
+  const g = grade.trim();
+  const d = dateStr.trim();
+  return [g, d].filter(Boolean).join("\n");
+}
+
+export type EarlySlideSanitizeContext = {
+  subject: string;
+  grade: string;
+  topic: string;
+  chapter?: string;
+  dateStr?: string;
+  isAr: boolean;
+};
+
+function normLineKey(line: string): string {
+  return line.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function dedupeLinesInBody(body: string, minLen = 10): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const line of body.replace(/\r\n/g, "\n").split("\n")) {
+    const t = line.trimEnd();
+    if (!t.trim()) continue;
+    const k = normLineKey(t);
+    if (k.length >= minLen && seen.has(k)) continue;
+    if (k.length >= minLen) seen.add(k);
+    out.push(t);
+  }
+  return out.join("\n").trim();
+}
+
+function lineIsSlideTitleEcho(slideNumber1Based: number, line: string, isAr: boolean): boolean {
+  const titles = isAr ? STRUCTURED_LESSON_SLIDE_TITLES_AR : STRUCTURED_LESSON_SLIDE_TITLES_EN;
+  const official = titles[slideNumber1Based - 1]?.trim().toLowerCase() ?? "";
+  const t = line.trim().replace(/^#+\s*/, "").toLowerCase();
+  if (!t) return false;
+  if (official && (t === official || t.startsWith(`${official}:`))) return true;
+
+  const enEcho: Partial<Record<number, readonly RegExp[]>> = {
+    1: [/^subject\s+grade\s+date\s*:?\s*$/i, /^(subject|grade|date)\s*:?\s*$/i],
+    2: [/^starter(\s+activity)?\s*:?\s*$/i],
+    3: [/^chapter\s+topic\s+and\s+sdg\s+goal\s*:?\s*$/i, /^chapter\s*:?\s*$/i, /^topic\s*:?\s*$/i, /^sdg\s*:?\s*$/i],
+    4: [/^learning\s+objectives?\s*:?\s*$/i, /^objectives?\s*:?\s*$/i],
+    5: [/^learning\s+outcomes?\s*:?\s*$/i, /^outcomes?\s*:?\s*$/i],
+  };
+  const arEcho: Partial<Record<number, readonly RegExp[]>> = {
+    1: [/^(المادة والصف والتاريخ|المادة|الصف|التاريخ)\s*:?\s*$/],
+    2: [/^(نشاط التمهيد|التمهيد|الاستهلال)\s*:?\s*$/],
+    3: [/^(الفصل والموضوع|الفصل|الموضوع|هدف التنمية)\s*:?\s*$/],
+    4: [/^(الأهداف التعليمية|أهداف التعلم|الأهداف)\s*:?\s*$/],
+    5: [/^(نواتج التعلم|النواتج|مخرجات التعلم)\s*:?\s*$/],
+  };
+  const patterns = (isAr ? arEcho : enEcho)[slideNumber1Based] ?? [];
+  return patterns.some((re) => re.test(t));
+}
+
+const LINE_CONTAMINATION_DENY: Partial<Record<number, readonly RegExp[]>> = {
+  2: [
+    /\blearning\s+objectives?\b/i,
+    /\blearning\s+outcomes?\b/i,
+    /\bsuccess\s+criteria\b/i,
+    /\bsdgs?\b|\bsustainable\s+development\s+goal/i,
+    /\bchapter\s*[:/]/i,
+    /\bunit\s*[:/]/i,
+    /\btopic\s*[:/]/i,
+    /الأهداف|النواتج|معايير النجاح|أهداف التنمية|الفصل\s*:/,
+  ],
+  3: [
+    /\blearning\s+objectives?\b/i,
+    /\blearning\s+outcomes?\b/i,
+    /\bsuccess\s+criteria\b/i,
+    /\bstarter(\s+activity)?\b/i,
+    /الأهداف|النواتج|التمهيد/,
+  ],
+  4: [
+    /\blearning\s+outcomes?\b/i,
+    /\bsuccess\s+criteria\b/i,
+    /\bstarter(\s+activity)?\b/i,
+    /النواتج|معايير النجاح/,
+  ],
+  5: [
+    /\blearning\s+objectives?\b/i,
+    /\bsuccess\s+criteria\b/i,
+    /\bstarter(\s+activity)?\b/i,
+    /الأهداف|معايير النجاح/,
+  ],
+};
+
+/**
+ * Post-process slides 1–5 only: strip title echoes, cross-slide leaks, duplicate lines.
+ * Slides 6–13 must not call this function.
+ */
+export function sanitizeEarlyPptSlideBody(
+  slideNumber1Based: number,
+  body: string,
+  ctx: EarlySlideSanitizeContext,
+): string {
+  if (slideNumber1Based < 1 || slideNumber1Based > 5) return body.trim();
+
+  if (slideNumber1Based === 1) {
+    return buildProgrammaticSlide1Body(ctx.grade, ctx.dateStr ?? "");
+  }
+
+  const deny = LINE_CONTAMINATION_DENY[slideNumber1Based] ?? [];
+  const topicLc = ctx.topic.trim().toLowerCase();
+  const chapterLc = (ctx.chapter ?? "").trim().toLowerCase();
+  const subjectLc = ctx.subject.trim().toLowerCase();
+
+  const lines = body
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((t) => {
+      if (!t || t === "(Content unavailable for this slide.)") return false;
+      if (lineIsSlideTitleEcho(slideNumber1Based, t, ctx.isAr)) return false;
+      if (deny.some((re) => re.test(t))) return false;
+      if (slideNumber1Based === 2) {
+        if (topicLc && normLineKey(t) === topicLc) return false;
+        if (topicLc && /^topic\s*[:/]/i.test(t)) return false;
+        if (chapterLc && normLineKey(t) === chapterLc) return false;
+      }
+      if (slideNumber1Based === 4 || slideNumber1Based === 5) {
+        if (topicLc && normLineKey(t) === `topic: ${topicLc}`) return false;
+        if (topicLc && normLineKey(t) === topicLc && t.length < 48) return false;
+      }
+      if (slideNumber1Based === 1 && subjectLc && normLineKey(t) === subjectLc) return false;
+      if (slideNumber1Based === 1 && /^subject\s*[:/]/i.test(t)) return false;
+      return true;
+    });
+
+  return dedupeLinesInBody(lines.join("\n"));
+}
+
+/**
+ * Split assembled `PPT Slide Content` into 13 bodies by canonical slide titles.
+ */
+export function parseDeckBodiesFromPptOutline(ppt: string, useArabicTitles: boolean): string[] | null {
+  const titles = useArabicTitles ? STRUCTURED_LESSON_SLIDE_TITLES_AR : STRUCTURED_LESSON_SLIDE_TITLES_EN;
+  const text = ppt.replace(/\r\n/g, "\n").trim();
+  if (text.length < 40) return null;
+
+  const bodies: string[] = [];
+  let found = 0;
+
+  for (let i = 0; i < STRUCTURED_LESSON_DECK_SLIDE_COUNT; i++) {
+    const title = titles[i]!;
+    const titleEsc = escapeRe(title);
+    const titleRe = new RegExp(`(?:^|\\n)\\s*${titleEsc}\\s*(?=\\n|$)`, "im");
+    const match = titleRe.exec(text);
+    if (!match || match.index === undefined) {
+      bodies.push("");
+      continue;
+    }
+    found += 1;
+    const bodyStart = match.index + match[0].length;
+    let bodyEnd = text.length;
+    const nextTitle = titles[i + 1];
+    if (nextTitle) {
+      const nextEsc = escapeRe(nextTitle);
+      const nextRe = new RegExp(`(?:\\n)\\s*${nextEsc}\\s*(?=\\n|$)`, "im");
+      const nextMatch = nextRe.exec(text.slice(bodyStart));
+      if (nextMatch?.index !== undefined) bodyEnd = bodyStart + nextMatch.index;
+    }
+    bodies.push(text.slice(bodyStart, bodyEnd).trim());
+  }
+
+  if (found < 4) return null;
+  return bodies;
+}
+
 /** One-line reminder per slide (English) for the single-slide user message. */
 export const SINGLE_SLIDE_USER_FOCUS_EN: readonly string[] = [
-  "Body lines only: subject name, grade, date — no topic, objectives, chapter, or activities.",
-  "Starter only: hook and prediction; interactive task; embed Starter AFL if selected — no chapter or objectives.",
-  "Chapter name, topic name, one SDG (number + title) only — no activities or objectives.",
-  "Learning objectives only (Bloom verbs, 3–5 lines) — no outcomes, examples, or activities.",
-  "Learning outcomes only (measurable) — aligned to objectives but not copied verbatim; no activities.",
+  "Body: two lines only — grade value, then date value. Do NOT write the subject name, Subject/Grade/Date labels, or repeat the slide title (the title already covers subject).",
+  "Starter hook and activity text only — once. Do NOT write 'Starter Activity' inside the body. No chapter, topic, SDG, objectives, or outcomes.",
+  "Exactly three items once each: chapter name, topic name, one SDG (number + title). No 'Chapter Topic and SDG Goal' heading inside the body. No objectives, outcomes, or explanations.",
+  "Objective lines only (3–5), each once. Do NOT write 'Learning Objectives' inside the body. No outcomes, topic recap, or extra explanation.",
+  "Outcome lines only, each once. Do NOT write 'Learning Outcomes' inside the body. No objective repetition, topic text, or extra explanation.",
   "Main phase only: full explanation first, then I/We/You-style activities — no plenary, differentiation, or exit ticket.",
   "Differentiated tasks (high/mid/low) plus one mini plenary checkpoint only — no UAE link, homework, or core re-teach.",
   "Exactly ONE link type only: UAE **or** real life **or** cross-curricular — pick the strongest only.",
@@ -132,10 +305,10 @@ ${trimmedSource.slice(0, SOURCE_MATERIAL_MAX_CHARS)}
       : "";
 
   const lessonBlock =
-    fullLessonPlan.trim().length > 0
+    sn >= 4 && fullLessonPlan.trim().length > 0
       ? `
 
-### Full lesson plan (continuity — do not paste unrelated sections onto this slide)
+### Full lesson plan (continuity for objectives/outcomes only — do not paste unrelated sections onto this slide)
 Use only what you need for this slide’s purpose. Do not copy large blocks verbatim from here unless they truly belong on this slide type.
 
 ${fullLessonPlan.trim().slice(0, 14_000)}

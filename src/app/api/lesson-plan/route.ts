@@ -36,9 +36,13 @@ import {
 } from "@/lib/parse-teacher-package-response";
 import {
   assembleFullPptFromSlideBodies,
+  buildProgrammaticSlide1Body,
   buildSinglePptSlideUserMessage,
+  parseDeckBodiesFromPptOutline,
   parseSinglePptSlideModelResponse,
+  sanitizeEarlyPptSlideBody,
   slideBodyPassesQualityGate,
+  type EarlySlideSanitizeContext,
 } from "@/lib/ppt-slide-by-slide";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 
@@ -207,9 +211,30 @@ async function generatePptSlideContentSlideBySlide(params: {
   const isAr = input.subject.trim() === "Arabic";
   const fwLine = frameworkUserLineForPpt(input);
   const arabicExtra = arabicSlideExtraBlock(input);
+  const locale = isAr ? "ar-AE" : "en-GB";
+  const dateStr = new Date().toLocaleDateString(locale, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const earlyCtx: EarlySlideSanitizeContext = {
+    subject: input.subject.trim(),
+    grade: input.grade.trim(),
+    topic: input.topic.trim(),
+    chapter: input.chapter.trim(),
+    dateStr,
+    isAr,
+  };
 
   for (let slide = 1; slide <= STRUCTURED_LESSON_DECK_SLIDE_COUNT; slide++) {
     onProgress(`Generating Slide ${slide} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
+
+    if (slide === 1) {
+      bodies.push(buildProgrammaticSlide1Body(input.grade.trim(), dateStr));
+      continue;
+    }
+
     const aflForSlide = formatAflForSinglePptSlidePrompt(slide, aflSelections);
     let chosen = "";
     let lastHttpError: string | null = null;
@@ -295,6 +320,9 @@ async function generatePptSlideContentSlideBySlide(params: {
 
     if (!chosen.trim()) {
       chosen = `_(This slide could not be generated after ${PPT_SLIDE_MAX_ATTEMPTS} attempts.)_${lastHttpError ? `\n\n${lastHttpError}` : ""}`;
+    }
+    if (slide >= 2 && slide <= 5) {
+      chosen = sanitizeEarlyPptSlideBody(slide, chosen, earlyCtx);
     }
     bodies.push(chosen.trim());
   }
