@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { Navbar } from "@/components/layout/navbar";
+import { NavbarWrapper } from "@/components/layout/navbar-wrapper";
 import "./globals.css";
 
 const inter = Inter({
@@ -30,7 +30,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} min-w-0 overflow-x-hidden font-sans antialiased text-slate-900`}
       >
-        <Navbar />
+        <NavbarWrapper />
         {children}
       </body>
     </html>
