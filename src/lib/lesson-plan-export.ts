@@ -688,8 +688,10 @@ export async function buildPptxFromPptContent(params: {
   themeId?: PptThemeId;
   /** When structuredSlides omitted, these are merged into the slide builder context. */
   aflSelections?: AflSelectionsPayload;
+  /** When set, overrides themeId with colors extracted from the school's .pptx template. */
+  customRenderTheme?: PptRenderTheme;
 }): Promise<Buffer> {
-  const theme = getPptRenderTheme(params.themeId);
+  const theme = params.customRenderTheme ?? getPptRenderTheme(params.themeId);
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
   pptx.author = "EduPlan AI";

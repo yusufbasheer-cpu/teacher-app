@@ -91,6 +91,49 @@ export type PptRenderTheme = {
   closingFooter: string;
 };
 
+/**
+ * Build a PptRenderTheme from colors extracted from a school's .pptx template.
+ * All hex values must be 6-char without the leading #.
+ */
+export function buildSchoolTemplatePptRenderTheme(params: {
+  primaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  darkColor: string;
+}): PptRenderTheme {
+  const { primaryColor, accentColor, backgroundColor, darkColor } = params;
+  return {
+    id: "ocean-blue", // placeholder — won't be used for rendering
+    heroDeep: darkColor,
+    heroMid: primaryColor,
+    heroWash: primaryColor,
+    heroAccentLine: accentColor,
+    heroTitle: "FFFFFF",
+    heroSubtitle: "E2ECFF",
+    heroFooter: "D7E7FF",
+    slideBg: backgroundColor,
+    topBar: primaryColor,
+    sideAccent: accentColor,
+    titleText: primaryColor,
+    titleUnderline: accentColor,
+    metaText: "5B6472",
+    bodyText: "333333",
+    bodyAccent: primaryColor,
+    footerLine: "DDE6F5",
+    footerText: "5B6472",
+    imagePanelFill: "F0F4FA",
+    imagePanelLine: "D0DEFA",
+    placeholderFill: "F6F8FC",
+    placeholderLine: "D0DEFA",
+    placeholderInner: "E3EAF8",
+    closingDeep: darkColor,
+    closingWash: primaryColor,
+    closingTitle: "FFFFFF",
+    closingSubtitle: "E2ECFF",
+    closingFooter: "D7E7FF",
+  };
+}
+
 export function getPptRenderTheme(id: PptThemeId | undefined): PptRenderTheme {
   const themeId = id && isValidPptThemeId(id) ? id : DEFAULT_PPT_THEME_ID;
   switch (themeId) {

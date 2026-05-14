@@ -38,6 +38,13 @@ type TeacherPackageViewerProps = {
   learningObjectives?: string;
   /** Teacher-selected AFL tools from the generator (PPT + lesson plan exports). */
   aflSelections?: AflSelectionsPayload;
+  /** When set, the PPT is generated using school template colors instead of a theme. */
+  schoolTemplateTheme?: {
+    primaryColor: string;
+    accentColor: string;
+    backgroundColor: string;
+    darkColor: string;
+  } | null;
 };
 
 type ExportKey =
@@ -86,6 +93,7 @@ export function TeacherPackageViewer({
   teacherName,
   learningObjectives,
   aflSelections,
+  schoolTemplateTheme,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
@@ -202,6 +210,7 @@ export function TeacherPackageViewer({
       teacherName: teacherName?.trim() || "",
       pptTheme: pptThemeId,
       curriculumFramework: curriculumFramework?.trim() ?? "",
+      ...(schoolTemplateTheme ? { schoolTemplateTheme } : {}),
       ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
     });
   };

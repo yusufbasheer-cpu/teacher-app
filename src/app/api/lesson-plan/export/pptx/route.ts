@@ -7,7 +7,7 @@ import {
 import { sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildPptxFromPptContent, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import { buildStructuredLessonSlides, mapLessonPptImagesToDeck } from "@/lib/ppt-structured-lesson";
-import { DEFAULT_PPT_THEME_ID, isValidPptThemeId } from "@/lib/ppt-themes";
+import { buildSchoolTemplatePptRenderTheme, DEFAULT_PPT_THEME_ID, isValidPptThemeId } from "@/lib/ppt-themes";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -24,6 +24,13 @@ type Body = {
   curriculumFramework?: string;
   pptTheme?: string;
   aflSelections?: unknown;
+  /** School template extracted colors — when present, overrides pptTheme. */
+  schoolTemplateTheme?: {
+    primaryColor?: string;
+    accentColor?: string;
+    backgroundColor?: string;
+    darkColor?: string;
+  };
 };
 
 export async function POST(req: Request) {
@@ -49,6 +56,12 @@ export async function POST(req: Request) {
   const pptThemeRaw = typeof body.pptTheme === "string" ? body.pptTheme.trim() : "";
   const pptTheme = isValidPptThemeId(pptThemeRaw) ? pptThemeRaw : DEFAULT_PPT_THEME_ID;
   const aflSelections = sanitizeAflSelections(body.aflSelections);
+  const schoolTemplateTheme =
+    body.schoolTemplateTheme &&
+    typeof body.schoolTemplateTheme === "object" &&
+    typeof body.schoolTemplateTheme.primaryColor === "string"
+      ? body.schoolTemplateTheme
+      : null;
 
   if (!subject || !grade || !topic) {
     return NextResponse.json(
@@ -116,6 +129,15 @@ export async function POST(req: Request) {
       console.error("[pptx export] slide image generation failed; continuing without images:", imgErr);
     }
 
+    const customRenderTheme = schoolTemplateTheme
+      ? buildSchoolTemplatePptRenderTheme({
+          primaryColor: schoolTemplateTheme.primaryColor ?? "1B3A6B",
+          accentColor: schoolTemplateTheme.accentColor ?? "F5A623",
+          backgroundColor: schoolTemplateTheme.backgroundColor ?? "FFFFFF",
+          darkColor: schoolTemplateTheme.darkColor ?? "0A1628",
+        })
+      : undefined;
+
     const buffer = await buildPptxFromPptContent({
       subject,
       grade,
@@ -128,6 +150,7 @@ export async function POST(req: Request) {
       structuredSlides: deck,
       slideImageUrls,
       themeId: pptTheme,
+      customRenderTheme,
       ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
     const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-ppt`) || "ppt-content";
