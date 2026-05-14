@@ -47,6 +47,7 @@ type ExportKey =
   | "assessment"
   | "homework"
   | "notes"
+  | "afl-sheets"
   | "zip";
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -98,6 +99,7 @@ export function TeacherPackageViewer({
   const hasAssessment = hasSectionContent(lessonPlan, "Assessment Questions");
   const hasHomework = hasSectionContent(lessonPlan, "Homework Task");
   const hasNotes = hasSectionContent(lessonPlan, "Teacher Notes");
+  const hasAflSheets = hasSectionContent(lessonPlan, "AFL Activity Sheets");
 
   useEffect(() => {
     const keys = getLessonPlanDisplayOrder(lessonPlan);
@@ -270,6 +272,19 @@ export function TeacherPackageViewer({
       },
     );
 
+  const onDownloadAflSheets = () =>
+    runExport(
+      "afl-sheets",
+      `${baseName}-afl-activity-sheets.docx`,
+      "/api/lesson-plan/export/docx",
+      {
+        ...baseMeta,
+        documentTitle: "AFL Activity Sheets",
+        fileBaseName: "afl-activity-sheets",
+        content: lessonPlan["AFL Activity Sheets"] ?? "",
+      },
+    );
+
   const onDownloadZip = () =>
     runExport("zip", `${baseName}-all.zip`, "/api/lesson-plan/export/zip", {
       ...baseMeta,
@@ -352,6 +367,19 @@ export function TeacherPackageViewer({
               >
                 {busy === "notes" ? "Preparing…" : "Download Teacher Notes"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
+              </button>
+              ) : null}
+              {hasAflSheets ? (
+              <button
+                type="button"
+                disabled={busy !== null}
+                onClick={onDownloadAflSheets}
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-violet-900 shadow-sm transition hover:bg-violet-50 disabled:opacity-50"
+              >
+                {busy === "afl-sheets" ? "Preparing…" : "Download AFL Activity Sheets"}
+                <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                  Printable student handouts · Word (.docx)
+                </span>
               </button>
               ) : null}
             </div>
