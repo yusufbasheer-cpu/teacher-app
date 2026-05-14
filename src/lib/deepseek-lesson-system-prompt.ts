@@ -173,6 +173,7 @@ C. Worksheet — print-ready student-facing tasks (include space cues like lines
 D. Assessment Questions — formative and summative mix: MCQs, short answers, HOTS, oral prompts, exit ticket, and a simple rubric or mark scheme.
 E. Homework Task — aligned extended task with success criteria and expected time.
 F. **Teacher Notes** — differentiation, misconceptions, grouping, contingencies, and **how** to run activities (teacher-only detail belongs here, not on PPT bullets).
+G. **AFL Activity Sheets** — see section above. Generate one complete printable sheet per selected AFL tool; no teacher notes.
 `.trim();
 
 /** When the teacher selects Arabic as the subject (تعليم اللغة العربية). */

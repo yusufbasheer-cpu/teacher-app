@@ -8,6 +8,7 @@ export const TEACHER_PACKAGE_SECTIONS = [
   "Assessment Questions",
   "Homework Task",
   "Teacher Notes",
+  "AFL Activity Sheets",
 ] as const;
 
 /** Short labels for tabs / downloads (maps API JSON keys to UI copy). */
@@ -18,6 +19,7 @@ export const SECTION_TAB_LABELS: Record<string, string> = {
   "Assessment Questions": "Assessment Questions",
   "Homework Task": "Homework",
   "Teacher Notes": "Teacher Notes",
+  "AFL Activity Sheets": "AFL Activity Sheets",
 };
 
 export function getSectionTabLabel(sectionKey: string): string {
@@ -134,6 +136,7 @@ export const TEACHER_PACKAGE_BLOCK_MARKERS: Record<
   "Assessment Questions": ["ASSESSMENT QUESTIONS START", "ASSESSMENT QUESTIONS END"],
   "Homework Task": ["HOMEWORK TASK START", "HOMEWORK TASK END"],
   "Teacher Notes": ["TEACHER NOTES START", "TEACHER NOTES END"],
+  "AFL Activity Sheets": ["AFL ACTIVITY SHEETS START", "AFL ACTIVITY SHEETS END"],
 };
 
 /** Checkbox labels on the generator form (maps API JSON keys to user-facing copy). */
@@ -144,6 +147,7 @@ export const GENERATION_CHECKBOX_LABELS: Record<TeacherPackageSectionKey, string
   "Assessment Questions": "Assessment Questions",
   "Homework Task": "Homework Task",
   "Teacher Notes": "Teacher Notes",
+  "AFL Activity Sheets": "AFL Activity Sheets (Printable)",
 };
 
 export type LessonPlanInput = {

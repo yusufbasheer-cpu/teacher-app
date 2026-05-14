@@ -31,6 +31,7 @@ import {
   formatAflForAiPrompt,
   formatAflForSinglePptSlidePrompt,
   sanitizeAflSelections,
+  buildAflActivitySheetsUserMessage,
 } from "@/lib/afl-tools";
 import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
@@ -408,6 +409,73 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
       });
       mergedPlan[section] = text;
       for (const n of notices) parseNotices.push(n);
+      continue;
+    }
+
+    if (section === "AFL Activity Sheets") {
+      onProgress?.("Generating AFL Activity Sheets");
+      const sourceMaterialBlock = sourceMaterial
+        ? `### Source material\n${sourceMaterial.slice(0, 6_000)}`
+        : undefined;
+      const userMsg = buildAflActivitySheetsUserMessage({
+        input: {
+          subject: input.subject,
+          grade: input.grade,
+          topic: input.topic,
+          chapter: input.chapter,
+          curriculumType: input.curriculumType,
+        },
+        selections: aflSelections,
+        sourceMaterialBlock,
+      });
+      if (!userMsg) {
+        mergedPlan[section] =
+          "(No AFL tools were selected — AFL Activity Sheets are generated only when AFL tools are chosen in the generator.)";
+        continue;
+      }
+      let aflSheetResponse: Response;
+      try {
+        aflSheetResponse = await fetch(DEEPSEEK_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "deepseek-chat",
+            temperature: 0.5,
+            max_tokens: DEEPSEEK_MAX_TOKENS,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are an expert teacher generating printable student-facing activity sheets. Generate rich, complete, classroom-ready content specific to the topic, subject, and grade. Use plain text only — no markdown code fences. Wrap all output between the exact markers shown in the user message.",
+              },
+              { role: "user", content: userMsg },
+            ],
+          }),
+        });
+      } catch (err) {
+        mergedPlan[section] = `_(AFL Activity Sheets could not be generated: network error.)_\n\n${String(err instanceof Error ? err.message : err)}`.slice(0, 12_000);
+        parseNotices.push(`AFL Activity Sheets: request failed — ${String(err instanceof Error ? err.message : err)}`);
+        continue;
+      }
+      const rawAflBody = await aflSheetResponse.text();
+      logDeepSeekRawResponse("lesson-plan:AFL-Activity-Sheets", aflSheetResponse, rawAflBody);
+      if (!aflSheetResponse.ok) {
+        const friendly = deepSeekHttpErrorMessage(aflSheetResponse.status, rawAflBody);
+        mergedPlan[section] = `_(DeepSeek failed for AFL Activity Sheets.)_\n\n${friendly}`;
+        parseNotices.push(`AFL Activity Sheets: ${friendly}`);
+        continue;
+      }
+      const { content: aflContent } = parseDeepSeekCompletionBody(rawAflBody);
+      if (!aflContent?.trim()) {
+        mergedPlan[section] = "(No content returned for AFL Activity Sheets.)";
+        continue;
+      }
+      const { plan: aflPlan } = parseTeacherPackageResponse(aflContent, ["AFL Activity Sheets"]);
+      const extracted = aflPlan["AFL Activity Sheets"] ?? aflContent;
+      mergedPlan[section] = extracted.trim();
       continue;
     }
 
