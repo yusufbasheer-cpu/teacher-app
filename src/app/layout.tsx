@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Poppins } from "next/font/google";
 import { NavbarWrapper } from "@/components/layout/navbar-wrapper";
 import "./globals.css";
 
-const inter = Inter({
+const poppins = Poppins({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "600", "700"],
+  variable: "--font-poppins",
 });
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#1d4ed8",
+  themeColor: "#0A1628",
 };
 
 export default function RootLayout({
@@ -28,7 +29,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="overflow-x-hidden">
       <body
-        className={`${inter.variable} min-w-0 overflow-x-hidden font-sans antialiased text-slate-900`}
+        className={`${poppins.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
+        style={{ color: "#0A1628" }}
       >
         <NavbarWrapper />
         {children}

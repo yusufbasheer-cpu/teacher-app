@@ -18,10 +18,8 @@ export default function LandingPage() {
   return (
     <div
       className="min-h-screen"
-      style={{ fontFamily: "'Poppins', sans-serif", background: "#F7F9FC", color: "#0A1628" }}
+      style={{ background: "#F7F9FC", color: "#0A1628" }}
     >
-      {/* Poppins font */}
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');`}</style>
 
       {/* ── NAVBAR ── */}
       <header

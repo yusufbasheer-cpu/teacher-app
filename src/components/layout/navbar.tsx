@@ -50,14 +50,20 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-blue-100/80 bg-white/90 backdrop-blur-md">
+    <header
+      className="sticky top-0 z-50 shadow-sm"
+      style={{ background: "#0A1628", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+    >
       <Container className="py-3">
         <div className="flex items-center justify-between">
           <Link href="/" className="inline-flex items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-blue-700 text-sm font-bold text-white shadow-sm">
+            <span
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
+              style={{ background: "#00C6A7" }}
+            >
               L
             </span>
-            <span className="text-base font-bold tracking-tight text-slate-900 sm:text-lg">
+            <span className="text-base font-bold tracking-tight text-white sm:text-lg">
               Layah.ai
             </span>
           </Link>
@@ -69,11 +75,11 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`inline-flex min-h-10 items-center rounded-lg px-3 py-2 text-sm font-medium transition ${
-                    active
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
+                  className="inline-flex min-h-10 items-center rounded-lg px-3 py-2 text-sm font-medium transition"
+                  style={{
+                    color: active ? "#00C6A7" : "rgba(255,255,255,0.7)",
+                    background: active ? "rgba(0,198,167,0.1)" : "transparent",
+                  }}
                 >
                   {link.label}
                 </Link>
@@ -83,14 +89,16 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={onLogout}
-                className="ml-2 inline-flex min-h-10 items-center rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
+                className="ml-2 inline-flex min-h-10 items-center rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                style={{ background: "#00C6A7" }}
               >
                 Logout
               </button>
             ) : (
               <Link
                 href="/auth"
-                className="ml-2 inline-flex min-h-10 items-center rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
+                className="ml-2 inline-flex min-h-10 items-center rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                style={{ background: "#00C6A7" }}
               >
                 Login
               </Link>
@@ -100,7 +108,8 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setMenuOpen((prev) => !prev)}
-            className="inline-flex min-h-11 min-w-[4.5rem] items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 md:hidden"
+            className="inline-flex min-h-11 min-w-[4.5rem] items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-white md:hidden"
+            style={{ border: "1px solid rgba(255,255,255,0.15)" }}
             aria-label="Toggle navigation menu"
             aria-expanded={menuOpen}
           >
@@ -109,16 +118,19 @@ export function Navbar() {
         </div>
 
         {menuOpen ? (
-          <nav className="mt-3 space-y-1 rounded-xl border border-blue-100 bg-white p-3 md:hidden">
+          <nav
+            className="mt-3 space-y-1 rounded-xl p-3 md:hidden"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-medium ${
-                  pathname === link.href
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-slate-700 hover:bg-slate-50"
-                }`}
+                className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-medium"
+                style={{
+                  color: pathname === link.href ? "#00C6A7" : "rgba(255,255,255,0.75)",
+                  background: pathname === link.href ? "rgba(0,198,167,0.1)" : "transparent",
+                }}
               >
                 {link.label}
               </Link>
@@ -127,14 +139,16 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={onLogout}
-                className="mt-1 flex min-h-11 w-full items-center justify-center rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
+                className="mt-1 flex min-h-11 w-full items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white"
+                style={{ background: "#00C6A7" }}
               >
                 Logout
               </button>
             ) : (
               <Link
                 href="/auth"
-                className="mt-1 flex min-h-11 items-center justify-center rounded-lg bg-blue-700 px-4 py-2 text-center text-sm font-semibold text-white"
+                className="mt-1 flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-center text-sm font-semibold text-white"
+                style={{ background: "#00C6A7" }}
               >
                 Login
               </Link>

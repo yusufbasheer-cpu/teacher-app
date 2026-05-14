@@ -57,14 +57,20 @@ export function AuthCard() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-3xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
-      <p className="mb-3 inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+    <div
+      className="mx-auto w-full max-w-md rounded-3xl border bg-white p-6 shadow-sm md:p-8"
+      style={{ borderColor: "rgba(0,198,167,0.2)" }}
+    >
+      <p
+        className="mb-3 inline-flex rounded-full border px-3 py-1 text-xs font-semibold"
+        style={{ borderColor: "#00C6A7", color: "#00C6A7", background: "rgba(0,198,167,0.08)" }}
+      >
         Welcome to Layah.ai
       </p>
-      <h1 className="text-2xl font-bold text-slate-900">
+      <h1 className="text-2xl font-bold" style={{ color: "#0A1628" }}>
         {mode === "login" ? "Teacher Login" : "Create Teacher Account"}
       </h1>
-      <p className="mt-2 text-sm text-slate-600">
+      <p className="mt-2 text-sm" style={{ color: "#4A5568" }}>
         {mode === "login"
           ? "Login to access your lesson plans."
           : "Sign up with email and password."}
@@ -72,7 +78,7 @@ export function AuthCard() {
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+          <label htmlFor="email" className="mb-1 block text-sm font-medium" style={{ color: "#0A1628" }}>
             Email
           </label>
           <input
@@ -81,13 +87,16 @@ export function AuthCard() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
+            className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition"
+            style={{ borderColor: "#CBD5E0", color: "#0A1628" }}
+            onFocus={(e) => (e.target.style.borderColor = "#00C6A7")}
+            onBlur={(e) => (e.target.style.borderColor = "#CBD5E0")}
             required
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
+          <label htmlFor="password" className="mb-1 block text-sm font-medium" style={{ color: "#0A1628" }}>
             Password
           </label>
           <input
@@ -97,7 +106,10 @@ export function AuthCard() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={6}
-            className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
+            className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition"
+            style={{ borderColor: "#CBD5E0", color: "#0A1628" }}
+            onFocus={(e) => (e.target.style.borderColor = "#00C6A7")}
+            onBlur={(e) => (e.target.style.borderColor = "#CBD5E0")}
             required
           />
         </div>
@@ -105,7 +117,8 @@ export function AuthCard() {
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70"
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+          style={{ background: "#00C6A7" }}
         >
           {loading
             ? "Please wait..."
@@ -116,7 +129,7 @@ export function AuthCard() {
       </form>
 
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-      {message ? <p className="mt-3 text-sm text-emerald-700">{message}</p> : null}
+      {message ? <p className="mt-3 text-sm" style={{ color: "#0A8F7A" }}>{message}</p> : null}
 
       <button
         type="button"
@@ -125,7 +138,8 @@ export function AuthCard() {
           setError(null);
           setMessage(null);
         }}
-        className="mt-4 text-sm font-medium text-blue-700 hover:text-blue-800"
+        className="mt-4 text-sm font-medium transition hover:opacity-80"
+        style={{ color: "#00C6A7" }}
       >
         {mode === "login"
           ? "Need an account? Sign up"

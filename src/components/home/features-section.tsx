@@ -20,13 +20,13 @@ const features = [
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="pb-20 md:pb-24">
+    <section id="features" className="pb-20 md:pb-24" style={{ background: "#F7F9FC" }}>
       <Container>
         <div className="mb-10 max-w-2xl">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+          <h2 className="text-3xl font-bold tracking-tight" style={{ color: "#0A1628" }}>
             Everything teachers need to plan faster
           </h2>
-          <p className="mt-3 text-slate-600">
+          <p className="mt-3" style={{ color: "#4A5568" }}>
             A clean workflow focused on planning, preparing, and presenting effective lessons.
           </p>
         </div>
@@ -35,10 +35,21 @@ export function FeaturesSection() {
           {features.map((feature) => (
             <article
               key={feature.title}
-              className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              className="rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              style={{ borderColor: "rgba(0,198,167,0.2)" }}
             >
-              <h3 className="text-lg font-semibold text-slate-900">{feature.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{feature.description}</p>
+              <div
+                className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl"
+                style={{ background: "rgba(0,198,167,0.1)" }}
+              >
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: "#00C6A7" }} />
+              </div>
+              <h3 className="text-lg font-semibold" style={{ color: "#0A1628" }}>
+                {feature.title}
+              </h3>
+              <p className="mt-2 text-sm leading-6" style={{ color: "#4A5568" }}>
+                {feature.description}
+              </p>
             </article>
           ))}
         </div>
