@@ -55,10 +55,10 @@ export function Navbar() {
         <div className="flex items-center justify-between">
           <Link href="/" className="inline-flex items-center gap-2">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-blue-700 text-sm font-bold text-white shadow-sm">
-              E
+              L
             </span>
             <span className="text-base font-bold tracking-tight text-slate-900 sm:text-lg">
-              EduPlan AI
+              Layah.ai
             </span>
           </Link>
 

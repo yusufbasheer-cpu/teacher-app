@@ -13,7 +13,7 @@ export function HeroSection() {
             Beautiful AI planning tools for modern teachers.
           </h1>
           <p className="mt-5 max-w-xl text-lg text-slate-600">
-            EduPlan AI helps teachers generate lesson plans, save them securely, and
+            Layah.ai helps teachers generate lesson plans, save them securely, and
             download polished classroom presentations in minutes.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">

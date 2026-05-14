@@ -59,7 +59,7 @@ export function AuthCard() {
   return (
     <div className="mx-auto w-full max-w-md rounded-3xl border border-blue-100 bg-white p-6 shadow-sm md:p-8">
       <p className="mb-3 inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-        Welcome to EduPlan AI
+        Welcome to Layah.ai
       </p>
       <h1 className="text-2xl font-bold text-slate-900">
         {mode === "login" ? "Teacher Login" : "Create Teacher Account"}

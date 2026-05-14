@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "EduPlan AI",
+  title: "Layah.ai",
   description:
     "Modern AI workspace for teachers to build lesson plans and classroom presentations.",
 };
