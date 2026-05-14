@@ -120,43 +120,258 @@ export async function buildDocxBuffer(params: {
   topic: string;
   content: string;
 }): Promise<Buffer> {
-  const children: Paragraph[] = [
+  const metaParagraphs: Paragraph[] = [
     new Paragraph({
-      text: params.documentTitle,
-      heading: HeadingLevel.HEADING_1,
+      children: [
+        new TextRun({
+          text: params.documentTitle,
+          bold: true,
+          size: 36,
+          color: "1A1A2E",
+        }),
+      ],
+      spacing: { after: 100 },
     }),
     new Paragraph({
       children: [
         new TextRun({
-          text: `${params.subject} · ${params.grade} · ${params.topic}`,
+          text: `${params.subject}  ·  ${params.grade}  ·  ${params.topic}`,
           italics: true,
-          size: 22,
+          size: 20,
+          color: "555577",
         }),
       ],
-      spacing: { after: 240 },
+      spacing: { after: 320 },
     }),
   ];
 
-  const lines = params.content.length > 0 ? params.content.split("\n") : [" "];
-  for (const line of lines) {
-    children.push(
-      new Paragraph({
-        children: [new TextRun({ text: line.length ? line : " ", size: 24 })],
-        spacing: { after: 80 },
-      }),
-    );
-  }
+  const contentParagraphs = parseMarkdownContentToDocxParagraphs(params.content);
 
   const doc = new Document({
+    styles: {
+      paragraphStyles: [
+        {
+          id: "Heading1",
+          name: "Heading 1",
+          basedOn: "Normal",
+          run: { bold: true, size: 32, color: "1A1A2E" },
+          paragraph: { spacing: { before: 260, after: 120 } },
+        },
+        {
+          id: "Heading2",
+          name: "Heading 2",
+          basedOn: "Normal",
+          run: { bold: true, size: 26, color: "2C3E80" },
+          paragraph: { spacing: { before: 200, after: 80 } },
+        },
+        {
+          id: "Heading3",
+          name: "Heading 3",
+          basedOn: "Normal",
+          run: { bold: true, size: 22, color: "34495E" },
+          paragraph: { spacing: { before: 160, after: 60 } },
+        },
+      ],
+    },
     sections: [
       {
-        properties: {},
-        children,
+        properties: {
+          page: {
+            margin: {
+              top: 720,
+              right: 900,
+              bottom: 720,
+              left: 900,
+            },
+          },
+        },
+        children: [...metaParagraphs, ...contentParagraphs],
       },
     ],
   });
 
   return Buffer.from(await Packer.toBuffer(doc));
+}
+
+/** Parse inline markdown segments (**bold**, *italic*, `code`) into TextRun array. */
+function parseInlineMarkdown(text: string, baseSizePt = 24): TextRun[] {
+  const cleaned = text
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/^\s*[-─━═]{3,}\s*$/, "");
+
+  const runs: TextRun[] = [];
+  // Match **bold**, *italic*, or `code`
+  const re = /(\*\*([^*\n]+)\*\*|\*([^*\n]+)\*|`([^`\n]+)`)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(cleaned)) !== null) {
+    if (m.index > last) {
+      const plain = cleaned.slice(last, m.index).replace(/[*#_`~|\\]/g, "");
+      if (plain) runs.push(new TextRun({ text: plain, size: baseSizePt }));
+    }
+    if (m[2] !== undefined) {
+      runs.push(new TextRun({ text: m[2], bold: true, size: baseSizePt }));
+    } else if (m[3] !== undefined) {
+      runs.push(new TextRun({ text: m[3], italics: true, size: baseSizePt }));
+    } else if (m[4] !== undefined) {
+      runs.push(new TextRun({ text: m[4], font: "Courier New", size: baseSizePt - 2 }));
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < cleaned.length) {
+    const plain = cleaned.slice(last).replace(/[*#_`~|\\]/g, "");
+    if (plain) runs.push(new TextRun({ text: plain, size: baseSizePt }));
+  }
+  return runs.length > 0 ? runs : [new TextRun({ text: cleaned.replace(/[*#_`~|\\]/g, ""), size: baseSizePt })];
+}
+
+/** Convert markdown content string into a list of docx Paragraph objects with proper formatting. */
+function parseMarkdownContentToDocxParagraphs(content: string): Paragraph[] {
+  const paragraphs: Paragraph[] = [];
+  const rawLines = content.replace(/\r\n/g, "\n").split("\n");
+  let inCodeBlock = false;
+
+  for (const rawLine of rawLines) {
+    // Code fence toggle — skip rendering code fence lines
+    if (rawLine.trim().startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+    if (inCodeBlock) {
+      paragraphs.push(
+        new Paragraph({
+          children: [new TextRun({ text: rawLine, font: "Courier New", size: 20, color: "333333" })],
+          spacing: { after: 40 },
+          indent: { left: 480 },
+        }),
+      );
+      continue;
+    }
+
+    const trimmed = rawLine.trim();
+
+    // Blank line → spacing gap
+    if (!trimmed) {
+      paragraphs.push(new Paragraph({ spacing: { after: 120 } }));
+      continue;
+    }
+
+    // Divider line (─── / --- / ═══ / ===)
+    if (/^[-─━═=]{3,}\s*$/.test(trimmed)) {
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: "────────────────────────────────────────────────────────",
+              color: "BBBBBB",
+              size: 18,
+            }),
+          ],
+          spacing: { before: 140, after: 140 },
+        }),
+      );
+      continue;
+    }
+
+    // H1: # Heading
+    const h1 = trimmed.match(/^#\s+(.+)$/);
+    if (h1) {
+      paragraphs.push(
+        new Paragraph({
+          children: parseInlineMarkdown(h1[1]!, 32),
+          heading: HeadingLevel.HEADING_1,
+          spacing: { before: 280, after: 120 },
+        }),
+      );
+      continue;
+    }
+
+    // H2: ## Heading
+    const h2 = trimmed.match(/^#{2}\s+(.+)$/);
+    if (h2) {
+      paragraphs.push(
+        new Paragraph({
+          children: parseInlineMarkdown(h2[1]!, 26),
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 220, after: 80 },
+        }),
+      );
+      continue;
+    }
+
+    // H3/H4+: ### Heading
+    const h3 = trimmed.match(/^#{3,}\s+(.+)$/);
+    if (h3) {
+      paragraphs.push(
+        new Paragraph({
+          children: parseInlineMarkdown(h3[1]!, 22),
+          heading: HeadingLevel.HEADING_3,
+          spacing: { before: 160, after: 60 },
+        }),
+      );
+      continue;
+    }
+
+    // Unordered bullet: - item or * item or • item
+    const bullet = trimmed.match(/^[-*•]\s+(.+)$/);
+    if (bullet) {
+      const runs = parseInlineMarkdown(bullet[1]!, 24);
+      paragraphs.push(
+        new Paragraph({
+          children: [new TextRun({ text: "•  ", bold: true, size: 24, color: "2C3E80" }), ...runs],
+          indent: { left: 360, hanging: 0 },
+          spacing: { after: 60 },
+        }),
+      );
+      continue;
+    }
+
+    // Numbered list: 1. item or 1) item
+    const numbered = trimmed.match(/^(\d+)[.)]\s+(.+)$/);
+    if (numbered) {
+      const runs = parseInlineMarkdown(numbered[2]!, 24);
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: `${numbered[1]}.  `, bold: true, size: 24, color: "2C3E80" }),
+            ...runs,
+          ],
+          indent: { left: 360, hanging: 0 },
+          spacing: { after: 60 },
+        }),
+      );
+      continue;
+    }
+
+    // Checkbox / can-do statement: [ ] text or [x] text
+    const checkbox = trimmed.match(/^\[([x ])\]\s+(.+)$/i);
+    if (checkbox) {
+      const checked = checkbox[1]?.toLowerCase() === "x";
+      const runs = parseInlineMarkdown(checkbox[2]!, 24);
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: checked ? "☑  " : "☐  ", size: 24, color: "2C3E80" }),
+            ...runs,
+          ],
+          indent: { left: 360 },
+          spacing: { after: 60 },
+        }),
+      );
+      continue;
+    }
+
+    // Normal paragraph
+    const runs = parseInlineMarkdown(trimmed, 24);
+    paragraphs.push(
+      new Paragraph({
+        children: runs,
+        spacing: { after: 80 },
+      }),
+    );
+  }
+
+  return paragraphs;
 }
 
 async function fetchImageUrlAsDataUri(url: string): Promise<string> {
