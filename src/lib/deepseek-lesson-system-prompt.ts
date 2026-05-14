@@ -1,4 +1,4 @@
-/**
+﻿/**
  * System prompt for DeepSeek lesson / teacher-package generation.
  * The model is asked to wrap each section in plain-text START/END markers (see `lesson-plan.ts`).
  */
@@ -37,9 +37,14 @@ The lesson plan must include:
 - Measurable outcomes
 
 3. Starter Activity
-- Hook activity
-- Brain teaser / quiz / image analysis / discussion prompt
-- 3–5 minute engagement task
+- PRIMARY PURPOSE: guide students to predict, infer, or discover the upcoming lesson topic through the activity
+- The activity must contain clues, prompts, comparisons, questions, scenarios, images, or tasks that help students reason toward the topic
+- Do NOT reveal the lesson topic directly at the start
+- Encourage critical thinking, discussion, prediction, observation, and analysis
+- Balance difficulty for the grade level (not too easy, not too difficult)
+- Must be interactive, engaging, and classroom-ready
+- Use teacher-selected AFL tool if chosen; otherwise auto-select the most suitable one
+- Do NOT include learning objectives, outcomes, or chapter explanations
 
 4. Prior Knowledge Activation
 - Connect lesson with previous learning
@@ -103,7 +108,7 @@ The app builds **exactly 13 slides** in this **fixed order**. **Each slide has o
 
 **Slide titles and bodies (use these exact English titles in order; Arabic plans may use Arabic titles but same order):**
 1. **Subject Grade Date** — Body lines only: **grade** and **date** (two lines). The slide **title** already carries subject — do **not** repeat the subject name or write Subject/Grade/Date headings inside the body. Nothing else (no topic, objectives, chapter, or activities).
-2. **Starter Activity** — **AFL-powered** starter hook and activity (teacher-selected **or** AI-selected tool) — fully implemented classroom process, not a label. Do **not** write “Starter Activity” inside the body. No chapter, topic, SDG, objectives, or outcomes.
+2. **Starter Activity** — **AFL-powered** starter hook and activity (teacher-selected **or** AI-selected tool) — fully implemented classroom process, not a label. **Primary purpose:** guide students to **predict, infer, or discover** the upcoming lesson topic through structured thinking — do **not** reveal the topic directly at the start. The activity must contain clues, prompts, comparisons, questions, scenarios, images, or observation tasks so students can reason toward the topic. Must encourage critical thinking, discussion, prediction, and analysis. Balance difficulty for the grade level. Do **not** write “Starter Activity” inside the body. No chapter, topic, SDG, objectives, or outcomes.
 3. **Chapter Topic and SDG Goal** — Chapter name, topic name, and one SDG (number + title) — **each once**. Do **not** repeat the slide title inside the body. No objectives, outcomes, or explanations.
 4. **Learning Objectives** — **Only** the teacher’s form objectives, **verbatim** (same count, same wording). Do **not** generate, edit, paraphrase, or add objectives. Do **not** write “Learning Objectives” inside the body.
 5. **Learning Outcomes** — Measurable outcomes generated **only** from the teacher’s verbatim objectives; typically one per objective; Bloom verbs; **no** scope beyond those objectives. Do **not** write “Learning Outcomes” inside the body.
@@ -319,7 +324,7 @@ ${PPT_AFL_DRIVEN_SYSTEM_RULES}
       : n === 2
         ? `
 
-**Slide 2 body rule:** Starter activity powered by **teacher-selected or AI-selected Starter AFL tool** — full classroom implementation (prompts, tasks, interaction), not a label. **Do not** repeat the heading “Starter Activity” inside the body. **Never** include chapter, topic, SDG, objectives, or outcomes.`
+**Slide 2 body rule:** Starter activity powered by **teacher-selected or AI-selected Starter AFL tool** — fully implemented classroom process, not a label. **Primary purpose:** guide students to **predict, infer, or discover** the upcoming lesson topic through structured thinking — do **not** reveal the topic directly at the start. The activity must contain clues, prompts, comparisons, questions, scenarios, images, or observation tasks so students can reason toward the topic. Must encourage critical thinking, discussion, prediction, and analysis. Balance difficulty for the grade level. **Do not** repeat the heading “Starter Activity” inside the body. **Never** include chapter, topic, SDG, objectives, or outcomes.`
         : n === 3
           ? `
 
