@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -306,7 +306,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadPpt}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
               >
                 {busy === "ppt" ? "Building your PPT… please wait" : "Download PPT"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">
@@ -319,7 +319,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadLessonPlan}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
               >
                 {busy === "lesson" ? "Preparing…" : "Download Lesson Plan"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -330,7 +330,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadWorksheet}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
               >
                 {busy === "worksheet" ? "Preparing…" : "Download Worksheet"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -341,7 +341,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadAssessment}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
               >
                 {busy === "assessment" ? "Preparing…" : "Download Assessment"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -352,7 +352,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadHomework}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
               >
                 {busy === "homework" ? "Preparing…" : "Download Homework"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -363,7 +363,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadTeacherNotes}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-blue-900 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
               >
                 {busy === "notes" ? "Preparing…" : "Download Teacher Notes"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -384,7 +384,7 @@ export function TeacherPackageViewer({
               ) : null}
             </div>
             {busy === "ppt" ? (
-              <p className="mt-3 text-sm font-medium text-blue-900" role="status" aria-live="polite">
+              <p className="mt-3 text-sm font-medium text-[#0A1628]" role="status" aria-live="polite">
                 Building your PPT… please wait
               </p>
             ) : null}
@@ -392,7 +392,7 @@ export function TeacherPackageViewer({
               type="button"
               disabled={busy !== null}
               onClick={onDownloadZip}
-              className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:opacity-50 sm:w-auto"
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0A8F7A] disabled:opacity-50 sm:w-auto"
             >
               {busy === "zip" ? "Building ZIP…" : "Download ZIP package"}
             </button>
@@ -431,7 +431,7 @@ export function TeacherPackageViewer({
 
       <div className="overflow-x-auto pb-1">
         <div
-          className="flex min-w-0 gap-2 border-b border-blue-100 pb-3"
+          className="flex min-w-0 gap-2 border-b border-[#00C6A7]/20 pb-3"
           role="tablist"
           aria-label="Teacher package sections"
         >
@@ -444,10 +444,10 @@ export function TeacherPackageViewer({
                 role="tab"
                 aria-selected={selected}
                 onClick={() => setActiveKey(key)}
-                className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 min-h-10 ${
+                className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C6A7] focus-visible:ring-offset-2 min-h-10 ${
                   selected
-                    ? "bg-blue-700 text-white shadow-md"
-                    : "border border-blue-200 bg-white text-blue-900 hover:bg-blue-50"
+                    ? "bg-[#00C6A7] text-white shadow-md"
+                    : "border border-[#00C6A7]/30 bg-white text-[#0A1628] hover:bg-[#00C6A7]/10"
                 }`}
               >
                 {getSectionTabLabel(key)}
@@ -458,16 +458,16 @@ export function TeacherPackageViewer({
       </div>
 
       <article
-        className="rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/40 to-white p-5 shadow-sm md:p-6"
+        className="rounded-2xl border border-[#00C6A7]/20 bg-gradient-to-b from-[#00C6A7]/5 to-white p-5 shadow-sm md:p-6"
         role="tabpanel"
       >
-        <div className="flex flex-col gap-1 border-b border-blue-100 pb-3 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-1 border-b border-[#00C6A7]/20 pb-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h4 className="text-lg font-bold text-slate-900">
               {activeKey ? getSectionTabLabel(activeKey) : "Section"}
             </h4>
             {activeKey ? (
-              <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-blue-700">
+              <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-[#00C6A7]">
                 {activeKey}
               </p>
             ) : null}
@@ -492,7 +492,7 @@ export function TeacherPackageViewer({
                     href={src}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-sm ring-blue-500 transition hover:ring-2"
+                    className="block overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-sm ring-[#00C6A7] transition hover:ring-2"
                   >
                     <img
                       src={src}

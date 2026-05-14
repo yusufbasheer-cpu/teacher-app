@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import {
@@ -379,7 +379,7 @@ export function DifferentiatedWorksheetPack() {
             <strong>Generate differentiated pack</strong> below.
           </li>
           <li>
-            <strong className="text-blue-800">Way 2:</strong> Upload a PDF or Word (.docx) lesson plan,
+            <strong className="text-[#0A1628]">Way 2:</strong> Upload a PDF or Word (.docx) lesson plan,
             extract text, optionally <strong>Auto-fill form</strong>, edit fields, then generate.
           </li>
           <li className="text-xs text-slate-500">
@@ -406,8 +406,8 @@ export function DifferentiatedWorksheetPack() {
             generator page after a successful run. It fills this page automatically.
           </p>
         </section>
-        <section className="rounded-2xl border-2 border-blue-200 bg-blue-50/30 p-5 shadow-sm">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-blue-900">Way 2</h3>
+        <section className="rounded-2xl border-2 border-[#00C6A7]/30 bg-[#00C6A7]/5 p-5 shadow-sm">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-[#0A1628]">Way 2</h3>
           <p className="mt-1 text-sm text-slate-700">Upload an existing lesson plan (PDF or .docx).</p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <input
@@ -415,17 +415,17 @@ export function DifferentiatedWorksheetPack() {
               accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               disabled={extracting}
               onChange={(e) => void onExtractUpload(e.target.files)}
-              className="block w-full min-w-0 text-sm text-slate-800 file:mr-2 file:rounded-lg file:border-0 file:bg-blue-700 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white"
+              className="block w-full min-w-0 text-sm text-slate-800 file:mr-2 file:rounded-lg file:border-0 file:bg-[#00C6A7] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white"
             />
           </div>
           {extracting ? (
-            <p className="mt-2 text-xs font-medium text-blue-800">Extracting text…</p>
+            <p className="mt-2 text-xs font-medium text-[#0A1628]">Extracting text…</p>
           ) : null}
           <button
             type="button"
             disabled={inferring || !lessonSourceText.trim()}
             onClick={() => void onInferMeta()}
-            className="mt-4 rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-900 shadow-sm hover:bg-blue-50 disabled:opacity-50"
+            className="mt-4 rounded-lg border border-[#00C6A7]/40 bg-white px-3 py-2 text-xs font-semibold text-[#0A1628] shadow-sm hover:bg-[#00C6A7]/10 disabled:opacity-50"
           >
             {inferring ? "Inferring…" : "Auto-fill form from document"}
           </button>
@@ -506,7 +506,7 @@ export function DifferentiatedWorksheetPack() {
             type="button"
             disabled={loading}
             onClick={() => void onGenerate()}
-            className="inline-flex min-h-11 items-center rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
+            className="inline-flex min-h-11 items-center rounded-xl bg-[#00C6A7] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0A8F7A] disabled:opacity-60"
           >
             {loading ? "Generating…" : "Generate differentiated pack"}
           </button>
@@ -579,8 +579,8 @@ export function DifferentiatedWorksheetPack() {
                   {pack.foundation.trim() || "(Empty)"}
                 </pre>
               </div>
-              <div className="flex min-h-[14rem] flex-col rounded-2xl border-2 border-blue-500 bg-blue-50/50 shadow-sm">
-                <div className="rounded-t-xl bg-blue-600 px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-white">
+              <div className="flex min-h-[14rem] flex-col rounded-2xl border-2 border-[#00C6A7] bg-[#00C6A7]/5 shadow-sm">
+                <div className="rounded-t-xl bg-[#00C6A7] px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-white">
                   Core
                 </div>
                 <pre className="max-h-80 min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-3 font-sans text-xs leading-relaxed text-slate-800">
@@ -622,7 +622,7 @@ export function DifferentiatedWorksheetPack() {
                   type="button"
                   disabled={busyDownload !== null}
                   onClick={() => void downloadDocx("c", "Core Worksheet", "core", pack.core)}
-                  className="rounded-lg border border-blue-600 bg-white px-3 py-2 text-xs font-semibold text-blue-900 hover:bg-blue-50 disabled:opacity-50"
+                  className="rounded-lg border border-[#00C6A7] bg-white px-3 py-2 text-xs font-semibold text-[#0A1628] hover:bg-[#00C6A7]/10 disabled:opacity-50"
                 >
                   {busyDownload === "c" ? "…" : "Core (.docx)"}
                 </button>
@@ -655,7 +655,7 @@ export function DifferentiatedWorksheetPack() {
                 type="button"
                 disabled={busyDownload !== null}
                 onClick={() => void downloadZip()}
-                className="rounded-lg bg-blue-700 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-800 disabled:opacity-50"
+                className="rounded-lg bg-[#00C6A7] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0A8F7A] disabled:opacity-50"
               >
                 {busyDownload === "zip" ? "Building…" : "Complete pack (.zip)"}
               </button>

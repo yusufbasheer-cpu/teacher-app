@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -71,7 +71,7 @@ export function MyLessonPlansList() {
 
   if (checkingAuth) {
     return (
-      <div className="rounded-3xl border border-blue-100 bg-white p-6 text-sm text-slate-600 shadow-sm">
+      <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 text-sm text-slate-600 shadow-sm">
         Loading your saved lesson plans...
       </div>
     );
@@ -79,14 +79,14 @@ export function MyLessonPlansList() {
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-semibold text-slate-900">Login Required</h2>
         <p className="mt-2 text-sm text-slate-600">
           Please login to access your saved lesson plans.
         </p>
         <Link
           href="/auth"
-          className="mt-5 inline-flex rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+          className="mt-5 inline-flex rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
         >
           Go to Login
         </Link>
@@ -96,11 +96,11 @@ export function MyLessonPlansList() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-blue-100 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
+      <div className="rounded-2xl border border-[#00C6A7]/20 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
         Signed in as <span className="font-semibold">{user.email}</span>
       </div>
 
-      <section className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm md:p-7">
+      <section className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 shadow-sm md:p-7">
         <h2 className="text-2xl font-bold text-slate-900">My Lesson Plans</h2>
         <p className="mt-2 text-sm text-slate-600">
           Open any saved plan and continue editing in the generator.
@@ -109,7 +109,7 @@ export function MyLessonPlansList() {
         {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
 
         {plans.length === 0 ? (
-          <div className="mt-5 rounded-xl border border-dashed border-blue-200 bg-blue-50/50 p-4 text-sm text-slate-500">
+          <div className="mt-5 rounded-xl border border-dashed border-[#00C6A7]/30 bg-[#00C6A7]/5 p-4 text-sm text-slate-500">
             No saved lesson plans yet.
           </div>
         ) : (
@@ -124,7 +124,7 @@ export function MyLessonPlansList() {
               <Link
                 key={plan.id}
                 href={`/lesson-plan?planId=${plan.id}`}
-                className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                className="rounded-2xl border border-[#00C6A7]/20 bg-[#00C6A7]/5 p-4 text-left transition hover:border-[#00C6A7]/50 hover:bg-[#00C6A7]/10"
               >
                 <p className="font-semibold text-slate-900">{plan.topic}</p>
                 <p className="mt-1 text-sm text-slate-600">
@@ -139,7 +139,7 @@ export function MyLessonPlansList() {
                 <p className="mt-2 text-xs text-slate-500">
                   {new Date(plan.created_at).toLocaleString()}
                 </p>
-                <p className="mt-2 text-sm font-medium text-blue-700">Open plan</p>
+                <p className="mt-2 text-sm font-medium text-[#00C6A7]">Open plan</p>
               </Link>
             );
             })}

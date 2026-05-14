@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import {
@@ -639,7 +639,7 @@ export function LessonPlanGenerator() {
 
   if (checkingAuth) {
     return (
-      <div className="rounded-3xl border border-blue-100 bg-white p-6 text-sm text-slate-600 shadow-sm">
+      <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 text-sm text-slate-600 shadow-sm">
         Checking your account...
       </div>
     );
@@ -647,14 +647,14 @@ export function LessonPlanGenerator() {
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-semibold text-slate-900">Login Required</h2>
         <p className="mt-2 text-sm text-slate-600">
           Please login to generate and save your personal lesson plans.
         </p>
         <Link
           href="/auth"
-          className="mt-5 inline-flex rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+          className="mt-5 inline-flex rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
         >
           Go to Login
         </Link>
@@ -667,7 +667,7 @@ export function LessonPlanGenerator() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-blue-100 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
+      <div className="rounded-2xl border border-[#00C6A7]/20 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
         Signed in as <span className="font-semibold">{user.email}</span>
       </div>
 
@@ -675,16 +675,16 @@ export function LessonPlanGenerator() {
         <form
           onSubmit={onSubmit}
           aria-busy={loading}
-          className="min-w-0 rounded-3xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6 md:p-7"
+          className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
         >
           <h2 className="text-xl font-semibold text-slate-900">Lesson Plan Generator</h2>
           <p className="mt-2 text-sm text-slate-600">
             Fill in class details, choose which materials to generate, then run the AI.
           </p>
 
-        <div className="mt-6 rounded-2xl border border-dashed border-blue-200 bg-blue-50/50 p-4 space-y-5">
+        <div className="mt-6 rounded-2xl border border-dashed border-[#00C6A7]/30 bg-[#00C6A7]/5 p-4 space-y-5">
           <div>
-            <p className="text-sm font-semibold text-blue-950">
+            <p className="text-sm font-semibold text-[#0A1628]">
               Provide your own teaching content (optional)
             </p>
             <p className="mt-1 text-xs text-slate-600">
@@ -693,7 +693,7 @@ export function LessonPlanGenerator() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-blue-100 bg-white/80 p-3">
+          <div className="rounded-xl border border-[#00C6A7]/20 bg-white/80 p-3">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
               Option 1 — Upload PDF
             </p>
@@ -704,11 +704,11 @@ export function LessonPlanGenerator() {
               accept=".pdf,application/pdf"
               onChange={(e) => onUploadFileChange(e, "pdf")}
               disabled={uploadExtracting || loading}
-              className="mt-2 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-800 disabled:opacity-60"
+              className="mt-2 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-[#00C6A7] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#0A8F7A] disabled:opacity-60"
             />
           </div>
 
-          <div className="rounded-xl border border-blue-100 bg-white/80 p-3">
+          <div className="rounded-xl border border-[#00C6A7]/20 bg-white/80 p-3">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
               Option 2 — Upload Image
             </p>
@@ -719,11 +719,11 @@ export function LessonPlanGenerator() {
               accept=".jpg,.jpeg,.png,image/jpeg,image/png"
               onChange={(e) => onUploadFileChange(e, "image")}
               disabled={uploadExtracting || loading}
-              className="mt-2 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-800 disabled:opacity-60"
+              className="mt-2 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-[#00C6A7] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#0A8F7A] disabled:opacity-60"
             />
           </div>
 
-          <div className="rounded-xl border border-blue-100 bg-white/80 p-3">
+          <div className="rounded-xl border border-[#00C6A7]/20 bg-white/80 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
                 Option 3 — Paste Your Content
@@ -749,7 +749,7 @@ export function LessonPlanGenerator() {
               disabled={uploadExtracting || loading}
               rows={8}
               placeholder="Paste your textbook content, notes, chapter text, or any material here and the AI will generate all resources based on your content."
-              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-blue-500 focus:ring-2 disabled:opacity-60"
+              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[#00C6A7] focus:ring-2 disabled:opacity-60"
             />
           </div>
 
@@ -764,7 +764,7 @@ export function LessonPlanGenerator() {
             </button>
           ) : null}
           {uploadExtracting ? (
-            <p className="mt-2 text-xs font-medium text-blue-800">
+            <p className="mt-2 text-xs font-medium text-[#0A1628]">
               Extracting text from your files…
             </p>
           ) : null}
@@ -787,7 +787,7 @@ export function LessonPlanGenerator() {
             </ul>
           ) : null}
           {uploadedChunks.length > 0 ? (
-            <ul className="mt-3 divide-y divide-blue-100 rounded-lg border border-blue-100 bg-white/90">
+            <ul className="mt-3 divide-y divide-[#00C6A7]/20 rounded-lg border border-[#00C6A7]/20 bg-white/90">
               {uploadedChunks.map((chunk) => (
                 <li
                   key={chunk.id}
@@ -832,7 +832,7 @@ export function LessonPlanGenerator() {
                 value={combinedSourcePreview}
                 rows={12}
                 spellCheck={false}
-                className="max-h-80 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-xs leading-relaxed text-slate-800 outline-none ring-blue-500 focus:ring-2"
+                className="max-h-80 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-xs leading-relaxed text-slate-800 outline-none ring-[#00C6A7] focus:ring-2"
               />
               <p className="mt-1 text-xs text-slate-500">
                 {pastedContent.trim().length > 0
@@ -854,7 +854,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, curriculumType: e.target.value }))
               }
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
               required
             >
               {CURRICULUM_TYPE_OPTIONS.map((opt) => (
@@ -881,7 +881,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, curriculumFramework: e.target.value }))
               }
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-blue-500 focus:ring-2"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[#00C6A7] focus:ring-2"
             >
               {CURRICULUM_FRAMEWORK_OPTIONS.map((opt) => (
                 <option key={opt.value === "" ? "none" : opt.value} value={opt.value}>
@@ -904,7 +904,7 @@ export function LessonPlanGenerator() {
               id="grade-year"
               value={form.grade}
               onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
               required
             >
               {GRADE_YEAR_OPTIONS.map((opt) => (
@@ -923,7 +923,7 @@ export function LessonPlanGenerator() {
               id="subject"
               value={form.subject}
               onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
               required
             >
               <optgroup label="Subjects">
@@ -952,7 +952,7 @@ export function LessonPlanGenerator() {
               type="text"
               value={form.chapter}
               onChange={(e) => setForm((prev) => ({ ...prev, chapter: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
               placeholder="e.g. Chapter 5 - Photosynthesis"
             />
           </div>
@@ -966,7 +966,7 @@ export function LessonPlanGenerator() {
               type="text"
               value={form.topic}
               onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
               placeholder="Specific topic within the chapter"
               required
             />
@@ -985,7 +985,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, learningObjectives: e.target.value }))
               }
-              className="min-h-28 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
+              className="min-h-28 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
               placeholder="List key outcomes students should achieve."
               required
             />
@@ -1096,7 +1096,7 @@ export function LessonPlanGenerator() {
           </div>
         )}
 
-        <fieldset className="mt-6 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+        <fieldset className="mt-6 rounded-2xl border border-[#00C6A7]/20 bg-[#00C6A7]/5 p-4">
           <legend className="px-1 text-sm font-semibold text-slate-900">What to generate</legend>
           <p className="mt-1 text-xs text-slate-600">
             Only checked sections are sent to the AI — fewer selections usually means a quicker response.
@@ -1112,7 +1112,7 @@ export function LessonPlanGenerator() {
                   >,
                 )
               }
-              className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-900 shadow-sm hover:bg-blue-50"
+              className="rounded-lg border border-[#00C6A7]/30 bg-white px-3 py-1.5 text-xs font-semibold text-[#0A1628] shadow-sm hover:bg-[#00C6A7]/10"
             >
               Select All
             </button>
@@ -1141,7 +1141,7 @@ export function LessonPlanGenerator() {
                   onChange={() =>
                     setSectionSelection((prev) => ({ ...prev, [key]: !prev[key] }))
                   }
-                  className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-blue-700 focus:ring-blue-500"
+                  className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-[#00C6A7] focus:ring-[#00C6A7]"
                 />
                 <label htmlFor={`gen-${key}`} className="text-sm text-slate-800">
                   {GENERATION_CHECKBOX_LABELS[key]}
@@ -1170,7 +1170,7 @@ export function LessonPlanGenerator() {
             uploadExtracting ||
             TEACHER_PACKAGE_SECTIONS.every((k) => !sectionSelection[k])
           }
-          className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A8F7A] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? "Generating..." : "Generate Lesson Plan"}
         </button>
@@ -1180,7 +1180,7 @@ export function LessonPlanGenerator() {
         ) : null}
         </form>
 
-        <section className="min-w-0 rounded-3xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6 md:p-7">
+        <section className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7">
         <h3 className="text-xl font-semibold text-slate-900">Generated teacher package</h3>
         <p className="mt-2 text-sm text-slate-600">
           Preview and download only the sections you generated (lesson plan, slides, worksheet, and
@@ -1189,7 +1189,7 @@ export function LessonPlanGenerator() {
         </p>
 
         {!lessonPlan ? (
-          <div className="mt-6 rounded-xl border border-dashed border-blue-200 bg-blue-50/50 p-6 text-sm text-slate-500">
+          <div className="mt-6 rounded-xl border border-dashed border-[#00C6A7]/30 bg-[#00C6A7]/5 p-6 text-sm text-slate-500">
             No lesson plan generated yet.
           </div>
         ) : (
@@ -1207,7 +1207,7 @@ export function LessonPlanGenerator() {
               type="button"
               onClick={onSaveLessonPlan}
               disabled={saving}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+              className="inline-flex w-full items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A8F7A] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
             >
               {saving ? "Saving..." : "Save Lesson Plan"}
             </button>
@@ -1242,7 +1242,7 @@ export function LessonPlanGenerator() {
                         aria-pressed={selected}
                         className={`rounded-xl border-2 bg-white p-3 text-left shadow-sm transition hover:shadow-md ${
                           selected
-                            ? "border-blue-600 ring-2 ring-blue-200 ring-offset-2 ring-offset-slate-50"
+                            ? "border-[#00C6A7] ring-2 ring-[#00C6A7]/30 ring-offset-2 ring-offset-slate-50"
                             : "border-slate-200 hover:border-slate-300"
                         }`}
                       >
@@ -1289,7 +1289,7 @@ export function LessonPlanGenerator() {
       </div>
 
       {successMessage ? (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+        <div className="rounded-xl border border-[#00C6A7]/30 bg-[#00C6A7]/5 px-4 py-3 text-sm text-[#00C6A7]">
           {successMessage}
         </div>
       ) : null}
