@@ -126,6 +126,83 @@ function toAflPayload(map: Record<AflPhaseId, string[]>) {
   return out;
 }
 
+// ── Sidebar widget data ───────────────────────────────────────────────────────
+
+const PHASE_LABELS: Record<string, string> = {
+  starter:         "Starter",
+  main:            "Main Phase",
+  differentiation: "Differentiation",
+  plenary:         "Plenary",
+  exitTicket:      "Exit Ticket",
+  successCriteria: "Success Criteria",
+};
+
+const TOOL_SKILLS: Record<string, string[]> = {
+  "st-think-pair-share":      ["Communication", "Collaboration", "Critical Thinking"],
+  "st-kwl-chart":             ["Critical Thinking", "Problem Solving"],
+  "st-brain-dump":            ["Creativity", "Critical Thinking"],
+  "st-odd-one-out":           ["Critical Thinking", "Problem Solving"],
+  "st-picture-prompt":        ["Creativity", "Critical Thinking", "Communication"],
+  "st-true-false-challenge":  ["Critical Thinking", "Problem Solving"],
+  "st-predict-reveal":        ["Critical Thinking", "Creativity"],
+  "st-kahoot-quizizz-warm-up":["Digital Literacy", "Communication"],
+  "st-entry-ticket":          ["Critical Thinking"],
+  "mn-i-do-we-do-you-do":     ["Critical Thinking", "Collaboration"],
+  "mn-jigsaw":                ["Collaboration", "Communication", "Critical Thinking"],
+  "mn-learning-stations":     ["Creativity", "Problem Solving", "Collaboration"],
+  "mn-gallery-walk":          ["Collaboration", "Communication", "Creativity"],
+  "mn-concept-mapping":       ["Critical Thinking", "Creativity", "Problem Solving"],
+  "mn-socratic-questioning":  ["Critical Thinking", "Communication"],
+  "df-must-should-could":     ["Problem Solving", "Critical Thinking"],
+  "df-choice-board":          ["Creativity", "Problem Solving"],
+  "df-tiered-tasks":          ["Critical Thinking", "Problem Solving"],
+  "df-learning-menus":        ["Creativity", "Critical Thinking"],
+  "pl-3-2-1-reflection":      ["Critical Thinking", "Communication"],
+  "pl-hot-seat":              ["Communication", "Critical Thinking"],
+  "pl-one-word-summary":      ["Communication", "Creativity", "Critical Thinking"],
+  "pl-snowball":              ["Collaboration", "Communication", "Creativity"],
+  "et-one-minute-paper":      ["Communication", "Critical Thinking"],
+  "et-muddiest-point":        ["Critical Thinking", "Problem Solving"],
+  "et-exit-card":             ["Critical Thinking"],
+  "et-emoji-scale":           ["Communication", "Digital Literacy"],
+  "sc-traffic-light":         ["Critical Thinking", "Problem Solving"],
+  "sc-checklist-can-do":      ["Critical Thinking", "Problem Solving"],
+  "sc-two-stars-wish":        ["Communication", "Creativity", "Critical Thinking"],
+  "sc-rubric-scale":          ["Critical Thinking", "Problem Solving"],
+};
+
+type SpotlightEntry = {
+  id:          string;
+  label:       string;
+  howItWorks:  string;
+  classroomUse:string;
+  purpose:     string;
+  phase:       string;
+  phaseLabel:  string;
+  skills:      string[];
+};
+
+const ALL_AFL_SPOTLIGHT: SpotlightEntry[] = AFL_PHASE_GROUPS.flatMap((g) =>
+  g.tools.map((t) => ({
+    id:          t.id,
+    label:       t.label,
+    howItWorks:  t.howItWorks,
+    classroomUse:t.classroomUse,
+    purpose:     t.purpose,
+    phase:       g.phase,
+    phaseLabel:  PHASE_LABELS[g.phase] ?? g.phase,
+    skills:      TOOL_SKILLS[t.id] ?? ["Critical Thinking"],
+  })),
+);
+
+const QUICK_TIPS = [
+  "Be specific with your topic for better, more accurate content.",
+  "Select AFL tools to get classroom-ready activities in your PPT.",
+  "Use the UAE Framework toggle for inspection-ready lesson plans.",
+  "Upload your own content so the AI uses it as the primary source.",
+  "Select only the sections you need to generate faster.",
+];
+
 export function LessonPlanGenerator() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -146,6 +223,13 @@ export function LessonPlanGenerator() {
   const [packReady, setPackReady] = useState(false);
 
   const resultsRef = useRef<HTMLElement | null>(null);
+
+  // Pick a random AFL tool spotlight on mount (changes each page load)
+  const spotlight = useMemo(
+    () => ALL_AFL_SPOTLIGHT[Math.floor(Math.random() * ALL_AFL_SPOTLIGHT.length)]!,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const [sectionSelection, setSectionSelection] =
     useState<Record<TeacherPackageSectionKey, boolean>>(initialSectionSelection);
@@ -1230,8 +1314,99 @@ export function LessonPlanGenerator() {
         </p>
 
         {!lessonPlan ? (
-          <div className="mt-6 rounded-xl border border-dashed border-[#00C6A7]/30 bg-[#00C6A7]/5 p-6 text-sm text-slate-500">
-            No lesson plan generated yet.
+          <div className="mt-6 flex flex-col gap-4">
+            {/* ── Quick Tips ─────────────────────────────────────────────── */}
+            <div
+              className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+              style={{ borderRadius: 12 }}
+            >
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-[#00C6A7] text-lg">💡</span>
+                <h4 className="text-base font-semibold" style={{ color: "#0A1628" }}>
+                  Tips for Best Results
+                </h4>
+              </div>
+              <ul className="space-y-2.5">
+                {QUICK_TIPS.map((tip, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600">
+                    <span
+                      className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                      style={{ background: "#00C6A7" }}
+                    >
+                      {i + 1}
+                    </span>
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* ── AFL Tool Spotlight ─────────────────────────────────────── */}
+            {spotlight && (
+              <div
+                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                style={{ borderRadius: 12 }}
+              >
+                {/* Header */}
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🎯</span>
+                    <h4 className="text-base font-semibold" style={{ color: "#0A1628" }}>
+                      AFL Tool Spotlight
+                    </h4>
+                  </div>
+                  <span
+                    className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white"
+                    style={{ background: "#0A1628" }}
+                  >
+                    {spotlight.phaseLabel}
+                  </span>
+                </div>
+
+                {/* Tool name */}
+                <p className="mb-1 text-xl font-bold" style={{ color: "#00C6A7" }}>
+                  {spotlight.label}
+                </p>
+
+                {/* One-line description */}
+                <p className="mb-3 text-sm text-slate-500">{spotlight.purpose}</p>
+
+                {/* How to use */}
+                <div className="mb-3 rounded-lg p-3" style={{ background: "#F7F9FC" }}>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    How to Use in Class
+                  </p>
+                  <p className="text-sm text-slate-700">{spotlight.howItWorks}</p>
+                  <p className="mt-1 text-sm text-slate-600">{spotlight.classroomUse}</p>
+                </div>
+
+                {/* 21st Century Skills */}
+                <div>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    21st Century Skills
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {spotlight.skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
+                        style={{
+                          borderColor: "#00C6A7",
+                          color: "#007a66",
+                          background: "rgba(0,198,167,0.08)",
+                        }}
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <p className="mt-3 text-[10px] text-slate-400">
+                  Refreshes with a new tool each time you visit this page.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="mt-6 space-y-5">
