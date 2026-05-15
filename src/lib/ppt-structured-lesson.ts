@@ -1026,7 +1026,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   const s10Body = stripMarkdownSymbolsForStudents(
     mergeBodies(hw, s10Pick.body, isAr ? `${contextAnchor}\nمهمة واحدة فقط.` : `${contextAnchor}\nSingle extended task only.`),
   );
-  slides.push({ slideTitle: T[9]!, body: s10Body, speakerNotes: s10Pick.notes, includeImageSlot: false });
+  slides.push({ slideTitle: T[9]!, body: s10Body, speakerNotes: s10Pick.notes, includeImageSlot: true });
 
   const s11 = pickDeck(
     "exitTicket",
@@ -1040,7 +1040,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ppt,
     contextAnchor,
   );
-  slides.push({ slideTitle: T[10]!, body: s11.body, speakerNotes: s11.notes, includeImageSlot: false });
+  slides.push({ slideTitle: T[10]!, body: s11.body, speakerNotes: s11.notes, includeImageSlot: true });
 
   const s12 = pickDeck(
     "successCriteria",
