@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
 import { isValidCurriculumFramework } from "@/lib/curriculum-framework";
-import {
-  generateLessonPptSlideImages,
-  type LessonPptImageGenerationSpec,
-} from "@/lib/fal-ppt-slide-images";
+import { fetchPptPexelsImages } from "@/lib/pexels-images";
 import { sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildPptxFromPptContent, sanitizeExportFileName } from "@/lib/lesson-plan-export";
-import {
-  buildStructuredLessonSlides,
-  mapLessonPptImagesToDeck,
-} from "@/lib/ppt-structured-lesson";
+import { buildStructuredLessonSlides } from "@/lib/ppt-structured-lesson";
 import {
   DEFAULT_PPT_THEME_ID,
   isValidPptThemeId,
@@ -80,19 +74,12 @@ export async function POST(req: Request) {
       ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
 
-    // ── Generate slide images (fal.ai) — failures are non-fatal ──────────
+    // ── Fetch Pexels images for title, main phase, plenary — non-fatal ───
     let slideImageUrls: (string | null)[] = Array.from({ length: deck.length }, () => null);
     try {
-      const imageSpecs: LessonPptImageGenerationSpec[] = [
-        { slot: "starter",       slideTitle: deck[1]!.slideTitle, bodySnippet: deck[1]!.body },
-        { slot: "main_teaching", slideTitle: deck[5]!.slideTitle, bodySnippet: deck[5]!.body },
-        { slot: "plenary",       slideTitle: deck[8]!.slideTitle, bodySnippet: deck[8]!.body },
-      ];
-      const imageSlideIndices = [1, 5, 8] as const;
-      const fluxUrls = await generateLessonPptSlideImages({ subject, grade, topic }, imageSpecs);
-      slideImageUrls = mapLessonPptImagesToDeck(deck.length, [...imageSlideIndices], fluxUrls);
+      slideImageUrls = await fetchPptPexelsImages(topic, subject, deck.length);
     } catch (imgErr) {
-      console.error("[pptx export] Slide image generation failed; continuing without images:", imgErr);
+      console.error("[pptx export] Pexels image fetch failed; continuing without images:", imgErr);
     }
 
     // ── Build the presentation using the selected Layah theme ─────────────
