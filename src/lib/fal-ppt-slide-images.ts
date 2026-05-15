@@ -58,6 +58,31 @@ const PPT_IMAGE_SIZE = "landscape_16_9" as const;
 const PPT_NUM_INFERENCE_STEPS = 28;
 const PPT_GUIDANCE_SCALE = 7.5;
 
+/** How long (ms) to wait for a single fal.ai image before skipping it. */
+const FAL_IMAGE_TIMEOUT_MS = 20_000;
+
+/**
+ * Race a promise against a timeout.
+ * Resolves to null if the timeout fires first — never throws.
+ */
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[fal-ppt] ${label} timed out after ${ms}ms — skipping`);
+      resolve(null);
+    }, ms);
+  });
+  try {
+    const result = await Promise.race([promise, timeout]);
+    return result;
+  } catch (e) {
+    return null;
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+  }
+}
+
 /** Generates up to three FLUX Pro images for lesson PPT (starter, main phase, plenary). */
 export async function generateLessonPptSlideImages(
   meta: PptSlideImageMeta,
@@ -80,6 +105,7 @@ export async function generateLessonPptSlideImages(
     FAL_PPT_IMAGE_MODEL_ID,
     "image_size:",
     PPT_IMAGE_SIZE,
+    `timeout: ${FAL_IMAGE_TIMEOUT_MS}ms each`,
   );
 
   for (let i = 0; i < specs.length; i++) {
@@ -94,7 +120,7 @@ export async function generateLessonPptSlideImages(
         prompt,
       });
 
-      const result = await client.subscribe(FAL_PPT_IMAGE_MODEL_ID, {
+      const subscribePromise = client.subscribe(FAL_PPT_IMAGE_MODEL_ID, {
         input: {
           prompt,
           image_size: PPT_IMAGE_SIZE,
@@ -105,6 +131,19 @@ export async function generateLessonPptSlideImages(
           output_format: "png",
         },
       });
+
+      const result = await withTimeout(
+        subscribePromise as Promise<typeof subscribePromise extends Promise<infer R> ? R : never>,
+        FAL_IMAGE_TIMEOUT_MS,
+        `image ${n}/${specs.length} (slot: ${spec.slot})`,
+      );
+
+      if (!result) {
+        // Timed out — continue without this image, never block the PPT
+        out.push(null);
+        continue;
+      }
+
       const url = result.data?.images?.[0]?.url;
       if (typeof url === "string" && url.length > 0) {
         out.push(url);
@@ -119,14 +158,14 @@ export async function generateLessonPptSlideImages(
         );
       }
     } catch (e) {
+      // Any error → skip image and keep going
       out.push(null);
       const formatted = formatFalError(e);
       const raw = e instanceof Error ? e.message : String(e);
-      console.error("[fal-ppt] image", n, "/", specs.length, "failed — skipping this image.", {
+      console.error("[fal-ppt] image", n, "/", specs.length, "failed — skipping.", {
         slot: spec.slot,
         formatFalError: formatted,
         message: raw,
-        error: e,
       });
     }
   }
