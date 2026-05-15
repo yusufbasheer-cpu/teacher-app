@@ -143,6 +143,9 @@ export function LessonPlanGenerator() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [packReady, setPackReady] = useState(false);
+
+  const resultsRef = useRef<HTMLElement | null>(null);
 
   const [sectionSelection, setSectionSelection] =
     useState<Record<TeacherPackageSectionKey, boolean>>(initialSectionSelection);
@@ -570,6 +573,19 @@ export function LessonPlanGenerator() {
       setGenerationProgress(null);
     }
   };
+
+  // Scroll to results and show ready banner when generation finishes
+  useEffect(() => {
+    if (!loading && lessonPlan) {
+      setPackReady(true);
+      const timer = setTimeout(() => setPackReady(false), 3500);
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
+      return () => clearTimeout(timer);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const onSaveLessonPlan = async () => {
     if (!user || !lessonPlan) return;
@@ -1186,7 +1202,26 @@ export function LessonPlanGenerator() {
         ) : null}
         </form>
 
-        <section className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7">
+        {/* ── Pack-ready success banner ─────────────────────────────────── */}
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            transition: "opacity 0.4s ease, transform 0.4s ease",
+            opacity: packReady ? 1 : 0,
+            transform: packReady ? "translateY(0)" : "translateY(-8px)",
+            pointerEvents: packReady ? "auto" : "none",
+          }}
+          className="mb-3 flex items-center gap-3 rounded-2xl border border-[#00C6A7]/40 bg-[#00C6A7]/10 px-4 py-3 text-sm font-medium text-[#007a66] shadow-sm"
+        >
+          <span className="text-lg">✅</span>
+          <span>Your lesson pack is ready! Scroll down to view and download.</span>
+        </div>
+
+        <section
+          ref={resultsRef}
+          className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
+        >
         <h3 className="text-xl font-semibold text-slate-900">Generated teacher package</h3>
         <p className="mt-2 text-sm text-slate-600">
           Preview and download only the sections you generated (lesson plan, slides, worksheet, and
