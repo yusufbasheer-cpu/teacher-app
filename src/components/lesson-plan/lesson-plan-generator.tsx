@@ -1291,7 +1291,7 @@ export function LessonPlanGenerator() {
         </div>
       ) : null}
 
-      {loading ? <LessonPlanLoadingGame active statusText={generationProgress} /> : null}
+      {loading ? <LessonPlanLoadingGame active statusText={generationProgress} selectedSections={sectionSelection} /> : null}
     </div>
   );
 }

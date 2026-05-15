@@ -2,10 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// ── Types (kept identical so the call site doesn't need to change) ────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 type LessonPlanLoadingGameProps = {
   active: boolean;
   statusText?: string | null;
+  /**
+   * The teacher's section selection from the generator form.
+   * Only sections whose value is `true` will appear in the checklist.
+   * If omitted, all sections are shown (safe fallback).
+   */
+  selectedSections?: Record<string, boolean> | null;
 };
 
 // ── Fun facts ─────────────────────────────────────────────────────────────────
@@ -35,14 +41,18 @@ const FUN_FACTS = [
 // ── Section checklist definition ─────────────────────────────────────────────
 type SectionStatus = "waiting" | "generating" | "done";
 
-const SECTIONS: { key: string; label: string; keywords: string[] }[] = [
-  { key: "lesson",     label: "Lesson Plan",         keywords: ["lesson plan", "full lesson", "lesson content"] },
-  { key: "ppt",        label: "PPT Content",          keywords: ["ppt", "slide", "presentation", "deck"] },
-  { key: "worksheet",  label: "Worksheet",            keywords: ["worksheet"] },
-  { key: "assessment", label: "Assessment Questions", keywords: ["assessment", "quiz", "question"] },
-  { key: "homework",   label: "Homework Task",        keywords: ["homework", "home task", "extended task"] },
-  { key: "notes",      label: "Teacher Notes",        keywords: ["teacher note", "notes"] },
-  { key: "afl",        label: "AFL Activity Sheets",  keywords: ["afl", "activity sheet", "printable"] },
+/**
+ * `sectionKey` matches the TeacherPackageSectionKey keys used in the generator's
+ * `sectionSelection` state so we can filter the checklist by what was selected.
+ */
+const SECTIONS: { key: string; sectionKey: string; label: string; keywords: string[] }[] = [
+  { key: "lesson",     sectionKey: "Full Lesson Plan",      label: "Lesson Plan",         keywords: ["lesson plan", "full lesson", "lesson content"] },
+  { key: "ppt",        sectionKey: "PPT Slide Content",     label: "PPT Content",          keywords: ["ppt", "slide", "presentation", "deck"] },
+  { key: "worksheet",  sectionKey: "Worksheet",             label: "Worksheet",            keywords: ["worksheet"] },
+  { key: "assessment", sectionKey: "Assessment Questions",  label: "Assessment Questions", keywords: ["assessment", "quiz", "question"] },
+  { key: "homework",   sectionKey: "Homework Task",         label: "Homework Task",        keywords: ["homework", "home task", "extended task"] },
+  { key: "notes",      sectionKey: "Teacher Notes",         label: "Teacher Notes",        keywords: ["teacher note", "notes"] },
+  { key: "afl",        sectionKey: "AFL Activity Sheets",   label: "AFL Activity Sheets",  keywords: ["afl", "activity sheet", "printable"] },
 ];
 
 const emptyStatuses = (): Record<string, SectionStatus> =>
@@ -59,23 +69,27 @@ function detectActiveSection(text: string): string | null {
 function computeProgress(
   statuses: Record<string, SectionStatus>,
   statusText: string | null | undefined,
+  activeSections: typeof SECTIONS,
 ): number {
-  const doneCount = SECTIONS.filter((s) => statuses[s.key] === "done").length;
-  const genIdx    = SECTIONS.findIndex((s) => statuses[s.key] === "generating");
-  let base = (doneCount / SECTIONS.length) * 92;
+  const total = activeSections.length;
+  if (total === 0) return 4;
+
+  const doneCount = activeSections.filter((s) => statuses[s.key] === "done").length;
+  const genIdx    = activeSections.findIndex((s) => statuses[s.key] === "generating");
+  let base = (doneCount / total) * 92;
 
   // Boost within slide generation using slide X/Y in statusText
   if (genIdx >= 0 && statusText) {
     const m = statusText.match(/(\d+)\s*[/of]+\s*(\d+)/);
     if (m) {
-      const num = parseInt(m[1]!, 10);
-      const total = parseInt(m[2]!, 10);
-      if (total > 0) {
-        const sectionShare = 92 / SECTIONS.length;
-        base += (num / total) * sectionShare;
+      const num   = parseInt(m[1]!, 10);
+      const tot   = parseInt(m[2]!, 10);
+      if (tot > 0) {
+        const sectionShare = 92 / total;
+        base += (num / tot) * sectionShare;
       }
     } else {
-      base += 1 / SECTIONS.length * 46; // half a section's worth
+      base += (1 / total) * 46; // half a section's worth
     }
   }
 
@@ -138,9 +152,15 @@ function StatusIcon({ status }: { status: SectionStatus }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function LessonPlanLoadingGame({ active, statusText }: LessonPlanLoadingGameProps) {
-  const [factIdx, setFactIdx]         = useState(0);
-  const [statuses, setStatuses]       = useState<Record<string, SectionStatus>>(emptyStatuses());
+export function LessonPlanLoadingGame({ active, statusText, selectedSections }: LessonPlanLoadingGameProps) {
+  // Filter to only sections the teacher selected; fall back to all if nothing passed
+  const activeSections =
+    selectedSections && Object.values(selectedSections).some(Boolean)
+      ? SECTIONS.filter((s) => selectedSections[s.sectionKey] === true)
+      : SECTIONS;
+
+  const [factIdx, setFactIdx]               = useState(0);
+  const [statuses, setStatuses]             = useState<Record<string, SectionStatus>>(emptyStatuses());
   const [smoothProgress, setSmoothProgress] = useState(4);
   const lastActiveSectionRef = useRef<string | null>(null);
   const targetProgressRef    = useRef(4);
@@ -164,34 +184,35 @@ export function LessonPlanLoadingGame({ active, statusText }: LessonPlanLoadingG
     return () => clearInterval(id);
   }, [active]);
 
-  // ── Parse statusText → update checklist ─────────────────────────────────
+  // ── Parse statusText → update checklist (only active sections) ──────────
   useEffect(() => {
     if (!statusText || !active) return;
     const found = detectActiveSection(statusText);
     if (!found) return;
 
+    // Only act if this section is in the filtered active list
+    const foundIdx = activeSections.findIndex((s) => s.key === found);
+    if (foundIdx === -1) return;
+
     setStatuses((prev) => {
       const next = { ...prev };
-      const foundIdx = SECTIONS.findIndex((s) => s.key === found);
-
-      // Mark earlier sections as done
+      // Mark earlier active sections as done
       for (let i = 0; i < foundIdx; i++) {
-        const k = SECTIONS[i]!.key;
+        const k = activeSections[i]!.key;
         if (next[k] !== "done") next[k] = "done";
       }
       // Mark current section as generating
       next[found] = "generating";
-
-      // Mark later sections still waiting (unless already done)
-      for (let i = foundIdx + 1; i < SECTIONS.length; i++) {
-        const k = SECTIONS[i]!.key;
+      // Mark later active sections as waiting (unless already done)
+      for (let i = foundIdx + 1; i < activeSections.length; i++) {
+        const k = activeSections[i]!.key;
         if (next[k] !== "done") next[k] = "waiting";
       }
-
       return next;
     });
 
     lastActiveSectionRef.current = found;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusText, active]);
 
   // ── Smooth progress bar animation ───────────────────────────────────────
@@ -199,7 +220,7 @@ export function LessonPlanLoadingGame({ active, statusText }: LessonPlanLoadingG
     if (!active) return;
 
     const tick = () => {
-      const target = computeProgress(statuses, statusText);
+      const target = computeProgress(statuses, statusText, activeSections);
       targetProgressRef.current = target;
       setSmoothProgress((prev) => {
         const diff = targetProgressRef.current - prev;
@@ -227,9 +248,9 @@ export function LessonPlanLoadingGame({ active, statusText }: LessonPlanLoadingG
   if (!active) return null;
 
   const pct = Math.round(smoothProgress);
-  const doneCount = SECTIONS.filter((s) => statuses[s.key] === "done").length;
+  const doneCount = activeSections.filter((s) => statuses[s.key] === "done").length;
   const currentLabel =
-    SECTIONS.find((s) => statuses[s.key] === "generating")?.label ??
+    activeSections.find((s) => statuses[s.key] === "generating")?.label ??
     (doneCount > 0 ? "Finishing up…" : "Starting generation…");
 
   return (
@@ -285,9 +306,9 @@ export function LessonPlanLoadingGame({ active, statusText }: LessonPlanLoadingG
           />
         </div>
 
-        {/* Section checklist */}
+        {/* Section checklist — only the sections the teacher selected */}
         <div className="mb-6 space-y-2.5">
-          {SECTIONS.map((s) => {
+          {activeSections.map((s) => {
             const status = statuses[s.key] ?? "waiting";
             const isActive = status === "generating";
             return (
