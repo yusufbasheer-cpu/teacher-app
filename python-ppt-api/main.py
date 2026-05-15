@@ -203,7 +203,7 @@ def build_slide(prs: Presentation, layout, slide_idx: int, slide_data: dict,
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "service": "Layah.ai PPT Generator API"})
+    return jsonify({"status": "ok", "message": "Layah PPT API is running"})
 
 
 @app.route("/generate-ppt", methods=["POST"])
