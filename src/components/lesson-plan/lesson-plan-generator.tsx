@@ -527,13 +527,16 @@ export function LessonPlanGenerator() {
       return;
     }
 
+    // State updates before any await so the loading screen renders with them
     setLoading(true);
-    setGenerationProgress(null);
+    setGenerationProgress("Initializing...");
 
     try {
       const combinedSource = combineSourceChunks(uploadedChunks);
       const pasted = pastedContent.trim();
       const pptSelected = sectionSelection["PPT Slide Content"];
+
+      setGenerationProgress("Preparing AI request...");
       const response = await fetch("/api/lesson-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -548,6 +551,7 @@ export function LessonPlanGenerator() {
       });
 
       const contentType = response.headers.get("content-type") ?? "";
+      setGenerationProgress("Generating lesson plan...");
 
       type LessonPlanApiResponse = {
         error?: string;
@@ -621,6 +625,7 @@ export function LessonPlanGenerator() {
             "Stream ended without a complete lesson package. Please try again or deselect PPT to use the non-streaming path.",
           );
         }
+        setGenerationProgress("Finalizing...");
         applySuccessPayload(completePayload);
       } else {
         const raw = await response.text();
@@ -645,6 +650,7 @@ export function LessonPlanGenerator() {
           );
         }
 
+        setGenerationProgress("Finalizing...");
         applySuccessPayload(data);
       }
     } catch (err) {

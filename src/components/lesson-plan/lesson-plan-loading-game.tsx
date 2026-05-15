@@ -161,17 +161,19 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
 
   const [factIdx, setFactIdx]               = useState(0);
   const [statuses, setStatuses]             = useState<Record<string, SectionStatus>>(emptyStatuses());
-  const [smoothProgress, setSmoothProgress] = useState(4);
+  const [smoothProgress, setSmoothProgress] = useState(5);
   const lastActiveSectionRef = useRef<string | null>(null);
-  const targetProgressRef    = useRef(4);
+  const targetProgressRef    = useRef(5);
+  const stageFloorRef        = useRef(5);  // time-based minimum floor
   const rafRef               = useRef<number | null>(null);
 
   // ── Reset when generation starts ────────────────────────────────────────
   useEffect(() => {
     if (active) {
       setStatuses(emptyStatuses());
-      setSmoothProgress(4);
-      targetProgressRef.current = 4;
+      setSmoothProgress(5);
+      targetProgressRef.current = 5;
+      stageFloorRef.current = 5;
       lastActiveSectionRef.current = null;
       setFactIdx(Math.floor(Math.random() * FUN_FACTS.length));
     }
@@ -215,17 +217,20 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusText, active]);
 
-  // ── Smooth progress bar animation ───────────────────────────────────────
+  // ── Smooth progress bar animation (uses floor from staged timers) ────────
   useEffect(() => {
     if (!active) return;
 
     const tick = () => {
-      const target = computeProgress(statuses, statusText, activeSections);
+      // Real section-based progress
+      const realTarget = computeProgress(statuses, statusText, activeSections);
+      // Never fall below the time-based floor
+      const target = Math.max(realTarget, stageFloorRef.current);
       targetProgressRef.current = target;
       setSmoothProgress((prev) => {
         const diff = targetProgressRef.current - prev;
         if (Math.abs(diff) < 0.1) return targetProgressRef.current;
-        return prev + diff * 0.07; // ease toward target
+        return prev + diff * 0.1; // slightly snappier ease
       });
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -236,13 +241,29 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
     };
   }, [active, statuses, statusText]);
 
-  // ── Slow auto-increment so bar never looks stuck ─────────────────────────
+  // ── Staged time-based floor so bar moves immediately and never looks stuck ─
+  // Each stage advances the minimum floor; real section progress can push higher.
   useEffect(() => {
     if (!active) return;
-    const id = setInterval(() => {
-      setSmoothProgress((p) => Math.min(p + 0.18, 92));
-    }, 800);
-    return () => clearInterval(id);
+
+    const STAGES: { delay: number; floor: number }[] = [
+      { delay: 0,     floor: 8  },  // Initializing
+      { delay: 400,   floor: 15 },  // Preparing AI request
+      { delay: 1800,  floor: 28 },  // Awaiting response
+      { delay: 5000,  floor: 42 },  // Generating content
+      { delay: 11000, floor: 58 },  // Still generating
+      { delay: 20000, floor: 70 },  // Long generation fallback
+    ];
+
+    const timers = STAGES.map(({ delay, floor }) =>
+      setTimeout(() => {
+        stageFloorRef.current = Math.max(stageFloorRef.current, floor);
+        // Nudge the RAF loop immediately
+        targetProgressRef.current = Math.max(targetProgressRef.current, floor);
+      }, delay),
+    );
+
+    return () => timers.forEach(clearTimeout);
   }, [active]);
 
   if (!active) return null;
