@@ -38,20 +38,6 @@ type TeacherPackageViewerProps = {
   learningObjectives?: string;
   /** Teacher-selected AFL tools from the generator (PPT + lesson plan exports). */
   aflSelections?: AflSelectionsPayload;
-  /** When set, the PPT is generated using school template colors instead of a theme. */
-  schoolTemplateTheme?: {
-    primaryColor: string;
-    accentColor: string;
-    backgroundColor: string;
-    darkColor: string;
-    fontFace?: string;
-  } | null;
-  /** Base64 data URI of the school logo to stamp on every PPT slide. */
-  schoolLogo?: string | null;
-  /** Supabase access token — used to authenticate the PPT export API so it can fetch the template file. */
-  accessToken?: string;
-  /** When true, the export API will fetch the full template file from DB and inject its design. */
-  useSchoolTemplate?: boolean;
 };
 
 type ExportKey =
@@ -100,10 +86,6 @@ export function TeacherPackageViewer({
   teacherName,
   learningObjectives,
   aflSelections,
-  schoolTemplateTheme,
-  schoolLogo,
-  accessToken,
-  useSchoolTemplate,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
@@ -206,19 +188,12 @@ export function TeacherPackageViewer({
     }));
 
     console.log("[PPT export] Download clicked:", {
-      usingSchoolTemplate: !!useSchoolTemplate,
-      hasAccessToken: !!accessToken,
       fullLessonPlanChars: fullLessonPlan.length,
       pptContentChars: pptContent.length,
       subject,
       grade,
       topicPreview: topic.slice(0, 80),
     });
-
-    const pptHeaders: Record<string, string> = {};
-    if (accessToken) {
-      pptHeaders["Authorization"] = `Bearer ${accessToken}`;
-    }
 
     return runExport(
       "ppt",
@@ -233,12 +208,8 @@ export function TeacherPackageViewer({
         teacherName: teacherName?.trim() || "",
         pptTheme: pptThemeId,
         curriculumFramework: curriculumFramework?.trim() ?? "",
-        useSchoolTemplate: useSchoolTemplate ?? false,
-        ...(schoolTemplateTheme ? { schoolTemplateTheme } : {}),
-        ...(schoolLogo ? { schoolLogo } : {}),
         ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
       },
-      pptHeaders,
     );
   };
 
@@ -344,22 +315,10 @@ export function TeacherPackageViewer({
                 onClick={onDownloadPpt}
                 className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
               >
-                {busy === "ppt"
-                  ? (useSchoolTemplate ? "Downloading with school template…" : "Building your PPT… please wait")
-                  : "Download PPT"}
-                {useSchoolTemplate && busy !== "ppt" && (
-                  <span className="mt-0.5 flex items-center gap-1 text-xs font-semibold" style={{ color: "#00C6A7" }}>
-                    <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 00-1.414 0L8 12.586 4.707 9.293a1 1 0 00-1.414 1.414l4 4a1 1 0 001.414 0l8-8a1 1 0 000-1.414z" clipRule="evenodd" />
-                    </svg>
-                    Downloading with your school template
-                  </span>
-                )}
-                {!useSchoolTemplate && (
-                  <span className="mt-0.5 block text-xs font-normal text-slate-500">
-                    Structured deck · Layah theme
-                  </span>
-                )}
+                {busy === "ppt" ? "Building your PPT… please wait" : "Download PPT"}
+                <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                  Structured deck · Layah theme
+                </span>
               </button>
               ) : null}
               {hasLesson ? (

@@ -129,7 +129,6 @@ export function LessonPlanGenerator() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [form, setForm] = useState<LessonPlanInput>(initialForm);
   const [lessonPlan, setLessonPlan] = useState<LessonPlanResult | null>(null);
@@ -160,24 +159,6 @@ export function LessonPlanGenerator() {
   const [pptThemeId, setPptThemeId] = useState<PptThemeId>(DEFAULT_PPT_THEME_ID);
   const [aflPanelOpen, setAflPanelOpen] = useState(false);
   const [aflSelected, setAflSelected] = useState<Record<AflPhaseId, string[]>>(() => emptyAflSelected());
-
-  // ── School PPT Template ──────────────────────────────────────────────────
-  type SchoolTemplate = {
-    original_filename: string;
-    thumbnail_base64: string | null;
-    primary_color: string;
-    accent_color: string;
-    background_color: string;
-    dark_color: string;
-    font_heading: string;
-    font_body: string;
-    logo_base64: string | null;
-  };
-  const templateInputRef = useRef<HTMLInputElement>(null);
-  const [schoolTemplate, setSchoolTemplate] = useState<SchoolTemplate | null>(null);
-  const [templateLoading, setTemplateLoading] = useState(false);
-  const [templateError, setTemplateError] = useState<string | null>(null);
-  const [templateSuccess, setTemplateSuccess] = useState<string | null>(null);
 
   const extractedMaterialPreview = useMemo(
     () => combineSourceChunks(uploadedChunks),
@@ -250,7 +231,6 @@ export function LessonPlanGenerator() {
 
       const sessionUser = session?.user ?? null;
       setUser(sessionUser);
-      setAccessToken(session?.access_token ?? null);
       if (sessionUser) {
         const planId = searchParams.get("planId");
         if (planId) {
@@ -259,18 +239,6 @@ export function LessonPlanGenerator() {
           } catch (err) {
             setError(err instanceof Error ? err.message : "Failed loading plan.");
           }
-        }
-        // Load saved school template
-        try {
-          const tmplRes = await fetch("/api/school-template", {
-            headers: { Authorization: `Bearer ${session!.access_token}` },
-          });
-          if (tmplRes.ok) {
-            const tmplData = (await tmplRes.json()) as { template: SchoolTemplate | null };
-            setSchoolTemplate(tmplData.template ?? null);
-          }
-        } catch {
-          // Non-critical — template just won't be pre-loaded
         }
       }
       setCheckingAuth(false);
@@ -296,76 +264,6 @@ export function LessonPlanGenerator() {
     };
   }, [searchParams]);
 
-  const onUploadSchoolTemplate = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setTemplateError(null);
-    setTemplateSuccess(null);
-    setTemplateLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setTemplateError("Please log in first."); return; }
-      const fd = new FormData();
-      fd.append("template", file);
-      const res = await fetch("/api/school-template/upload", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: fd,
-      });
-      const json = (await res.json()) as {
-        success?: boolean;
-        originalFilename?: string;
-        thumbnailBase64?: string | null;
-        logoBase64?: string | null;
-        theme?: { primaryColor: string; accentColor: string; backgroundColor: string; darkColor: string; fontHeading: string; fontBody: string };
-        error?: string;
-      };
-      if (!res.ok || !json.success) {
-        setTemplateError(json.error ?? "Upload failed. Please try again.");
-        return;
-      }
-      setSchoolTemplate({
-        original_filename: json.originalFilename ?? file.name,
-        thumbnail_base64: json.thumbnailBase64 ?? null,
-        primary_color: json.theme?.primaryColor ?? "1B3A6B",
-        accent_color: json.theme?.accentColor ?? "F5A623",
-        background_color: json.theme?.backgroundColor ?? "FFFFFF",
-        dark_color: json.theme?.darkColor ?? "0A1628",
-        font_heading: json.theme?.fontHeading ?? "Calibri",
-        font_body: json.theme?.fontBody ?? "Calibri",
-        logo_base64: json.logoBase64 ?? null,
-      });
-      setTemplateSuccess("School template uploaded successfully. Your PPT will be generated using your school design.");
-    } catch {
-      setTemplateError("Upload failed. Please check your connection and try again.");
-    } finally {
-      setTemplateLoading(false);
-      if (templateInputRef.current) templateInputRef.current.value = "";
-    }
-  };
-
-  const onRemoveSchoolTemplate = async () => {
-    setTemplateError(null);
-    setTemplateSuccess(null);
-    setTemplateLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setTemplateError("Please log in first."); return; }
-      const res = await fetch("/api/school-template", {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (res.ok) {
-        setSchoolTemplate(null);
-      } else {
-        setTemplateError("Failed to remove template. Please try again.");
-      }
-    } catch {
-      setTemplateError("Failed to remove template.");
-    } finally {
-      setTemplateLoading(false);
-    }
-  };
 
   const clearUploadedSource = () => {
     setUploadedChunks([]);
@@ -1199,94 +1097,6 @@ export function LessonPlanGenerator() {
           </div>
         )}
 
-        {/* ── School PPT Template ── */}
-        <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold" style={{ color: "#0A1628" }}>
-                School PPT Template{" "}
-                <span className="ml-1 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-                  Optional
-                </span>
-              </p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Upload your school&apos;s .pptx template once and Layah will apply your school design to all generated PPTs.
-              </p>
-            </div>
-            {schoolTemplate ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold" style={{ borderColor: "#00C6A7", color: "#00C6A7", background: "rgba(0,198,167,0.07)" }}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6l3 3 5-5" stroke="#00C6A7" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                Using your school template
-              </span>
-            ) : null}
-          </div>
-
-          {schoolTemplate ? (
-            <div className="mt-3 flex items-start gap-3">
-              {schoolTemplate.thumbnail_base64 ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={schoolTemplate.thumbnail_base64}
-                  alt="Template preview"
-                  className="h-16 w-28 flex-shrink-0 rounded-lg border border-slate-200 object-cover shadow-sm"
-                />
-              ) : (
-                <div
-                  className="flex h-16 w-28 flex-shrink-0 items-center justify-center rounded-lg border text-xs text-slate-400"
-                  style={{ background: `#${schoolTemplate.primary_color}15`, borderColor: `#${schoolTemplate.primary_color}40` }}
-                >
-                  <span style={{ color: `#${schoolTemplate.primary_color}` }}>No preview</span>
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-800">{schoolTemplate.original_filename}</p>
-                <div className="mt-1 flex gap-1.5">
-                  {[schoolTemplate.primary_color, schoolTemplate.accent_color, schoolTemplate.background_color].map((hex) => (
-                    <span key={hex} className="inline-block h-4 w-6 rounded border border-slate-200" style={{ background: `#${hex}` }} title={`#${hex}`} />
-                  ))}
-                  <span className="text-xs text-slate-500">{schoolTemplate.font_heading}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={onRemoveSchoolTemplate}
-                  disabled={templateLoading}
-                  className="mt-2 rounded-lg border border-red-200 bg-white px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
-                >
-                  {templateLoading ? "Removing…" : "Remove Template"}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-3">
-              <input
-                ref={templateInputRef}
-                type="file"
-                accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                onChange={onUploadSchoolTemplate}
-                disabled={templateLoading || loading}
-                className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-[#00C6A7] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#0A8F7A] disabled:opacity-60"
-              />
-              <p className="mt-1.5 text-xs text-slate-500">
-                Upload Your School PPT Template (Optional) — .pptx files only, max 20 MB
-              </p>
-            </div>
-          )}
-
-          {templateLoading && !schoolTemplate ? (
-            <p className="mt-2 text-xs text-slate-500">Uploading and reading template…</p>
-          ) : null}
-          {templateSuccess ? (
-            <p className="mt-2 rounded-lg border px-3 py-2 text-xs font-medium" style={{ borderColor: "#00C6A7", color: "#00C6A7", background: "rgba(0,198,167,0.07)" }}>
-              {templateSuccess}
-            </p>
-          ) : null}
-          {templateError ? (
-            <p className="mt-2 text-xs text-red-600">{templateError}</p>
-          ) : null}
-        </div>
-
         <fieldset className="mt-6 rounded-2xl border border-[#00C6A7]/20 bg-[#00C6A7]/5 p-4">
           <legend className="px-1 text-sm font-semibold text-slate-900">What to generate</legend>
           <p className="mt-1 text-xs text-slate-600">
@@ -1414,23 +1224,10 @@ export function LessonPlanGenerator() {
             lessonPlan["PPT Slide Content"].trim().length > 0 ? (
               <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4 shadow-inner md:p-5">
                 <p className="text-sm font-semibold text-slate-900">Presentation theme</p>
-                {schoolTemplate ? (
-                  <div className="mt-2 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium" style={{ borderColor: "#00C6A7", color: "#00C6A7", background: "rgba(0,198,167,0.06)" }}>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M2 7l3.5 3.5L12 3" stroke="#00C6A7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Using your school template — <span className="ml-1 truncate text-slate-600">{schoolTemplate.original_filename}</span>
-                  </div>
-                ) : (
-                  <p className="mt-1 text-xs text-slate-600">
-                    Pick a style for your PowerPoint, then use Download PPT. Ocean Blue is selected by
-                    default.
-                  </p>
-                )}
-                {!schoolTemplate ? <div
-                  className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5"
-                  role="list"
-                >
+                <p className="mt-1 text-xs text-slate-600">
+                  Pick a style for your PowerPoint, then use Download PPT. Ocean Blue is selected by default.
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5" role="list">
                   {PPT_THEME_CARDS.map((t) => {
                     const selected = pptThemeId === t.id;
                     return (
@@ -1463,7 +1260,7 @@ export function LessonPlanGenerator() {
                       </button>
                     );
                   })}
-                </div> : null}
+                </div>
               </div>
             ) : null}
             <TeacherPackageViewer
@@ -1475,20 +1272,6 @@ export function LessonPlanGenerator() {
               topic={form.topic}
               curriculumFramework={form.curriculumFramework.trim() || undefined}
               pptThemeId={pptThemeId}
-              schoolTemplateTheme={
-                schoolTemplate
-                  ? {
-                      primaryColor: schoolTemplate.primary_color,
-                      accentColor: schoolTemplate.accent_color,
-                      backgroundColor: schoolTemplate.background_color,
-                      darkColor: schoolTemplate.dark_color,
-                      fontFace: schoolTemplate.font_heading !== "Calibri" ? schoolTemplate.font_heading : undefined,
-                    }
-                  : null
-              }
-              schoolLogo={schoolTemplate?.logo_base64 ?? null}
-              accessToken={accessToken ?? undefined}
-              useSchoolTemplate={!!schoolTemplate}
               learningObjectives={form.learningObjectives}
               aflSelections={hasAflForExport ? aflSelectionsPayload : undefined}
               teacherName={
