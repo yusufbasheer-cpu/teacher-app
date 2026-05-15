@@ -1286,129 +1286,123 @@ export function LessonPlanGenerator() {
         ) : null}
         </form>
 
-        {/* ── Pack-ready success banner ─────────────────────────────────── */}
-        <div
-          role="status"
-          aria-live="polite"
-          style={{
-            transition: "opacity 0.4s ease, transform 0.4s ease",
-            opacity: packReady ? 1 : 0,
-            transform: packReady ? "translateY(0)" : "translateY(-8px)",
-            pointerEvents: packReady ? "auto" : "none",
-          }}
-          className="mb-3 flex items-center gap-3 rounded-2xl border border-[#00C6A7]/40 bg-[#00C6A7]/10 px-4 py-3 text-sm font-medium text-[#007a66] shadow-sm"
-        >
-          <span className="text-lg">✅</span>
-          <span>Your lesson pack is ready! Scroll down to view and download.</span>
-        </div>
+        {/* ── RIGHT COLUMN wrapper — keeps banner + content as one grid item ── */}
+        <div className="flex min-w-0 flex-col gap-4">
 
-        <section
-          ref={resultsRef}
-          className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
-        >
-        <h3 className="text-xl font-semibold text-slate-900">Generated teacher package</h3>
-        <p className="mt-2 text-sm text-slate-600">
-          Preview and download only the sections you generated (lesson plan, slides, worksheet, and
-          more). When <code className="rounded bg-slate-100 px-1">FAL_API_KEY</code> is set, FLUX.1
-          illustrations appear beside each section.
-        </p>
+          {/* Pack-ready success banner */}
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              transition: "opacity 0.4s ease, transform 0.4s ease",
+              opacity: packReady ? 1 : 0,
+              transform: packReady ? "translateY(0)" : "translateY(-8px)",
+              pointerEvents: packReady ? "auto" : "none",
+            }}
+            className="flex items-center gap-3 rounded-2xl border border-[#00C6A7]/40 bg-[#00C6A7]/10 px-4 py-3 text-sm font-medium text-[#007a66] shadow-sm"
+          >
+            <span className="text-lg">✅</span>
+            <span>Your lesson pack is ready! Scroll down to view and download.</span>
+          </div>
 
-        {!lessonPlan ? (
-          <div className="mt-6 flex flex-col gap-4">
-            {/* ── Quick Tips ─────────────────────────────────────────────── */}
-            <div
-              className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-              style={{ borderRadius: 12 }}
-            >
-              <div className="mb-3 flex items-center gap-2">
-                <span className="text-[#00C6A7] text-lg">💡</span>
-                <h4 className="text-base font-semibold" style={{ color: "#0A1628" }}>
-                  Tips for Best Results
-                </h4>
-              </div>
-              <ul className="space-y-2.5">
-                {QUICK_TIPS.map((tip, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600">
-                    <span
-                      className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                      style={{ background: "#00C6A7" }}
-                    >
-                      {i + 1}
-                    </span>
-                    {tip}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* ── AFL Tool Spotlight ─────────────────────────────────────── */}
-            {spotlight && (
+          {!lessonPlan ? (
+            <>
+              {/* ── Quick Tips ──────────────────────────────────────────── */}
               <div
                 className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                 style={{ borderRadius: 12 }}
               >
-                {/* Header */}
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🎯</span>
-                    <h4 className="text-base font-semibold" style={{ color: "#0A1628" }}>
-                      AFL Tool Spotlight
-                    </h4>
-                  </div>
-                  <span
-                    className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white"
-                    style={{ background: "#0A1628" }}
-                  >
-                    {spotlight.phaseLabel}
-                  </span>
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-[#00C6A7] text-lg">💡</span>
+                  <h4 className="text-base font-semibold" style={{ color: "#0A1628" }}>
+                    Tips for Best Results
+                  </h4>
                 </div>
-
-                {/* Tool name */}
-                <p className="mb-1 text-xl font-bold" style={{ color: "#00C6A7" }}>
-                  {spotlight.label}
-                </p>
-
-                {/* One-line description */}
-                <p className="mb-3 text-sm text-slate-500">{spotlight.purpose}</p>
-
-                {/* How to use */}
-                <div className="mb-3 rounded-lg p-3" style={{ background: "#F7F9FC" }}>
-                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    How to Use in Class
-                  </p>
-                  <p className="text-sm text-slate-700">{spotlight.howItWorks}</p>
-                  <p className="mt-1 text-sm text-slate-600">{spotlight.classroomUse}</p>
-                </div>
-
-                {/* 21st Century Skills */}
-                <div>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    21st Century Skills
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {spotlight.skills.map((skill) => (
+                <ul className="space-y-2.5">
+                  {QUICK_TIPS.map((tip, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600">
                       <span
-                        key={skill}
-                        className="rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
-                        style={{
-                          borderColor: "#00C6A7",
-                          color: "#007a66",
-                          background: "rgba(0,198,167,0.08)",
-                        }}
+                        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                        style={{ background: "#00C6A7" }}
                       >
-                        {skill}
+                        {i + 1}
                       </span>
-                    ))}
-                  </div>
-                </div>
-
-                <p className="mt-3 text-[10px] text-slate-400">
-                  Refreshes with a new tool each time you visit this page.
-                </p>
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            )}
-          </div>
-        ) : (
+
+              {/* ── AFL Tool Spotlight ──────────────────────────────────── */}
+              {spotlight && (
+                <div
+                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                  style={{ borderRadius: 12 }}
+                >
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🎯</span>
+                      <h4 className="text-base font-semibold" style={{ color: "#0A1628" }}>
+                        AFL Tool Spotlight
+                      </h4>
+                    </div>
+                    <span
+                      className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white"
+                      style={{ background: "#0A1628" }}
+                    >
+                      {spotlight.phaseLabel}
+                    </span>
+                  </div>
+
+                  <p className="mb-1 text-xl font-bold" style={{ color: "#00C6A7" }}>
+                    {spotlight.label}
+                  </p>
+                  <p className="mb-3 text-sm text-slate-500">{spotlight.purpose}</p>
+
+                  <div className="mb-3 rounded-lg p-3" style={{ background: "#F7F9FC" }}>
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      How to Use in Class
+                    </p>
+                    <p className="text-sm text-slate-700">{spotlight.howItWorks}</p>
+                    <p className="mt-1 text-sm text-slate-600">{spotlight.classroomUse}</p>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      21st Century Skills
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {spotlight.skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
+                          style={{
+                            borderColor: "#00C6A7",
+                            color: "#007a66",
+                            background: "rgba(0,198,167,0.08)",
+                          }}
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="mt-3 text-[10px] text-slate-400">
+                    Refreshes with a new tool each time you visit this page.
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+          <section
+            ref={resultsRef}
+            className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
+          >
+            <h3 className="text-xl font-semibold text-slate-900">Generated teacher package</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Preview and download only the sections you generated (lesson plan, slides, worksheet, and more).
+            </p>
           <div className="mt-6 space-y-5">
             {parseNotice ? (
               <p
@@ -1496,9 +1490,10 @@ export function LessonPlanGenerator() {
               }
             />
           </div>
+          </section>
         )}
-        </section>
-      </div>
+        </div>{/* end right column */}
+      </div>{/* end grid */}
 
       {successMessage ? (
         <div className="rounded-xl border border-[#00C6A7]/30 bg-[#00C6A7]/5 px-4 py-3 text-sm text-[#00C6A7]">
