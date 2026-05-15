@@ -170,6 +170,7 @@ export function LessonPlanGenerator() {
     dark_color: string;
     font_heading: string;
     font_body: string;
+    logo_base64: string | null;
   };
   const templateInputRef = useRef<HTMLInputElement>(null);
   const [schoolTemplate, setSchoolTemplate] = useState<SchoolTemplate | null>(null);
@@ -313,6 +314,7 @@ export function LessonPlanGenerator() {
         success?: boolean;
         originalFilename?: string;
         thumbnailBase64?: string | null;
+        logoBase64?: string | null;
         theme?: { primaryColor: string; accentColor: string; backgroundColor: string; darkColor: string; fontHeading: string; fontBody: string };
         error?: string;
       };
@@ -329,6 +331,7 @@ export function LessonPlanGenerator() {
         dark_color: json.theme?.darkColor ?? "0A1628",
         font_heading: json.theme?.fontHeading ?? "Calibri",
         font_body: json.theme?.fontBody ?? "Calibri",
+        logo_base64: json.logoBase64 ?? null,
       });
       setTemplateSuccess("School template uploaded successfully. Your PPT will be generated using your school design.");
     } catch {
@@ -1477,9 +1480,11 @@ export function LessonPlanGenerator() {
                       accentColor: schoolTemplate.accent_color,
                       backgroundColor: schoolTemplate.background_color,
                       darkColor: schoolTemplate.dark_color,
+                      fontFace: schoolTemplate.font_heading !== "Calibri" ? schoolTemplate.font_heading : undefined,
                     }
                   : null
               }
+              schoolLogo={schoolTemplate?.logo_base64 ?? null}
               learningObjectives={form.learningObjectives}
               aflSelections={hasAflForExport ? aflSelectionsPayload : undefined}
               teacherName={

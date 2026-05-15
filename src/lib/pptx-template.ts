@@ -1,9 +1,9 @@
 /**
  * Utilities for parsing an uploaded .pptx template file.
- * Extracts color scheme, fonts, and thumbnail using JSZip.
+ * Extracts color scheme, fonts, logo image, and thumbnail using JSZip.
  *
- * Required Supabase setup (run once in Supabase SQL editor):
- * ─────────────────────────────────────────────────────────
+ * Required Supabase setup — run BOTH queries in Supabase SQL editor:
+ * ─────────────────────────────────────────────────────────────────────
  * CREATE TABLE IF NOT EXISTS school_templates (
  *   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
  *   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -15,23 +15,27 @@
  *   dark_color text NOT NULL DEFAULT '0A1628',
  *   font_heading text NOT NULL DEFAULT 'Calibri',
  *   font_body text NOT NULL DEFAULT 'Calibri',
+ *   logo_base64 text,
  *   created_at timestamptz DEFAULT now(),
  *   UNIQUE(user_id)
  * );
  * ALTER TABLE school_templates ENABLE ROW LEVEL SECURITY;
  * CREATE POLICY "Users manage own template" ON school_templates
  *   USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
- * ─────────────────────────────────────────────────────────
+ *
+ * -- If table already exists, add the new column:
+ * ALTER TABLE school_templates ADD COLUMN IF NOT EXISTS logo_base64 TEXT;
+ * ─────────────────────────────────────────────────────────────────────
  */
 import JSZip from "jszip";
 
 export type PptxExtractedTheme = {
-  primaryColor: string;   // hex without #  (dark brand color → used for header bar, title text)
-  accentColor: string;    // hex without #  (vivid accent → used for underlines, highlights)
-  backgroundColor: string; // hex without # (slide background)
-  darkColor: string;       // hex without # (deep dark for hero slides)
-  fontHeading: string;
-  fontBody: string;
+  primaryColor: string;    // hex without #  (dark brand color → header bar, title text)
+  accentColor: string;     // hex without #  (vivid accent → underlines, highlights)
+  backgroundColor: string; // hex without #  (slide background)
+  darkColor: string;       // hex without #  (deep dark for hero slides)
+  fontHeading: string;     // font name for headings
+  fontBody: string;        // font name for body text
 };
 
 export type SchoolTemplateRecord = {
@@ -43,9 +47,12 @@ export type SchoolTemplateRecord = {
   dark_color: string;
   font_heading: string;
   font_body: string;
+  logo_base64: string | null;
 };
 
-/** Extract a hex color value from an XML color element string. */
+// ─── Color Extraction Helpers ────────────────────────────────────────────────
+
+/** Extract a 6-char hex colour value from an XML colour element snippet. */
 function extractHex(xmlSnippet: string): string | null {
   // srgbClr val="RRGGBB"
   const m = xmlSnippet.match(/srgbClr\s+val="([0-9A-Fa-f]{6})"/);
@@ -56,48 +63,220 @@ function extractHex(xmlSnippet: string): string | null {
   return null;
 }
 
-/** Parse a simple color scheme from ppt/theme/theme1.xml XML string. */
-function parseThemeColors(themeXml: string): Omit<PptxExtractedTheme, "fontHeading" | "fontBody"> {
-  // We care about: dk1 (dark1), lt1 (light1), accent1, accent2
-  const getColor = (tag: string): string | null => {
-    const regex = new RegExp(`<a:${tag}>([\\s\\S]*?)<\\/a:${tag}>`, "i");
+/**
+ * Try multiple patterns to get a color from a broad XML context.
+ * Handles both namespaced (a:srgbClr) and non-namespaced forms.
+ */
+function extractHexBroad(xmlSnippet: string): string | null {
+  const patterns = [
+    /srgbClr\s+val="([0-9A-Fa-f]{6})"/,
+    /sysClr[^>]+lastClr="([0-9A-Fa-f]{6})"/,
+    /clr\s+val="([0-9A-Fa-f]{6})"/,
+    /val="([0-9A-Fa-f]{6})"/,
+  ];
+  for (const p of patterns) {
+    const m = xmlSnippet.match(p);
+    if (m) return m[1]!.toUpperCase();
+  }
+  return null;
+}
+
+/** Parse a colour from a named theme colour slot tag. */
+function getThemeColor(themeXml: string, tag: string): string | null {
+  // Try with namespace prefix first, then without
+  for (const prefix of ["a:", ""]) {
+    const regex = new RegExp(
+      `<${prefix}${tag}[\\s>]([\\s\\S]*?)<\\/${prefix}${tag}>`,
+      "i",
+    );
     const match = themeXml.match(regex);
-    if (!match) return null;
-    return extractHex(match[1]!);
-  };
+    if (match) {
+      const color = extractHex(match[1]!);
+      if (color) return color;
+    }
+  }
+  return null;
+}
 
-  const dk1 = getColor("dk1");
-  const lt1 = getColor("lt1");
-  const dk2 = getColor("dk2");
-  const accent1 = getColor("accent1");
-  const accent2 = getColor("accent2");
+// ─── Theme & Font Parsing ─────────────────────────────────────────────────────
 
-  // Map to our semantic slots
-  const primaryColor = accent1 ?? dk2 ?? "1B3A6B";
-  const accentColor = accent2 ?? "F5A623";
-  const backgroundColor = lt1 ?? "FFFFFF";
-  const darkColor = dk1 ?? "0A1628";
+function parseThemeColors(
+  themeXml: string,
+): Omit<PptxExtractedTheme, "fontHeading" | "fontBody"> {
+  const dk1 = getThemeColor(themeXml, "dk1");
+  const lt1 = getThemeColor(themeXml, "lt1");
+  const dk2 = getThemeColor(themeXml, "dk2");
+  const lt2 = getThemeColor(themeXml, "lt2");
+  const accent1 = getThemeColor(themeXml, "accent1");
+  const accent2 = getThemeColor(themeXml, "accent2");
+  const accent3 = getThemeColor(themeXml, "accent3");
+  const accent6 = getThemeColor(themeXml, "accent6");
+
+  console.log("[pptx-template] Raw theme colour slots extracted:", {
+    dk1, lt1, dk2, lt2, accent1, accent2, accent3, accent6,
+  });
+
+  // Map to semantic slots
+  // primaryColor: the dominant brand colour used for bars and titles
+  const primaryColor = accent1 ?? dk2 ?? dk1 ?? "1B3A6B";
+  // accentColor: a vivid highlight colour
+  const accentColor = accent2 ?? accent3 ?? accent6 ?? "F5A623";
+  // backgroundColor: the slide background (usually light or white)
+  const backgroundColor = lt1 ?? lt2 ?? "FFFFFF";
+  // darkColor: deep colour used for hero/closing slides
+  const darkColor = dk1 ?? dk2 ?? "0A1628";
+
+  console.log("[pptx-template] Mapped theme colours:", {
+    primaryColor, accentColor, backgroundColor, darkColor,
+  });
 
   return { primaryColor, accentColor, backgroundColor, darkColor };
 }
 
-/** Parse fonts from ppt/theme/theme1.xml. */
 function parseThemeFonts(themeXml: string): { fontHeading: string; fontBody: string } {
-  const majorMatch = themeXml.match(/<a:majorFont>[\s\S]*?<a:latin\s+typeface="([^"]+)"/i);
-  const minorMatch = themeXml.match(/<a:minorFont>[\s\S]*?<a:latin\s+typeface="([^"]+)"/i);
-  return {
-    fontHeading: majorMatch?.[1] ?? "Calibri",
-    fontBody: minorMatch?.[1] ?? "Calibri",
-  };
+  const majorMatch = themeXml.match(/<a:majorFont[^>]*>[\s\S]*?<a:latin\s+typeface="([^"]+)"/i);
+  const minorMatch = themeXml.match(/<a:minorFont[^>]*>[\s\S]*?<a:latin\s+typeface="([^"]+)"/i);
+
+  // +Body / +Heading are pptx meta-names that mean "default theme font"
+  const rawHeading = majorMatch?.[1] ?? "Calibri";
+  const rawBody    = minorMatch?.[1] ?? "Calibri";
+  const fontHeading = rawHeading.startsWith("+") ? "Calibri" : rawHeading;
+  const fontBody    = rawBody.startsWith("+")    ? "Calibri" : rawBody;
+
+  console.log("[pptx-template] Extracted fonts:", { fontHeading, fontBody });
+  return { fontHeading, fontBody };
 }
 
+// ─── Slide Master Background Colour ───────────────────────────────────────────
+
+async function extractMasterBackgroundColor(zip: JSZip): Promise<string | null> {
+  const masterFile = zip.file("ppt/slideMasters/slideMaster1.xml");
+  if (!masterFile) return null;
+
+  const xml = await masterFile.async("text");
+
+  // Look for background shape (p:bg > p:bgPr > ...) or solid fill (a:solidFill > a:srgbClr)
+  const bgPrMatch = xml.match(/<p:bgPr>([\s\S]*?)<\/p:bgPr>/i);
+  if (bgPrMatch) {
+    const color = extractHexBroad(bgPrMatch[1]!);
+    if (color) {
+      console.log("[pptx-template] Background colour from slide master bgPr:", color);
+      return color;
+    }
+  }
+  return null;
+}
+
+// ─── Logo Extraction ──────────────────────────────────────────────────────────
+
 /**
- * Extract color scheme, fonts, and thumbnail from a .pptx buffer.
+ * Extract the first logo/image found in the slide master.
+ * Returns a data-URI string (data:image/png;base64,...) or null.
  */
-export async function extractPptxTemplate(
-  buffer: ArrayBuffer,
-): Promise<{ theme: PptxExtractedTheme; thumbnailBase64: string | null }> {
-  const zip = await JSZip.loadAsync(buffer);
+async function extractMasterLogo(zip: JSZip): Promise<string | null> {
+  // Read the slide master relationships to find embedded images
+  const masterRelsFile =
+    zip.file("ppt/slideMasters/_rels/slideMaster1.xml.rels") ??
+    zip.file("ppt/slideLayouts/_rels/slideLayout1.xml.rels");
+
+  if (!masterRelsFile) {
+    console.log("[pptx-template] No slide master relationship file found.");
+    return null;
+  }
+
+  const relsXml = await masterRelsFile.async("text");
+  console.log("[pptx-template] Slide master relationships XML (first 500 chars):", relsXml.slice(0, 500));
+
+  // Find all image relationships
+  const imageRels: Array<{ id: string; target: string }> = [];
+  const relRegex = /Id="([^"]+)"[^>]+Type="[^"]*image[^"]*"[^>]+Target="([^"]+)"/gi;
+  let relMatch;
+  while ((relMatch = relRegex.exec(relsXml)) !== null) {
+    imageRels.push({ id: relMatch[1]!, target: relMatch[2]! });
+  }
+
+  console.log("[pptx-template] Image relationships found in master:", imageRels);
+
+  if (imageRels.length === 0) {
+    console.log("[pptx-template] No image relationships in slide master — no logo extracted.");
+    return null;
+  }
+
+  // Use the first image as the logo
+  const firstRel = imageRels[0]!;
+  // Target is relative to the _rels file location, e.g. "../media/image1.png"
+  // Resolve relative to ppt/slideMasters/
+  let mediaPath = firstRel.target.replace(/^\.\.\//, "ppt/");
+  if (!mediaPath.startsWith("ppt/")) {
+    mediaPath = `ppt/slideMasters/${firstRel.target}`;
+  }
+
+  console.log("[pptx-template] Trying to read logo from:", mediaPath);
+
+  const imgFile = zip.file(mediaPath);
+  if (!imgFile) {
+    // Try alternate path resolution
+    const altPath = `ppt/media/${firstRel.target.split("/").pop()}`;
+    console.log("[pptx-template] Primary path failed, trying:", altPath);
+    const altFile = zip.file(altPath);
+    if (!altFile) {
+      console.log("[pptx-template] Could not find logo image file.");
+      return null;
+    }
+    return await readImageAsDataUri(altFile, altPath);
+  }
+
+  return await readImageAsDataUri(imgFile, mediaPath);
+}
+
+async function readImageAsDataUri(
+  file: JSZip.JSZipObject,
+  path: string,
+): Promise<string | null> {
+  try {
+    const bytes = await file.async("uint8array");
+    const b64 = Buffer.from(bytes).toString("base64");
+    const name = path.toLowerCase();
+    let mime = "image/png";
+    if (name.endsWith(".jpg") || name.endsWith(".jpeg")) mime = "image/jpeg";
+    else if (name.endsWith(".gif")) mime = "image/gif";
+    else if (name.endsWith(".bmp")) mime = "image/bmp";
+    else if (name.endsWith(".svg")) mime = "image/svg+xml";
+    const dataUri = `data:${mime};base64,${b64}`;
+    console.log(
+      `[pptx-template] Logo image extracted: ${path} (${bytes.length} bytes, mime=${mime})`,
+    );
+    return dataUri;
+  } catch (e) {
+    console.error("[pptx-template] Failed to read logo image:", e);
+    return null;
+  }
+}
+
+// ─── Main Export ──────────────────────────────────────────────────────────────
+
+/**
+ * Extract colour scheme, fonts, logo image, and thumbnail from a .pptx buffer.
+ * Logs each extracted element to the console for verification.
+ */
+export async function extractPptxTemplate(buffer: ArrayBuffer): Promise<{
+  theme: PptxExtractedTheme;
+  thumbnailBase64: string | null;
+  logoBase64: string | null;
+}> {
+  console.log("[pptx-template] Starting extraction from uploaded .pptx file...");
+
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(buffer);
+  } catch (e) {
+    console.error("[pptx-template] Failed to unzip the .pptx file:", e);
+    throw new Error("The uploaded file could not be read as a valid .pptx (ZIP) file.");
+  }
+
+  // List all files in the ZIP for debugging
+  const allFiles = Object.keys(zip.files);
+  console.log("[pptx-template] Files inside .pptx archive:", allFiles.slice(0, 40));
 
   // ── Colors & fonts from ppt/theme/theme1.xml ──────────────────────────────
   let theme: PptxExtractedTheme = {
@@ -115,13 +294,37 @@ export async function extractPptxTemplate(
     zip.file("ppt/theme/theme3.xml");
 
   if (themeFile) {
+    console.log("[pptx-template] Reading theme file:", themeFile.name);
     const themeXml = await themeFile.async("text");
+    console.log("[pptx-template] Theme XML length:", themeXml.length, "chars");
     const colors = parseThemeColors(themeXml);
     const fonts = parseThemeFonts(themeXml);
     theme = { ...colors, ...fonts };
+  } else {
+    console.warn("[pptx-template] No theme XML file found in .pptx. Using defaults.");
   }
 
-  // ── Thumbnail from docProps/thumbnail.jpeg / .png ─────────────────────────
+  // ── Override background colour from slide master if available ─────────────
+  const masterBg = await extractMasterBackgroundColor(zip);
+  if (masterBg) {
+    theme.backgroundColor = masterBg;
+    console.log("[pptx-template] Background colour overridden from slide master:", masterBg);
+  }
+
+  // ── Logo from slide master ─────────────────────────────────────────────────
+  let logoBase64: string | null = null;
+  try {
+    logoBase64 = await extractMasterLogo(zip);
+    if (logoBase64) {
+      console.log("[pptx-template] Logo successfully extracted, data URI length:", logoBase64.length);
+    } else {
+      console.log("[pptx-template] No logo image extracted from slide master.");
+    }
+  } catch (e) {
+    console.error("[pptx-template] Error during logo extraction:", e);
+  }
+
+  // ── Thumbnail from docProps/thumbnail.* ──────────────────────────────────
   let thumbnailBase64: string | null = null;
   const thumbFile =
     zip.file("docProps/thumbnail.jpeg") ??
@@ -136,7 +339,17 @@ export async function extractPptxTemplate(
     const name = thumbFile.name.toLowerCase();
     const mime = name.endsWith(".png") ? "image/png" : "image/jpeg";
     thumbnailBase64 = `data:${mime};base64,${b64}`;
+    console.log(
+      "[pptx-template] Thumbnail extracted:",
+      thumbFile.name,
+      `(${thumbBytes.length} bytes)`,
+    );
+  } else {
+    console.log("[pptx-template] No thumbnail found in docProps/.");
   }
 
-  return { theme, thumbnailBase64 };
+  console.log("[pptx-template] Final extracted theme:", theme);
+  console.log("[pptx-template] Extraction complete. Logo:", logoBase64 ? "YES" : "NO", "| Thumbnail:", thumbnailBase64 ? "YES" : "NO");
+
+  return { theme, thumbnailBase64, logoBase64 };
 }

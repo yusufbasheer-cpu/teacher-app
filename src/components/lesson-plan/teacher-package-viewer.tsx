@@ -44,7 +44,10 @@ type TeacherPackageViewerProps = {
     accentColor: string;
     backgroundColor: string;
     darkColor: string;
+    fontFace?: string;
   } | null;
+  /** Base64 data URI of the school logo to stamp on every PPT slide. */
+  schoolLogo?: string | null;
 };
 
 type ExportKey =
@@ -94,6 +97,7 @@ export function TeacherPackageViewer({
   learningObjectives,
   aflSelections,
   schoolTemplateTheme,
+  schoolLogo,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
@@ -211,6 +215,7 @@ export function TeacherPackageViewer({
       pptTheme: pptThemeId,
       curriculumFramework: curriculumFramework?.trim() ?? "",
       ...(schoolTemplateTheme ? { schoolTemplateTheme } : {}),
+      ...(schoolLogo ? { schoolLogo } : {}),
       ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
     });
   };

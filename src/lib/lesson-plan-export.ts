@@ -561,8 +561,9 @@ function toAccentRuns(
   line: string,
   theme: PptRenderTheme,
 ): Array<{ text: string; options: Record<string, unknown> }> {
+  const ff = theme.fontFace ?? "Calibri";
   const normalized = line.replace(/^\u2022\s*/, "").trim();
-  const baseBody = { color: theme.bodyText, fontFace: "Calibri", fontSize: PPT_BODY_PT };
+  const baseBody = { color: theme.bodyText, fontFace: ff, fontSize: PPT_BODY_PT };
   if (!normalized) {
     return [{ text: "\u2022 ", options: { ...baseBody } }];
   }
@@ -575,7 +576,7 @@ function toAccentRuns(
         options: {
           color: theme.bodyAccent,
           bold: true,
-          fontFace: "Calibri",
+          fontFace: ff,
           fontSize: PPT_BODY_PT,
         },
       },
@@ -596,6 +597,7 @@ function addSlideFooter(
   grade: string,
   slideNumberText: string,
 ) {
+  const ff = theme.fontFace ?? "Calibri";
   const lineY = IN_SLIDE_H - IN_MARGIN - 0.22;
   slide.addShape(pptx.ShapeType.line, {
     x: IN_MARGIN,
@@ -611,7 +613,7 @@ function addSlideFooter(
     h: 0.22,
     fontSize: 14,
     color: theme.footerText,
-    fontFace: "Calibri",
+    fontFace: ff,
   });
   slide.addText(slideNumberText, {
     x: IN_SLIDE_W - IN_MARGIN - 2.1,
@@ -620,7 +622,7 @@ function addSlideFooter(
     h: 0.22,
     fontSize: 14,
     color: theme.footerText,
-    fontFace: "Calibri",
+    fontFace: ff,
     align: "right",
   });
 }
@@ -667,8 +669,39 @@ function addImagePlaceholder(
     h: 0.28,
     fontSize: 13,
     color: theme.footerText,
-    fontFace: "Calibri",
+    fontFace: theme.fontFace ?? "Calibri",
     align: "center",
+  });
+}
+
+/** Add a small school logo image to the top-right corner of a slide. */
+function addLogoToSlide(
+  pptx: PptxGenJS,
+  slide: PptxGenJS.Slide,
+  logoDataUri: string,
+  isHeroSlide = false,
+) {
+  const logoW = 1.85;
+  const logoH = 0.38;
+  const logoX = 13.333333 - 0.3 - logoW; // right-aligned with margin
+  const logoY = isHeroSlide ? 0.12 : 0.26; // slightly higher on hero slides
+
+  // White semi-transparent backing so logo is visible on any colour
+  slide.addShape(pptx.ShapeType.rect, {
+    x: logoX - 0.05,
+    y: logoY - 0.04,
+    w: logoW + 0.1,
+    h: logoH + 0.08,
+    fill: { color: "FFFFFF", transparency: 20 },
+    line: { color: "FFFFFF", transparency: 60, pt: 0.5 },
+  });
+  slide.addImage({
+    data: logoDataUri,
+    x: logoX,
+    y: logoY,
+    w: logoW,
+    h: logoH,
+    altText: "School logo",
   });
 }
 
@@ -690,12 +723,30 @@ export async function buildPptxFromPptContent(params: {
   aflSelections?: AflSelectionsPayload;
   /** When set, overrides themeId with colors extracted from the school's .pptx template. */
   customRenderTheme?: PptRenderTheme;
+  /** Base64 data URI of the school logo extracted from the .pptx template. */
+  schoolLogo?: string | null;
 }): Promise<Buffer> {
   const theme = params.customRenderTheme ?? getPptRenderTheme(params.themeId);
+  /** Font face from school template, or default "Calibri". */
+  const ff = theme.fontFace ?? "Calibri";
+
+  if (params.schoolLogo) {
+    console.log("[pptx-build] School logo will be applied to every slide.");
+  }
+  if (params.customRenderTheme) {
+    console.log("[pptx-build] Using school template colours:", {
+      slideBg: theme.slideBg,
+      topBar: theme.topBar,
+      sideAccent: theme.sideAccent,
+      titleText: theme.titleText,
+      fontFace: ff,
+    });
+  }
+
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
-  pptx.author = "EduPlan AI";
-  pptx.company = "EduPlan AI";
+  pptx.author = "Layah.ai";
+  pptx.company = "Layah.ai";
   pptx.subject = `${params.subject} — ${params.topic}`;
   pptx.title = `Slides — ${params.topic}`;
 
@@ -753,7 +804,7 @@ export async function buildPptxFromPptContent(params: {
       h: 4.2,
       fontSize: 30,
       color: theme.heroSubtitle,
-      fontFace: "Calibri",
+      fontFace: ff,
       align: "center",
       valign: "middle",
     });
@@ -776,7 +827,7 @@ export async function buildPptxFromPptContent(params: {
       fontSize: 34,
       bold: true,
       color: theme.heroTitle,
-      fontFace: "Calibri",
+      fontFace: ff,
       valign: "top",
       fit: "shrink",
     });
@@ -787,7 +838,7 @@ export async function buildPptxFromPptContent(params: {
       h: 4.35,
       fontSize: 15,
       color: theme.heroSubtitle,
-      fontFace: "Calibri",
+      fontFace: ff,
       valign: "top",
       fit: "shrink",
     });
@@ -798,7 +849,7 @@ export async function buildPptxFromPptContent(params: {
       h: 0.35,
       fontSize: 14,
       color: theme.heroFooter,
-      fontFace: "Calibri",
+      fontFace: ff,
     });
     const ix = textColW + 0.12;
     const iw = IN_SLIDE_W - IN_MARGIN - ix;
@@ -853,7 +904,7 @@ export async function buildPptxFromPptContent(params: {
       fontSize: 38,
       bold: true,
       color: theme.heroTitle,
-      fontFace: "Calibri",
+      fontFace: ff,
       align: "center",
       fit: "shrink",
     });
@@ -864,7 +915,7 @@ export async function buildPptxFromPptContent(params: {
       h: 2.2,
       fontSize: 16,
       color: theme.heroSubtitle,
-      fontFace: "Calibri",
+      fontFace: ff,
       align: "center",
       valign: "top",
       fit: "shrink",
@@ -876,13 +927,14 @@ export async function buildPptxFromPptContent(params: {
       h: 0.45,
       fontSize: 17,
       color: theme.heroSubtitle,
-      fontFace: "Calibri",
+      fontFace: ff,
       align: "center",
     });
   }
 
   titleSlide.addNotes(titleModel.speakerNotes);
   addSlideFooter(pptx, titleSlide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
+  if (params.schoolLogo) addLogoToSlide(pptx, titleSlide, params.schoolLogo, true);
   slideNumber += 1;
 
   for (let slideIdx = 1; slideIdx < deck.length; slideIdx++) {
@@ -949,7 +1001,7 @@ export async function buildPptxFromPptContent(params: {
         fontSize: 30,
         bold: true,
         color: theme.titleText,
-        fontFace: "Calibri",
+        fontFace: ff,
         valign: "top",
         fit: "shrink",
       });
@@ -969,7 +1021,7 @@ export async function buildPptxFromPptContent(params: {
         h: PPT_META_H,
         fontSize: 14,
         color: theme.metaText,
-        fontFace: "Calibri",
+        fontFace: ff,
         valign: "top",
         fit: "shrink",
       });
@@ -1025,6 +1077,7 @@ export async function buildPptxFromPptContent(params: {
           : model.speakerNotes;
       slide.addNotes(notes);
       addSlideFooter(pptx, slide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
+      if (params.schoolLogo) addLogoToSlide(pptx, slide, params.schoolLogo, false);
       slideNumber += 1;
     }
   }

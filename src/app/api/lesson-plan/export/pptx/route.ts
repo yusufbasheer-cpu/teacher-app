@@ -30,7 +30,10 @@ type Body = {
     accentColor?: string;
     backgroundColor?: string;
     darkColor?: string;
+    fontFace?: string;
   };
+  /** Base64 data URI of the logo extracted from the school .pptx template. */
+  schoolLogo?: string;
 };
 
 export async function POST(req: Request) {
@@ -62,6 +65,23 @@ export async function POST(req: Request) {
     typeof body.schoolTemplateTheme.primaryColor === "string"
       ? body.schoolTemplateTheme
       : null;
+  const schoolLogo =
+    typeof body.schoolLogo === "string" && body.schoolLogo.startsWith("data:")
+      ? body.schoolLogo
+      : null;
+
+  if (schoolTemplateTheme) {
+    console.log("[pptx export] School template theme received:", {
+      primaryColor: schoolTemplateTheme.primaryColor,
+      accentColor: schoolTemplateTheme.accentColor,
+      backgroundColor: schoolTemplateTheme.backgroundColor,
+      darkColor: schoolTemplateTheme.darkColor,
+      fontFace: schoolTemplateTheme.fontFace,
+    });
+  }
+  if (schoolLogo) {
+    console.log("[pptx export] School logo received, length:", schoolLogo.length);
+  }
 
   if (!subject || !grade || !topic) {
     return NextResponse.json(
@@ -135,6 +155,7 @@ export async function POST(req: Request) {
           accentColor: schoolTemplateTheme.accentColor ?? "F5A623",
           backgroundColor: schoolTemplateTheme.backgroundColor ?? "FFFFFF",
           darkColor: schoolTemplateTheme.darkColor ?? "0A1628",
+          fontFace: schoolTemplateTheme.fontFace,
         })
       : undefined;
 
@@ -151,6 +172,7 @@ export async function POST(req: Request) {
       slideImageUrls,
       themeId: pptTheme,
       customRenderTheme,
+      schoolLogo: schoolLogo ?? undefined,
       ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
     const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-ppt`) || "ppt-content";

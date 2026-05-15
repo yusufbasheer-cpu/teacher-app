@@ -14,7 +14,6 @@ function getSupabaseForUser(accessToken: string) {
 }
 
 export async function POST(req: Request) {
-  // Require auth token
   const authHeader = req.headers.get("Authorization");
   const token = authHeader?.replace("Bearer ", "").trim();
   if (!token) {
@@ -27,7 +26,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
   }
 
-  // Parse multipart form
   let formData: FormData;
   try {
     formData = await req.formData();
@@ -46,26 +44,38 @@ export async function POST(req: Request) {
 
   const MAX_SIZE = 20 * 1024 * 1024; // 20 MB
   if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: "Template file is too large (max 20 MB)." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Template file is too large (max 20 MB)." },
+      { status: 400 },
+    );
   }
 
-  // Extract theme and thumbnail
+  console.log(`[school-template/upload] Processing template: "${file.name}" (${(file.size / 1024).toFixed(1)} KB)`);
+
   let theme;
   let thumbnailBase64: string | null = null;
+  let logoBase64: string | null = null;
   try {
     const buffer = await file.arrayBuffer();
     const result = await extractPptxTemplate(buffer);
     theme = result.theme;
     thumbnailBase64 = result.thumbnailBase64;
+    logoBase64 = result.logoBase64;
   } catch (e) {
-    console.error("[school-template/upload] extraction error:", e);
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[school-template/upload] Extraction error:", msg);
     return NextResponse.json(
-      { error: "Could not read the .pptx file. Please ensure it is a valid PowerPoint file." },
+      {
+        error: `Could not read the .pptx file: ${msg}. Please ensure it is a valid PowerPoint (.pptx) file.`,
+      },
       { status: 400 },
     );
   }
 
-  // Upsert into school_templates table
+  console.log("[school-template/upload] Upserting into DB for user:", user.id);
+  console.log("[school-template/upload] Extracted theme:", theme);
+  console.log("[school-template/upload] Logo extracted:", logoBase64 ? `YES (${logoBase64.length} chars)` : "NO");
+
   const { error: upsertErr } = await supabase
     .from("school_templates")
     .upsert(
@@ -79,22 +89,26 @@ export async function POST(req: Request) {
         dark_color: theme.darkColor,
         font_heading: theme.fontHeading,
         font_body: theme.fontBody,
+        logo_base64: logoBase64,
       },
       { onConflict: "user_id" },
     );
 
   if (upsertErr) {
-    console.error("[school-template/upload] upsert error:", upsertErr);
+    console.error("[school-template/upload] DB upsert error:", upsertErr);
     return NextResponse.json(
-      { error: "Failed to save template. Please try again." },
+      { error: "Failed to save template to your account. Please try again." },
       { status: 500 },
     );
   }
+
+  console.log("[school-template/upload] Template saved successfully.");
 
   return NextResponse.json({
     success: true,
     originalFilename: file.name,
     thumbnailBase64,
+    logoBase64,
     theme,
   });
 }

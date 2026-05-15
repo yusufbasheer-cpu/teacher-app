@@ -89,6 +89,8 @@ export type PptRenderTheme = {
   closingTitle: string;
   closingSubtitle: string;
   closingFooter: string;
+  /** Optional font face from school template (falls back to "Calibri"). */
+  fontFace?: string;
 };
 
 /**
@@ -100,10 +102,17 @@ export function buildSchoolTemplatePptRenderTheme(params: {
   accentColor: string;
   backgroundColor: string;
   darkColor: string;
+  fontFace?: string;
 }): PptRenderTheme {
-  const { primaryColor, accentColor, backgroundColor, darkColor } = params;
+  const { primaryColor, accentColor, backgroundColor, darkColor, fontFace } = params;
+
+  // Decide whether the slide text should be light or dark based on background brightness
+  const isLightBg = isLightColor(backgroundColor);
+  const bodyText  = isLightBg ? "1A1A2E" : "F0F4FF";
+  const metaText  = isLightBg ? "5B6472" : "C0CFEE";
+
   return {
-    id: "ocean-blue", // placeholder — won't be used for rendering
+    id: "ocean-blue", // placeholder — not used for theme lookup
     heroDeep: darkColor,
     heroMid: primaryColor,
     heroWash: primaryColor,
@@ -114,24 +123,35 @@ export function buildSchoolTemplatePptRenderTheme(params: {
     slideBg: backgroundColor,
     topBar: primaryColor,
     sideAccent: accentColor,
-    titleText: primaryColor,
+    titleText: isLightBg ? primaryColor : "FFFFFF",
     titleUnderline: accentColor,
-    metaText: "5B6472",
-    bodyText: "333333",
-    bodyAccent: primaryColor,
-    footerLine: "DDE6F5",
-    footerText: "5B6472",
-    imagePanelFill: "F0F4FA",
-    imagePanelLine: "D0DEFA",
-    placeholderFill: "F6F8FC",
-    placeholderLine: "D0DEFA",
-    placeholderInner: "E3EAF8",
+    metaText,
+    bodyText,
+    bodyAccent: accentColor,
+    footerLine: isLightBg ? "DDE6F5" : "2A4070",
+    footerText: metaText,
+    imagePanelFill: isLightBg ? "F0F4FA" : "1E3A6A",
+    imagePanelLine: isLightBg ? "D0DEFA" : "2E4E8A",
+    placeholderFill: isLightBg ? "F6F8FC" : "1E3A6A",
+    placeholderLine: isLightBg ? "D0DEFA" : "2E4E8A",
+    placeholderInner: isLightBg ? "E3EAF8" : "2A4070",
     closingDeep: darkColor,
     closingWash: primaryColor,
     closingTitle: "FFFFFF",
     closingSubtitle: "E2ECFF",
     closingFooter: "D7E7FF",
+    fontFace: fontFace && !fontFace.startsWith("+") ? fontFace : undefined,
   };
+}
+
+/** Returns true if the hex colour (without #) is perceptually light. */
+function isLightColor(hex: string): boolean {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  // Standard luminance formula
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.55;
 }
 
 export function getPptRenderTheme(id: PptThemeId | undefined): PptRenderTheme {

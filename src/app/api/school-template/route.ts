@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   const { data, error } = await supabase
     .from("school_templates")
     .select(
-      "original_filename, thumbnail_base64, primary_color, accent_color, background_color, dark_color, font_heading, font_body, created_at",
+      "original_filename, thumbnail_base64, primary_color, accent_color, background_color, dark_color, font_heading, font_body, logo_base64, created_at",
     )
     .eq("user_id", user.id)
     .maybeSingle();
