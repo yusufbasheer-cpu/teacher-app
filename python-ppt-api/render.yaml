@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: layah-ppt-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: FLASK_DEBUG
+        value: "0"
+    healthCheckPath: /health
