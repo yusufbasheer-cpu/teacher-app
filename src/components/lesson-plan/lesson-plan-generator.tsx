@@ -129,6 +129,7 @@ export function LessonPlanGenerator() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [form, setForm] = useState<LessonPlanInput>(initialForm);
   const [lessonPlan, setLessonPlan] = useState<LessonPlanResult | null>(null);
@@ -249,6 +250,7 @@ export function LessonPlanGenerator() {
 
       const sessionUser = session?.user ?? null;
       setUser(sessionUser);
+      setAccessToken(session?.access_token ?? null);
       if (sessionUser) {
         const planId = searchParams.get("planId");
         if (planId) {
@@ -1485,6 +1487,8 @@ export function LessonPlanGenerator() {
                   : null
               }
               schoolLogo={schoolTemplate?.logo_base64 ?? null}
+              accessToken={accessToken ?? undefined}
+              useSchoolTemplate={!!schoolTemplate}
               learningObjectives={form.learningObjectives}
               aflSelections={hasAflForExport ? aflSelectionsPayload : undefined}
               teacherName={

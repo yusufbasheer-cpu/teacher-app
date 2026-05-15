@@ -353,3 +353,110 @@ export async function extractPptxTemplate(buffer: ArrayBuffer): Promise<{
 
   return { theme, thumbnailBase64, logoBase64 };
 }
+
+// ─── Template Design Injection ────────────────────────────────────────────────
+
+/**
+ * Inject the visual design from a school's .pptx template into a freshly
+ * generated lesson PPTX.
+ *
+ * Strategy:
+ *  1. Open both ZIPs with JSZip.
+ *  2. Remove the generated PPT's own theme / slide-masters / slide-layouts.
+ *  3. Copy the corresponding files from the template (which contain the school's
+ *     background colour, logo on master, fonts, etc.).
+ *  4. Also copy any media (images) referenced by the template masters.
+ *  5. Repackage as a new PPTX buffer.
+ *
+ * Falls back to the unmodified generated buffer on any error so the teacher
+ * always gets a downloadable file.
+ */
+export async function injectTemplateDesign(
+  generatedBuffer: Buffer,
+  templateBuffer: Buffer,
+): Promise<Buffer> {
+  console.log("[pptx-template] ══ injectTemplateDesign: starting ══");
+
+  let generatedZip: JSZip;
+  let templateZip: JSZip;
+
+  try {
+    [generatedZip, templateZip] = await Promise.all([
+      JSZip.loadAsync(generatedBuffer),
+      JSZip.loadAsync(templateBuffer),
+    ]);
+  } catch (e) {
+    console.error("[pptx-template] Failed to open PPTX ZIPs — returning generated buffer unchanged:", e);
+    return generatedBuffer;
+  }
+
+  const genFileList  = Object.keys(generatedZip.files);
+  const tmplFileList = Object.keys(templateZip.files);
+  console.log("[pptx-template] Generated PPTX files:", genFileList.length);
+  console.log("[pptx-template] Template  PPTX files:", tmplFileList.length);
+  console.log("[pptx-template] Template files (first 30):", tmplFileList.slice(0, 30));
+
+  // Design-related paths we want to copy from the template
+  const isDesignPath = (p: string) =>
+    p.startsWith("ppt/theme/") ||
+    p.startsWith("ppt/slideMasters/") ||
+    p.startsWith("ppt/slideLayouts/");
+
+  // Step 1 — remove existing design files from the generated PPTX
+  const toRemove = genFileList.filter(isDesignPath);
+  console.log(`[pptx-template] Removing ${toRemove.length} design files from generated PPTX:`, toRemove);
+  toRemove.forEach(p => generatedZip.remove(p));
+
+  // Step 2 — copy design files from the template
+  const copied: string[] = [];
+  const mediaRefs = new Set<string>();
+
+  for (const path of tmplFileList) {
+    if (!isDesignPath(path)) continue;
+    const file = templateZip.files[path]!;
+    if (file.dir) continue;
+
+    const content = await file.async("arraybuffer");
+    generatedZip.file(path, content);
+    copied.push(path);
+
+    // Collect media filenames referenced inside .rels files
+    if (path.endsWith(".rels")) {
+      const xml = new TextDecoder().decode(content);
+      const re  = /Target="(?:\.\.\/)?media\/([^"]+)"/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(xml)) !== null) {
+        mediaRefs.add(m[1]!);
+      }
+    }
+  }
+
+  console.log(`[pptx-template] Copied ${copied.length} design files from template.`);
+  console.log("[pptx-template] Media files referenced by template masters:", [...mediaRefs]);
+
+  // Step 3 — copy media files that the template masters depend on
+  let mediaCopied = 0;
+  for (const mediaFile of mediaRefs) {
+    const srcPath = `ppt/media/${mediaFile}`;
+    const srcFile = templateZip.files[srcPath];
+    if (!srcFile) {
+      console.warn("[pptx-template] Media reference not found in template ZIP:", srcPath);
+      continue;
+    }
+    const content = await srcFile.async("arraybuffer");
+    generatedZip.file(srcPath, content);
+    mediaCopied++;
+    console.log("[pptx-template] Copied media:", srcPath);
+  }
+  console.log(`[pptx-template] Copied ${mediaCopied} media file(s) from template.`);
+
+  // Step 4 — repackage
+  const result = await generatedZip.generateAsync({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+    compressionOptions: { level: 6 },
+  });
+
+  console.log(`[pptx-template] ══ Injection complete — output size: ${result.length} bytes ══`);
+  return result;
+}
