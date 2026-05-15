@@ -26,16 +26,77 @@ export function getSectionTabLabel(sectionKey: string): string {
   return SECTION_TAB_LABELS[sectionKey] ?? sectionKey;
 }
 
-/** Curriculum dropdown (lesson generator). */
-export const CURRICULUM_TYPE_OPTIONS = [
-  "CBSE/NCERT",
-  "British",
-  "American",
-  "UAE MOE",
-  "IB",
-  "Other",
-] as const;
-export type CurriculumTypeOption = (typeof CURRICULUM_TYPE_OPTIONS)[number];
+/** Curriculum dropdown — grouped for the lesson generator. */
+export const CURRICULUM_TYPE_GROUPS: { label: string; options: string[] }[] = [
+  {
+    label: "International Curriculums",
+    options: [
+      "CBSE/NCERT",
+      "ICSE",
+      "Cambridge CAIE",
+      "Edexcel",
+      "IGCSE",
+      "A Levels",
+      "IB (International Baccalaureate)",
+      "AP (American Advanced Placement)",
+    ],
+  },
+  {
+    label: "UK Curriculums",
+    options: [
+      "British National Curriculum",
+      "GCSE",
+      "A Levels UK",
+    ],
+  },
+  {
+    label: "UAE & GCC Curriculums",
+    options: [
+      "UAE MOE",
+      "MOE Saudi Arabia",
+      "MOE Qatar",
+      "MOE Kuwait",
+      "MOE Bahrain",
+      "MOE Oman",
+    ],
+  },
+  {
+    label: "American Curriculums",
+    options: [
+      "American Common Core",
+      "US State Standards",
+    ],
+  },
+  {
+    label: "Asian Curriculums",
+    options: [
+      "Indian State Board",
+      "Pakistani Board",
+      "Bangladesh Board",
+      "Singapore MOE",
+      "Australian ACARA",
+    ],
+  },
+  {
+    label: "European Curriculums",
+    options: [
+      "Finnish National Core Curriculum",
+      "French National Curriculum",
+      "German Curriculum",
+    ],
+  },
+  {
+    label: "Other",
+    options: ["Other Custom Curriculum"],
+  },
+];
+
+/** Flat list derived from the groups — used for validation and legacy code. */
+export const CURRICULUM_TYPE_OPTIONS: readonly string[] = CURRICULUM_TYPE_GROUPS.flatMap(
+  (g) => g.options,
+);
+
+export type CurriculumTypeOption = string;
 
 /** Grade / year group dropdown (Grade 1 … Grade 12). */
 export const GRADE_YEAR_OPTIONS = [

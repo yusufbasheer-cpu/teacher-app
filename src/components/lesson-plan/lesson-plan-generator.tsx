@@ -22,6 +22,7 @@ import type {
 } from "@/lib/lesson-plan";
 import {
   CORE_SUBJECT_OPTIONS,
+  CURRICULUM_TYPE_GROUPS,
   CURRICULUM_TYPE_OPTIONS,
   GENERATION_CHECKBOX_LABELS,
   GRADE_YEAR_OPTIONS,
@@ -858,10 +859,14 @@ export function LessonPlanGenerator() {
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
               required
             >
-              {CURRICULUM_TYPE_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
+              {CURRICULUM_TYPE_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
