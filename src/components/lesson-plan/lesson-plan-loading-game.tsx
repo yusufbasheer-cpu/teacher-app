@@ -7,11 +7,6 @@ import confetti from "canvas-confetti";
 type LessonPlanLoadingGameProps = {
   active: boolean;
   statusText?: string | null;
-  /**
-   * The teacher's section selection from the generator form.
-   * Only sections whose value is `true` will appear in the checklist.
-   * If omitted, all sections are shown (safe fallback).
-   */
   selectedSections?: Record<string, boolean> | null;
 };
 
@@ -39,21 +34,17 @@ const FUN_FACTS = [
   "Wombats produce cube-shaped droppings — the only animal known to do this.",
 ];
 
-// ── Section checklist definition ─────────────────────────────────────────────
+// ── Section checklist ─────────────────────────────────────────────────────────
 type SectionStatus = "waiting" | "generating" | "done";
 
-/**
- * `sectionKey` matches the TeacherPackageSectionKey keys used in the generator's
- * `sectionSelection` state so we can filter the checklist by what was selected.
- */
 const SECTIONS: { key: string; sectionKey: string; label: string; keywords: string[] }[] = [
-  { key: "lesson",     sectionKey: "Full Lesson Plan",      label: "Lesson Plan",         keywords: ["lesson plan", "full lesson", "lesson content"] },
-  { key: "ppt",        sectionKey: "PPT Slide Content",     label: "PPT Content",          keywords: ["ppt", "slide", "presentation", "deck"] },
-  { key: "worksheet",  sectionKey: "Worksheet",             label: "Worksheet",            keywords: ["worksheet"] },
-  { key: "assessment", sectionKey: "Assessment Questions",  label: "Assessment Questions", keywords: ["assessment", "quiz", "question"] },
-  { key: "homework",   sectionKey: "Homework Task",         label: "Homework Task",        keywords: ["homework", "home task", "extended task"] },
-  { key: "notes",      sectionKey: "Teacher Notes",         label: "Teacher Notes",        keywords: ["teacher note", "notes"] },
-  { key: "afl",        sectionKey: "AFL Activity Sheets",   label: "AFL Activity Sheets",  keywords: ["afl", "activity sheet", "printable"] },
+  { key: "lesson",     sectionKey: "Full Lesson Plan",     label: "Lesson Plan",         keywords: ["lesson plan", "full lesson", "lesson content"] },
+  { key: "ppt",        sectionKey: "PPT Slide Content",    label: "PPT Content",          keywords: ["ppt", "slide", "presentation", "deck"] },
+  { key: "worksheet",  sectionKey: "Worksheet",            label: "Worksheet",            keywords: ["worksheet"] },
+  { key: "assessment", sectionKey: "Assessment Questions", label: "Assessment Questions", keywords: ["assessment", "quiz", "question"] },
+  { key: "homework",   sectionKey: "Homework Task",        label: "Homework Task",        keywords: ["homework", "home task", "extended task"] },
+  { key: "notes",      sectionKey: "Teacher Notes",        label: "Teacher Notes",        keywords: ["teacher note", "notes"] },
+  { key: "afl",        sectionKey: "AFL Activity Sheets",  label: "AFL Activity Sheets",  keywords: ["afl", "activity sheet", "printable"] },
 ];
 
 const emptyStatuses = (): Record<string, SectionStatus> =>
@@ -75,25 +66,19 @@ function computeProgress(
   const total = activeSections.length;
   if (total === 0) return 4;
 
-  // "Finalizing" signal → push all the way to 100
   if (statusText && statusText.toLowerCase().includes("finaliz")) return 100;
 
   const doneCount = activeSections.filter((s) => statuses[s.key] === "done").length;
   const genIdx    = activeSections.findIndex((s) => statuses[s.key] === "generating");
   let base = (doneCount / total) * 92;
 
-  // Boost within slide generation using slide X/Y in statusText
   if (genIdx >= 0 && statusText) {
     const m = statusText.match(/(\d+)\s*[/of]+\s*(\d+)/);
     if (m) {
       const num = parseInt(m[1]!, 10);
       const tot = parseInt(m[2]!, 10);
-      if (tot > 0) {
-        const sectionShare = 92 / total;
-        base += (num / tot) * sectionShare;
-      }
+      if (tot > 0) base += (num / tot) * (92 / total);
     } else {
-      // Small nudge (10% of a section's worth) — don't over-inflate
       base += (1 / total) * 9.2;
     }
   }
@@ -101,19 +86,66 @@ function computeProgress(
   return Math.min(92, base);
 }
 
-// ── Layah wordmark (inline SVG, no external file needed) ─────────────────────
+// ── Confetti helper ───────────────────────────────────────────────────────────
+const CONFETTI_COLORS = ["#00C6A7", "#0A1628", "#FFD700", "#FFFFFF"];
+
+function fireConfetti() {
+  console.log("Celebration triggered");
+
+  // Main burst from center
+  confetti({
+    particleCount: 200,
+    spread: 160,
+    origin: { y: 0.6 },
+    colors: CONFETTI_COLORS,
+  });
+
+  // Left side burst
+  setTimeout(() => {
+    confetti({
+      particleCount: 100,
+      spread: 80,
+      origin: { x: 0.1, y: 0.5 },
+      angle: 60,
+      colors: CONFETTI_COLORS,
+    });
+  }, 250);
+
+  // Right side burst
+  setTimeout(() => {
+    confetti({
+      particleCount: 100,
+      spread: 80,
+      origin: { x: 0.9, y: 0.5 },
+      angle: 120,
+      colors: CONFETTI_COLORS,
+    });
+  }, 250);
+
+  // Follow-up bursts
+  setTimeout(() => {
+    confetti({ particleCount: 80, spread: 120, origin: { y: 0.55 }, colors: CONFETTI_COLORS });
+  }, 700);
+  setTimeout(() => {
+    confetti({ particleCount: 60, spread: 100, origin: { y: 0.5 }, colors: CONFETTI_COLORS });
+  }, 1400);
+}
+
+// ── Logo ──────────────────────────────────────────────────────────────────────
 function LayahLogo() {
   return (
     <div className="flex items-center gap-2.5">
       <div
-        className="flex h-9 w-9 items-center justify-center rounded-xl text-white"
+        className="flex h-9 w-9 items-center justify-center rounded-xl"
         style={{ background: "#00C6A7" }}
       >
         <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
           <path d="M11 3L4 8v10h5v-5h4v5h5V8L11 3z" fill="white" opacity="0.95" />
         </svg>
       </div>
-      <span className="text-xl font-bold tracking-tight text-white">Layah<span style={{ color: "#00C6A7" }}>.ai</span></span>
+      <span className="text-xl font-bold tracking-tight text-white">
+        Layah<span style={{ color: "#00C6A7" }}>.ai</span>
+      </span>
     </div>
   );
 }
@@ -140,10 +172,7 @@ function StatusIcon({ status }: { status: SectionStatus }) {
         style={{ borderColor: "#00C6A7" }}
         aria-label="Generating"
       >
-        <span
-          className="h-2 w-2 rounded-full animate-pulse"
-          style={{ background: "#00C6A7" }}
-        />
+        <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: "#00C6A7" }} />
       </span>
     );
   }
@@ -158,31 +187,29 @@ function StatusIcon({ status }: { status: SectionStatus }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export function LessonPlanLoadingGame({ active, statusText, selectedSections }: LessonPlanLoadingGameProps) {
-  // Filter to only sections the teacher selected; fall back to all if nothing passed
   const activeSections =
     selectedSections && Object.values(selectedSections).some(Boolean)
       ? SECTIONS.filter((s) => selectedSections[s.sectionKey] === true)
       : SECTIONS;
 
-  const [factIdx, setFactIdx]               = useState(0);
-  const [factVisible, setFactVisible]       = useState(true);   // for fade transition
-  const [statuses, setStatuses]             = useState<Record<string, SectionStatus>>(emptyStatuses());
+  const [factIdx, setFactIdx]         = useState(0);
+  const [factVisible, setFactVisible] = useState(true);
+  const [statuses, setStatuses]       = useState<Record<string, SectionStatus>>(emptyStatuses());
   const [smoothProgress, setSmoothProgress] = useState(5);
-  const [celebrating, setCelebrating]       = useState(false);  // celebration overlay
-  const lastActiveSectionRef   = useRef<string | null>(null);
-  const targetProgressRef      = useRef(5);
-  const stageFloorRef          = useRef(5);
-  const rafRef                 = useRef<number | null>(null);
-  const celebratedRef          = useRef(false);                 // fire confetti only once
+  const [celebrating, setCelebrating] = useState(false);
 
-  // ── Reset when generation starts ────────────────────────────────────────
+  const targetProgressRef = useRef(5);
+  const stageFloorRef     = useRef(5);
+  const rafRef            = useRef<number | null>(null);
+  const celebratedRef     = useRef(false);
+
+  // ── Reset on start ───────────────────────────────────────────────────────
   useEffect(() => {
     if (active) {
       setStatuses(emptyStatuses());
       setSmoothProgress(5);
       targetProgressRef.current = 5;
       stageFloorRef.current = 5;
-      lastActiveSectionRef.current = null;
       celebratedRef.current = false;
       setCelebrating(false);
       setFactIdx(Math.floor(Math.random() * FUN_FACTS.length));
@@ -190,54 +217,69 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
     }
   }, [active]);
 
-  // ── Rotate fun facts every 8 s with fade-out / fade-in ──────────────────
+  // ── Rotate fun facts every 8 s with fade ────────────────────────────────
   useEffect(() => {
     if (!active) return;
     const id = setInterval(() => {
-      // Fade out
       setFactVisible(false);
-      // After fade-out completes (350 ms), switch text and fade in
-      const swapTimer = setTimeout(() => {
+      const t = setTimeout(() => {
         setFactIdx((i) => (i + 1) % FUN_FACTS.length);
         setFactVisible(true);
       }, 350);
-      return () => clearTimeout(swapTimer);
+      return () => clearTimeout(t);
     }, 8000);
     return () => clearInterval(id);
   }, [active]);
 
-  // ── Parse statusText → update checklist (only active sections) ──────────
+  // ── Parse statusText → checklist + celebration trigger ───────────────────
   useEffect(() => {
     if (!statusText || !active) return;
+
+    // ── Celebration: fire as soon as "Finalizing" is received ────────────
+    if (statusText.toLowerCase().includes("finaliz") && !celebratedRef.current) {
+      celebratedRef.current = true;
+
+      // Mark ALL active sections as done
+      setStatuses((prev) => {
+        const next = { ...prev };
+        activeSections.forEach((s) => { next[s.key] = "done"; });
+        return next;
+      });
+
+      // Push progress immediately to 100
+      targetProgressRef.current = 100;
+      stageFloorRef.current = 100;
+
+      // Trigger confetti + celebration card
+      fireConfetti();
+      setCelebrating(true);
+      return;
+    }
+
+    // ── Normal section tracking ──────────────────────────────────────────
     const found = detectActiveSection(statusText);
     if (!found) return;
 
-    // Only act if this section is in the filtered active list
     const foundIdx = activeSections.findIndex((s) => s.key === found);
     if (foundIdx === -1) return;
 
     setStatuses((prev) => {
       const next = { ...prev };
-      // Mark earlier active sections as done
       for (let i = 0; i < foundIdx; i++) {
         const k = activeSections[i]!.key;
         if (next[k] !== "done") next[k] = "done";
       }
-      // Mark current section as generating
       next[found] = "generating";
-      // Mark later active sections as waiting (unless already done)
       for (let i = foundIdx + 1; i < activeSections.length; i++) {
         const k = activeSections[i]!.key;
         if (next[k] !== "done") next[k] = "waiting";
       }
       return next;
     });
-
-    lastActiveSectionRef.current = found;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusText, active]);
 
-  // ── Smooth progress bar animation (uses floor from staged timers) ────────
+  // ── RAF smooth progress ──────────────────────────────────────────────────
   useEffect(() => {
     if (!active) return;
 
@@ -248,7 +290,6 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
       setSmoothProgress((prev) => {
         const diff = targetProgressRef.current - prev;
         if (Math.abs(diff) < 0.1) return targetProgressRef.current;
-        // Faster ease when close to 100 so completion feels snappy
         const factor = target >= 98 ? 0.18 : 0.1;
         return prev + diff * factor;
       });
@@ -256,71 +297,27 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
     };
 
     rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
+    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); };
   }, [active, statuses, statusText]);
 
-  // ── Conservative staged floor — only prevents bar looking completely frozen
+  // ── Conservative staged floor ────────────────────────────────────────────
   useEffect(() => {
     if (!active) return;
-
-    const STAGES: { delay: number; floor: number }[] = [
-      { delay: 0,     floor: 8  },  // immediate visual feedback
-      { delay: 600,   floor: 12 },  // initializing
-      { delay: 3000,  floor: 18 },  // API connecting
-      { delay: 10000, floor: 25 },  // still waiting
-      { delay: 25000, floor: 35 },  // very long generation
+    const STAGES = [
+      { delay: 0,     floor: 8  },
+      { delay: 600,   floor: 12 },
+      { delay: 3000,  floor: 18 },
+      { delay: 10000, floor: 25 },
+      { delay: 25000, floor: 35 },
     ];
-
     const timers = STAGES.map(({ delay, floor }) =>
       setTimeout(() => {
         stageFloorRef.current = Math.max(stageFloorRef.current, floor);
         targetProgressRef.current = Math.max(targetProgressRef.current, floor);
       }, delay),
     );
-
     return () => timers.forEach(clearTimeout);
   }, [active]);
-
-  // ── Celebration when progress reaches 100% ────────────────────────────────
-  useEffect(() => {
-    if (!active || celebratedRef.current) return;
-    if (smoothProgress < 99) return;
-
-    celebratedRef.current = true;
-    setCelebrating(true);
-
-    // Fire confetti with Layah brand colors
-    const colors = ["#00C6A7", "#0A1628", "#ffffff", "#FFD700"];
-    const burst = () => {
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { x: 0.3, y: 0 },
-        colors,
-        gravity: 0.9,
-        scalar: 0.9,
-      });
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { x: 0.7, y: 0 },
-        colors,
-        gravity: 0.9,
-        scalar: 0.9,
-      });
-    };
-    burst();
-    const t2 = setTimeout(burst, 400);
-    const t3 = setTimeout(burst, 800);
-
-    return () => {
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [smoothProgress, active]);
 
   if (!active) return null;
 
@@ -331,216 +328,162 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
     (doneCount > 0 ? "Finishing up…" : "Starting generation…");
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(10,22,40,0.96)", backdropFilter: "blur(4px)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Generating your lesson plan"
-    >
-      {/* ── Celebration overlay ───────────────────────────────────────────── */}
-      {celebrating && (
+    <>
+      {/* ── CSS keyframes ─────────────────────────────────────────────────── */}
+      <style>{`
+        @keyframes celebFadeIn {
+          from { opacity: 0; transform: scale(0.85); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes glowPulse {
+          0%, 100% { box-shadow: 0 0 24px 6px rgba(0,198,167,0.55), 0 0 60px 12px rgba(0,198,167,0.25); transform: scale(1); }
+          50%       { box-shadow: 0 0 40px 12px rgba(0,198,167,0.8), 0 0 90px 24px rgba(0,198,167,0.4); transform: scale(1.08); }
+        }
+        @keyframes textGlow {
+          0%, 100% { text-shadow: 0 0 12px rgba(0,198,167,0.6), 0 0 28px rgba(0,198,167,0.3); }
+          50%       { text-shadow: 0 0 24px rgba(0,198,167,1),   0 0 56px rgba(0,198,167,0.6); }
+        }
+      `}</style>
+
+      {/* ── Background overlay ────────────────────────────────────────────── */}
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+        style={{ background: "rgba(10,22,40,0.96)", backdropFilter: "blur(4px)" }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Generating your lesson plan"
+      >
+        {/* ── Normal loading card ─────────────────────────────────────────── */}
         <div
-          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5"
+          className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
           style={{
-            animation: "fade-in 0.4s ease forwards",
-            background: "rgba(10,22,40,0.85)",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(0,198,167,0.18)",
+            opacity: celebrating ? 0 : 1,
+            transition: "opacity 0.4s ease",
+            pointerEvents: celebrating ? "none" : "auto",
           }}
         >
-          {/* Glowing checkmark */}
+          <div className="mb-6 flex justify-center">
+            <LayahLogo />
+          </div>
+
+          <p className="mb-1 text-center text-base font-semibold text-white">
+            Crafting your lesson package
+          </p>
+          <p className="mb-5 text-center text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+            {currentLabel}
+          </p>
+
+          {/* Progress bar */}
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs font-medium" style={{ color: "#00C6A7" }}>Progress</span>
+            <span className="text-xs font-bold tabular-nums text-white">{pct}%</span>
+          </div>
           <div
-            style={{
-              width: 96,
-              height: 96,
-              borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(0,198,167,0.35) 0%, transparent 70%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              animation: "glow-pulse 1.2s ease-in-out infinite",
-            }}
+            className="mb-6 h-2 w-full overflow-hidden rounded-full"
+            style={{ background: "rgba(255,255,255,0.08)" }}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${smoothProgress}%`, background: "linear-gradient(90deg,#00C6A7,#00e8c3)" }}
+            />
+          </div>
+
+          {/* Checklist */}
+          <div className="mb-6 space-y-2.5">
+            {activeSections.map((s) => {
+              const status = statuses[s.key] ?? "waiting";
+              const isActive = status === "generating";
+              return (
+                <div key={s.key} className="flex items-center gap-3">
+                  <StatusIcon status={status} />
+                  <span
+                    className={`text-sm transition-colors duration-300 ${status === "done" ? "line-through" : isActive ? "font-semibold text-white" : ""}`}
+                    style={{ color: status === "done" ? "rgba(255,255,255,0.35)" : isActive ? "#ffffff" : "rgba(255,255,255,0.5)" }}
+                  >
+                    {s.label}
+                  </span>
+                  {isActive  && <span className="ml-auto text-xs font-medium" style={{ color: "#00C6A7" }}>Generating…</span>}
+                  {status === "done"    && <span className="ml-auto text-xs font-medium" style={{ color: "#00C6A7" }}>Done</span>}
+                  {status === "waiting" && <span className="ml-auto text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>Waiting</span>}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mb-4 h-px w-full" style={{ background: "rgba(255,255,255,0.07)" }} />
+
+          {/* Fun fact */}
+          <div className="flex items-start gap-2.5">
+            <span className="mt-0.5 flex-shrink-0 text-base" aria-hidden>💡</span>
+            <p
+              className="text-xs leading-relaxed"
+              style={{ color: "rgba(255,255,255,0.45)", opacity: factVisible ? 1 : 0, transition: "opacity 0.35s ease" }}
+            >
+              <span className="font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>Did you know?&nbsp;</span>
+              {FUN_FACTS[factIdx]}
+            </p>
+          </div>
+        </div>
+
+        {/* ── Celebration card — rendered AFTER the loading card so it sits on top ── */}
+        {celebrating && (
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ zIndex: 10 }}
           >
             <div
               style={{
-                width: 72,
-                height: 72,
-                borderRadius: "50%",
-                background: "#00C6A7",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 0 32px rgba(0,198,167,0.7), 0 0 64px rgba(0,198,167,0.35)",
+                background: "#ffffff",
+                borderRadius: 24,
+                padding: "40px 48px",
+                textAlign: "center",
+                maxWidth: 400,
+                width: "90%",
+                border: "2px solid rgba(0,198,167,0.4)",
+                boxShadow: "0 0 60px 16px rgba(0,198,167,0.35), 0 8px 40px rgba(0,0,0,0.4)",
+                animation: "celebFadeIn 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards",
               }}
             >
-              <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-                <path
-                  d="M7 18l7 7 15-15"
-                  stroke="white"
-                  strokeWidth="3.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              {/* Glowing checkmark */}
+              <div
+                style={{
+                  width: 88,
+                  height: 88,
+                  borderRadius: "50%",
+                  background: "#00C6A7",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 20px",
+                  animation: "glowPulse 1.4s ease-in-out infinite",
+                }}
+              >
+                <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+                  <path d="M8 22l9 9 19-18" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+
+              {/* Message */}
+              <p
+                style={{
+                  fontSize: 22,
+                  fontWeight: 800,
+                  color: "#0A1628",
+                  marginBottom: 8,
+                  animation: "textGlow 1.6s ease-in-out infinite",
+                }}
+              >
+                Yaay! Your lesson pack is ready! 🎉
+              </p>
+              <p style={{ fontSize: 14, color: "#6b7280" }}>
+                Preparing your download…
+              </p>
             </div>
           </div>
-
-          {/* Ready message with glow */}
-          <div className="text-center">
-            <p
-              className="text-2xl font-bold text-white"
-              style={{
-                textShadow: "0 0 20px rgba(0,198,167,0.8), 0 0 40px rgba(0,198,167,0.4)",
-                animation: "glow-pulse 1.2s ease-in-out infinite",
-              }}
-            >
-              Your lesson pack is ready!
-            </p>
-            <p className="mt-2 text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
-              Preparing your download…
-            </p>
-          </div>
-        </div>
-      )}
-
-      <div
-        className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
-        style={{
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(0,198,167,0.18)",
-          position: "relative",
-        }}
-      >
-        {/* Logo */}
-        <div className="mb-6 flex justify-center">
-          <LayahLogo />
-        </div>
-
-        {/* Headline */}
-        <p className="mb-1 text-center text-base font-semibold text-white">
-          Crafting your lesson package
-        </p>
-        <p
-          className="mb-5 text-center text-xs"
-          style={{ color: "rgba(255,255,255,0.45)" }}
-        >
-          {currentLabel}
-        </p>
-
-        {/* Progress bar */}
-        <div className="mb-1 flex items-center justify-between">
-          <span className="text-xs font-medium" style={{ color: "#00C6A7" }}>
-            Progress
-          </span>
-          <span className="text-xs font-bold tabular-nums text-white">
-            {pct}%
-          </span>
-        </div>
-        <div
-          className="mb-6 h-2 w-full overflow-hidden rounded-full"
-          style={{ background: "rgba(255,255,255,0.08)" }}
-        >
-          <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{
-              width: `${smoothProgress}%`,
-              background: "linear-gradient(90deg, #00C6A7, #00e8c3)",
-            }}
-          />
-        </div>
-
-        {/* Section checklist — only the sections the teacher selected */}
-        <div className="mb-6 space-y-2.5">
-          {activeSections.map((s) => {
-            const status = statuses[s.key] ?? "waiting";
-            const isActive = status === "generating";
-            return (
-              <div key={s.key} className="flex items-center gap-3">
-                <StatusIcon status={status} />
-                <span
-                  className={`text-sm transition-colors duration-300 ${
-                    status === "done"
-                      ? "line-through"
-                      : isActive
-                        ? "font-semibold text-white"
-                        : ""
-                  }`}
-                  style={{
-                    color:
-                      status === "done"
-                        ? "rgba(255,255,255,0.35)"
-                        : isActive
-                          ? "#ffffff"
-                          : "rgba(255,255,255,0.5)",
-                  }}
-                >
-                  {s.label}
-                </span>
-                {isActive && (
-                  <span
-                    className="ml-auto text-xs font-medium"
-                    style={{ color: "#00C6A7" }}
-                  >
-                    Generating…
-                  </span>
-                )}
-                {status === "done" && (
-                  <span
-                    className="ml-auto text-xs font-medium"
-                    style={{ color: "#00C6A7" }}
-                  >
-                    Done
-                  </span>
-                )}
-                {status === "waiting" && (
-                  <span
-                    className="ml-auto text-xs"
-                    style={{ color: "rgba(255,255,255,0.2)" }}
-                  >
-                    Waiting
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Divider */}
-        <div
-          className="mb-4 h-px w-full"
-          style={{ background: "rgba(255,255,255,0.07)" }}
-        />
-
-        {/* Rotating fun fact — 8 s with fade-in/out */}
-        <div className="flex items-start gap-2.5">
-          <span
-            className="mt-0.5 flex-shrink-0 text-base"
-            aria-hidden
-          >
-            💡
-          </span>
-          <p
-            className="text-xs leading-relaxed"
-            style={{
-              color: "rgba(255,255,255,0.45)",
-              opacity: factVisible ? 1 : 0,
-              transition: "opacity 0.35s ease",
-            }}
-          >
-            <span className="font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>
-              Did you know?&nbsp;
-            </span>
-            {FUN_FACTS[factIdx]}
-          </p>
-        </div>
+        )}
       </div>
-
-      {/* ── Keyframe styles injected inline ────────────────────────────────── */}
-      <style>{`
-        @keyframes glow-pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50%       { opacity: 0.85; transform: scale(1.06); }
-        }
-      `}</style>
-    </div>
+    </>
   );
 }
