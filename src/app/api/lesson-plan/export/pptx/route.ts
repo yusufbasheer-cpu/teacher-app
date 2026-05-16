@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isValidCurriculumFramework } from "@/lib/curriculum-framework";
-import { fetchPptPexelsImages } from "@/lib/pexels-images";
+import { fetchPptImagesWithFallback } from "@/lib/ppt-image-resolver";
 import { sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildPptxFromPptContent, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import { buildStructuredLessonSlides } from "@/lib/ppt-structured-lesson";
@@ -74,12 +74,12 @@ export async function POST(req: Request) {
       ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
 
-    // ── Fetch Pexels images for title, main phase, plenary — non-fatal ───
+    // ── Fetch images: Pexels first, fal.ai fallback — non-fatal ─────────
     let slideImageUrls: (string | null)[] = Array.from({ length: deck.length }, () => null);
     try {
-      slideImageUrls = await fetchPptPexelsImages(topic, subject, deck.length);
+      slideImageUrls = await fetchPptImagesWithFallback(topic, subject, grade, deck.length);
     } catch (imgErr) {
-      console.error("[pptx export] Pexels image fetch failed; continuing without images:", imgErr);
+      console.error("[pptx export] Image fetch failed; continuing without images:", imgErr);
     }
 
     // ── Build the presentation using the selected Layah theme ─────────────
