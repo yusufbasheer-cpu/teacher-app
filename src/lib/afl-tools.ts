@@ -669,8 +669,8 @@ export function formatDocxAflAppendix(selections: AflSelectionsPayload): string 
   return any ? lines.join("\n") : "";
 }
 
-/** Max AFL tools per DeepSeek call (smaller payloads = faster, fewer timeouts). */
-export const AFL_ACTIVITY_SHEETS_TOOLS_PER_BATCH = 3;
+/** Wall-clock timeout per AFL activity sheet DeepSeek request (one tool per call). */
+export const AFL_ACTIVITY_SHEET_REQUEST_TIMEOUT_MS = 10_000;
 
 /** Ordered list of teacher-selected AFL tools (catalog order by phase). */
 export function getOrderedSelectedAflTools(selections: AflSelectionsPayload): AflToolDefinition[] {
@@ -685,30 +685,36 @@ export function getOrderedSelectedAflTools(selections: AflSelectionsPayload): Af
   return selectedTools;
 }
 
-/**
- * User message for one batch of AFL Activity Sheets (≤ {@link AFL_ACTIVITY_SHEETS_TOOLS_PER_BATCH} tools).
- * Keeps output short: brief purpose, ≤5 classroom bullets, ≤4 student tasks — no long paragraphs.
- */
-export function buildAflActivitySheetsBatchUserMessage(params: {
-  input: { subject: string; grade: string; topic: string; chapter: string; curriculumType: string };
-  tools: AflToolDefinition[];
-  sourceMaterialBlock?: string;
-}): string | null {
-  const { input, tools, sourceMaterialBlock } = params;
-  if (!tools.length) return null;
+function clipForPrompt(s: string, max: number): string {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max)}…`;
+}
 
-  const toolList = tools
-    .map((t, i) => `${i + 1}. ${t.label} (ID: ${t.id}) — Purpose (reference): ${t.purpose}`)
-    .join("\n");
+/**
+ * Small focused user message: generate **one** printable AFL sheet for a single selected tool
+ * (matches slide-by-slide pattern — one API call per tool).
+ */
+export function buildSingleAflActivitySheetUserMessage(params: {
+  input: { subject: string; grade: string; topic: string; chapter: string; curriculumType: string };
+  tool: AflToolDefinition;
+  sourceMaterialBlock?: string;
+}): string {
+  const { input, tool, sourceMaterialBlock } = params;
 
   const chapterLine = input.chapter.trim()
     ? `Chapter / unit: ${input.chapter.trim()}`
     : "Chapter / unit: not specified";
 
-  return `
-Generate **printable student-facing AFL Activity Sheets** for ONLY the tools in THIS batch (below). Do not include tools that are not listed.
+  const refPurpose = clipForPrompt(tool.purpose, 280);
+  const refHow = clipForPrompt(tool.howItWorks, 220);
+  const refClass = clipForPrompt(tool.classroomUse, 220);
 
-### Lesson context
+  return `
+Generate **one** printable student-facing AFL activity sheet for **only** this tool: **${tool.label}** (id: \`${tool.id}\`).
+Do not describe or generate content for any other AFL strategy.
+
+### Lesson context (use for age-appropriate wording)
 - Curriculum: ${input.curriculumType}
 - Grade / Year group: ${input.grade}
 - Subject: ${input.subject}
@@ -716,56 +722,37 @@ Generate **printable student-facing AFL Activity Sheets** for ONLY the tools in 
 - Topic: ${input.topic}
 ${sourceMaterialBlock ?? ""}
 
-### Tools in this batch (one compact sheet per tool, in this order)
-${toolList}
+### Tool reference (stay faithful to this intent; keep output short)
+- Purpose: ${refPurpose}
+- How it works: ${refHow}
+- Classroom use: ${refClass}
 
-### Strict brevity (mandatory — avoid slow oversized outputs)
-For **each** tool, use this exact structure. No long paragraphs anywhere.
+### Output shape (strict brevity — no long paragraphs)
+Use heading line exactly:
+**=== ${tool.label} — ${input.topic} ===**
 
-**=== [Tool name] — ${input.topic} ===**
-
-**Tool name and purpose** (maximum 2 short lines total — no paragraph):
+**Tool name and purpose** (max 2 short lines):
 (line 1)
 (line 2)
 
-**How to use in classroom** (maximum 5 bullet lines; each bullet one short line starting with "- "):
+**How to use in classroom** (max 5 bullets, each one short line, start with "- "):
 - ...
-(up to 5 bullets)
 
-**Student activity** (exactly 3 or 4 numbered items — questions OR short tasks only):
+**Student activity** (3 or 4 numbered questions or short tasks only):
 1. ...
 2. ...
 3. ...
-4. ... (optional fourth)
-
-Between tools, insert one line: ─────────────────────────────────────────────
+4. ...
 
 Rules:
 - Plain text only — no markdown code fences.
-- Tie every sheet to topic "${input.topic}", subject "${input.subject}", grade "${input.grade}".
-- If a tool normally needs a grid/chart, use a minimal ASCII sketch or short labelled lines — still respect the line limits above.
+- Tie everything to topic "${input.topic}", subject "${input.subject}", grade "${input.grade}".
+- Minimal ASCII/table sketch only if essential for this tool.
 
-Wrap the **entire** batch output between these lines (exactly):
+Wrap output **exactly** between:
 AFL ACTIVITY SHEETS START
-…content…
+…your sheet…
 AFL ACTIVITY SHEETS END
 `.trim();
-}
-
-/**
- * @deprecated Prefer {@link buildAflActivitySheetsBatchUserMessage} with batched calls from the API route.
- * Builds one message for all selected tools (can be huge — kept for tests/tools only).
- */
-export function buildAflActivitySheetsUserMessage(params: {
-  input: { subject: string; grade: string; topic: string; chapter: string; curriculumType: string };
-  selections: AflSelectionsPayload;
-  sourceMaterialBlock?: string;
-}): string | null {
-  const tools = getOrderedSelectedAflTools(params.selections);
-  return buildAflActivitySheetsBatchUserMessage({
-    input: params.input,
-    tools,
-    sourceMaterialBlock: params.sourceMaterialBlock,
-  });
 }
 

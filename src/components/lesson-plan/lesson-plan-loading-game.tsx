@@ -44,7 +44,12 @@ const SECTIONS: { key: string; sectionKey: string; label: string; keywords: stri
   { key: "assessment", sectionKey: "Assessment Questions", label: "Assessment Questions", keywords: ["assessment", "quiz", "question"] },
   { key: "homework",   sectionKey: "Homework Task",        label: "Homework Task",        keywords: ["homework", "home task", "extended task"] },
   { key: "notes",      sectionKey: "Teacher Notes",        label: "Teacher Notes",        keywords: ["teacher note", "notes"] },
-  { key: "afl",        sectionKey: "AFL Activity Sheets",  label: "AFL Activity Sheets",  keywords: ["afl", "activity sheet", "printable"] },
+  {
+    key: "afl",
+    sectionKey: "AFL Activity Sheets",
+    label: "AFL Activity Sheets",
+    keywords: ["afl activity", "afl", "activity sheet", "printable"],
+  },
 ];
 
 const emptyStatuses = (): Record<string, SectionStatus> =>
