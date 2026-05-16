@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import confetti from "canvas-confetti";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type LessonPlanLoadingGameProps = {
@@ -74,6 +75,9 @@ function computeProgress(
   const total = activeSections.length;
   if (total === 0) return 4;
 
+  // "Finalizing" signal → push all the way to 100
+  if (statusText && statusText.toLowerCase().includes("finaliz")) return 100;
+
   const doneCount = activeSections.filter((s) => statuses[s.key] === "done").length;
   const genIdx    = activeSections.findIndex((s) => statuses[s.key] === "generating");
   let base = (doneCount / total) * 92;
@@ -82,14 +86,15 @@ function computeProgress(
   if (genIdx >= 0 && statusText) {
     const m = statusText.match(/(\d+)\s*[/of]+\s*(\d+)/);
     if (m) {
-      const num   = parseInt(m[1]!, 10);
-      const tot   = parseInt(m[2]!, 10);
+      const num = parseInt(m[1]!, 10);
+      const tot = parseInt(m[2]!, 10);
       if (tot > 0) {
         const sectionShare = 92 / total;
         base += (num / tot) * sectionShare;
       }
     } else {
-      base += (1 / total) * 46; // half a section's worth
+      // Small nudge (10% of a section's worth) — don't over-inflate
+      base += (1 / total) * 9.2;
     }
   }
 
@@ -160,12 +165,15 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
       : SECTIONS;
 
   const [factIdx, setFactIdx]               = useState(0);
+  const [factVisible, setFactVisible]       = useState(true);   // for fade transition
   const [statuses, setStatuses]             = useState<Record<string, SectionStatus>>(emptyStatuses());
   const [smoothProgress, setSmoothProgress] = useState(5);
-  const lastActiveSectionRef = useRef<string | null>(null);
-  const targetProgressRef    = useRef(5);
-  const stageFloorRef        = useRef(5);  // time-based minimum floor
-  const rafRef               = useRef<number | null>(null);
+  const [celebrating, setCelebrating]       = useState(false);  // celebration overlay
+  const lastActiveSectionRef   = useRef<string | null>(null);
+  const targetProgressRef      = useRef(5);
+  const stageFloorRef          = useRef(5);
+  const rafRef                 = useRef<number | null>(null);
+  const celebratedRef          = useRef(false);                 // fire confetti only once
 
   // ── Reset when generation starts ────────────────────────────────────────
   useEffect(() => {
@@ -175,14 +183,26 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
       targetProgressRef.current = 5;
       stageFloorRef.current = 5;
       lastActiveSectionRef.current = null;
+      celebratedRef.current = false;
+      setCelebrating(false);
       setFactIdx(Math.floor(Math.random() * FUN_FACTS.length));
+      setFactVisible(true);
     }
   }, [active]);
 
-  // ── Rotate fun facts every 5 s ──────────────────────────────────────────
+  // ── Rotate fun facts every 8 s with fade-out / fade-in ──────────────────
   useEffect(() => {
     if (!active) return;
-    const id = setInterval(() => setFactIdx((i) => (i + 1) % FUN_FACTS.length), 5000);
+    const id = setInterval(() => {
+      // Fade out
+      setFactVisible(false);
+      // After fade-out completes (350 ms), switch text and fade in
+      const swapTimer = setTimeout(() => {
+        setFactIdx((i) => (i + 1) % FUN_FACTS.length);
+        setFactVisible(true);
+      }, 350);
+      return () => clearTimeout(swapTimer);
+    }, 8000);
     return () => clearInterval(id);
   }, [active]);
 
@@ -222,15 +242,15 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
     if (!active) return;
 
     const tick = () => {
-      // Real section-based progress
       const realTarget = computeProgress(statuses, statusText, activeSections);
-      // Never fall below the time-based floor
       const target = Math.max(realTarget, stageFloorRef.current);
       targetProgressRef.current = target;
       setSmoothProgress((prev) => {
         const diff = targetProgressRef.current - prev;
         if (Math.abs(diff) < 0.1) return targetProgressRef.current;
-        return prev + diff * 0.1; // slightly snappier ease
+        // Faster ease when close to 100 so completion feels snappy
+        const factor = target >= 98 ? 0.18 : 0.1;
+        return prev + diff * factor;
       });
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -241,30 +261,66 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
     };
   }, [active, statuses, statusText]);
 
-  // ── Staged time-based floor so bar moves immediately and never looks stuck ─
-  // Each stage advances the minimum floor; real section progress can push higher.
+  // ── Conservative staged floor — only prevents bar looking completely frozen
   useEffect(() => {
     if (!active) return;
 
     const STAGES: { delay: number; floor: number }[] = [
-      { delay: 0,     floor: 8  },  // Initializing
-      { delay: 400,   floor: 15 },  // Preparing AI request
-      { delay: 1800,  floor: 28 },  // Awaiting response
-      { delay: 5000,  floor: 42 },  // Generating content
-      { delay: 11000, floor: 58 },  // Still generating
-      { delay: 20000, floor: 70 },  // Long generation fallback
+      { delay: 0,     floor: 8  },  // immediate visual feedback
+      { delay: 600,   floor: 12 },  // initializing
+      { delay: 3000,  floor: 18 },  // API connecting
+      { delay: 10000, floor: 25 },  // still waiting
+      { delay: 25000, floor: 35 },  // very long generation
     ];
 
     const timers = STAGES.map(({ delay, floor }) =>
       setTimeout(() => {
         stageFloorRef.current = Math.max(stageFloorRef.current, floor);
-        // Nudge the RAF loop immediately
         targetProgressRef.current = Math.max(targetProgressRef.current, floor);
       }, delay),
     );
 
     return () => timers.forEach(clearTimeout);
   }, [active]);
+
+  // ── Celebration when progress reaches 100% ────────────────────────────────
+  useEffect(() => {
+    if (!active || celebratedRef.current) return;
+    if (smoothProgress < 99) return;
+
+    celebratedRef.current = true;
+    setCelebrating(true);
+
+    // Fire confetti with Layah brand colors
+    const colors = ["#00C6A7", "#0A1628", "#ffffff", "#FFD700"];
+    const burst = () => {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { x: 0.3, y: 0 },
+        colors,
+        gravity: 0.9,
+        scalar: 0.9,
+      });
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { x: 0.7, y: 0 },
+        colors,
+        gravity: 0.9,
+        scalar: 0.9,
+      });
+    };
+    burst();
+    const t2 = setTimeout(burst, 400);
+    const t3 = setTimeout(burst, 800);
+
+    return () => {
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [smoothProgress, active]);
 
   if (!active) return null;
 
@@ -282,11 +338,76 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
       aria-modal="true"
       aria-label="Generating your lesson plan"
     >
+      {/* ── Celebration overlay ───────────────────────────────────────────── */}
+      {celebrating && (
+        <div
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5"
+          style={{
+            animation: "fade-in 0.4s ease forwards",
+            background: "rgba(10,22,40,0.85)",
+          }}
+        >
+          {/* Glowing checkmark */}
+          <div
+            style={{
+              width: 96,
+              height: 96,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(0,198,167,0.35) 0%, transparent 70%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              animation: "glow-pulse 1.2s ease-in-out infinite",
+            }}
+          >
+            <div
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: "50%",
+                background: "#00C6A7",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 0 32px rgba(0,198,167,0.7), 0 0 64px rgba(0,198,167,0.35)",
+              }}
+            >
+              <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                <path
+                  d="M7 18l7 7 15-15"
+                  stroke="white"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Ready message with glow */}
+          <div className="text-center">
+            <p
+              className="text-2xl font-bold text-white"
+              style={{
+                textShadow: "0 0 20px rgba(0,198,167,0.8), 0 0 40px rgba(0,198,167,0.4)",
+                animation: "glow-pulse 1.2s ease-in-out infinite",
+              }}
+            >
+              Your lesson pack is ready!
+            </p>
+            <p className="mt-2 text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
+              Preparing your download…
+            </p>
+          </div>
+        </div>
+      )}
+
       <div
         className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
         style={{
           background: "rgba(255,255,255,0.04)",
           border: "1px solid rgba(0,198,167,0.18)",
+          position: "relative",
         }}
       >
         {/* Logo */}
@@ -389,7 +510,7 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
           style={{ background: "rgba(255,255,255,0.07)" }}
         />
 
-        {/* Rotating fun fact */}
+        {/* Rotating fun fact — 8 s with fade-in/out */}
         <div className="flex items-start gap-2.5">
           <span
             className="mt-0.5 flex-shrink-0 text-base"
@@ -398,9 +519,12 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
             💡
           </span>
           <p
-            key={factIdx}
-            className="animate-fade-in text-xs leading-relaxed"
-            style={{ color: "rgba(255,255,255,0.45)" }}
+            className="text-xs leading-relaxed"
+            style={{
+              color: "rgba(255,255,255,0.45)",
+              opacity: factVisible ? 1 : 0,
+              transition: "opacity 0.35s ease",
+            }}
           >
             <span className="font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>
               Did you know?&nbsp;
@@ -409,6 +533,14 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
           </p>
         </div>
       </div>
+
+      {/* ── Keyframe styles injected inline ────────────────────────────────── */}
+      <style>{`
+        @keyframes glow-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.85; transform: scale(1.06); }
+        }
+      `}</style>
     </div>
   );
 }

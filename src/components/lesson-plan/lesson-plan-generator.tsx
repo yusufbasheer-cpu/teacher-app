@@ -627,6 +627,8 @@ export function LessonPlanGenerator() {
         }
         setGenerationProgress("Finalizing...");
         applySuccessPayload(completePayload);
+        // Hold the loading screen open so the celebration animation plays
+        await new Promise<void>((r) => setTimeout(r, 3000));
       } else {
         const raw = await response.text();
         console.log("[lesson-plan client] /api/lesson-plan HTTP", response.status, "body length", raw.length);
@@ -652,6 +654,8 @@ export function LessonPlanGenerator() {
 
         setGenerationProgress("Finalizing...");
         applySuccessPayload(data);
+        // Hold the loading screen open so the celebration animation plays
+        await new Promise<void>((r) => setTimeout(r, 3000));
       }
     } catch (err) {
       const message =
