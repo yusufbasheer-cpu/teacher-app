@@ -1,7 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Poppins } from "next/font/google";
+import { Inter, Poppins } from "next/font/google";
 import { NavbarWrapper } from "@/components/layout/navbar-wrapper";
+import { PageTransitionWrapper } from "@/components/layout/page-transition-wrapper";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -29,11 +35,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="overflow-x-hidden">
       <body
-        className={`${poppins.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
+        className={`${inter.variable} ${poppins.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
         style={{ color: "#0A1628" }}
       >
         <NavbarWrapper />
-        {children}
+        <PageTransitionWrapper>
+          {children}
+        </PageTransitionWrapper>
       </body>
     </html>
   );

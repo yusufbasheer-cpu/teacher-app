@@ -63,7 +63,7 @@ export function Navbar() {
             >
               L
             </span>
-            <span className="text-base font-bold tracking-tight text-white sm:text-lg">
+            <span className="font-layah-logo text-base font-bold tracking-tight text-white sm:text-lg">
               Layah.ai
             </span>
           </Link>

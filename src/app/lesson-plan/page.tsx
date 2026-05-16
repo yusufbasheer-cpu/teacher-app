@@ -1,11 +1,18 @@
 ﻿import { Suspense } from "react";
 import { LessonPlanGenerator } from "@/components/lesson-plan/lesson-plan-generator";
 import { Container } from "@/components/ui/container";
+import { Skeleton } from "@/components/ui/animate";
 
 function LessonPlanFallback() {
   return (
-    <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 text-sm text-slate-600 shadow-sm">
-      Loading lesson planner…
+    <div className="space-y-4">
+      <Skeleton className="h-10 w-2/3" />
+      <Skeleton className="h-6 w-full" />
+      <Skeleton className="h-6 w-4/5" />
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <Skeleton className="h-96" radius={24} />
+        <Skeleton className="h-96" radius={24} />
+      </div>
     </div>
   );
 }

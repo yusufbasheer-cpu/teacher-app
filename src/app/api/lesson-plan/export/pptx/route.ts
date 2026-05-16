@@ -74,13 +74,31 @@ export async function POST(req: Request) {
       ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
 
-    // ── Fetch images: Pexels first, fal.ai fallback — non-fatal ─────────
+    // ── Fetch images: Pexels (photo slides) + fal.ai (illustration slides) ─
+    // NOTE: Images are fetched HERE — only during PPT download, never during lesson plan generation.
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("IMAGE GENERATION STARTED — triggered by PPT download button");
+    console.log(`  Subject: ${subject} | Grade: ${grade} | Topic: ${topic}`);
+    console.log(`  Deck size: ${deck.length} slides`);
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    const imageStartTime = Date.now();
+
     let slideImageUrls: (string | null)[] = Array.from({ length: deck.length }, () => null);
     try {
       slideImageUrls = await fetchPptImagesWithFallback(topic, subject, grade, deck.length);
     } catch (imgErr) {
       console.error("[pptx export] Image fetch failed; continuing without images:", imgErr);
     }
+
+    const imageElapsed = ((Date.now() - imageStartTime) / 1000).toFixed(1);
+    const imageCount = slideImageUrls.filter(Boolean).length;
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log(`IMAGE GENERATION COMPLETE — ${imageCount}/${deck.length} images in ${imageElapsed}s`);
+    slideImageUrls.forEach((url, idx) => {
+      if (url) console.log(`  ✔ Slide ${idx + 1} has image: ${url.slice(0, 70)}…`);
+      else      console.log(`  ✗ Slide ${idx + 1} — no image`);
+    });
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // ── Build the presentation using the selected Layah theme ─────────────
     const buffer = await buildPptxFromPptContent({

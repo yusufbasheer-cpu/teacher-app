@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getLessonPlanDisplayOrder,
   getPptSourceLessonText,
@@ -59,6 +59,157 @@ function triggerDownload(blob: Blob, filename: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+// ── PPT Image Progress Card ───────────────────────────────────────────────────
+/**
+ * Client-side countdown shown while the PPT download request is in-flight.
+ * Since image generation is fully server-side (no streaming), we simulate
+ * milestone completion based on expected timings:
+ *   - 5 Pexels images run in parallel  → ~2s total
+ *   - 5 fal.ai images run sequentially → ~8s each → ~40s total
+ *   - Grand total estimate: ~48s
+ */
+const TOTAL_IMAGES = 10;
+
+const IMAGE_MILESTONES: { at: number; count: number; label: string }[] = [
+  { at: 2,  count: 5,  label: "5 photo images ready (Pexels)" },
+  { at: 10, count: 6,  label: "SDG illustration ready" },
+  { at: 18, count: 7,  label: "Main Phase diagram ready" },
+  { at: 26, count: 8,  label: "Activity illustration ready" },
+  { at: 34, count: 9,  label: "Exit Ticket graphic ready" },
+  { at: 42, count: 10, label: "All images ready!" },
+];
+
+const TOTAL_ESTIMATE_S = 48; // conservative total including network overhead
+
+function PptImageProgressCard({ active }: { active: boolean }) {
+  const [elapsed, setElapsed]   = useState(0);
+  const [imgCount, setImgCount] = useState(0);
+  const [milestone, setMilestone] = useState("");
+  const startRef = useRef<number | null>(null);
+  const tickRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!active) {
+      // Reset when download finishes
+      setElapsed(0);
+      setImgCount(0);
+      setMilestone("");
+      startRef.current = null;
+      if (tickRef.current) clearInterval(tickRef.current);
+      return;
+    }
+
+    startRef.current = Date.now();
+    tickRef.current = setInterval(() => {
+      const secs = Math.floor((Date.now() - (startRef.current ?? Date.now())) / 1000);
+      setElapsed(secs);
+
+      // Find the latest milestone we have passed
+      let latestCount = 0;
+      let latestLabel = "";
+      for (const m of IMAGE_MILESTONES) {
+        if (secs >= m.at) { latestCount = m.count; latestLabel = m.label; }
+      }
+      setImgCount(latestCount);
+      setMilestone(latestLabel);
+    }, 1000);
+
+    return () => { if (tickRef.current) clearInterval(tickRef.current); };
+  }, [active]);
+
+  if (!active) return null;
+
+  const remaining = Math.max(0, TOTAL_ESTIMATE_S - elapsed);
+  const allDone   = imgCount >= TOTAL_IMAGES;
+
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        borderRadius: 14,
+        border: "1px solid rgba(0,198,167,0.3)",
+        background: "linear-gradient(135deg, #0A1628 0%, #112240 100%)",
+        padding: "20px 24px",
+        color: "#fff",
+      }}
+      role="status"
+      aria-live="polite"
+    >
+      {/* Title row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+        <span style={{ fontSize: 20 }}>🎨</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: "#FFFFFF" }}>
+          {allDone ? "All images ready! Preparing your download…" : "Generating images for your PPT"}
+        </span>
+      </div>
+
+      {/* Image count */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <div
+          style={{
+            height: 8,
+            flex: 1,
+            borderRadius: 99,
+            background: "rgba(255,255,255,0.12)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${(imgCount / TOTAL_IMAGES) * 100}%`,
+              background: "linear-gradient(90deg,#00C6A7,#00e8c3)",
+              borderRadius: 99,
+              boxShadow: "0 0 8px rgba(0,198,167,0.6)",
+              transition: "width 0.8s ease",
+            }}
+          />
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#00C6A7", minWidth: 52, textAlign: "right" }}>
+          {imgCount}/{TOTAL_IMAGES}
+        </span>
+      </div>
+
+      {milestone ? (
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 12 }}>
+          ✔ {milestone}
+        </p>
+      ) : (
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 12 }}>
+          Fetching photos and generating illustrations…
+        </p>
+      )}
+
+      {/* Countdown */}
+      {!allDone ? (
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+            Estimated time remaining:
+          </span>
+          <span
+            style={{
+              fontSize: 22,
+              fontWeight: 800,
+              color: "#00C6A7",
+              fontVariantNumeric: "tabular-nums",
+              letterSpacing: "-0.5px",
+            }}
+          >
+            {remaining}s
+          </span>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 18 }}>✅</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#00C6A7" }}>
+            0 seconds — all done!
+          </span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function hasSectionContent(plan: LessonPlanResult, key: string): boolean {
@@ -313,9 +464,9 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadPpt}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
+                className="animate-slide-up stagger-1 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
               >
-                {busy === "ppt" ? "Building your PPT… please wait" : "Download PPT"}
+                {busy === "ppt" ? "Generating images…" : "Download PPT"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">
                   Structured deck · Layah theme
                 </span>
@@ -326,7 +477,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadLessonPlan}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
+                className="animate-slide-up stagger-2 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
               >
                 {busy === "lesson" ? "Preparing…" : "Download Lesson Plan"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -337,7 +488,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadWorksheet}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
+                className="animate-slide-up stagger-3 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
               >
                 {busy === "worksheet" ? "Preparing…" : "Download Worksheet"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -348,7 +499,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadAssessment}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
+                className="animate-slide-up stagger-4 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
               >
                 {busy === "assessment" ? "Preparing…" : "Download Assessment"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -359,7 +510,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadHomework}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
+                className="animate-slide-up stagger-5 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
               >
                 {busy === "homework" ? "Preparing…" : "Download Homework"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -370,7 +521,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadTeacherNotes}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 disabled:opacity-50"
+                className="animate-slide-up stagger-6 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
               >
                 {busy === "notes" ? "Preparing…" : "Download Teacher Notes"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
@@ -381,7 +532,7 @@ export function TeacherPackageViewer({
                 type="button"
                 disabled={busy !== null}
                 onClick={onDownloadAflSheets}
-                className="flex min-h-[3rem] flex-col justify-center rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-violet-900 shadow-sm transition hover:bg-violet-50 disabled:opacity-50"
+                className="animate-slide-up stagger-7 flex min-h-[3rem] flex-col justify-center rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-violet-900 shadow-sm transition hover:bg-violet-50 hover:shadow-md disabled:opacity-50"
               >
                 {busy === "afl-sheets" ? "Preparing…" : "Download AFL Activity Sheets"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">
@@ -390,16 +541,12 @@ export function TeacherPackageViewer({
               </button>
               ) : null}
             </div>
-            {busy === "ppt" ? (
-              <p className="mt-3 text-sm font-medium text-[#0A1628]" role="status" aria-live="polite">
-                Building your PPT… please wait
-              </p>
-            ) : null}
+            <PptImageProgressCard active={busy === "ppt"} />
             <button
               type="button"
               disabled={busy !== null}
               onClick={onDownloadZip}
-              className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0A8F7A] disabled:opacity-50 sm:w-auto"
+              className="animate-slide-up stagger-8 mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0A8F7A] hover:shadow-lg disabled:opacity-50 sm:w-auto"
             >
               {busy === "zip" ? "Building ZIP…" : "Download ZIP package"}
             </button>
@@ -416,7 +563,7 @@ export function TeacherPackageViewer({
         </p>
       )}
 
-      {exportError ? <p className="text-sm text-red-600">{exportError}</p> : null}
+      {exportError ? <p className="animate-shake text-sm text-red-600">{exportError}</p> : null}
 
       {sectionImageErrors && Object.keys(sectionImageErrors).length > 0 ? (
         <div

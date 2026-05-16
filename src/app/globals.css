@@ -1,22 +1,57 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
 :root {
   --background: #F7F9FC;
   --foreground: #0A1628;
   --accent: #00C6A7;
   --navy: #0A1628;
-  --font-poppins: 'Poppins', sans-serif;
+}
+
+/* Layah wordmark only — body uses Inter via --font-inter from next/font */
+.font-layah-logo {
+  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
   -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  overscroll-behavior: none;
 }
 
 body {
   min-height: 100vh;
   background: #F7F9FC;
   color: var(--foreground);
-  font-family: var(--font-poppins);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  overscroll-behavior: none;
+  /* GPU-composite the body layer so scroll is handled off the main thread */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* No special containment on main — any contain/transform/filter on a
+   parent creates a new containing block for position:fixed children
+   which breaks full-screen overlays. Leave main as a plain block. */
+
+/* Prevent animated elements from causing layout shifts during scroll.
+   NOTE: Only opacity — never will-change:transform on layout-level wrappers
+   because transform creates a new containing block for position:fixed children. */
+.animate-shake {
+  will-change: transform;
+}
+.animate-slide-up,
+.animate-fade-in,
+.animate-dropdown {
+  will-change: opacity;
+}
+
+/* Confetti canvas must never shift page layout */
+canvas {
+  pointer-events: none;
 }
 
 @keyframes fade-in {
@@ -32,3 +67,108 @@ body {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.85; transform: scale(1.06); }
 }
+
+/* ── Skeleton shimmer ──────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #e8edf2 25%,
+    #f4f6f9 50%,
+    #e8edf2 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* ── Form input focus glow ─────────────────────────────────────────────────── */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 198, 167, 0.22);
+  border-color: #00C6A7 !important;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* ── Button press / hover micro-interaction ────────────────────────────────── */
+button, [role="button"] {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease,
+              border-color 0.2s ease, color 0.2s ease, opacity 0.15s ease;
+}
+
+button:active:not(:disabled), [role="button"]:active:not([aria-disabled="true"]) {
+  transform: scale(0.97);
+}
+
+/* ── Error shake animation ─────────────────────────────────────────────────── */
+@keyframes error-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: error-shake 0.45s ease both;
+}
+
+/* ── Progress bar teal glow ────────────────────────────────────────────────── */
+.progress-bar-glow {
+  box-shadow: 0 0 8px 2px rgba(0, 198, 167, 0.55);
+}
+
+/* ── Smooth dropdown open ──────────────────────────────────────────────────── */
+@keyframes dropdown-open {
+  from { opacity: 0; transform: translateY(-6px) scaleY(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scaleY(1); }
+}
+
+.animate-dropdown {
+  animation: dropdown-open 0.18s ease both;
+  transform-origin: top;
+}
+
+/* ── Smooth checkbox check ─────────────────────────────────────────────────── */
+input[type="checkbox"] {
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+input[type="checkbox"]:checked {
+  transform: scale(1.08);
+}
+
+/* ── Card hover lift ───────────────────────────────────────────────────────── */
+.card-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card-hover:hover {
+  box-shadow: 0 8px 28px rgba(0, 198, 167, 0.14), 0 2px 8px rgba(0, 0, 0, 0.07);
+  transform: translateY(-2px);
+}
+
+/* ── Slide-in from bottom (results reveal) ─────────────────────────────────── */
+@keyframes slide-up-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up-in 0.38s cubic-bezier(0.0, 0.0, 0.2, 1) both;
+}
+
+/* ── Staggered children helper ─────────────────────────────────────────────── */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.30s; }
+.stagger-7 { animation-delay: 0.35s; }
+.stagger-8 { animation-delay: 0.40s; }

@@ -92,43 +92,62 @@ const CONFETTI_COLORS = ["#00C6A7", "#0A1628", "#FFD700", "#FFFFFF"];
 function fireConfetti() {
   console.log("Celebration triggered");
 
-  // Main burst from center
-  confetti({
-    particleCount: 200,
-    spread: 160,
-    origin: { y: 0.6 },
-    colors: CONFETTI_COLORS,
+  // Create a dedicated fixed canvas so confetti never causes layout shifts
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = [
+    "position:fixed",
+    "top:0",
+    "left:0",
+    "width:100%",
+    "height:100%",
+    "pointer-events:none",
+    "z-index:9999",
+  ].join(";");
+  document.body.appendChild(canvas);
+
+  const myConfetti = confetti.create(canvas, { resize: true, useWorker: true });
+
+  // First burst — left side
+  requestAnimationFrame(() => {
+    myConfetti({
+      particleCount: 120,
+      spread: 70,
+      angle: 60,
+      origin: { x: 0.2, y: 0.6 },
+      colors: CONFETTI_COLORS,
+    });
   });
 
-  // Left side burst
+  // Second burst — right side (150ms later)
   setTimeout(() => {
-    confetti({
-      particleCount: 100,
-      spread: 80,
-      origin: { x: 0.1, y: 0.5 },
-      angle: 60,
-      colors: CONFETTI_COLORS,
+    requestAnimationFrame(() => {
+      myConfetti({
+        particleCount: 120,
+        spread: 70,
+        angle: 120,
+        origin: { x: 0.8, y: 0.6 },
+        colors: CONFETTI_COLORS,
+      });
     });
-  }, 250);
+  }, 150);
 
-  // Right side burst
+  // Follow-up centre burst for extra flair
   setTimeout(() => {
-    confetti({
-      particleCount: 100,
-      spread: 80,
-      origin: { x: 0.9, y: 0.5 },
-      angle: 120,
-      colors: CONFETTI_COLORS,
+    requestAnimationFrame(() => {
+      myConfetti({
+        particleCount: 80,
+        spread: 120,
+        origin: { x: 0.5, y: 0.55 },
+        colors: CONFETTI_COLORS,
+      });
     });
-  }, 250);
+  }, 600);
 
-  // Follow-up bursts
+  // Clean up canvas after animation finishes (3.5s is plenty)
   setTimeout(() => {
-    confetti({ particleCount: 80, spread: 120, origin: { y: 0.55 }, colors: CONFETTI_COLORS });
-  }, 700);
-  setTimeout(() => {
-    confetti({ particleCount: 60, spread: 100, origin: { y: 0.5 }, colors: CONFETTI_COLORS });
-  }, 1400);
+    myConfetti.reset();
+    canvas.remove();
+  }, 3500);
 }
 
 // ── Logo ──────────────────────────────────────────────────────────────────────
@@ -143,7 +162,7 @@ function LayahLogo() {
           <path d="M11 3L4 8v10h5v-5h4v5h5V8L11 3z" fill="white" opacity="0.95" />
         </svg>
       </div>
-      <span className="text-xl font-bold tracking-tight text-white">
+      <span className="font-layah-logo text-xl font-bold tracking-tight text-white">
         Layah<span style={{ color: "#00C6A7" }}>.ai</span>
       </span>
     </div>
@@ -185,6 +204,35 @@ function StatusIcon({ status }: { status: SectionStatus }) {
   );
 }
 
+// ── Time estimation helpers ───────────────────────────────────────────────────
+/** Estimated seconds per section (midpoint of range). */
+const SECTION_ESTIMATES: Record<string, number> = {
+  "Full Lesson Plan":     25,
+  "PPT Slide Content":    35,
+  "Worksheet":            17,
+  "Assessment Questions": 17,
+  "Homework Task":        12,
+  "Teacher Notes":        12,
+  "AFL Activity Sheets":  15,
+};
+
+function computeEstimatedTotal(sel: Record<string, boolean> | null | undefined): number {
+  if (!sel) return 80;
+  let total = 0;
+  for (const [key, on] of Object.entries(sel)) {
+    if (on) total += SECTION_ESTIMATES[key] ?? 15;
+  }
+  return total > 0 ? total : 80;
+}
+
+/** Format seconds as  M:SS  or  Xs  (≤59s). */
+function fmtTime(secs: number): string {
+  if (secs <= 0) return "0:00";
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}s`;
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export function LessonPlanLoadingGame({ active, statusText, selectedSections }: LessonPlanLoadingGameProps) {
   const activeSections =
@@ -192,16 +240,20 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
       ? SECTIONS.filter((s) => selectedSections[s.sectionKey] === true)
       : SECTIONS;
 
+  const estimatedTotal = computeEstimatedTotal(selectedSections);
+
   const [factIdx, setFactIdx]         = useState(0);
   const [factVisible, setFactVisible] = useState(true);
   const [statuses, setStatuses]       = useState<Record<string, SectionStatus>>(emptyStatuses());
   const [smoothProgress, setSmoothProgress] = useState(5);
   const [celebrating, setCelebrating] = useState(false);
+  const [elapsedSecs, setElapsedSecs] = useState(0);
 
-  const targetProgressRef = useRef(5);
-  const stageFloorRef     = useRef(5);
-  const rafRef            = useRef<number | null>(null);
-  const celebratedRef     = useRef(false);
+  const targetProgressRef  = useRef(5);
+  const stageFloorRef      = useRef(5);
+  const rafRef             = useRef<number | null>(null);
+  const celebratedRef      = useRef(false);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Reset on start ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -212,9 +264,25 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
       stageFloorRef.current = 5;
       celebratedRef.current = false;
       setCelebrating(false);
+      setElapsedSecs(0);
       setFactIdx(Math.floor(Math.random() * FUN_FACTS.length));
       setFactVisible(true);
     }
+  }, [active]);
+
+  // ── Per-second countdown ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!active) {
+      setElapsedSecs(0);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      return;
+    }
+    countdownIntervalRef.current = setInterval(() => {
+      setElapsedSecs((prev) => prev + 1);
+    }, 1000);
+    return () => {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    };
   }, [active]);
 
   // ── Rotate fun facts every 8 s with fade ────────────────────────────────
@@ -327,160 +395,248 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
     activeSections.find((s) => statuses[s.key] === "generating")?.label ??
     (doneCount > 0 ? "Finishing up…" : "Starting generation…");
 
+  // Countdown derived values
+  const remaining      = Math.max(0, estimatedTotal - elapsedSecs);
+  const isDoneEarly    = celebrating && elapsedSecs < estimatedTotal;
+  const isOverrun      = !celebrating && remaining === 0;
+
+  /* ── Inline keyframes (no Framer Motion on loading screen) ───────────── */
+  const keyframes = `
+    @keyframes ldPulse {
+      0%,100% { opacity:1; }
+      50%      { opacity:0.6; }
+    }
+    @keyframes ldGlowRing {
+      0%,100% { box-shadow:0 0 20px 4px rgba(0,198,167,0.5); }
+      50%      { box-shadow:0 0 36px 10px rgba(0,198,167,0.85); }
+    }
+  `;
+
   return (
     <>
-      {/* ── CSS keyframes ─────────────────────────────────────────────────── */}
-      <style>{`
-        @keyframes celebFadeIn {
-          from { opacity: 0; transform: scale(0.85); }
-          to   { opacity: 1; transform: scale(1); }
-        }
-        @keyframes glowPulse {
-          0%, 100% { box-shadow: 0 0 24px 6px rgba(0,198,167,0.55), 0 0 60px 12px rgba(0,198,167,0.25); transform: scale(1); }
-          50%       { box-shadow: 0 0 40px 12px rgba(0,198,167,0.8), 0 0 90px 24px rgba(0,198,167,0.4); transform: scale(1.08); }
-        }
-        @keyframes textGlow {
-          0%, 100% { text-shadow: 0 0 12px rgba(0,198,167,0.6), 0 0 28px rgba(0,198,167,0.3); }
-          50%       { text-shadow: 0 0 24px rgba(0,198,167,1),   0 0 56px rgba(0,198,167,0.6); }
-        }
-      `}</style>
+      <style>{keyframes}</style>
 
-      {/* ── Background overlay ────────────────────────────────────────────── */}
+      {/* Full-screen overlay — explicit top/left/width/height so no
+          ancestor containing-block quirk can shrink or offset it */}
       <div
-        className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-        style={{ background: "rgba(10,22,40,0.96)", backdropFilter: "blur(4px)" }}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16,
+          backgroundColor: "#0A1628",
+        }}
         role="dialog"
         aria-modal="true"
         aria-label="Generating your lesson plan"
       >
-        {/* ── Normal loading card ─────────────────────────────────────────── */}
-        <div
-          className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(0,198,167,0.18)",
-            opacity: celebrating ? 0 : 1,
-            transition: "opacity 0.4s ease",
-            pointerEvents: celebrating ? "none" : "auto",
-          }}
-        >
-          <div className="mb-6 flex justify-center">
-            <LayahLogo />
-          </div>
-
-          <p className="mb-1 text-center text-base font-semibold text-white">
-            Crafting your lesson package
-          </p>
-          <p className="mb-5 text-center text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-            {currentLabel}
-          </p>
-
-          {/* Progress bar */}
-          <div className="mb-1 flex items-center justify-between">
-            <span className="text-xs font-medium" style={{ color: "#00C6A7" }}>Progress</span>
-            <span className="text-xs font-bold tabular-nums text-white">{pct}%</span>
-          </div>
+        {/* ── Main loading card ───────────────────────────────────────────── */}
+        {!celebrating && (
           <div
-            className="mb-6 h-2 w-full overflow-hidden rounded-full"
-            style={{ background: "rgba(255,255,255,0.08)" }}
+            style={{
+              width: "100%",
+              maxWidth: 460,
+              backgroundColor: "#112240",
+              border: "1px solid rgba(0,198,167,0.4)",
+              borderRadius: 20,
+              padding: 28,
+              boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+            }}
           >
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{ width: `${smoothProgress}%`, background: "linear-gradient(90deg,#00C6A7,#00e8c3)" }}
-            />
-          </div>
+            {/* Logo */}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+              <LayahLogo />
+            </div>
 
-          {/* Checklist */}
-          <div className="mb-6 space-y-2.5">
-            {activeSections.map((s) => {
-              const status = statuses[s.key] ?? "waiting";
-              const isActive = status === "generating";
-              return (
-                <div key={s.key} className="flex items-center gap-3">
-                  <StatusIcon status={status} />
-                  <span
-                    className={`text-sm transition-colors duration-300 ${status === "done" ? "line-through" : isActive ? "font-semibold text-white" : ""}`}
-                    style={{ color: status === "done" ? "rgba(255,255,255,0.35)" : isActive ? "#ffffff" : "rgba(255,255,255,0.5)" }}
-                  >
-                    {s.label}
-                  </span>
-                  {isActive  && <span className="ml-auto text-xs font-medium" style={{ color: "#00C6A7" }}>Generating…</span>}
-                  {status === "done"    && <span className="ml-auto text-xs font-medium" style={{ color: "#00C6A7" }}>Done</span>}
-                  {status === "waiting" && <span className="ml-auto text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>Waiting</span>}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mb-4 h-px w-full" style={{ background: "rgba(255,255,255,0.07)" }} />
-
-          {/* Fun fact */}
-          <div className="flex items-start gap-2.5">
-            <span className="mt-0.5 flex-shrink-0 text-base" aria-hidden>💡</span>
-            <p
-              className="text-xs leading-relaxed"
-              style={{ color: "rgba(255,255,255,0.45)", opacity: factVisible ? 1 : 0, transition: "opacity 0.35s ease" }}
-            >
-              <span className="font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>Did you know?&nbsp;</span>
-              {FUN_FACTS[factIdx]}
+            {/* Title */}
+            <p style={{ textAlign: "center", fontSize: 17, fontWeight: 700, color: "#FFFFFF", marginBottom: 4 }}>
+              Crafting your lesson package
             </p>
-          </div>
-        </div>
+            <p style={{ textAlign: "center", fontSize: 13, color: "#94a3b8", marginBottom: 20 }}>
+              {currentLabel}
+            </p>
 
-        {/* ── Celebration card — rendered AFTER the loading card so it sits on top ── */}
-        {celebrating && (
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ zIndex: 10 }}
-          >
+            {/* Progress bar label */}
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#00C6A7" }}>Progress</span>
+              <span style={{ fontSize: 20, fontWeight: 800, color: "#FFFFFF" }}>{pct}%</span>
+            </div>
+
+            {/* Progress bar track */}
             <div
               style={{
-                background: "#ffffff",
-                borderRadius: 24,
-                padding: "40px 48px",
-                textAlign: "center",
-                maxWidth: 400,
-                width: "90%",
-                border: "2px solid rgba(0,198,167,0.4)",
-                boxShadow: "0 0 60px 16px rgba(0,198,167,0.35), 0 8px 40px rgba(0,0,0,0.4)",
-                animation: "celebFadeIn 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards",
+                width: "100%",
+                height: 10,
+                backgroundColor: "rgba(255,255,255,0.15)",
+                borderRadius: 99,
+                overflow: "hidden",
+                marginBottom: 24,
               }}
             >
-              {/* Glowing checkmark */}
               <div
                 style={{
-                  width: 88,
-                  height: 88,
-                  borderRadius: "50%",
-                  background: "#00C6A7",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 20px",
-                  animation: "glowPulse 1.4s ease-in-out infinite",
+                  height: "100%",
+                  width: `${smoothProgress}%`,
+                  background: "linear-gradient(90deg,#00C6A7,#00e8c3)",
+                  borderRadius: 99,
+                  boxShadow: "0 0 10px rgba(0,198,167,0.7)",
+                  transition: "width 0.5s ease",
                 }}
-              >
-                <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-                  <path d="M8 22l9 9 19-18" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
+              />
+            </div>
 
-              {/* Message */}
-              <p
-                style={{
-                  fontSize: 22,
-                  fontWeight: 800,
-                  color: "#0A1628",
-                  marginBottom: 8,
-                  animation: "textGlow 1.6s ease-in-out infinite",
-                }}
-              >
-                Yaay! Your lesson pack is ready! 🎉
+            {/* ── Estimated time + countdown ──────────────────────────────── */}
+            <div
+              style={{
+                marginBottom: 20,
+                borderRadius: 12,
+                background: "rgba(0,198,167,0.07)",
+                border: "1px solid rgba(0,198,167,0.2)",
+                padding: "14px 16px",
+              }}
+            >
+              {/* Estimated total */}
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>
+                Estimated time:{" "}
+                <span style={{ color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>
+                  {fmtTime(estimatedTotal)}
+                </span>
               </p>
-              <p style={{ fontSize: 14, color: "#6b7280" }}>
-                Preparing your download…
+
+              {/* Live countdown */}
+              {celebrating ? (
+                /* Done (possibly early) */
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>🎉</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#00C6A7" }}>
+                    {isDoneEarly ? "Done early! Your lesson pack is ready!" : "All done! Your lesson pack is ready!"}
+                  </span>
+                </div>
+              ) : isOverrun ? (
+                /* Took longer than estimate */
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 16, animation: "ldPulse 1.2s ease infinite" }}>⏳</span>
+                  <span style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic" }}>
+                    Almost there… just a few more seconds
+                  </span>
+                </div>
+              ) : (
+                /* Normal countdown */
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
+                    Time remaining:
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 32,
+                      fontWeight: 800,
+                      color: "#00C6A7",
+                      fontVariantNumeric: "tabular-nums",
+                      letterSpacing: "-1px",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {fmtTime(remaining)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Checklist */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+              {activeSections.map((s) => {
+                const status = statuses[s.key] ?? "waiting";
+                const isActive  = status === "generating";
+                const isDone    = status === "done";
+                return (
+                  <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <StatusIcon status={status} />
+                    <span
+                      style={{
+                        fontSize: 15,
+                        fontWeight: isActive ? 700 : 400,
+                        color: isDone ? "rgba(255,255,255,0.5)" : "#FFFFFF",
+                        textDecoration: isDone ? "line-through" : "none",
+                        flex: 1,
+                      }}
+                    >
+                      {s.label}
+                    </span>
+                    {isActive && (
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#00C6A7", animation: "ldPulse 1.2s ease infinite" }}>
+                        Generating…
+                      </span>
+                    )}
+                    {isDone && (
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#00C6A7" }}>Done ✓</span>
+                    )}
+                    {status === "waiting" && (
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Waiting</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, backgroundColor: "rgba(255,255,255,0.1)", marginBottom: 16 }} />
+
+            {/* Fun fact */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }} aria-hidden>💡</span>
+              <p style={{ fontSize: 13, lineHeight: 1.6, color: "#E2E8F0", margin: 0 }}>
+                <span style={{ fontWeight: 700, color: "#FFFFFF" }}>Did you know?&nbsp;</span>
+                {FUN_FACTS[factIdx]}
               </p>
             </div>
+          </div>
+        )}
+
+        {/* ── Celebration card ────────────────────────────────────────────── */}
+        {celebrating && (
+          <div
+            style={{
+              width: "90%",
+              maxWidth: 400,
+              backgroundColor: "#FFFFFF",
+              borderRadius: 24,
+              padding: "40px 36px",
+              textAlign: "center",
+              border: "2px solid rgba(0,198,167,0.5)",
+              boxShadow: "0 0 60px 16px rgba(0,198,167,0.35), 0 8px 40px rgba(0,0,0,0.5)",
+            }}
+          >
+            {/* Glowing checkmark */}
+            <div
+              style={{
+                width: 88,
+                height: 88,
+                borderRadius: "50%",
+                backgroundColor: "#00C6A7",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 20px",
+                animation: "ldGlowRing 1.4s ease-in-out infinite",
+              }}
+            >
+              <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+                <path d="M8 22l9 9 19-18" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+
+            <p style={{ fontSize: 22, fontWeight: 800, color: "#0A1628", marginBottom: 8 }}>
+              Yaay! Your lesson pack is ready! 🎉
+            </p>
+            <p style={{ fontSize: 14, color: "#6b7280" }}>
+              Preparing your download…
+            </p>
           </div>
         )}
       </div>

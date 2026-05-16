@@ -65,7 +65,8 @@ export function AuthCard() {
         className="mb-3 inline-flex rounded-full border px-3 py-1 text-xs font-semibold"
         style={{ borderColor: "#00C6A7", color: "#00C6A7", background: "rgba(0,198,167,0.08)" }}
       >
-        Welcome to Layah.ai
+        <span>Welcome to </span>
+        <span className="font-layah-logo">Layah.ai</span>
       </p>
       <h1 className="text-2xl font-bold" style={{ color: "#0A1628" }}>
         {mode === "login" ? "Teacher Login" : "Create Teacher Account"}

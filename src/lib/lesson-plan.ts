@@ -115,6 +115,9 @@ export const GRADE_YEAR_OPTIONS = [
 ] as const;
 export type GradeYearOption = (typeof GRADE_YEAR_OPTIONS)[number];
 
+/** ICT / CS / STEM cluster — shown under its own optgroup in the generator. */
+export const STEM_SUBJECT_OPTIONS = ["ICT", "Computer Science", "Robotics", "STEM"] as const;
+
 /** Core (non-language) subjects in the lesson generator dropdown. */
 export const CORE_SUBJECT_OPTIONS = [
   "Math",
@@ -122,7 +125,7 @@ export const CORE_SUBJECT_OPTIONS = [
   "English",
   "Islamic Studies",
   "Social Science",
-  "ICT",
+  ...STEM_SUBJECT_OPTIONS,
   "Art",
   "PE",
   "Other",

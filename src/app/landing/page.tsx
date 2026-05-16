@@ -35,7 +35,7 @@ export default function LandingPage() {
             >
               L
             </span>
-            <span className="text-xl font-bold text-white tracking-tight">Layah</span>
+            <span className="font-layah-logo text-xl font-bold text-white tracking-tight">Layah</span>
           </Link>
 
           {/* Desktop nav */}
@@ -434,7 +434,7 @@ export default function LandingPage() {
                 >
                   L
                 </span>
-                <span className="text-xl font-bold text-white">Layah</span>
+                <span className="font-layah-logo text-xl font-bold text-white">Layah</span>
               </div>
               <p className="mt-3 max-w-xs text-sm text-white/50">
                 AI-powered lesson planning built specifically for teachers.

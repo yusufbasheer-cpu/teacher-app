@@ -669,16 +669,11 @@ export function formatDocxAflAppendix(selections: AflSelectionsPayload): string 
   return any ? lines.join("\n") : "";
 }
 
-/**
- * Builds a focused DeepSeek user-message that generates AFL Activity Sheets.
- * One printable student-facing sheet per selected AFL tool.
- */
-export function buildAflActivitySheetsUserMessage(params: {
-  input: { subject: string; grade: string; topic: string; chapter: string; curriculumType: string };
-  selections: AflSelectionsPayload;
-  sourceMaterialBlock?: string;
-}): string | null {
-  const { input, selections, sourceMaterialBlock } = params;
+/** Max AFL tools per DeepSeek call (smaller payloads = faster, fewer timeouts). */
+export const AFL_ACTIVITY_SHEETS_TOOLS_PER_BATCH = 3;
+
+/** Ordered list of teacher-selected AFL tools (catalog order by phase). */
+export function getOrderedSelectedAflTools(selections: AflSelectionsPayload): AflToolDefinition[] {
   const selectedTools: AflToolDefinition[] = [];
   for (const group of AFL_PHASE_GROUPS) {
     const ids = selections[group.phase] ?? [];
@@ -687,13 +682,23 @@ export function buildAflActivitySheetsUserMessage(params: {
       if (t) selectedTools.push(t);
     }
   }
-  if (!selectedTools.length) return null;
+  return selectedTools;
+}
 
-  const toolList = selectedTools
-    .map(
-      (t, i) =>
-        `${i + 1}. **${t.label}** — How it works: ${t.howItWorks} Classroom use: ${t.classroomUse}`,
-    )
+/**
+ * User message for one batch of AFL Activity Sheets (≤ {@link AFL_ACTIVITY_SHEETS_TOOLS_PER_BATCH} tools).
+ * Keeps output short: brief purpose, ≤5 classroom bullets, ≤4 student tasks — no long paragraphs.
+ */
+export function buildAflActivitySheetsBatchUserMessage(params: {
+  input: { subject: string; grade: string; topic: string; chapter: string; curriculumType: string };
+  tools: AflToolDefinition[];
+  sourceMaterialBlock?: string;
+}): string | null {
+  const { input, tools, sourceMaterialBlock } = params;
+  if (!tools.length) return null;
+
+  const toolList = tools
+    .map((t, i) => `${i + 1}. ${t.label} (ID: ${t.id}) — Purpose (reference): ${t.purpose}`)
     .join("\n");
 
   const chapterLine = input.chapter.trim()
@@ -701,7 +706,7 @@ export function buildAflActivitySheetsUserMessage(params: {
     : "Chapter / unit: not specified";
 
   return `
-Generate a complete set of **printable AFL Activity Sheets** — one sheet per AFL tool listed below.
+Generate **printable student-facing AFL Activity Sheets** for ONLY the tools in THIS batch (below). Do not include tools that are not listed.
 
 ### Lesson context
 - Curriculum: ${input.curriculumType}
@@ -711,44 +716,56 @@ Generate a complete set of **printable AFL Activity Sheets** — one sheet per A
 - Topic: ${input.topic}
 ${sourceMaterialBlock ?? ""}
 
-### Selected AFL tools (generate one sheet per tool in this order)
+### Tools in this batch (one compact sheet per tool, in this order)
 ${toolList}
 
-### Rules for EVERY sheet
-- **Heading:** AFL tool name + topic (e.g. "Learning Stations — Photosynthesis")
-- **Student instructions:** clear, grade-appropriate, written directly to the student (second person). No teacher instructions on the sheet.
-- **Full activity content** — generate the complete content the student interacts with:
-  - **Learning Stations** → 3 to 4 numbered station cards, each with a clear heading and 2–3 tasks or questions the student completes at that station.
-  - **KWL Chart** → a 3-column table (K: What I Know | W: What I Want to Know | L: What I Learned) with 5–6 blank row prompts in each column described as "_______________".
-  - **Think Pair Share** → the exact focus question written out, then "My thinking (individual): _______________", "My partner's ideas: _______________", "What we will share: _______________".
-  - **Jigsaw Activity** → separate expert group cards (Group A, B, C, D) each with their specific content section and 2 comprehension questions.
-  - **Gallery Walk** → an observation sheet with rows for each display item: "Display __: I notice… | My feedback…".
-  - **Concept Mapping** → the central concept pre-filled, 4–6 surrounding node labels, connecting prompts: "connects to ___ because ___".
-  - **Socratic Questioning** → a discussion record sheet with the central question, 4–5 sub-questions for the student to answer in writing.
-  - **Must Should Could** → three clearly labelled task boxes (Must / Should / Could) each with a full task written out.
-  - **Choice Board** → a 3×3 grid of fully written activity options the student circles or ticks.
-  - **Tiered Tasks** → Level 1 (Basic), Level 2 (Expected), Level 3 (Challenge) each with fully written tasks.
-  - **Learning Menus** → Starter task, Main task, Dessert (extension) task — each fully written.
-  - **3-2-1 Reflection** → "3 things I learned: 1.___ 2.___ 3.___", "2 interesting points: 1.___ 2.___", "1 question I still have: ___".
-  - **Hot Seat** → a question card set: 5–6 questions the class will ask, space for the hot-seat student to write quick answers.
-  - **One Word Summary** → "My one word: _______ Because: _______________".
-  - **Snowball Activity** → the response prompt + "Write your answer, crumple, toss, unfold, read, and discuss with the person who caught it."
-  - **One Minute Paper** → a timed-write prompt with "Your answer (write for 1 minute): _______________".
-  - **Muddiest Point** → "The muddiest (least clear) thing from today's lesson is: _______________".
-  - **Exit Card** → 2 focused questions written out with answer space.
-  - **Emoji Scale** → the emoji scale drawn in ASCII (e.g. 😕  😐  🙂  😊  🤩) with "Circle your level:" + "One sentence about why: ___".
-  - **Traffic Light System** → a checklist of 4–5 I-can statements each with 🔴 🟡 🟢 tick boxes described in text.
-  - **Checklist Can Do Statements** → 5–6 "I can…" statements the student ticks.
-  - **Two Stars and a Wish** → "⭐ Star 1: ___ ⭐ Star 2: ___ 🌟 Wish: ___".
-  - **Rubric Scale** → a 4-level rubric table (Beginning / Developing / Achieving / Excelling) with 2–3 criteria rows fully written.
-- Separate each sheet with: ─────────────────────────────────────────────
-- Use plain text only — no markdown code fences. Use 1. 2. 3. or simple lines for lists.
-- All content must be specific to the **topic**, **subject**, and **grade** — not generic placeholders.
+### Strict brevity (mandatory — avoid slow oversized outputs)
+For **each** tool, use this exact structure. No long paragraphs anywhere.
 
-Wrap the entire output between:
+**=== [Tool name] — ${input.topic} ===**
+
+**Tool name and purpose** (maximum 2 short lines total — no paragraph):
+(line 1)
+(line 2)
+
+**How to use in classroom** (maximum 5 bullet lines; each bullet one short line starting with "- "):
+- ...
+(up to 5 bullets)
+
+**Student activity** (exactly 3 or 4 numbered items — questions OR short tasks only):
+1. ...
+2. ...
+3. ...
+4. ... (optional fourth)
+
+Between tools, insert one line: ─────────────────────────────────────────────
+
+Rules:
+- Plain text only — no markdown code fences.
+- Tie every sheet to topic "${input.topic}", subject "${input.subject}", grade "${input.grade}".
+- If a tool normally needs a grid/chart, use a minimal ASCII sketch or short labelled lines — still respect the line limits above.
+
+Wrap the **entire** batch output between these lines (exactly):
 AFL ACTIVITY SHEETS START
-…all sheets…
+…content…
 AFL ACTIVITY SHEETS END
 `.trim();
+}
+
+/**
+ * @deprecated Prefer {@link buildAflActivitySheetsBatchUserMessage} with batched calls from the API route.
+ * Builds one message for all selected tools (can be huge — kept for tests/tools only).
+ */
+export function buildAflActivitySheetsUserMessage(params: {
+  input: { subject: string; grade: string; topic: string; chapter: string; curriculumType: string };
+  selections: AflSelectionsPayload;
+  sourceMaterialBlock?: string;
+}): string | null {
+  const tools = getOrderedSelectedAflTools(params.selections);
+  return buildAflActivitySheetsBatchUserMessage({
+    input: params.input,
+    tools,
+    sourceMaterialBlock: params.sourceMaterialBlock,
+  });
 }
 

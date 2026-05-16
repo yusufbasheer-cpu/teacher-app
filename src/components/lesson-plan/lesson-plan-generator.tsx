@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
+import { FadeIn, StaggerChildren, StaggerItem } from "@/components/ui/animate";
 import type {
   LessonPlanInput,
   LessonPlanResult,
@@ -27,6 +28,7 @@ import {
   GENERATION_CHECKBOX_LABELS,
   GRADE_YEAR_OPTIONS,
   LANGUAGE_SUBJECT_OPTIONS,
+  STEM_SUBJECT_OPTIONS,
   SUBJECT_OPTIONS,
   TEACHER_PACKAGE_SECTIONS,
   buildDifferentiatedPackSourceText,
@@ -794,6 +796,272 @@ export function LessonPlanGenerator() {
             Fill in class details, choose which materials to generate, then run the AI.
           </p>
 
+        <div className="mt-6 space-y-4">
+          <div>
+            <label htmlFor="curriculum" className="mb-1 block text-sm font-medium text-slate-700">
+              Curriculum type
+            </label>
+            <select
+              id="curriculum"
+              value={form.curriculumType}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, curriculumType: e.target.value }))
+              }
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              required
+            >
+              {CURRICULUM_TYPE_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Curriculum Framework
+            </p>
+            <label
+              htmlFor="curriculum-framework"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
+              Select Educational Framework (Optional)
+            </label>
+            <select
+              id="curriculum-framework"
+              value={form.curriculumFramework}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, curriculumFramework: e.target.value }))
+              }
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[#00C6A7] focus:ring-2"
+            >
+              {CURRICULUM_FRAMEWORK_OPTIONS.map((opt) => (
+                <option key={opt.value === "" ? "none" : opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs text-slate-500">
+              Leave as &quot;None&quot; for a standard plan. Choosing a framework aligns lesson plan,
+              slides, worksheet, assessment, homework, and teacher notes with that system&apos;s
+              expectations.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="grade-year" className="mb-1 block text-sm font-medium text-slate-700">
+              Grade / year group
+            </label>
+            <select
+              id="grade-year"
+              value={form.grade}
+              onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              required
+            >
+              {GRADE_YEAR_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="subject" className="mb-1 block text-sm font-medium text-slate-700">
+              Subject
+            </label>
+            <select
+              id="subject"
+              value={form.subject}
+              onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              required
+            >
+              <optgroup label="Subjects">
+                {CORE_SUBJECT_OPTIONS.filter(
+                  (opt) => !(STEM_SUBJECT_OPTIONS as readonly string[]).includes(opt),
+                ).map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Computer Science & STEM">
+                {STEM_SUBJECT_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Language Subjects">
+                {LANGUAGE_SUBJECT_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="chapter" className="mb-1 block text-sm font-medium text-slate-700">
+              Chapter name
+            </label>
+            <input
+              id="chapter"
+              type="text"
+              value={form.chapter}
+              onChange={(e) => setForm((prev) => ({ ...prev, chapter: e.target.value }))}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              placeholder="e.g. Chapter 5 - Photosynthesis"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="topic" className="mb-1 block text-sm font-medium text-slate-700">
+              Topic
+            </label>
+            <input
+              id="topic"
+              type="text"
+              value={form.topic}
+              onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              placeholder="Specific topic within the chapter"
+              required
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="objectives"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
+              Learning objectives
+            </label>
+            <textarea
+              id="objectives"
+              value={form.learningObjectives}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, learningObjectives: e.target.value }))
+              }
+              className="min-h-28 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              placeholder="List key outcomes students should achieve."
+              required
+            />
+          </div>
+        </div>
+
+        {!aflPanelOpen ? (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setAflPanelOpen(true)}
+              className="w-full rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left text-sm font-semibold text-violet-950 shadow-sm transition hover:bg-violet-100"
+            >
+              Add AFL Tools to Your Lesson
+              <span className="mt-1 block text-xs font-normal text-violet-800/90">
+                Optional: pick Assessment for Learning tools by lesson phase. They are sent to the AI
+                and appear in your lesson plan and PowerPoint.
+              </span>
+            </button>
+          </div>
+        ) : (
+          <div className="mt-6 rounded-2xl border border-violet-200 bg-gradient-to-b from-violet-50/80 to-white p-4 shadow-sm md:p-5">
+            <div className="flex flex-col gap-3 border-b border-violet-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Select AFL Tools for Your Lesson
+                </h3>
+                <p className="mt-1 text-xs text-slate-600">
+                  Tick the tools you want in each phase. They are woven into the written plan and
+                  matched slides when you generate.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAflSelected(
+                      Object.fromEntries(
+                        AFL_PHASE_IDS.map((phase) => {
+                          const allowed = new Set(
+                            AFL_PHASE_GROUPS.find((g) => g.phase === phase)?.tools.map((t) => t.id) ??
+                              [],
+                          );
+                          const ids = AFL_RECOMMENDED_IDS[phase].filter((id) => allowed.has(id));
+                          return [phase, [...ids]];
+                        }),
+                      ) as Record<AflPhaseId, string[]>,
+                    );
+                  }}
+                  className="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-900 shadow-sm hover:bg-violet-50"
+                >
+                  Select Recommended
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAflSelected(emptyAflSelected())}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                  Clear All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAflPanelOpen(false)}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                >
+                  Hide
+                </button>
+              </div>
+            </div>
+            <div className="mt-4 max-h-[min(70vh,520px)] space-y-5 overflow-y-auto pr-1">
+              {AFL_PHASE_GROUPS.map((group) => (
+                <fieldset key={group.phase} className="rounded-xl border border-slate-200 bg-white/90 p-3">
+                  <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-violet-800">
+                    {group.title}
+                  </legend>
+                  <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {group.tools.map((t) => {
+                      const checked = (aflSelected[group.phase] ?? []).includes(t.id);
+                      return (
+                        <li key={t.id} className="flex items-start gap-2">
+                          <input
+                            id={`afl-${t.id}`}
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const on = e.target.checked;
+                              setAflSelected((prev) => {
+                                const cur = prev[group.phase] ?? [];
+                                const next = on
+                                  ? [...new Set([...cur, t.id])]
+                                  : cur.filter((id) => id !== t.id);
+                                return { ...prev, [group.phase]: next };
+                              });
+                            }}
+                            className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500"
+                          />
+                          <label htmlFor={`afl-${t.id}`} className="min-w-0 text-sm leading-snug text-slate-800">
+                            <span className="font-medium">{t.label}</span>
+                            <span className="mt-0.5 block text-[11px] text-slate-500">{t.purpose}</span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </fieldset>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-6 rounded-2xl border border-dashed border-[#00C6A7]/30 bg-[#00C6A7]/5 p-4 space-y-5">
           <div>
             <p className="text-sm font-semibold text-[#0A1628]">
@@ -955,263 +1223,6 @@ export function LessonPlanGenerator() {
           ) : null}
         </div>
 
-        <div className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="curriculum" className="mb-1 block text-sm font-medium text-slate-700">
-              Curriculum type
-            </label>
-            <select
-              id="curriculum"
-              value={form.curriculumType}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, curriculumType: e.target.value }))
-              }
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
-              required
-            >
-              {CURRICULUM_TYPE_GROUPS.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.options.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Curriculum Framework
-            </p>
-            <label
-              htmlFor="curriculum-framework"
-              className="mb-1 block text-sm font-medium text-slate-700"
-            >
-              Select Educational Framework (Optional)
-            </label>
-            <select
-              id="curriculum-framework"
-              value={form.curriculumFramework}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, curriculumFramework: e.target.value }))
-              }
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[#00C6A7] focus:ring-2"
-            >
-              {CURRICULUM_FRAMEWORK_OPTIONS.map((opt) => (
-                <option key={opt.value === "" ? "none" : opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Leave as &quot;None&quot; for a standard plan. Choosing a framework aligns lesson plan,
-              slides, worksheet, assessment, homework, and teacher notes with that system&apos;s
-              expectations.
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="grade-year" className="mb-1 block text-sm font-medium text-slate-700">
-              Grade / year group
-            </label>
-            <select
-              id="grade-year"
-              value={form.grade}
-              onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
-              required
-            >
-              {GRADE_YEAR_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="subject" className="mb-1 block text-sm font-medium text-slate-700">
-              Subject
-            </label>
-            <select
-              id="subject"
-              value={form.subject}
-              onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
-              required
-            >
-              <optgroup label="Subjects">
-                {CORE_SUBJECT_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Language Subjects">
-                {LANGUAGE_SUBJECT_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="chapter" className="mb-1 block text-sm font-medium text-slate-700">
-              Chapter name or number
-            </label>
-            <input
-              id="chapter"
-              type="text"
-              value={form.chapter}
-              onChange={(e) => setForm((prev) => ({ ...prev, chapter: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
-              placeholder="e.g. Chapter 5 - Photosynthesis"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="topic" className="mb-1 block text-sm font-medium text-slate-700">
-              Topic
-            </label>
-            <input
-              id="topic"
-              type="text"
-              value={form.topic}
-              onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
-              placeholder="Specific topic within the chapter"
-              required
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="objectives"
-              className="mb-1 block text-sm font-medium text-slate-700"
-            >
-              Learning objectives
-            </label>
-            <textarea
-              id="objectives"
-              value={form.learningObjectives}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, learningObjectives: e.target.value }))
-              }
-              className="min-h-28 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
-              placeholder="List key outcomes students should achieve."
-              required
-            />
-          </div>
-        </div>
-
-        {!aflPanelOpen ? (
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={() => setAflPanelOpen(true)}
-              className="w-full rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left text-sm font-semibold text-violet-950 shadow-sm transition hover:bg-violet-100"
-            >
-              Add AFL Tools to Your Lesson
-              <span className="mt-1 block text-xs font-normal text-violet-800/90">
-                Optional: pick Assessment for Learning tools by lesson phase. They are sent to the AI
-                and appear in your lesson plan and PowerPoint.
-              </span>
-            </button>
-          </div>
-        ) : (
-          <div className="mt-6 rounded-2xl border border-violet-200 bg-gradient-to-b from-violet-50/80 to-white p-4 shadow-sm md:p-5">
-            <div className="flex flex-col gap-3 border-b border-violet-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900">
-                  Select AFL Tools for Your Lesson
-                </h3>
-                <p className="mt-1 text-xs text-slate-600">
-                  Tick the tools you want in each phase. They are woven into the written plan and
-                  matched slides when you generate.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAflSelected(
-                      Object.fromEntries(
-                        AFL_PHASE_IDS.map((phase) => {
-                          const allowed = new Set(
-                            AFL_PHASE_GROUPS.find((g) => g.phase === phase)?.tools.map((t) => t.id) ??
-                              [],
-                          );
-                          const ids = AFL_RECOMMENDED_IDS[phase].filter((id) => allowed.has(id));
-                          return [phase, [...ids]];
-                        }),
-                      ) as Record<AflPhaseId, string[]>,
-                    );
-                  }}
-                  className="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-900 shadow-sm hover:bg-violet-50"
-                >
-                  Select Recommended
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAflSelected(emptyAflSelected())}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-                >
-                  Clear All
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAflPanelOpen(false)}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                >
-                  Hide
-                </button>
-              </div>
-            </div>
-            <div className="mt-4 max-h-[min(70vh,520px)] space-y-5 overflow-y-auto pr-1">
-              {AFL_PHASE_GROUPS.map((group) => (
-                <fieldset key={group.phase} className="rounded-xl border border-slate-200 bg-white/90 p-3">
-                  <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-violet-800">
-                    {group.title}
-                  </legend>
-                  <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {group.tools.map((t) => {
-                      const checked = (aflSelected[group.phase] ?? []).includes(t.id);
-                      return (
-                        <li key={t.id} className="flex items-start gap-2">
-                          <input
-                            id={`afl-${t.id}`}
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(e) => {
-                              const on = e.target.checked;
-                              setAflSelected((prev) => {
-                                const cur = prev[group.phase] ?? [];
-                                const next = on
-                                  ? [...new Set([...cur, t.id])]
-                                  : cur.filter((id) => id !== t.id);
-                                return { ...prev, [group.phase]: next };
-                              });
-                            }}
-                            className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500"
-                          />
-                          <label htmlFor={`afl-${t.id}`} className="min-w-0 text-sm leading-snug text-slate-800">
-                            <span className="font-medium">{t.label}</span>
-                            <span className="mt-0.5 block text-[11px] text-slate-500">{t.purpose}</span>
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </fieldset>
-              ))}
-            </div>
-          </div>
-        )}
-
         <fieldset className="mt-6 rounded-2xl border border-[#00C6A7]/20 bg-[#00C6A7]/5 p-4">
           <legend className="px-1 text-sm font-semibold text-slate-900">What to generate</legend>
           <p className="mt-1 text-xs text-slate-600">
@@ -1318,8 +1329,9 @@ export function LessonPlanGenerator() {
           {!lessonPlan ? (
             <>
               {/* ── Quick Tips ──────────────────────────────────────────── */}
+              <FadeIn delay={0.05}>
               <div
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                className="card-hover rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                 style={{ borderRadius: 12 }}
               >
                 <div className="mb-3 flex items-center gap-2">
@@ -1342,11 +1354,13 @@ export function LessonPlanGenerator() {
                   ))}
                 </ul>
               </div>
+              </FadeIn>
 
               {/* ── AFL Tool Spotlight ──────────────────────────────────── */}
               {spotlight && (
+              <FadeIn delay={0.12}>
                 <div
-                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                  className="card-hover rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                   style={{ borderRadius: 12 }}
                 >
                   <div className="mb-3 flex items-center justify-between gap-2">
@@ -1402,12 +1416,13 @@ export function LessonPlanGenerator() {
                     Refreshes with a new tool each time you visit this page.
                   </p>
                 </div>
+              </FadeIn>
               )}
             </>
           ) : (
           <section
             ref={resultsRef}
-            className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
+            className="animate-slide-up min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
           >
             <h3 className="text-xl font-semibold text-slate-900">Generated teacher package</h3>
             <p className="mt-2 text-sm text-slate-600">
@@ -1506,7 +1521,7 @@ export function LessonPlanGenerator() {
       </div>{/* end grid */}
 
       {successMessage ? (
-        <div className="rounded-xl border border-[#00C6A7]/30 bg-[#00C6A7]/5 px-4 py-3 text-sm text-[#00C6A7]">
+        <div className="animate-slide-up rounded-xl border border-[#00C6A7]/30 bg-[#00C6A7]/5 px-4 py-3 text-sm text-[#00C6A7]">
           {successMessage}
         </div>
       ) : null}
