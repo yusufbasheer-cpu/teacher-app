@@ -14,20 +14,8 @@ export type PptSlideImageMeta = {
   topic: string;
 };
 
-/**
- * fal.ai is used for illustration-based PPT slides:
- *   Index 2  – Chapter / SDG Goal
- *   Index 5  – Main Phase Core Teaching
- *   Index 6  – Differentiated Activity
- *   Index 10 – Exit Ticket
- *   Index 11 – Success Criteria Self Evaluation
- */
-export type LessonPptImageSlot =
-  | "sdg_chapter"
-  | "main_teaching"
-  | "differentiated"
-  | "exit_ticket"
-  | "success_criteria";
+/** Three PPT slide types with FLUX images: slides 2, 6, 9 → indices 1, 5, 8. Slide 1 has no image. */
+export type LessonPptImageSlot = "starter" | "main_teaching" | "plenary";
 
 export type LessonPptImageGenerationSpec = {
   slot: LessonPptImageSlot;
@@ -40,40 +28,30 @@ function sanitizePhrase(s: string): string {
   return s.replace(/\s+/g, " ").trim() || "lesson";
 }
 
-/** Shared safety suffix appended to every fal.ai prompt. */
-const SAFE_SUFFIX =
-  "no human figures, no faces, no people, Islamic appropriate, school suitable, professional educational illustration";
-
 /**
- * Fixed prompt templates per slide type.
- * Each prompt is tailored to produce a relevant illustration for that slide's purpose.
+ * Fixed prompt templates per slide type (subject / grade / topic from teacher input only).
  */
 export function buildLessonPptFluxPrompt(meta: PptSlideImageMeta, spec: LessonPptImageGenerationSpec): string {
   const subject = sanitizePhrase(meta.subject);
-  const topic   = sanitizePhrase(meta.topic);
+  const grade = sanitizePhrase(meta.grade);
+  const topic = sanitizePhrase(meta.topic);
 
   let core: string;
   switch (spec.slot) {
-    case "sdg_chapter":
-      core = `SDG sustainable development goal icon combined with educational illustration for ${topic} in ${subject}, colorful SDG color palette, globe and knowledge symbols, flat design, clean white background`;
+    case "starter":
+      core = `engaging lesson starter illustration for ${topic} in ${subject}, curiosity hooks, lightbulb and question motifs, clocks or timers, flat design, colorful, clean background, no human faces, school suitable`;
       break;
     case "main_teaching":
-      core = `detailed educational diagram explaining ${topic} in ${subject}, step-by-step visual breakdown, labeled arrows showing process, flat design, professional, colorful, clean white background`;
+      core = `detailed educational diagram explaining ${topic}, step by step visual breakdown, labeled diagram, arrows showing process, flat design, professional, colorful, clean white background, no humans, no faces`;
       break;
-    case "differentiated":
-      core = `learning levels illustration showing three tiers of tasks for ${topic}, foundation core and extension icons, stacked layers concept, flat design, colorful icons, clean background`;
-      break;
-    case "exit_ticket":
-      core = `assessment and quiz graphic with question marks, checkboxes, pencil and evaluation icons for ${topic}, teal and navy color scheme, flat design, clean background`;
-      break;
-    case "success_criteria":
-      core = `achievement and checklist illustration with stars, checkmarks, progress bar and trophy icons for ${topic}, flat design, colorful, clean background`;
+    case "plenary":
+      core = `flat design summary illustration related to ${topic}, key concepts shown as icons, light bulb idea symbol, reflection icons, colorful, clean background, no humans, no faces`;
       break;
     default:
-      core = `professional educational illustration for ${topic} in ${subject}, flat design, colorful, clean background`;
+      core = `professional educational illustration related to ${topic}, flat design, clean background, no humans, no faces`;
   }
 
-  return `${core}, ${SAFE_SUFFIX}, ${LANDSCAPE_RECT_SUFFIX}`;
+  return `${core}, ${LANDSCAPE_RECT_SUFFIX}`;
 }
 
 const PPT_IMAGE_SIZE = "landscape_16_9" as const;
@@ -105,7 +83,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): P
   }
 }
 
-/** Generates FLUX Pro images for lesson PPT illustration slides (sdg_chapter, main_teaching, differentiated, exit_ticket, success_criteria). */
+/** Generates up to three FLUX Pro images for lesson PPT (starter, main phase, plenary). */
 export async function generateLessonPptSlideImages(
   meta: PptSlideImageMeta,
   specs: LessonPptImageGenerationSpec[],

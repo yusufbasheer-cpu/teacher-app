@@ -28,12 +28,10 @@ import {
   isValidSubjectOption,
 } from "@/lib/lesson-plan";
 import {
-  AFL_ACTIVITY_SHEET_REQUEST_TIMEOUT_MS,
   formatAflForAiPrompt,
   formatAflForSinglePptSlidePrompt,
   sanitizeAflSelections,
-  buildSingleAflActivitySheetUserMessage,
-  getOrderedSelectedAflTools,
+  buildAflActivitySheetsUserMessage,
 } from "@/lib/afl-tools";
 import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
@@ -61,11 +59,7 @@ export const maxDuration = 300;
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const DEEPSEEK_MAX_TOKENS = 8000;
-/** One AFL tool per request — keep completions small and fast. */
-const DEEPSEEK_MAX_TOKENS_AFL_SINGLE_TOOL = 1400;
 const DEEPSEEK_MAX_TOKENS_PPT_SLIDE = 2400;
-const AFL_ACTIVITY_SHEETS_FAILURE_MESSAGE =
-  "AFL Activity Sheet could not be generated please try again separately.";
 const PPT_SLIDE_MAX_ATTEMPTS = 3;
 
 const NDJSON_HEADERS = {
@@ -85,14 +79,6 @@ function deepSeekHttpErrorMessage(status: number, rawBody: string): string {
     return "DeepSeek rate limit reached. Please retry in a few moments.";
   }
   return `DeepSeek HTTP ${status}: ${trimmed.slice(0, 800) || "No response body."}`;
-}
-
-/** Inner AFL sheets body from one DeepSeek completion (markers or fallback). */
-function extractAflActivitySheetsInner(rawCompletion: string): string {
-  const { plan } = parseTeacherPackageResponse(rawCompletion, ["AFL Activity Sheets"]);
-  let body = (plan["AFL Activity Sheets"] ?? "").trim();
-  if (!body) body = stripOuterMarkdownFences(rawCompletion.trim());
-  return body.trim();
 }
 
 type DeepSeekMessage = {
@@ -427,137 +413,69 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
     }
 
     if (section === "AFL Activity Sheets") {
+      onProgress?.("Generating AFL Activity Sheets");
       const sourceMaterialBlock = sourceMaterial
-        ? `### Source material (excerpt)\n${sourceMaterial.slice(0, 2_000)}`
+        ? `### Source material\n${sourceMaterial.slice(0, 6_000)}`
         : undefined;
-
-      const orderedTools = getOrderedSelectedAflTools(aflSelections);
-      if (!orderedTools.length) {
+      const userMsg = buildAflActivitySheetsUserMessage({
+        input: {
+          subject: input.subject,
+          grade: input.grade,
+          topic: input.topic,
+          chapter: input.chapter,
+          curriculumType: input.curriculumType,
+        },
+        selections: aflSelections,
+        sourceMaterialBlock,
+      });
+      if (!userMsg) {
         mergedPlan[section] =
           "(No AFL tools were selected — AFL Activity Sheets are generated only when AFL tools are chosen in the generator.)";
         continue;
       }
-
-      const sheetsSeparator = "─────────────────────────────────────────────";
-      const combinedPieces: string[] = [];
-      const totalTools = orderedTools.length;
-
-      console.log(
-        `[lesson-plan] AFL Activity Sheets: ${totalTools} tool(s), one API call per tool, ${AFL_ACTIVITY_SHEET_REQUEST_TIMEOUT_MS}ms max per call`,
-      );
-
-      for (let i = 0; i < orderedTools.length; i++) {
-        const tool = orderedTools[i]!;
-        const idx = i + 1;
-        onProgress?.(`Generating AFL Activity ${idx} of ${totalTools}`);
-
-        const userMsg = buildSingleAflActivitySheetUserMessage({
-          input: {
-            subject: input.subject,
-            grade: input.grade,
-            topic: input.topic,
-            chapter: input.chapter,
-            curriculumType: input.curriculumType,
+      let aflSheetResponse: Response;
+      try {
+        aflSheetResponse = await fetch(DEEPSEEK_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
           },
-          tool,
-          sourceMaterialBlock,
-        });
-
-        const abortController = new AbortController();
-        const timeoutId = setTimeout(() => abortController.abort(), AFL_ACTIVITY_SHEET_REQUEST_TIMEOUT_MS);
-        const callStarted = Date.now();
-
-        try {
-          let aflSheetResponse: Response;
-          try {
-            aflSheetResponse = await fetch(DEEPSEEK_API_URL, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${apiKey}`,
+          body: JSON.stringify({
+            model: "deepseek-chat",
+            temperature: 0.5,
+            max_tokens: DEEPSEEK_MAX_TOKENS,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are an expert teacher generating printable student-facing activity sheets. Generate rich, complete, classroom-ready content specific to the topic, subject, and grade. Use plain text only — no markdown code fences. Wrap all output between the exact markers shown in the user message.",
               },
-              signal: abortController.signal,
-              body: JSON.stringify({
-                model: "deepseek-chat",
-                temperature: 0.45,
-                max_tokens: DEEPSEEK_MAX_TOKENS_AFL_SINGLE_TOOL,
-                messages: [
-                  {
-                    role: "system",
-                    content:
-                      "You generate one brief printable AFL activity sheet per request. Plain text only — no markdown code fences. Follow brevity limits in the user message. Wrap output between AFL ACTIVITY SHEETS START and AFL ACTIVITY SHEETS END.",
-                  },
-                  { role: "user", content: userMsg },
-                ],
-              }),
-            });
-          } catch (err) {
-            const isAbort =
-              err instanceof Error &&
-              (err.name === "AbortError" || err.message.includes("abort"));
-            const msg = String(err instanceof Error ? err.message : err);
-            console.warn(`[lesson-plan] AFL Activity Sheets tool ${idx}/${totalTools} (${tool.label}) fetch error:`, msg);
-            parseNotices.push(
-              `AFL Activity Sheets tool ${idx}/${totalTools} (${tool.label}): ${isAbort ? `aborted (${AFL_ACTIVITY_SHEET_REQUEST_TIMEOUT_MS}ms)` : `request failed — ${msg}`}`,
-            );
-            combinedPieces.push(
-              `=== ${tool.label} — ${input.topic.trim()} ===\n\n_(This activity sheet could not be generated — please try again separately.)_`,
-            );
-            continue;
-          }
-
-          const rawAflBody = await aflSheetResponse.text();
-          logDeepSeekRawResponse(`lesson-plan:AFL-Activity-Sheets:tool-${idx}-${tool.id}`, aflSheetResponse, rawAflBody);
-
-          if (!aflSheetResponse.ok) {
-            const friendly = deepSeekHttpErrorMessage(aflSheetResponse.status, rawAflBody);
-            parseNotices.push(`AFL Activity Sheets tool ${idx}/${totalTools} (${tool.label}): ${friendly}`);
-            combinedPieces.push(
-              `=== ${tool.label} — ${input.topic.trim()} ===\n\n_(This activity sheet could not be generated — please try again separately.)_`,
-            );
-            continue;
-          }
-
-          const { content: aflContent, errorMessage } = parseDeepSeekCompletionBody(rawAflBody);
-          if (errorMessage) {
-            parseNotices.push(`AFL Activity Sheets tool ${idx}/${totalTools} (${tool.label}): ${errorMessage}`);
-          }
-          if (!aflContent?.trim()) {
-            parseNotices.push(`AFL Activity Sheets tool ${idx}/${totalTools} (${tool.label}): empty completion`);
-            combinedPieces.push(
-              `=== ${tool.label} — ${input.topic.trim()} ===\n\n_(This activity sheet could not be generated — please try again separately.)_`,
-            );
-            continue;
-          }
-
-          const inner = extractAflActivitySheetsInner(aflContent);
-          if (inner) combinedPieces.push(inner);
-          else {
-            parseNotices.push(`AFL Activity Sheets tool ${idx}/${totalTools} (${tool.label}): could not parse markers`);
-            combinedPieces.push(
-              `=== ${tool.label} — ${input.topic.trim()} ===\n\n_(This activity sheet could not be generated — please try again separately.)_`,
-            );
-          }
-        } finally {
-          clearTimeout(timeoutId);
-          console.log(
-            `[lesson-plan] AFL Activity Sheets tool ${idx}/${totalTools} (${tool.label}) took ${Date.now() - callStarted}ms`,
-          );
-        }
-
-        onProgress?.(`AFL Activity ${idx} of ${totalTools} done`);
+              { role: "user", content: userMsg },
+            ],
+          }),
+        });
+      } catch (err) {
+        mergedPlan[section] = `_(AFL Activity Sheets could not be generated: network error.)_\n\n${String(err instanceof Error ? err.message : err)}`.slice(0, 12_000);
+        parseNotices.push(`AFL Activity Sheets: request failed — ${String(err instanceof Error ? err.message : err)}`);
+        continue;
       }
-
-      mergedPlan[section] = combinedPieces.join(`\n\n${sheetsSeparator}\n\n`).trim();
-
-      const failedAll =
-        combinedPieces.length > 0 &&
-        combinedPieces.every((p) => p.includes("could not be generated"));
-      if (failedAll || !mergedPlan[section]) {
-        mergedPlan[section] = AFL_ACTIVITY_SHEETS_FAILURE_MESSAGE;
-        parseNotices.push("AFL Activity Sheets: no usable content after per-tool generation.");
+      const rawAflBody = await aflSheetResponse.text();
+      logDeepSeekRawResponse("lesson-plan:AFL-Activity-Sheets", aflSheetResponse, rawAflBody);
+      if (!aflSheetResponse.ok) {
+        const friendly = deepSeekHttpErrorMessage(aflSheetResponse.status, rawAflBody);
+        mergedPlan[section] = `_(DeepSeek failed for AFL Activity Sheets.)_\n\n${friendly}`;
+        parseNotices.push(`AFL Activity Sheets: ${friendly}`);
+        continue;
       }
-
+      const { content: aflContent } = parseDeepSeekCompletionBody(rawAflBody);
+      if (!aflContent?.trim()) {
+        mergedPlan[section] = "(No content returned for AFL Activity Sheets.)";
+        continue;
+      }
+      const { plan: aflPlan } = parseTeacherPackageResponse(aflContent, ["AFL Activity Sheets"]);
+      const extracted = aflPlan["AFL Activity Sheets"] ?? aflContent;
+      mergedPlan[section] = extracted.trim();
       continue;
     }
 

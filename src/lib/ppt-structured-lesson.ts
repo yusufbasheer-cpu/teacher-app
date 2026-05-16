@@ -902,7 +902,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
       isAr ? `رحب بالطلاب وابدأ دون إضافة أي نص على هذه الشريحة سوى المادة والصف والتاريخ.` : `Welcome the class; keep this slide limited to subject, grade, and date only.`,
       isAr,
     ),
-    includeImageSlot: true,
+    includeImageSlot: false,
   });
 
   const s2 = pickDeck(
@@ -933,7 +933,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     contextAnchor,
   );
   const s3Final = finalizeEarlySlideBody(3, s3);
-  slides.push({ slideTitle: T[2]!, body: s3Final.body, speakerNotes: s3Final.notes, includeImageSlot: true });
+  slides.push({ slideTitle: T[2]!, body: s3Final.body, speakerNotes: s3Final.notes, includeImageSlot: false });
 
   const s4Final = finalizeEarlySlideBody(
     4,
@@ -992,10 +992,10 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ppt,
     contextAnchor,
   );
-  slides.push({ slideTitle: T[6]!, body: s7.body, speakerNotes: s7.notes, includeImageSlot: true });
+  slides.push({ slideTitle: T[6]!, body: s7.body, speakerNotes: s7.notes, includeImageSlot: false });
 
   const s8 = pickSingleContextualLink(plan, ppt, topic, subj, gr, isAr, contextAnchor, "4–6 minutes");
-  slides.push({ slideTitle: T[7]!, body: s8.body, speakerNotes: s8.notes, includeImageSlot: true });
+  slides.push({ slideTitle: T[7]!, body: s8.body, speakerNotes: s8.notes, includeImageSlot: false });
 
   const s9 = pickDeck(
     "plenary",
@@ -1054,7 +1054,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ppt,
     contextAnchor,
   );
-  slides.push({ slideTitle: T[11]!, body: s12.body, speakerNotes: s12.notes, includeImageSlot: true });
+  slides.push({ slideTitle: T[11]!, body: s12.body, speakerNotes: s12.notes, includeImageSlot: false });
 
   slides.push({
     slideTitle: T[12]!,
