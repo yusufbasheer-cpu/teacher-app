@@ -1,12 +1,8 @@
 import { createFalClient } from "@fal-ai/client";
 import { formatFalError, getFalCredentials } from "@/lib/fal-flux-section-images";
 
-/** Lesson PPT export uses FLUX Pro (higher quality than dev). Section images may still use dev elsewhere. */
+/** Lesson PPT export uses FLUX Pro for crisp diagrams. */
 export const FAL_PPT_IMAGE_MODEL_ID = "fal-ai/flux-pro" as const;
-
-/** Always appended: rectangular landscape framing (never circular crop). */
-const LANDSCAPE_RECT_SUFFIX =
-  "rectangular landscape 16:9 composition, full rectangular frame, no circular crop, no round frame, no vignette circle, school suitable";
 
 export type PptSlideImageMeta = {
   subject: string;
@@ -14,12 +10,29 @@ export type PptSlideImageMeta = {
   topic: string;
 };
 
-/** Three PPT slide types with FLUX images: slides 2, 6, 9 → indices 1, 5, 8. Slide 1 has no image. */
-export type LessonPptImageSlot = "starter" | "main_teaching" | "plenary";
+/** Mandatory wording for every fal PPT image (user requirement). */
+export const FAL_PPT_SAFETY_SUFFIX =
+  "no human figures, no faces, Islamic appropriate, school suitable";
+
+const LANDSCAPE_RECT =
+  "rectangular landscape 16:9 composition, full rectangular frame, no circular crop, no round frame, no vignette circle";
+
+/** Primary fal slots for the structured 13-slide deck. */
+export type LessonPptFluxSlot =
+  | "sdg_chapter"
+  | "main_teaching"
+  | "differentiated_activity"
+  | "exit_ticket"
+  | "success_criteria"
+  /** When Pexels fails on a photo slide, fal generates a non-duplicate illustration instead. */
+  | "fallback_pexels_title"
+  | "fallback_pexels_starter"
+  | "fallback_pexels_uae"
+  | "fallback_pexels_plenary"
+  | "fallback_pexels_extended";
 
 export type LessonPptImageGenerationSpec = {
-  slot: LessonPptImageSlot;
-  /** Retained for logging / future use; prompts are template-based on subject, grade, topic only. */
+  slot: LessonPptFluxSlot;
   slideTitle: string;
   bodySnippet: string;
 };
@@ -28,43 +41,56 @@ function sanitizePhrase(s: string): string {
   return s.replace(/\s+/g, " ").trim() || "lesson";
 }
 
-/**
- * Fixed prompt templates per slide type (subject / grade / topic from teacher input only).
- */
-export function buildLessonPptFluxPrompt(meta: PptSlideImageMeta, spec: LessonPptImageGenerationSpec): string {
+export function buildLessonPptFluxPrompt(meta: PptSlideImageMeta, slot: LessonPptFluxSlot): string {
   const subject = sanitizePhrase(meta.subject);
   const grade = sanitizePhrase(meta.grade);
   const topic = sanitizePhrase(meta.topic);
 
   let core: string;
-  switch (spec.slot) {
-    case "starter":
-      core = `engaging lesson starter illustration for ${topic} in ${subject}, curiosity hooks, lightbulb and question motifs, clocks or timers, flat design, colorful, clean background, no human faces, school suitable`;
+  switch (slot) {
+    case "sdg_chapter":
+      core = `SDG sustainable development goal iconography and topic illustration for "${topic}" in ${subject}. Flat design, UN SDG colour palette feel, symbolic icons and geometric shapes only`;
       break;
     case "main_teaching":
-      core = `detailed educational diagram explaining ${topic}, step by step visual breakdown, labeled diagram, arrows showing process, flat design, professional, colorful, clean white background, no humans, no faces`;
+      core = `Detailed educational diagram explaining the specific topic "${topic}" for ${grade} ${subject}. Flat design, colorful, clean white background`;
       break;
-    case "plenary":
-      core = `flat design summary illustration related to ${topic}, key concepts shown as icons, light bulb idea symbol, reflection icons, colorful, clean background, no humans, no faces`;
+    case "differentiated_activity":
+      core = `Learning levels illustration with three distinct tiers for differentiated tasks about "${topic}" in ${subject}. Flat design, colorful, symbolic stepped layers`;
+      break;
+    case "exit_ticket":
+      core = `Assessment and quiz graphic with checkboxes and question marks for "${topic}" in ${subject}. Flat design, teal and navy colors`;
+      break;
+    case "success_criteria":
+      core = `Achievement and checklist illustration with stars and checkmarks for "${topic}" in ${subject}. Flat design, colorful`;
+      break;
+    case "fallback_pexels_title":
+      core = `Abstract education hero background for "${topic}" in ${subject}: books, geometric shapes, soft gradient, classroom-ready banner, no text`;
+      break;
+    case "fallback_pexels_starter":
+      core = `Curiosity and discovery learning illustration: lightbulbs, question marks, magnifying glass motifs for "${topic}". Flat vector educational poster`;
+      break;
+    case "fallback_pexels_uae":
+      core = `UAE and Dubai themed abstract illustration symbolic of real-world links to "${topic}", geometric landmarks silhouette hints, modern Gulf aesthetic`;
+      break;
+    case "fallback_pexels_plenary":
+      core = `Reflection and classroom summary graphic for "${topic}" in ${subject}: journal icons, recap arrows, calm classroom palette`;
+      break;
+    case "fallback_pexels_extended":
+      core = `Research homework and independent study graphic for "${topic}" in ${subject}: notebook, laptop silhouette as object only, study desk flat lay`;
       break;
     default:
-      core = `professional educational illustration related to ${topic}, flat design, clean background, no humans, no faces`;
+      core = `Professional educational illustration for "${topic}", flat design`;
   }
 
-  return `${core}, ${LANDSCAPE_RECT_SUFFIX}`;
+  return `${core}. ${FAL_PPT_SAFETY_SUFFIX}, ${LANDSCAPE_RECT}`;
 }
 
 const PPT_IMAGE_SIZE = "landscape_16_9" as const;
 const PPT_NUM_INFERENCE_STEPS = 28;
 const PPT_GUIDANCE_SCALE = 7.5;
 
-/** How long (ms) to wait for a single fal.ai image before skipping it. */
-const FAL_IMAGE_TIMEOUT_MS = 20_000;
+const FAL_IMAGE_TIMEOUT_MS = 25_000;
 
-/**
- * Race a promise against a timeout.
- * Resolves to null if the timeout fires first — never throws.
- */
 async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T | null> {
   let timer: ReturnType<typeof setTimeout> | null = null;
   const timeout = new Promise<null>((resolve) => {
@@ -74,101 +100,75 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): P
     }, ms);
   });
   try {
-    const result = await Promise.race([promise, timeout]);
-    return result;
-  } catch (e) {
+    return (await Promise.race([promise, timeout])) as T | null;
+  } catch {
     return null;
   } finally {
     if (timer !== null) clearTimeout(timer);
   }
 }
 
-/** Generates up to three FLUX Pro images for lesson PPT (starter, main phase, plenary). */
+/**
+ * Single fal.ai FLUX image from a full prompt string (already includes safety + landscape).
+ */
+export async function generateFalPptImageFromPrompt(fullPrompt: string): Promise<string | null> {
+  const credentials = getFalCredentials();
+  if (!credentials) return null;
+
+  const client = createFalClient({ credentials });
+  try {
+    const subscribePromise = client.subscribe(FAL_PPT_IMAGE_MODEL_ID, {
+      input: {
+        prompt: fullPrompt,
+        image_size: PPT_IMAGE_SIZE,
+        num_images: 1,
+        num_inference_steps: PPT_NUM_INFERENCE_STEPS,
+        guidance_scale: PPT_GUIDANCE_SCALE,
+        enable_safety_checker: true,
+        output_format: "png",
+      },
+    });
+
+    const result = await withTimeout(subscribePromise as Promise<{ data?: { images?: { url?: string }[] } }>, FAL_IMAGE_TIMEOUT_MS, "single fal ppt image");
+
+    const url = result?.data?.images?.[0]?.url;
+    return typeof url === "string" && url.length > 0 ? url : null;
+  } catch (e) {
+    console.error("[fal-ppt] generateFalPptImageFromPrompt failed:", formatFalError(e));
+    return null;
+  }
+}
+
+/** Generate one deck image; retries once with “variant” if URL duplicates `usedUrls`. */
+export async function generateLessonPptFluxImageDeduped(
+  meta: PptSlideImageMeta,
+  slot: LessonPptFluxSlot,
+  usedUrls: Set<string>,
+): Promise<string | null> {
+  let prompt = buildLessonPptFluxPrompt(meta, slot);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt === 1) {
+      prompt = `${prompt} Alternate composition and layout variant B, different arrangement of elements.`;
+    }
+    const url = await generateFalPptImageFromPrompt(prompt);
+    if (!url) return null;
+    if (!usedUrls.has(url)) return url;
+    console.warn("[fal-ppt] duplicate URL from fal — retrying variant if attempts remain");
+  }
+  return null;
+}
+
+/** @deprecated Prefer {@link generateLessonPptFluxImageDeduped} per slot. */
 export async function generateLessonPptSlideImages(
   meta: PptSlideImageMeta,
   specs: LessonPptImageGenerationSpec[],
 ): Promise<(string | null)[]> {
-  if (specs.length === 0) return [];
-  const credentials = getFalCredentials();
-  if (!credentials) {
-    console.log("[fal-ppt] no FAL_API_KEY/FAL_KEY — exporting PPT without slide images");
-    return specs.map(() => null);
-  }
-
-  const client = createFalClient({ credentials });
+  const used = new Set<string>();
   const out: (string | null)[] = [];
-
-  console.log(
-    "[fal-ppt] generating",
-    specs.length,
-    "lesson PPT image(s), model:",
-    FAL_PPT_IMAGE_MODEL_ID,
-    "image_size:",
-    PPT_IMAGE_SIZE,
-    `timeout: ${FAL_IMAGE_TIMEOUT_MS}ms each`,
-  );
-
-  for (let i = 0; i < specs.length; i++) {
-    const spec = specs[i]!;
-    const n = i + 1;
-    try {
-      const prompt = buildLessonPptFluxPrompt(meta, spec);
-      console.log("[fal-ppt] exact prompt for fal.ai", {
-        index: n,
-        total: specs.length,
-        slot: spec.slot,
-        prompt,
-      });
-
-      const subscribePromise = client.subscribe(FAL_PPT_IMAGE_MODEL_ID, {
-        input: {
-          prompt,
-          image_size: PPT_IMAGE_SIZE,
-          num_images: 1,
-          num_inference_steps: PPT_NUM_INFERENCE_STEPS,
-          guidance_scale: PPT_GUIDANCE_SCALE,
-          enable_safety_checker: true,
-          output_format: "png",
-        },
-      });
-
-      const result = await withTimeout(
-        subscribePromise as Promise<typeof subscribePromise extends Promise<infer R> ? R : never>,
-        FAL_IMAGE_TIMEOUT_MS,
-        `image ${n}/${specs.length} (slot: ${spec.slot})`,
-      );
-
-      if (!result) {
-        // Timed out — continue without this image, never block the PPT
-        out.push(null);
-        continue;
-      }
-
-      const url = result.data?.images?.[0]?.url;
-      if (typeof url === "string" && url.length > 0) {
-        out.push(url);
-        console.log("[fal-ppt] image", n, "/", specs.length, "ok", { slot: spec.slot });
-      } else {
-        out.push(null);
-        console.error(
-          "[fal-ppt] image",
-          n,
-          "no URL in response; data:",
-          JSON.stringify(result.data).slice(0, 500),
-        );
-      }
-    } catch (e) {
-      // Any error → skip image and keep going
-      out.push(null);
-      const formatted = formatFalError(e);
-      const raw = e instanceof Error ? e.message : String(e);
-      console.error("[fal-ppt] image", n, "/", specs.length, "failed — skipping.", {
-        slot: spec.slot,
-        formatFalError: formatted,
-        message: raw,
-      });
-    }
+  for (const spec of specs) {
+    const url = await generateLessonPptFluxImageDeduped(meta, spec.slot, used);
+    out.push(url);
+    if (url) used.add(url);
   }
-
   return out;
 }

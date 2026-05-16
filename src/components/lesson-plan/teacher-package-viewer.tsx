@@ -7,12 +7,14 @@ import {
   getPptSourceSlideOutline,
   getSectionTabLabel,
   hasTeacherPackageContent,
+  mergePptSlideImageUrlsIntoPlan,
   type LessonPlanResult,
   type SectionImageMap,
   type TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
 import { AFL_PHASE_IDS, type AflSelectionsPayload } from "@/lib/afl-tools";
 import { DEFAULT_PPT_THEME_ID, type PptThemeId } from "@/lib/ppt-themes";
+import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 
 function hasAflSelections(s: AflSelectionsPayload | undefined): boolean {
   if (!s) return false;
@@ -38,6 +40,8 @@ type TeacherPackageViewerProps = {
   learningObjectives?: string;
   /** Teacher-selected AFL tools from the generator (PPT + lesson plan exports). */
   aflSelections?: AflSelectionsPayload;
+  /** Pre-generated PPT slide URLs from lesson generation (embedded at download time). */
+  pptSlideImageUrls?: (string | null)[] | null;
 };
 
 type ExportKey =
@@ -61,29 +65,42 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-// ── PPT Image Progress Card ───────────────────────────────────────────────────
-/**
- * Client-side countdown shown while the PPT download request is in-flight.
- * Since image generation is fully server-side (no streaming), we simulate
- * milestone completion based on expected timings:
- *   - 5 Pexels images run in parallel  → ~2s total
- *   - 5 fal.ai images run sequentially → ~8s each → ~40s total
- *   - Grand total estimate: ~48s
- */
+// ── PPT export progress (visual only; images are usually pre-built during generation) ──
 const TOTAL_IMAGES = 10;
 
-const IMAGE_MILESTONES: { at: number; count: number; label: string }[] = [
-  { at: 2,  count: 5,  label: "5 photo images ready (Pexels)" },
-  { at: 10, count: 6,  label: "SDG illustration ready" },
-  { at: 18, count: 7,  label: "Main Phase diagram ready" },
-  { at: 26, count: 8,  label: "Activity illustration ready" },
-  { at: 34, count: 9,  label: "Exit Ticket graphic ready" },
-  { at: 42, count: 10, label: "All images ready!" },
+const IMAGE_MILESTONES_FULL: { at: number; count: number; label: string }[] = [
+  { at: 4, count: 1, label: "Title slide image (Pexels)" },
+  { at: 8, count: 2, label: "Starter image (Pexels)" },
+  { at: 12, count: 3, label: "UAE link image (Pexels)" },
+  { at: 16, count: 4, label: "Plenary image (Pexels)" },
+  { at: 20, count: 5, label: "Extended task image (Pexels)" },
+  { at: 35, count: 6, label: "SDG / chapter illustration (fal.ai)" },
+  { at: 50, count: 7, label: "Main phase diagram (fal.ai)" },
+  { at: 65, count: 8, label: "Differentiated activity art (fal.ai)" },
+  { at: 80, count: 9, label: "Exit ticket graphic (fal.ai)" },
+  { at: 95, count: 10, label: "Success criteria graphic (fal.ai)" },
 ];
 
-const TOTAL_ESTIMATE_S = 48; // conservative total including network overhead
+const TOTAL_ESTIMATE_FULL_S = 95;
 
-function PptImageProgressCard({ active }: { active: boolean }) {
+const IMAGE_MILESTONES_PACKAGE: { at: number; count: number; label: string }[] = [
+  { at: 5, count: 4, label: "Loading slide assets…" },
+  { at: 12, count: 7, label: "Building slide layouts…" },
+  { at: 20, count: 10, label: "Packaging PowerPoint file…" },
+];
+
+const TOTAL_ESTIMATE_PACKAGE_S = 22;
+
+function PptImageProgressCard({
+  active,
+  packagingOnly,
+}: {
+  active: boolean;
+  /** True when images were generated during lesson creation — export only packs the file. */
+  packagingOnly: boolean;
+}) {
+  const milestones = packagingOnly ? IMAGE_MILESTONES_PACKAGE : IMAGE_MILESTONES_FULL;
+  const totalEstimate = packagingOnly ? TOTAL_ESTIMATE_PACKAGE_S : TOTAL_ESTIMATE_FULL_S;
   const [elapsed, setElapsed]   = useState(0);
   const [imgCount, setImgCount] = useState(0);
   const [milestone, setMilestone] = useState("");
@@ -109,8 +126,11 @@ function PptImageProgressCard({ active }: { active: boolean }) {
       // Find the latest milestone we have passed
       let latestCount = 0;
       let latestLabel = "";
-      for (const m of IMAGE_MILESTONES) {
-        if (secs >= m.at) { latestCount = m.count; latestLabel = m.label; }
+      for (const m of milestones) {
+        if (secs >= m.at) {
+          latestCount = m.count;
+          latestLabel = m.label;
+        }
       }
       setImgCount(latestCount);
       setMilestone(latestLabel);
@@ -121,7 +141,7 @@ function PptImageProgressCard({ active }: { active: boolean }) {
 
   if (!active) return null;
 
-  const remaining = Math.max(0, TOTAL_ESTIMATE_S - elapsed);
+  const remaining = Math.max(0, totalEstimate - elapsed);
   const allDone   = imgCount >= TOTAL_IMAGES;
 
   return (
@@ -141,7 +161,7 @@ function PptImageProgressCard({ active }: { active: boolean }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <span style={{ fontSize: 20 }}>🎨</span>
         <span style={{ fontSize: 15, fontWeight: 700, color: "#FFFFFF" }}>
-          {allDone ? "All images ready! Preparing your download…" : "Generating images for your PPT"}
+          {allDone ? "Almost ready…" : packagingOnly ? "Building your PowerPoint…" : "Preparing slide images…"}
         </span>
       </div>
 
@@ -237,6 +257,7 @@ export function TeacherPackageViewer({
   teacherName,
   learningObjectives,
   aflSelections,
+  pptSlideImageUrls,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
@@ -333,11 +354,6 @@ export function TeacherPackageViewer({
     const lo = learningObjectives?.trim() || "";
     const hw = typeof lessonPlan["Homework Task"] === "string" ? lessonPlan["Homework Task"].trim() : "";
 
-    const sectionLengths = getLessonPlanDisplayOrder(lessonPlan).map((key) => ({
-      key,
-      len: typeof lessonPlan[key] === "string" ? (lessonPlan[key] as string).trim().length : 0,
-    }));
-
     console.log("[PPT export] Download clicked:", {
       fullLessonPlanChars: fullLessonPlan.length,
       pptContentChars: pptContent.length,
@@ -345,6 +361,11 @@ export function TeacherPackageViewer({
       grade,
       topicPreview: topic.slice(0, 80),
     });
+
+    const urls =
+      Array.isArray(pptSlideImageUrls) && pptSlideImageUrls.length >= STRUCTURED_LESSON_DECK_SLIDE_COUNT
+        ? pptSlideImageUrls.slice(0, STRUCTURED_LESSON_DECK_SLIDE_COUNT)
+        : undefined;
 
     return runExport(
       "ppt",
@@ -360,6 +381,7 @@ export function TeacherPackageViewer({
         pptTheme: pptThemeId,
         curriculumFramework: curriculumFramework?.trim() ?? "",
         ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
+        ...(urls ? { pptSlideImageUrls: urls } : {}),
       },
     );
   };
@@ -443,12 +465,17 @@ export function TeacherPackageViewer({
       },
     );
 
-  const onDownloadZip = () =>
-    runExport("zip", `${baseName}-all.zip`, "/api/lesson-plan/export/zip", {
+  const onDownloadZip = () => {
+    const planForZip =
+      pptSlideImageUrls && pptSlideImageUrls.length >= STRUCTURED_LESSON_DECK_SLIDE_COUNT
+        ? mergePptSlideImageUrlsIntoPlan(lessonPlan, pptSlideImageUrls)
+        : lessonPlan;
+    return runExport("zip", `${baseName}-all.zip`, "/api/lesson-plan/export/zip", {
       ...baseMeta,
-      lessonPlan,
+      lessonPlan: planForZip,
       ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
     });
+  };
 
   return (
     <div className="space-y-5">
@@ -466,7 +493,7 @@ export function TeacherPackageViewer({
                 onClick={onDownloadPpt}
                 className="animate-slide-up stagger-1 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
               >
-                {busy === "ppt" ? "Generating images…" : "Download PPT"}
+                {busy === "ppt" ? (pptSlideImageUrls?.some(Boolean) ? "Preparing file…" : "Generating images…") : "Download PPT"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">
                   Structured deck · Layah theme
                 </span>
@@ -541,7 +568,10 @@ export function TeacherPackageViewer({
               </button>
               ) : null}
             </div>
-            <PptImageProgressCard active={busy === "ppt"} />
+            <PptImageProgressCard
+              active={busy === "ppt"}
+              packagingOnly={Boolean(pptSlideImageUrls?.some(Boolean))}
+            />
             <button
               type="button"
               disabled={busy !== null}

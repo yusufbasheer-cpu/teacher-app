@@ -17,6 +17,7 @@ import {
   buildGenerationSourceMaterial,
   buildSourceMaterialPromptBlock,
   isLanguageTeachingSubject,
+  mergePptSlideImageUrlsIntoPlan,
   usesArabicPptSlideTitles,
   type LessonPlanGenerateBody,
   type LessonPlanInput,
@@ -52,6 +53,7 @@ import {
   type EarlySlideSanitizeContext,
 } from "@/lib/ppt-slide-by-slide";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
+import { generatePptDeckSlideImages } from "@/lib/ppt-image-resolver";
 
 export const runtime = "nodejs";
 /** Thirteen sequential slide calls plus other sections may exceed the default 60s cap. */
@@ -556,15 +558,34 @@ async function runFluxAndBuildResponsePayload(
   parseNotice?: string;
   sectionImages?: SectionImageMap;
   sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
+  pptSlideImageUrls?: (string | null)[];
 }> {
   const parseNotice = parseNotices.length > 0 ? parseNotices.join("\n\n") : undefined;
+
+  let workingPlan = mergedPlan;
+  let pptSlideImageUrls: (string | null)[] | undefined;
+
+  if (sections.includes("PPT Slide Content")) {
+    try {
+      const urls = await generatePptDeckSlideImages({
+        topic: input.topic.trim(),
+        subject: input.subject.trim(),
+        grade: input.grade.trim(),
+      });
+      workingPlan = mergePptSlideImageUrlsIntoPlan(workingPlan, urls);
+      pptSlideImageUrls = urls;
+      console.log("[lesson-plan] PPT deck images attached:", urls.filter(Boolean).length, "URLs");
+    } catch (e) {
+      console.error("[lesson-plan] PPT deck image generation failed:", formatFalError(e), e);
+    }
+  }
 
   let sectionImages: SectionImageMap = {};
   let sectionImageErrors: Partial<Record<TeacherPackageSectionKey, string>> = {};
   try {
     const fluxResult = await generateFluxSectionImages({
       input,
-      plan: mergedPlan,
+      plan: workingPlan,
       sections,
     });
     sectionImages = fluxResult.sectionImages;
@@ -577,10 +598,11 @@ async function runFluxAndBuildResponsePayload(
   }
 
   return {
-    lessonPlan: mergedPlan,
+    lessonPlan: workingPlan,
     ...(parseNotice ? { parseNotice } : {}),
     ...(Object.keys(sectionImages).length > 0 ? { sectionImages } : {}),
     ...(Object.keys(sectionImageErrors).length > 0 ? { sectionImageErrors } : {}),
+    ...(pptSlideImageUrls ? { pptSlideImageUrls } : {}),
   };
 }
 

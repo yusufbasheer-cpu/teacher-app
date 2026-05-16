@@ -37,6 +37,7 @@ import {
   isValidCurriculumType,
   isValidGradeYear,
   isValidSubjectOption,
+  mergePptSlideImageUrlsIntoPlan,
   mergeSectionImagesMeta,
   parseSectionImagesMeta,
 } from "@/lib/lesson-plan";
@@ -47,6 +48,7 @@ import {
   PPT_THEME_CARDS,
   type PptThemeId,
 } from "@/lib/ppt-themes";
+import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import {
@@ -216,6 +218,8 @@ export function LessonPlanGenerator() {
   const [sectionImageErrors, setSectionImageErrors] = useState<Partial<
     Record<TeacherPackageSectionKey, string>
   > | null>(null);
+  /** Pre-built PPT slide images (13 URLs); generated with lesson when PPT section is selected. */
+  const [pptSlideImageUrls, setPptSlideImageUrls] = useState<(string | null)[] | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<string | null>(null);
@@ -300,9 +304,13 @@ export function LessonPlanGenerator() {
       topic: plan.topic,
       learningObjectives: plan.learning_objectives,
     });
-    const { planTextOnly, sectionImages: loadedImages } = parseSectionImagesMeta(plan.lesson_plan);
+    const { planTextOnly, sectionImages: loadedImages, pptSlideImageUrls: loadedPpt } =
+      parseSectionImagesMeta(plan.lesson_plan);
     setLessonPlan(planTextOnly);
     setSectionImages(Object.keys(loadedImages).length > 0 ? loadedImages : null);
+    setPptSlideImageUrls(
+      loadedPpt && loadedPpt.length >= STRUCTURED_LESSON_DECK_SLIDE_COUNT ? loadedPpt : null,
+    );
     setSectionImageErrors(null);
     setActivePlanId(plan.id);
     setUploadedChunks([]);
@@ -345,6 +353,7 @@ export function LessonPlanGenerator() {
         setActivePlanId(null);
         setLessonPlan(null);
         setSectionImages(null);
+        setPptSlideImageUrls(null);
         setSectionImageErrors(null);
       }
     });
@@ -521,6 +530,7 @@ export function LessonPlanGenerator() {
     setLessonPlan(null);
     setSectionImages(null);
     setSectionImageErrors(null);
+    setPptSlideImageUrls(null);
     setActivePlanId(null);
 
     const sections = TEACHER_PACKAGE_SECTIONS.filter((k) => sectionSelection[k]);
@@ -561,6 +571,7 @@ export function LessonPlanGenerator() {
         parseNotice?: string;
         sectionImages?: SectionImageMap;
         sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
+        pptSlideImageUrls?: (string | null)[];
         rawResponse?: string;
       };
 
@@ -573,11 +584,21 @@ export function LessonPlanGenerator() {
                 : ""),
           );
         }
-        setLessonPlan(data.lessonPlan);
-        setParseNotice(typeof data.parseNotice === "string" && data.parseNotice.trim() ? data.parseNotice.trim() : null);
-        setSectionImages(
-          data.sectionImages && Object.keys(data.sectionImages).length > 0 ? data.sectionImages : null,
+        const stripped = parseSectionImagesMeta(data.lessonPlan);
+        setLessonPlan(stripped.planTextOnly);
+
+        const sec =
+          data.sectionImages && Object.keys(data.sectionImages).length > 0
+            ? data.sectionImages
+            : stripped.sectionImages;
+        setSectionImages(Object.keys(sec).length > 0 ? sec : null);
+
+        setParseNotice(
+          typeof data.parseNotice === "string" && data.parseNotice.trim()
+            ? data.parseNotice.trim()
+            : null,
         );
+
         setSectionImageErrors(
           data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0
             ? data.sectionImageErrors
@@ -586,6 +607,16 @@ export function LessonPlanGenerator() {
         if (data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0) {
           console.warn("[lesson-plan] section image errors from API:", data.sectionImageErrors);
         }
+
+        const fromApi = data.pptSlideImageUrls;
+        const ppt =
+          Array.isArray(fromApi) && fromApi.length >= STRUCTURED_LESSON_DECK_SLIDE_COUNT
+            ? fromApi.slice(0, STRUCTURED_LESSON_DECK_SLIDE_COUNT)
+            : stripped.pptSlideImageUrls &&
+                stripped.pptSlideImageUrls.length >= STRUCTURED_LESSON_DECK_SLIDE_COUNT
+              ? stripped.pptSlideImageUrls
+              : null;
+        setPptSlideImageUrls(ppt);
       };
 
       if (response.ok && pptSelected && contentType.includes("application/x-ndjson")) {
@@ -699,7 +730,10 @@ export function LessonPlanGenerator() {
         chapter: form.chapter.trim(),
         topic: form.topic,
         learning_objectives: form.learningObjectives,
-        lesson_plan: mergeSectionImagesMeta(lessonPlan, sectionImages),
+        lesson_plan: mergePptSlideImageUrlsIntoPlan(
+          mergeSectionImagesMeta(lessonPlan, sectionImages),
+          pptSlideImageUrls,
+        ),
       };
 
       if (activePlanId) {
@@ -776,8 +810,7 @@ export function LessonPlanGenerator() {
     );
   }
 
-  const selectedSectionCount = TEACHER_PACKAGE_SECTIONS.filter((k) => sectionSelection[k]).length;
-  const generationEta = getGenerationTimeEstimate(selectedSectionCount);
+  const generationEta = getGenerationTimeEstimate(sectionSelection);
 
   return (
     <div className="space-y-6">
@@ -1280,12 +1313,12 @@ export function LessonPlanGenerator() {
 
         <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
           <span className="font-semibold text-slate-900">Estimated time: </span>
-          {selectedSectionCount === 0 ? (
+          {generationEta.selectedCount === 0 ? (
             generationEta.detail
           ) : (
             <>
-              {generationEta.tier} ({generationEta.detail}) — {selectedSectionCount} item
-              {selectedSectionCount === 1 ? "" : "s"} selected
+              {generationEta.tier} ({generationEta.detail}) — {generationEta.selectedCount} item
+              {generationEta.selectedCount === 1 ? "" : "s"} selected
             </>
           )}
         </p>
@@ -1508,6 +1541,7 @@ export function LessonPlanGenerator() {
               pptThemeId={pptThemeId}
               learningObjectives={form.learningObjectives}
               aflSelections={hasAflForExport ? aflSelectionsPayload : undefined}
+              pptSlideImageUrls={pptSlideImageUrls ?? undefined}
               teacherName={
                 typeof user?.user_metadata?.full_name === "string"
                   ? user.user_metadata.full_name.trim()

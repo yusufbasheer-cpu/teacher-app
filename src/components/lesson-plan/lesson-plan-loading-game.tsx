@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  computeLessonGenerationEtaSeconds,
+  formatEtaClock,
+  type TeacherPackageSectionKey,
+} from "@/lib/lesson-plan";
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 
@@ -209,33 +214,14 @@ function StatusIcon({ status }: { status: SectionStatus }) {
   );
 }
 
-// ── Time estimation helpers ───────────────────────────────────────────────────
-/** Estimated seconds per section (midpoint of range). */
-const SECTION_ESTIMATES: Record<string, number> = {
-  "Full Lesson Plan":     25,
-  "PPT Slide Content":    35,
-  "Worksheet":            17,
-  "Assessment Questions": 17,
-  "Homework Task":        12,
-  "Teacher Notes":        12,
-  "AFL Activity Sheets":  15,
-};
-
 function computeEstimatedTotal(sel: Record<string, boolean> | null | undefined): number {
-  if (!sel) return 80;
-  let total = 0;
-  for (const [key, on] of Object.entries(sel)) {
-    if (on) total += SECTION_ESTIMATES[key] ?? 15;
-  }
-  return total > 0 ? total : 80;
+  if (!sel || !Object.values(sel).some(Boolean)) return 80;
+  return computeLessonGenerationEtaSeconds(sel as Partial<Record<TeacherPackageSectionKey, boolean>>);
 }
 
-/** Format seconds as  M:SS  or  Xs  (≤59s). */
+/** Format seconds as M:SS for countdown displays. */
 function fmtTime(secs: number): string {
-  if (secs <= 0) return "0:00";
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}s`;
+  return formatEtaClock(Math.max(0, secs));
 }
 
 // ── Main component ────────────────────────────────────────────────────────────

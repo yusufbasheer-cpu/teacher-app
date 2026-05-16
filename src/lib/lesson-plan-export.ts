@@ -11,6 +11,7 @@ import { formatDocxAflAppendix, sanitizeAflSelections, type AflSelectionsPayload
 import {
   getPptSourceSlideOutline,
   TEACHER_PACKAGE_SECTIONS,
+  parseSectionImagesMeta,
   type LessonPlanResult,
 } from "@/lib/lesson-plan";
 import {
@@ -1092,6 +1093,9 @@ export async function buildTeacherPackageZipBuffer(params: {
   lessonPlan: LessonPlanResult;
   aflSelections?: AflSelectionsPayload;
 }): Promise<Buffer> {
+  const { planTextOnly, pptSlideImageUrls } = parseSectionImagesMeta(params.lessonPlan);
+  const lessonPlan = planTextOnly;
+
   const base = sanitizeExportFileName(`${params.grade}-${params.subject}-${params.topic}`) || "teacher-package";
   const meta = {
     subject: params.subject,
@@ -1103,16 +1107,22 @@ export async function buildTeacherPackageZipBuffer(params: {
 
   const zip = new JSZip();
 
-  const ctx = buildLessonPlanContextFromResult(params.lessonPlan, {
+  const ctx = buildLessonPlanContextFromResult(lessonPlan, {
     subject: meta.subject,
     grade: meta.grade,
     topic: meta.topic,
     teacherName: "Teacher",
     ...(Object.keys(afl).length > 0 ? { aflSelections: afl } : {}),
   });
-  const pptOutline = getPptSourceSlideOutline(params.lessonPlan).trim();
+  const pptOutline = getPptSourceSlideOutline(lessonPlan).trim();
   const fullForDeck = (ctx.fullLessonPlan ?? "").trim();
   if (pptOutline.length > 0 || fullForDeck.length > 0) {
+    const structuredSlides = buildStructuredLessonSlides(ctx);
+    const slideUrls =
+      pptSlideImageUrls && pptSlideImageUrls.length >= structuredSlides.length
+        ? pptSlideImageUrls.slice(0, structuredSlides.length)
+        : null;
+
     zip.file(
       `${base}-ppt-content.pptx`,
       await buildPptxFromPptContent({
@@ -1123,7 +1133,8 @@ export async function buildTeacherPackageZipBuffer(params: {
         homeworkTask: ctx.homeworkTask,
         teacherName: ctx.teacherName,
         themeId: DEFAULT_PPT_THEME_ID,
-        structuredSlides: buildStructuredLessonSlides(ctx),
+        structuredSlides,
+        slideImageUrls: slideUrls,
       }),
     );
   }
@@ -1138,7 +1149,7 @@ export async function buildTeacherPackageZipBuffer(params: {
   ];
 
   for (const part of docxParts) {
-    const raw = params.lessonPlan[part.key];
+    const raw = lessonPlan[part.key];
     if (typeof raw === "string" && raw.trim().length > 0) {
       const withAfl =
         part.key === "Full Lesson Plan" && aflDocAppendix ? `${raw}${aflDocAppendix}` : raw;

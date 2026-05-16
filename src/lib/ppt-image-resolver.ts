@@ -1,159 +1,112 @@
 /**
- * PPT image resolver — Pexels first, fal.ai fallback.
+ * PPT deck images — generated once during lesson-plan creation (not on download).
  *
- * For each of the 6 image slots:
- *   1. Query Pexels. If a good image is found → use it (free + fast).
- *   2. If Pexels returns null → try fal.ai for the 3 slots that support it
- *      (starter, main phase, plenary). Log the source used.
- *   3. If both fail → slot stays null; PPT still downloads successfully.
+ * Split (1-based slide numbers):
+ *   Pexels: 1 Title, 2 Starter, 8 UAE link, 9 Plenary, 10 Extended Task
+ *   fal.ai: 3 SDG/Chapter, 6 Main Phase, 7 Differentiated, 11 Exit Ticket, 12 Success Criteria
  *
- * Supported image slots and their deck indices (0-based):
- *   title          → 0
- *   starter        → 1
- *   main           → 5
- *   plenary        → 8
- *   differentiated → 9
- *   extended_task  → 10
+ * Rules: Pexels → fal fallback per slide; fal failures skip; URLs unique within deck; landscape only.
  */
 
+import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
+import { fetchPexelsUniqueLandscapeUrl } from "@/lib/pexels-images";
 import {
-  PPT_IMAGE_SLIDE_INDICES,
-  buildPexelsQuery,
-  fetchPexelsImage,
-  type PptImageSlot,
-} from "@/lib/pexels-images";
-import {
-  generateLessonPptSlideImages,
-  type LessonPptImageSlot,
+  generateLessonPptFluxImageDeduped,
+  type LessonPptFluxSlot,
   type PptSlideImageMeta,
 } from "@/lib/fal-ppt-slide-images";
-import { getFalCredentials } from "@/lib/fal-flux-section-images";
 
-/** Pexels slots that have a matching fal.ai FLUX slot as fallback. */
-const FAL_SLOT_MAP: Partial<Record<PptImageSlot, LessonPptImageSlot>> = {
-  starter: "starter",
-  main:    "main_teaching",
-  plenary: "plenary",
+export type PptDeckImageMeta = PptSlideImageMeta;
+
+const PEXELS_DECK_SPECS: readonly { idx: number; query: (m: PptDeckImageMeta) => string }[] = [
+  {
+    idx: 0,
+    query: (m) =>
+      `${m.subject.trim()} ${m.topic.trim()} education background`.replace(/\s+/g, " ").trim(),
+  },
+  { idx: 1, query: () => "curiosity discovery thinking students" },
+  {
+    idx: 7,
+    query: (m) => `UAE Dubai ${m.topic.trim()} real life`.replace(/\s+/g, " ").trim(),
+  },
+  { idx: 8, query: () => "reflection classroom learning summary" },
+  { idx: 9, query: () => "research study homework learning" },
+];
+
+const PEXELS_FALLBACK_SLOT: Record<number, LessonPptFluxSlot> = {
+  0: "fallback_pexels_title",
+  1: "fallback_pexels_starter",
+  7: "fallback_pexels_uae",
+  8: "fallback_pexels_plenary",
+  9: "fallback_pexels_extended",
 };
 
-const ALL_SLOTS: PptImageSlot[] = [
-  "title",
-  "starter",
-  "main",
-  "plenary",
-  "differentiated",
-  "extended_task",
+const FAL_PRIMARY_SPECS: readonly { idx: number; slot: LessonPptFluxSlot }[] = [
+  { idx: 2, slot: "sdg_chapter" },
+  { idx: 5, slot: "main_teaching" },
+  { idx: 6, slot: "differentiated_activity" },
+  { idx: 10, slot: "exit_ticket" },
+  { idx: 11, slot: "success_criteria" },
 ];
 
 /**
- * Fetch images for all 6 PPT slots using Pexels → fal.ai fallback.
- *
- * - Runs Pexels fetches in parallel first.
- * - For any slot that returned null, falls back to fal.ai (if supported + key available).
- * - Always resolves — never throws. Missing images leave the slot null.
- *
- * Returns a full-deck-length array; only image-slot indices may be non-null.
+ * Build a full parallel URL array for the 13-slide deck (indices without images stay null).
  */
+export async function generatePptDeckSlideImages(meta: PptDeckImageMeta): Promise<(string | null)[]> {
+  const deckLen = STRUCTURED_LESSON_DECK_SLIDE_COUNT;
+  const deck: (string | null)[] = Array.from({ length: deckLen }, () => null);
+  const used = new Set<string>();
+
+  console.log(
+    `[ppt-deck-images] start — subject="${meta.subject}", topic="${meta.topic}", deck=${deckLen}`,
+  );
+
+  for (const spec of PEXELS_DECK_SPECS) {
+    const q = spec.query(meta);
+    let url = await fetchPexelsUniqueLandscapeUrl(q, used);
+
+    if (!url) {
+      const falSlot = PEXELS_FALLBACK_SLOT[spec.idx];
+      if (falSlot) {
+        console.log(`[ppt-deck-images] Pexels failed slide ${spec.idx + 1} — fal fallback (${falSlot})`);
+        url = await generateLessonPptFluxImageDeduped(meta, falSlot, used);
+      }
+    }
+
+    if (url) {
+      deck[spec.idx] = url;
+      used.add(url);
+      console.log(`[ppt-deck-images] slide ${spec.idx + 1} ← ${url.slice(0, 64)}…`);
+    } else {
+      console.warn(`[ppt-deck-images] slide ${spec.idx + 1} — no image (skipped)`);
+    }
+  }
+
+  for (const { idx, slot } of FAL_PRIMARY_SPECS) {
+    const url = await generateLessonPptFluxImageDeduped(meta, slot, used);
+    if (url) {
+      deck[idx] = url;
+      used.add(url);
+      console.log(`[ppt-deck-images] slide ${idx + 1} (${slot}) ← ${url.slice(0, 64)}…`);
+    } else {
+      console.warn(`[ppt-deck-images] slide ${idx + 1} (${slot}) — fal skipped`);
+    }
+  }
+
+  const got = deck.filter(Boolean).length;
+  console.log(`[ppt-deck-images] done — ${got}/10 image slots filled`);
+
+  return deck;
+}
+
+/** @deprecated Prefer generatePptDeckSlideImages during lesson creation. */
 export async function fetchPptImagesWithFallback(
   topic: string,
   subject: string,
   grade: string,
   deckSize: number,
 ): Promise<(string | null)[]> {
-  const deck: (string | null)[] = Array.from({ length: deckSize }, () => null);
-
-  console.log(
-    `[ppt-images] Starting image fetch — topic="${topic}", subject="${subject}", grade="${grade}"`,
-  );
-
-  // ── Step 1: Fetch all 6 Pexels images in parallel ──────────────────────
-  const pexelsResults = await Promise.allSettled(
-    ALL_SLOTS.map((slot) => {
-      const query = buildPexelsQuery(slot, topic, subject);
-      return fetchPexelsImage(query).then((url) => ({ slot, url, query }));
-    }),
-  );
-
-  // ── Step 2: Collect Pexels hits; note which slots failed ────────────────
-  const falFallbackNeeded: PptImageSlot[] = [];
-  const resolvedUrls: Partial<Record<PptImageSlot, string | null>> = {};
-
-  for (const result of pexelsResults) {
-    if (result.status === "rejected") continue;
-    const { slot, url } = result.value;
-    const slideNum = PPT_IMAGE_SLIDE_INDICES[slot] + 1; // 1-based for logs
-
-    if (url) {
-      console.log(`[ppt-images] Using Pexels image for slide ${slideNum} (${slot})`);
-      resolvedUrls[slot] = url;
-    } else {
-      console.log(`[ppt-images] Pexels returned no image for slide ${slideNum} (${slot})`);
-      falFallbackNeeded.push(slot);
-    }
-  }
-
-  // ── Step 3: fal.ai fallback for failed slots (only if key is available) ─
-  const hasFalKey = Boolean(getFalCredentials());
-
-  for (const slot of falFallbackNeeded) {
-    const slideNum = PPT_IMAGE_SLIDE_INDICES[slot] + 1;
-    const falSlot  = FAL_SLOT_MAP[slot];
-
-    if (!falSlot) {
-      console.log(
-        `[ppt-images] Pexels failed for slide ${slideNum} (${slot}) — no fal.ai equivalent, skipping`,
-      );
-      resolvedUrls[slot] = null;
-      continue;
-    }
-
-    if (!hasFalKey) {
-      console.log(
-        `[ppt-images] Pexels failed for slide ${slideNum} (${slot}) — FAL_API_KEY not set, skipping`,
-      );
-      resolvedUrls[slot] = null;
-      continue;
-    }
-
-    console.log(
-      `[ppt-images] Pexels failed for slide ${slideNum} (${slot}) — trying fal.ai fallback...`,
-    );
-
-    try {
-      const meta: PptSlideImageMeta = { subject, grade, topic };
-      const falResults = await generateLessonPptSlideImages(meta, [
-        { slot: falSlot, slideTitle: slot, bodySnippet: "" },
-      ]);
-      const url = falResults[0] ?? null;
-
-      if (url) {
-        console.log(`[ppt-images] Pexels failed, using fal.ai for slide ${slideNum} (${slot})`);
-        resolvedUrls[slot] = url;
-      } else {
-        console.log(
-          `[ppt-images] Both Pexels and fal.ai failed for slide ${slideNum} (${slot}) — skipping`,
-        );
-        resolvedUrls[slot] = null;
-      }
-    } catch (err) {
-      console.error(
-        `[ppt-images] fal.ai error for slide ${slideNum} (${slot}) — skipping`,
-        err,
-      );
-      resolvedUrls[slot] = null;
-    }
-  }
-
-  // ── Step 4: Place resolved URLs at correct deck indices ─────────────────
-  for (const slot of ALL_SLOTS) {
-    const idx = PPT_IMAGE_SLIDE_INDICES[slot];
-    if (idx < deckSize) {
-      deck[idx] = resolvedUrls[slot] ?? null;
-    }
-  }
-
-  const found = ALL_SLOTS.filter((s) => resolvedUrls[s]).length;
-  console.log(`[ppt-images] ${found}/${ALL_SLOTS.length} images resolved for PPT deck`);
-
-  return deck;
+  const urls = await generatePptDeckSlideImages({ topic, subject, grade });
+  if (deckSize === urls.length) return urls;
+  return Array.from({ length: deckSize }, (_, i) => urls[i] ?? null);
 }

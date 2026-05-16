@@ -16,8 +16,11 @@ import {
 /** Exactly thirteen slides; single instructional purpose per slide; no overflow slides. */
 export const STRUCTURED_LESSON_DECK_SLIDE_COUNT = 13 as const;
 
-/** FLUX images only on slides 2, 6, and 9 (1-based) → indices 1, 5, 8. Slide 1 is text-only. */
-export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([1, 5, 8]);
+/** Slides that reserve a right-hand image column in the 13-slide Layah deck (0-based indices). */
+export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([0, 1, 2, 5, 6, 7, 8, 9, 10, 11]);
+
+/** Legacy note: FLUX images previously only on slides 2, 6, 9 — superseded by full deck pipeline in `ppt-image-resolver.ts`. */
+export const PPT_FLUX_PRIMARY_SLIDE_INDICES = [2, 5, 6, 10, 11] as const;
 
 export type StructuredLessonSlideModel = {
   slideTitle: string;
@@ -933,7 +936,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     contextAnchor,
   );
   const s3Final = finalizeEarlySlideBody(3, s3);
-  slides.push({ slideTitle: T[2]!, body: s3Final.body, speakerNotes: s3Final.notes, includeImageSlot: false });
+  slides.push({ slideTitle: T[2]!, body: s3Final.body, speakerNotes: s3Final.notes, includeImageSlot: true });
 
   const s4Final = finalizeEarlySlideBody(
     4,
@@ -992,10 +995,10 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ppt,
     contextAnchor,
   );
-  slides.push({ slideTitle: T[6]!, body: s7.body, speakerNotes: s7.notes, includeImageSlot: false });
+  slides.push({ slideTitle: T[6]!, body: s7.body, speakerNotes: s7.notes, includeImageSlot: true });
 
   const s8 = pickSingleContextualLink(plan, ppt, topic, subj, gr, isAr, contextAnchor, "4–6 minutes");
-  slides.push({ slideTitle: T[7]!, body: s8.body, speakerNotes: s8.notes, includeImageSlot: false });
+  slides.push({ slideTitle: T[7]!, body: s8.body, speakerNotes: s8.notes, includeImageSlot: true });
 
   const s9 = pickDeck(
     "plenary",
@@ -1054,7 +1057,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ppt,
     contextAnchor,
   );
-  slides.push({ slideTitle: T[11]!, body: s12.body, speakerNotes: s12.notes, includeImageSlot: false });
+  slides.push({ slideTitle: T[11]!, body: s12.body, speakerNotes: s12.notes, includeImageSlot: true });
 
   slides.push({
     slideTitle: T[12]!,

@@ -70,6 +70,56 @@ export function buildPexelsQuery(
  * Fetch a single landscape photo URL from Pexels.
  * Returns null on any failure — never throws.
  */
+/**
+ * Search Pexels (landscape) across pages until an unused image URL is found.
+ * Returns null if API missing, no results, or all candidates already used.
+ */
+export async function fetchPexelsUniqueLandscapeUrl(
+  query: string,
+  usedUrls: Set<string>,
+): Promise<string | null> {
+  const apiKey = process.env.PEXELS_API_KEY?.trim();
+  if (!apiKey) {
+    console.log("[pexels] PEXELS_API_KEY not set — skipping image fetch");
+    return null;
+  }
+
+  try {
+    const client = createClient(apiKey);
+    const q = query.replace(/\s+/g, " ").trim() || "education";
+
+    for (let page = 1; page <= 10; page++) {
+      const result = await client.photos.search({
+        query: q,
+        per_page: 15,
+        page,
+        orientation: "landscape",
+      });
+
+      if ("error" in result) {
+        console.error("[pexels] API error:", (result as { error: string }).error);
+        break;
+      }
+
+      for (const photo of result.photos) {
+        const url = photo.src.large ?? photo.src.medium ?? null;
+        if (url && !usedUrls.has(url)) {
+          console.log(`[pexels] ✔ unique landscape hit page ${page}: ${url.slice(0, 90)}…`);
+          return url;
+        }
+      }
+
+      if (result.photos.length === 0) break;
+    }
+
+    console.log(`[pexels] No unused landscape image for query: "${q}"`);
+    return null;
+  } catch (e) {
+    console.error("[pexels] fetchPexelsUniqueLandscapeUrl failed for query:", query, e);
+    return null;
+  }
+}
+
 export async function fetchPexelsImage(query: string): Promise<string | null> {
   const apiKey = process.env.PEXELS_API_KEY?.trim();
   if (!apiKey) {
