@@ -66,10 +66,22 @@ export function buildPexelsQuery(
   }
 }
 
-/**
- * Fetch a single landscape photo URL from Pexels.
- * Returns null on any failure — never throws.
- */
+export type PexelsLandscapeFetchOptions = {
+  /** Extra logging for debugging weak queries (logs summarized API payloads per page). */
+  verboseLog?: boolean;
+  /** Label for logs, e.g. `slide-1-title`. */
+  logLabel?: string;
+};
+
+function safeJsonForLog(value: unknown, maxLen = 12_000): string {
+  try {
+    const s = JSON.stringify(value, null, 2);
+    return s.length > maxLen ? `${s.slice(0, maxLen)}… (truncated)` : s;
+  } catch {
+    return String(value);
+  }
+}
+
 /**
  * Search Pexels (landscape) across pages until an unused image URL is found.
  * Returns null if API missing, no results, or all candidates already used.
@@ -77,10 +89,12 @@ export function buildPexelsQuery(
 export async function fetchPexelsUniqueLandscapeUrl(
   query: string,
   usedUrls: Set<string>,
+  options?: PexelsLandscapeFetchOptions,
 ): Promise<string | null> {
   const apiKey = process.env.PEXELS_API_KEY?.trim();
+  const label = options?.logLabel ?? "pexels";
   if (!apiKey) {
-    console.log("[pexels] PEXELS_API_KEY not set — skipping image fetch");
+    console.warn(`[pexels][${label}] PEXELS_API_KEY not set — skipping image fetch`);
     return null;
   }
 
@@ -96,26 +110,58 @@ export async function fetchPexelsUniqueLandscapeUrl(
         orientation: "landscape",
       });
 
+      if (options?.verboseLog) {
+        const summary =
+          "error" in result
+            ? { error: (result as { error: string }).error, page, query: q }
+            : {
+                page,
+                query: q,
+                photosReturned: result.photos?.length ?? 0,
+                totalResults:
+                  "total_results" in result ? (result as { total_results?: number }).total_results : undefined,
+                nextPage:
+                  "next_page" in result ? String((result as { next_page?: string }).next_page ?? "") : "",
+              };
+        console.log(`[pexels][${label}] API response (page ${page}):`, JSON.stringify(summary));
+        console.log(`[pexels][${label}] full API response body (page ${page}):\n${safeJsonForLog(result)}`);
+      }
+
       if ("error" in result) {
-        console.error("[pexels] API error:", (result as { error: string }).error);
+        console.error(`[pexels][${label}] API error on page ${page}:`, (result as { error: string }).error);
+        if (options?.verboseLog) {
+          console.error(`[pexels][${label}] full error payload:\n${safeJsonForLog(result)}`);
+        }
         break;
       }
 
       for (const photo of result.photos) {
         const url = photo.src.large ?? photo.src.medium ?? null;
         if (url && !usedUrls.has(url)) {
-          console.log(`[pexels] ✔ unique landscape hit page ${page}: ${url.slice(0, 90)}…`);
+          console.log(`[pexels][${label}] ✔ unique landscape hit page ${page}: ${url.slice(0, 90)}…`);
           return url;
         }
+      }
+
+      if (options?.verboseLog && result.photos.length > 0) {
+        console.warn(
+          `[pexels][${label}] page ${page}: all ${result.photos.length} photo URLs already used in this deck — continuing`,
+        );
       }
 
       if (result.photos.length === 0) break;
     }
 
-    console.log(`[pexels] No unused landscape image for query: "${q}"`);
+    console.warn(`[pexels][${label}] No unused landscape image after paging — query: "${q}"`);
+    if (options?.verboseLog) {
+      console.warn(`[pexels][${label}] failure detail: usedUrlsSize=${usedUrls.size}, pagesScannedUpTo=10`);
+    }
     return null;
   } catch (e) {
-    console.error("[pexels] fetchPexelsUniqueLandscapeUrl failed for query:", query, e);
+    console.error(`[pexels][${label}] fetchPexelsUniqueLandscapeUrl exception for query "${query}":`, e);
+    if (options?.verboseLog) {
+      console.error(`[pexels][${label}] exception detail:`, e instanceof Error ? e.stack ?? e.message : e);
+    }
     return null;
   }
 }

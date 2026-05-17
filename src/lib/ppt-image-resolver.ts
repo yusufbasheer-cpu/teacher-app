@@ -18,11 +18,15 @@ import {
 
 export type PptDeckImageMeta = PptSlideImageMeta;
 
+function titleSlidePexelsQuery(m: PptDeckImageMeta): string {
+  const subject = m.subject.trim().toLowerCase().replace(/\s+/g, " ");
+  return subject ? `${subject} education` : "education";
+}
+
 const PEXELS_DECK_SPECS: readonly { idx: number; query: (m: PptDeckImageMeta) => string }[] = [
   {
     idx: 0,
-    query: (m) =>
-      `${m.subject.trim()} ${m.topic.trim()} education background`.replace(/\s+/g, " ").trim(),
+    query: titleSlidePexelsQuery,
   },
   { idx: 1, query: () => "curiosity discovery thinking students" },
   {
@@ -34,7 +38,7 @@ const PEXELS_DECK_SPECS: readonly { idx: number; query: (m: PptDeckImageMeta) =>
 ];
 
 const PEXELS_FALLBACK_SLOT: Record<number, LessonPptFluxSlot> = {
-  0: "fallback_pexels_title",
+  0: "title_slide_fal_fallback",
   1: "fallback_pexels_starter",
   7: "fallback_pexels_uae",
   8: "fallback_pexels_plenary",
@@ -63,13 +67,23 @@ export async function generatePptDeckSlideImages(meta: PptDeckImageMeta): Promis
 
   for (const spec of PEXELS_DECK_SPECS) {
     const q = spec.query(meta);
-    let url = await fetchPexelsUniqueLandscapeUrl(q, used);
+    const slide1Verbose = spec.idx === 0;
+    let url = await fetchPexelsUniqueLandscapeUrl(
+      q,
+      used,
+      slide1Verbose ? { verboseLog: true, logLabel: "slide-1-title-pexels" } : undefined,
+    );
 
     if (!url) {
       const falSlot = PEXELS_FALLBACK_SLOT[spec.idx];
       if (falSlot) {
         console.log(`[ppt-deck-images] Pexels failed slide ${spec.idx + 1} — fal fallback (${falSlot})`);
-        url = await generateLessonPptFluxImageDeduped(meta, falSlot, used);
+        url = await generateLessonPptFluxImageDeduped(
+          meta,
+          falSlot,
+          used,
+          slide1Verbose ? { verboseLog: true, logLabel: "slide-1-title-fal" } : undefined,
+        );
       }
     }
 
@@ -83,7 +97,15 @@ export async function generatePptDeckSlideImages(meta: PptDeckImageMeta): Promis
   }
 
   for (const { idx, slot } of FAL_PRIMARY_SPECS) {
-    const url = await generateLessonPptFluxImageDeduped(meta, slot, used);
+    const falVerboseOpts =
+      idx === 2
+        ? ({ verboseLog: true, logLabel: "slide-3-sdg" } as const)
+        : idx === 10
+          ? ({ verboseLog: true, logLabel: "slide-11-exit" } as const)
+          : idx === 11
+            ? ({ verboseLog: true, logLabel: "slide-12-success" } as const)
+            : undefined;
+    const url = await generateLessonPptFluxImageDeduped(meta, slot, used, falVerboseOpts);
     if (url) {
       deck[idx] = url;
       used.add(url);
