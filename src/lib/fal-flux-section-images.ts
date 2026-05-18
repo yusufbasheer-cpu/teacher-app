@@ -66,6 +66,9 @@ export function getFalCredentials(): string | undefined {
   return key;
 }
 
+export const FAL_BALANCE_EXHAUSTED_USER_MESSAGE =
+  "fal.ai account has no balance. Top up at https://fal.ai/dashboard/billing — PPT images from fal will be skipped until then.";
+
 export function formatFalError(err: unknown): string {
   if (err instanceof ValidationError) {
     try {
@@ -85,6 +88,24 @@ export function formatFalError(err: unknown): string {
     return `${err.name}: ${err.message}`;
   }
   return String(err);
+}
+
+/** True when fal rejects requests because the account has no balance / is locked. */
+export function isFalAccountLockedError(err: unknown): boolean {
+  if (err instanceof ApiError) {
+    if (err.status === 402 || err.status === 403) {
+      const bodyStr = JSON.stringify(err.body ?? "").toLowerCase();
+      if (
+        bodyStr.includes("exhausted balance") ||
+        bodyStr.includes("user is locked") ||
+        bodyStr.includes("insufficient")
+      ) {
+        return true;
+      }
+    }
+  }
+  const msg = formatFalError(err).toLowerCase();
+  return msg.includes("exhausted balance") || msg.includes("user is locked");
 }
 
 export type FluxSectionImageGenerationResult = {
@@ -139,9 +160,10 @@ export async function generateFluxSectionImages(params: {
         console.error("[fal-flux] empty url", { section, data: result.data });
       }
     } catch (e) {
-      const msg = formatFalError(e);
+      const msg = isFalAccountLockedError(e) ? FAL_BALANCE_EXHAUSTED_USER_MESSAGE : formatFalError(e);
       errors[section] = msg;
       console.error("[fal-flux] subscribe failed", { section, error: msg, raw: e });
+      if (isFalAccountLockedError(e)) break;
     }
   }
 

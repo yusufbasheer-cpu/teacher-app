@@ -8,11 +8,17 @@
  * Rules: Pexels → fal fallback per slide; fal failures skip; URLs unique within deck; landscape only.
  */
 
+import {
+  FAL_BALANCE_EXHAUSTED_USER_MESSAGE,
+  getFalCredentials,
+} from "@/lib/fal-flux-section-images";
 import { isUaeCurriculumFramework } from "@/lib/curriculum-framework";
+import { resolvePexelsApiKey } from "@/lib/image-api-env";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { fetchPexelsUniqueLandscapeUrl } from "@/lib/pexels-images";
 import {
   generateLessonPptFluxImageDeduped,
+  getFalPptCircuitOpenReason,
   type LessonPptFluxSlot,
   type PptSlideImageMeta,
 } from "@/lib/fal-ppt-slide-images";
@@ -65,16 +71,36 @@ const FAL_PRIMARY_SPECS: readonly { idx: number; slot: LessonPptFluxSlot }[] = [
   { idx: 11, slot: "success_criteria" },
 ];
 
+export type PptDeckImageGenerationResult = {
+  urls: (string | null)[];
+  /** Human-readable warnings when keys are missing or APIs fail. */
+  notices: string[];
+};
+
 /**
  * Build a full parallel URL array for the 13-slide deck (indices without images stay null).
  */
-export async function generatePptDeckSlideImages(meta: PptDeckImageMeta): Promise<(string | null)[]> {
+export async function generatePptDeckSlideImages(
+  meta: PptDeckImageMeta,
+): Promise<PptDeckImageGenerationResult> {
   const deckLen = STRUCTURED_LESSON_DECK_SLIDE_COUNT;
   const deck: (string | null)[] = Array.from({ length: deckLen }, () => null);
   const used = new Set<string>();
+  const notices: string[] = [];
+
+  const pexelsOk = Boolean(resolvePexelsApiKey());
+  const falOk = Boolean(getFalCredentials());
+  if (!pexelsOk) {
+    notices.push(
+      "Pexels images skipped: set a valid PEXELS_API_KEY from https://www.pexels.com/api/ in .env.local (not a URL). Remove duplicate PEXELS_API_KEY lines if present.",
+    );
+  }
+  if (!falOk) {
+    notices.push("fal.ai images skipped: set FAL_API_KEY or FAL_KEY in .env.local.");
+  }
 
   console.log(
-    `[ppt-deck-images] start — subject="${meta.subject}", topic="${meta.topic}", deck=${deckLen}`,
+    `[ppt-deck-images] start — subject="${meta.subject}", topic="${meta.topic}", deck=${deckLen}, pexels=${pexelsOk ? "ok" : "missing/invalid"}, fal=${falOk ? "ok" : "missing"}`,
   );
 
   for (const spec of PEXELS_DECK_SPECS) {
@@ -127,10 +153,18 @@ export async function generatePptDeckSlideImages(meta: PptDeckImageMeta): Promis
     }
   }
 
+  const falCircuit = getFalPptCircuitOpenReason();
+  if (falCircuit && !notices.includes(falCircuit)) {
+    notices.push(falCircuit);
+  }
+
   const got = deck.filter(Boolean).length;
   console.log(`[ppt-deck-images] done — ${got}/10 image slots filled`);
+  if (got === 0 && notices.length === 0) {
+    notices.push("No PPT slide images were generated. Check server logs for [pexels] and [fal-ppt] errors.");
+  }
 
-  return deck;
+  return { urls: deck, notices };
 }
 
 /** @deprecated Prefer generatePptDeckSlideImages during lesson creation. */
@@ -140,7 +174,7 @@ export async function fetchPptImagesWithFallback(
   grade: string,
   deckSize: number,
 ): Promise<(string | null)[]> {
-  const urls = await generatePptDeckSlideImages({ topic, subject, grade });
+  const { urls } = await generatePptDeckSlideImages({ topic, subject, grade });
   if (deckSize === urls.length) return urls;
   return Array.from({ length: deckSize }, (_, i) => urls[i] ?? null);
 }

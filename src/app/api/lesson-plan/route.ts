@@ -604,14 +604,13 @@ async function runFluxAndBuildResponsePayload(
   sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
   pptSlideImageUrls?: (string | null)[];
 }> {
-  const parseNotice = parseNotices.length > 0 ? parseNotices.join("\n\n") : undefined;
-
   let workingPlan = mergedPlan;
   let pptSlideImageUrls: (string | null)[] | undefined;
+  const imageNotices: string[] = [];
 
   if (sections.includes("PPT Slide Content")) {
     try {
-      const urls = await generatePptDeckSlideImages({
+      const { urls, notices: imgNotices } = await generatePptDeckSlideImages({
         topic: input.topic.trim(),
         subject: input.subject.trim(),
         grade: input.grade.trim(),
@@ -619,9 +618,12 @@ async function runFluxAndBuildResponsePayload(
       });
       workingPlan = mergePptSlideImageUrlsIntoPlan(workingPlan, urls);
       pptSlideImageUrls = urls;
+      imageNotices.push(...imgNotices);
       console.log("[lesson-plan] PPT deck images attached:", urls.filter(Boolean).length, "URLs");
     } catch (e) {
-      console.error("[lesson-plan] PPT deck image generation failed:", formatFalError(e), e);
+      const msg = formatFalError(e);
+      imageNotices.push(`PPT image generation failed: ${msg}`);
+      console.error("[lesson-plan] PPT deck image generation failed:", msg, e);
     }
   }
 
@@ -641,6 +643,9 @@ async function runFluxAndBuildResponsePayload(
   } catch (e) {
     console.error("[lesson-plan] FLUX section images failed:", formatFalError(e), e);
   }
+
+  const parseNoticeParts = [...parseNotices, ...imageNotices].filter(Boolean);
+  const parseNotice = parseNoticeParts.length > 0 ? parseNoticeParts.join("\n\n") : undefined;
 
   return {
     lessonPlan: workingPlan,

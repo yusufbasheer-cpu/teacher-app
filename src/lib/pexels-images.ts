@@ -11,6 +11,7 @@
  */
 
 import { createClient } from "pexels";
+import { resolvePexelsApiKey } from "@/lib/image-api-env";
 
 /** The 6 PPT slide types that receive a Pexels image. */
 export type PptImageSlot =
@@ -91,10 +92,9 @@ export async function fetchPexelsUniqueLandscapeUrl(
   usedUrls: Set<string>,
   options?: PexelsLandscapeFetchOptions,
 ): Promise<string | null> {
-  const apiKey = process.env.PEXELS_API_KEY?.trim();
+  const apiKey = resolvePexelsApiKey();
   const label = options?.logLabel ?? "pexels";
   if (!apiKey) {
-    console.warn(`[pexels][${label}] PEXELS_API_KEY not set — skipping image fetch`);
     return null;
   }
 
@@ -167,9 +167,8 @@ export async function fetchPexelsUniqueLandscapeUrl(
 }
 
 export async function fetchPexelsImage(query: string): Promise<string | null> {
-  const apiKey = process.env.PEXELS_API_KEY?.trim();
+  const apiKey = resolvePexelsApiKey();
   if (!apiKey) {
-    console.log("[pexels] PEXELS_API_KEY not set — skipping image fetch");
     return null;
   }
 

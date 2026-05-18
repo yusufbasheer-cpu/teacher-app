@@ -1,8 +1,14 @@
-import { createFalClient } from "@fal-ai/client";
-import { formatFalError, getFalCredentials } from "@/lib/fal-flux-section-images";
+import { ApiError, createFalClient } from "@fal-ai/client";
+import {
+  FAL_BALANCE_EXHAUSTED_USER_MESSAGE,
+  FAL_FLUX_MODEL_ID,
+  formatFalError,
+  getFalCredentials,
+  isFalAccountLockedError,
+} from "@/lib/fal-flux-section-images";
 
-/** Lesson PPT export uses FLUX Pro for crisp diagrams. */
-export const FAL_PPT_IMAGE_MODEL_ID = "fal-ai/flux-pro" as const;
+/** Same model as section FLUX images (reliable on fal.ai accounts with balance). */
+export const FAL_PPT_IMAGE_MODEL_ID = FAL_FLUX_MODEL_ID;
 
 export type PptSlideImageMeta = {
   subject: string;
@@ -97,7 +103,17 @@ const PPT_IMAGE_SIZE = "landscape_16_9" as const;
 const PPT_NUM_INFERENCE_STEPS = 28;
 const PPT_GUIDANCE_SCALE = 7.5;
 
-const FAL_IMAGE_TIMEOUT_MS = 25_000;
+const FAL_IMAGE_TIMEOUT_MS = 90_000;
+
+let falPptCircuitOpenReason: string | null = null;
+
+export function getFalPptCircuitOpenReason(): string | null {
+  return falPptCircuitOpenReason;
+}
+
+export function resetFalPptCircuitForTests(): void {
+  falPptCircuitOpenReason = null;
+}
 
 export type FalPptImageCallOptions = {
   /** Log full subscribe payload (truncated) for debugging failed slides. */
@@ -139,6 +155,11 @@ export async function generateFalPptImageFromPrompt(
   callOptions?: FalPptImageCallOptions,
 ): Promise<string | null> {
   const label = callOptions?.logLabel ?? "fal-ppt";
+  if (falPptCircuitOpenReason) {
+    console.warn(`[fal-ppt][${label}] skipped — ${falPptCircuitOpenReason}`);
+    return null;
+  }
+
   const credentials = getFalCredentials();
   if (!credentials) {
     console.warn(`[fal-ppt][${label}] skipped — no FAL_API_KEY / FAL_KEY`);
@@ -188,7 +209,15 @@ export async function generateFalPptImageFromPrompt(
     );
     return null;
   } catch (e) {
-    console.error(`[fal-ppt][${label}] FAILED: exception`, formatFalError(e), e);
+    if (isFalAccountLockedError(e)) {
+      falPptCircuitOpenReason = FAL_BALANCE_EXHAUSTED_USER_MESSAGE;
+      console.error(`[fal-ppt][${label}] FAILED: ${FAL_BALANCE_EXHAUSTED_USER_MESSAGE}`);
+    } else {
+      console.error(`[fal-ppt][${label}] FAILED: exception`, formatFalError(e), e);
+      if (e instanceof ApiError) {
+        console.error(`[fal-ppt][${label}] HTTP ${e.status} body:`, JSON.stringify(e.body).slice(0, 500));
+      }
+    }
     return null;
   }
 }
