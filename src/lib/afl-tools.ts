@@ -350,7 +350,7 @@ The PPT generation system is **driven by AFL tools** from the **31-tool catalog*
 | 2 | Starter Activity | Teacher-selected **or** AI-selected **starter** AFL tool. Engaging, interactive, topic-related. **No** objectives, outcomes, or future-slide content. |
 | 6 | Main Phase | **First** full core teaching content. **Then** embed **main phase** AFL tool(s) as interactive activities. |
 | 7 | Differentiated Activity | **Differentiation** AFL tool — tasks for lower, middle, and higher achievers aligned with lesson content. |
-| 8 | UAE / Real Life / Cross-curricular | **Only one** connection type. **No** AFL tool phase on this slide — content link only. |
+| 8 | Connection (UAE Framework conditional) | **UAE Framework ON:** UAE Real Life and Cross Curricular Connection (landmarks/values, MOE, KHDA/SPEA, national identity, SDG UAE). **OFF:** Real Life and Cross Curricular Connection — **one** of cross-curricular, real life, career, global/SDG, or subject integration — **no UAE** mentions. **No** AFL tool on this slide. |
 | 9 | Plenary | **Plenary** AFL tool — real classroom activity, fully implemented. |
 | 10 | Extended Task | Homework/extended task content only — **no** AFL tool phase in catalog. |
 | 11 | Exit Ticket | **Exit ticket** AFL tool — short focused assessment, immediate understanding check. |

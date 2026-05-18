@@ -1,10 +1,14 @@
 import type { LessonPlanInput } from "@/lib/lesson-plan";
+import { usesArabicPptSlideTitles } from "@/lib/lesson-plan";
 import { buildSourceMaterialPromptBlock, SOURCE_MATERIAL_MAX_CHARS } from "@/lib/lesson-plan";
 import { stripOuterMarkdownFences } from "@/lib/parse-teacher-package-response";
 import {
   STRUCTURED_LESSON_DECK_SLIDE_COUNT,
   STRUCTURED_LESSON_SLIDE_TITLES_AR,
   STRUCTURED_LESSON_SLIDE_TITLES_EN,
+  SLIDE_8_TITLE_LEGACY_EN,
+  getStructuredLessonSlideTitle,
+  getStructuredLessonSlideTitles,
 } from "@/lib/ppt-structured-lesson";
 
 /** Markers for one DeepSeek completion = one slide body only. */
@@ -75,8 +79,9 @@ export function slide5OutcomesAlignWithTeacherObjectives(
 export function assembleFullPptFromSlideBodies(
   bodies: readonly string[],
   useArabicTitles: boolean,
+  uaeFrameworkSelected = false,
 ): string {
-  const titles = useArabicTitles ? STRUCTURED_LESSON_SLIDE_TITLES_AR : STRUCTURED_LESSON_SLIDE_TITLES_EN;
+  const titles = getStructuredLessonSlideTitles(useArabicTitles, uaeFrameworkSelected);
   const parts: string[] = [];
   for (let i = 0; i < STRUCTURED_LESSON_DECK_SLIDE_COUNT; i++) {
     const title = titles[i] ?? `Slide ${i + 1}`;
@@ -257,8 +262,23 @@ export function sanitizeEarlyPptSlideBody(
 /**
  * Split assembled `PPT Slide Content` into 13 bodies by canonical slide titles.
  */
-export function parseDeckBodiesFromPptOutline(ppt: string, useArabicTitles: boolean): string[] | null {
-  const titles = useArabicTitles ? STRUCTURED_LESSON_SLIDE_TITLES_AR : STRUCTURED_LESSON_SLIDE_TITLES_EN;
+function titlePatternsForSlideIndex(
+  slideIndex0Based: number,
+  useArabicTitles: boolean,
+  uaeFrameworkSelected: boolean,
+): string[] {
+  const primary = getStructuredLessonSlideTitle(slideIndex0Based, useArabicTitles, uaeFrameworkSelected);
+  if (slideIndex0Based !== 7) return [primary];
+  const legacy = useArabicTitles ? [] : [...SLIDE_8_TITLE_LEGACY_EN];
+  return [...new Set([primary, ...legacy])];
+}
+
+export function parseDeckBodiesFromPptOutline(
+  ppt: string,
+  useArabicTitles: boolean,
+  uaeFrameworkSelected = false,
+): string[] | null {
+  const titles = getStructuredLessonSlideTitles(useArabicTitles, uaeFrameworkSelected);
   const text = ppt.replace(/\r\n/g, "\n").trim();
   if (text.length < 40) return null;
 
@@ -266,10 +286,18 @@ export function parseDeckBodiesFromPptOutline(ppt: string, useArabicTitles: bool
   let found = 0;
 
   for (let i = 0; i < STRUCTURED_LESSON_DECK_SLIDE_COUNT; i++) {
-    const title = titles[i]!;
-    const titleEsc = escapeRe(title);
-    const titleRe = new RegExp(`(?:^|\\n)\\s*${titleEsc}\\s*(?=\\n|$)`, "im");
-    const match = titleRe.exec(text);
+    const patterns = titlePatternsForSlideIndex(i, useArabicTitles, uaeFrameworkSelected);
+    let match: RegExpExecArray | null = null;
+    let matchedTitle = titles[i]!;
+    for (const title of patterns) {
+      const titleEsc = escapeRe(title);
+      const titleRe = new RegExp(`(?:^|\\n)\\s*${titleEsc}\\s*(?=\\n|$)`, "im");
+      const m = titleRe.exec(text);
+      if (m && (match === null || m.index < match.index)) {
+        match = m;
+        matchedTitle = title;
+      }
+    }
     if (!match || match.index === undefined) {
       bodies.push("");
       continue;
@@ -279,11 +307,20 @@ export function parseDeckBodiesFromPptOutline(ppt: string, useArabicTitles: bool
     let bodyEnd = text.length;
     const nextTitle = titles[i + 1];
     if (nextTitle) {
-      const nextEsc = escapeRe(nextTitle);
-      const nextRe = new RegExp(`(?:\\n)\\s*${nextEsc}\\s*(?=\\n|$)`, "im");
-      const nextMatch = nextRe.exec(text.slice(bodyStart));
-      if (nextMatch?.index !== undefined) bodyEnd = bodyStart + nextMatch.index;
+      const nextPatterns = titlePatternsForSlideIndex(i + 1, useArabicTitles, uaeFrameworkSelected);
+      let earliestNext: number | undefined;
+      for (const nt of nextPatterns) {
+        const nextEsc = escapeRe(nt);
+        const nextRe = new RegExp(`(?:\\n)\\s*${nextEsc}\\s*(?=\\n|$)`, "im");
+        const nextMatch = nextRe.exec(text.slice(bodyStart));
+        if (nextMatch?.index !== undefined) {
+          const abs = bodyStart + nextMatch.index;
+          if (earliestNext === undefined || abs < earliestNext) earliestNext = abs;
+        }
+      }
+      if (earliestNext !== undefined) bodyEnd = earliestNext;
     }
+    void matchedTitle;
     bodies.push(text.slice(bodyStart, bodyEnd).trim());
   }
 
@@ -295,18 +332,34 @@ export function parseDeckBodiesFromPptOutline(ppt: string, useArabicTitles: bool
 export const SINGLE_SLIDE_USER_FOCUS_EN: readonly string[] = [
   "Body: two lines only — grade value, then date value. Do NOT write the subject name, Subject/Grade/Date labels, or repeat the slide title (the title already covers subject).",
   "Starter Activity — teacher-selected or AI-selected AFL tool, FULLY implemented as a classroom process. PRIMARY PURPOSE: guide students to PREDICT, INFER, or DISCOVER the upcoming lesson topic through structured thinking — not to reveal it directly. The activity must contain clues, prompts, comparisons, questions, scenarios, or observation tasks that help students reason toward the topic. Balance difficulty for the grade level. Encourage critical thinking, discussion, prediction, and analysis. Do NOT write 'Starter Activity' inside the body. Do NOT include learning objectives, outcomes, chapter explanations, or future slide references.",
-  "Exactly three items once each: chapter name, topic name, one SDG (number + title). No 'Chapter Topic and SDG Goal' heading inside the body. No objectives, outcomes, or explanations.",
+  "Exactly three items once each: chapter name, topic name, one SDG (number + title). No 'Chapter, Topic and SDG Goal' heading inside the body. No objectives, outcomes, or explanations.",
   "(Slide 4 is filled from the teacher form automatically — not generated in this call.)",
   "Measurable learning outcomes ONLY — exactly one outcome per teacher objective (same count). Bloom verbs; stay within objective scope. No 'Learning Outcomes' heading in body. Do not copy objectives verbatim.",
   "Main phase: FULL core teaching content FIRST, then AFL-based activities (fully implemented classroom process). No plenary, differentiation, or exit ticket.",
-  "Differentiation AFL tool: tasks for lower, middle, and higher achievers — fully implemented classroom activity. No UAE link, homework, or core re-teach.",
-  "Exactly ONE link type only: UAE **or** real life **or** cross-curricular — pick the strongest only. No extra sections.",
+  "Differentiation AFL tool: tasks for lower, middle, and higher achievers plus mini plenary — fully implemented. No UAE link (slide 8 only), homework, or core re-teach.",
+  "SLIDE_8_PLACEHOLDER",
   "Plenary: real classroom activity using teacher-selected or AI-selected Plenary AFL tool — full implementation. No homework, future references, or new teaching.",
   "Extended task or homework only — embed Extended AFL if selected or auto-selected. No plenary re-teach.",
   "Exit ticket AFL tool: short focused assessment — immediate understanding check. No success criteria or homework paragraph.",
-  "Success criteria AFL tool: students assess their own learning — fully implemented. No exit ticket repeat.",
+  "Success criteria and self-evaluation AFL tool — fully implemented. No exit ticket repeat.",
   "Thank you plus one short positive closing line for students — no recap or new tasks.",
 ];
+
+export function singleSlideUserFocusForSlide8(uaeFrameworkSelected: boolean): string {
+  if (uaeFrameworkSelected) {
+    return `UAE Real Life and Cross Curricular Connection — include: (1) specific UAE landmark or national value link to the topic, (2) UAE MOE alignment, (3) KHDA and SPEA inspection-quality connection, (4) UAE National Identity link, (5) SDG in UAE context. Inspection-ready, UAE-specific only. Do not repeat the slide title in the body.`;
+  }
+  return `Real Life and Cross Curricular Connection — choose exactly ONE: (A) cross-curricular link to another subject, (B) real-life daily application, (C) career connection, (D) global issue or SDG, (E) subject integration (Science/Math/English etc.). Must NOT mention UAE, Emirates, Dubai, MOE UAE, KHDA, or SPEA anywhere. Do not repeat the slide title in the body.`;
+}
+
+export function resolveSingleSlideUserFocus(
+  slideNumber1Based: number,
+  uaeFrameworkSelected: boolean,
+): string {
+  if (slideNumber1Based === 8) return singleSlideUserFocusForSlide8(uaeFrameworkSelected);
+  const base = SINGLE_SLIDE_USER_FOCUS_EN[slideNumber1Based - 1] ?? "";
+  return base === "SLIDE_8_PLACEHOLDER" ? singleSlideUserFocusForSlide8(uaeFrameworkSelected) : base;
+}
 
 /**
  * User message for one slide-only DeepSeek call (class context + lesson anchor + slide focus).
@@ -325,6 +378,8 @@ export function buildSinglePptSlideUserMessage(params: {
   aflForThisSlide: string;
   /** Shown on retry attempts only. */
   regenerateHint?: string;
+  uaeFrameworkSelected?: boolean;
+  preflightChecklist?: string;
 }): string {
   const {
     slideNumber1Based: sn,
@@ -335,6 +390,8 @@ export function buildSinglePptSlideUserMessage(params: {
     arabicExtraBlock,
     aflForThisSlide,
     regenerateHint,
+    uaeFrameworkSelected = false,
+    preflightChecklist,
   } = params;
 
   const chapterLine =
@@ -375,7 +432,8 @@ ${teacherObjectivesVerbatim}
   const objectivesContextLine =
     sn === 5 ? "" : `\n- Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}`;
 
-  const focus = SINGLE_SLIDE_USER_FOCUS_EN[sn - 1] ?? "";
+  const focus = resolveSingleSlideUserFocus(sn, uaeFrameworkSelected);
+  const officialTitle = getStructuredLessonSlideTitle(sn - 1, usesArabicPptSlideTitles(input.subject.trim()), uaeFrameworkSelected);
 
   const retry =
     regenerateHint?.trim() && regenerateHint.trim().length > 0
@@ -398,6 +456,8 @@ ${arabicExtraBlock ? `\n${arabicExtraBlock}\n` : ""}
 ${aflForThisSlide ? `\n${aflForThisSlide}\n` : ""}
 
 ### This slide (slide ${sn}) — required focus
+- **Official deck title:** ${officialTitle}
+${preflightChecklist ? `\n${preflightChecklist}\n` : ""}
 ${focus}
 ${retry}
 

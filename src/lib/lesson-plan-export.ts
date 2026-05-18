@@ -607,7 +607,7 @@ function addSlideFooter(
     h: 0,
     line: { color: theme.footerLine, pt: 1 },
   });
-  slide.addText(`${subject} · ${grade}`, {
+  slide.addText(subject.trim(), {
     x: IN_MARGIN + 0.02,
     y: lineY + 0.04,
     w: 8.5,
@@ -722,6 +722,7 @@ export async function buildPptxFromPptContent(params: {
   themeId?: PptThemeId;
   /** When structuredSlides omitted, these are merged into the slide builder context. */
   aflSelections?: AflSelectionsPayload;
+  curriculumFramework?: string;
   /** When set, overrides themeId with colors extracted from the school's .pptx template. */
   customRenderTheme?: PptRenderTheme;
   /** Base64 data URI of the school logo extracted from the .pptx template. */
@@ -764,6 +765,9 @@ export async function buildPptxFromPptContent(params: {
     fullLessonPlan: params.fullLessonPlan?.trim(),
     pptContent: (params.pptContent || "").trim(),
     homeworkTask: params.homeworkTask?.trim(),
+    ...(params.curriculumFramework?.trim()
+      ? { curriculumFramework: params.curriculumFramework.trim() }
+      : {}),
     ...(Object.keys(afl).length > 0 ? { aflSelections: afl } : {}),
   };
   const deck = params.structuredSlides ?? buildStructuredLessonSlides(ctx);
@@ -789,26 +793,90 @@ export async function buildPptxFromPptContent(params: {
   const titleSlide = pptx.addSlide();
 
   if (useStrictThirteenSlideDeck) {
-    titleSlide.background = { color: theme.heroDeep };
+    titleSlide.background = { color: theme.slideBg };
+    const titleY = IN_MARGIN + PPT_TOP_BAR_H + 0.05;
+    const L = layoutContentMetrics(Boolean(titleImgData));
+    const contentBottom = L.contentTop + L.contentMaxH;
+
     titleSlide.addShape(pptx.ShapeType.rect, {
-      x: 0,
-      y: 0,
-      w: IN_SLIDE_W,
-      h: IN_SLIDE_H,
-      fill: { color: theme.heroMid, transparency: 14 },
-      line: { color: theme.heroMid, transparency: 100 },
+      x: IN_MARGIN,
+      y: IN_MARGIN,
+      w: IN_SLIDE_W - 2 * IN_MARGIN,
+      h: PPT_TOP_BAR_H,
+      fill: { color: theme.topBar },
+      line: { color: theme.topBar },
     });
-    titleSlide.addText(titleModel.body, {
-      x: innerPadX,
-      y: 2.2,
-      w: IN_SLIDE_W - 2 * innerPadX,
-      h: 4.2,
+
+    titleSlide.addShape(pptx.ShapeType.rect, {
+      x: IN_MARGIN,
+      y: titleY,
+      w: PPT_LEFT_ACCENT_W,
+      h: Math.max(0.35, contentBottom - titleY + 0.02),
+      fill: { color: theme.sideAccent, transparency: 10 },
+      line: { color: theme.sideAccent, transparency: 100 },
+    });
+
+    const titleText = cleanSlideTitle(titleModel.slideTitle);
+    titleSlide.addText(titleText, {
+      x: L.titleX,
+      y: titleY,
+      w: L.titleW,
+      h: PPT_TITLE_H,
       fontSize: 30,
-      color: theme.heroSubtitle,
+      bold: true,
+      color: theme.titleText,
       fontFace: ff,
-      align: "center",
-      valign: "middle",
+      valign: "top",
+      fit: "shrink",
     });
+
+    titleSlide.addShape(pptx.ShapeType.line, {
+      x: L.titleX,
+      y: titleY + PPT_TITLE_H + 0.03,
+      w: L.titleW,
+      h: 0,
+      line: { color: theme.titleUnderline, pt: 2 },
+    });
+
+    const titleLines = normalizeBodyToBulletLines(titleModel.body);
+    const titleBodyRuns: Array<{ text: string; options: Record<string, unknown> }> = [];
+    for (let i = 0; i < titleLines.length; i++) {
+      const line = titleLines[i]!;
+      titleBodyRuns.push(...toAccentRuns(line, theme));
+      if (i < titleLines.length - 1) {
+        titleBodyRuns.push({ text: "", options: { breakLine: true } });
+      }
+    }
+
+    titleSlide.addText(titleBodyRuns, {
+      x: L.textX,
+      y: L.contentTop,
+      w: L.textW,
+      h: L.contentMaxH,
+      valign: "top",
+      fit: "shrink",
+    });
+
+    if (titleImgData) {
+      const imgPad = 0.07;
+      const ix = L.textX + L.textW + PPT_COL_GAP;
+      const iw = PPT_IMG_W;
+      const iy = L.contentTop;
+      const ih = L.contentMaxH;
+      titleSlide.addImage({
+        data: titleImgData,
+        x: ix + imgPad,
+        y: iy + imgPad,
+        w: iw - 2 * imgPad,
+        h: ih - 2 * imgPad,
+        altText: "Title slide illustration",
+      });
+    }
+
+    addSlideFooter(pptx, titleSlide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
+    if (params.schoolLogo) addLogoToSlide(pptx, titleSlide, params.schoolLogo, false);
+    titleSlide.addNotes(titleModel.speakerNotes);
+    slideNumber += 1;
   } else if (titleImgData) {
     titleSlide.background = { color: theme.heroDeep };
     titleSlide.addShape(pptx.ShapeType.rect, {
@@ -933,10 +1001,12 @@ export async function buildPptxFromPptContent(params: {
     });
   }
 
-  titleSlide.addNotes(titleModel.speakerNotes);
-  addSlideFooter(pptx, titleSlide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
-  if (params.schoolLogo) addLogoToSlide(pptx, titleSlide, params.schoolLogo, true);
-  slideNumber += 1;
+  if (!useStrictThirteenSlideDeck) {
+    titleSlide.addNotes(titleModel.speakerNotes);
+    addSlideFooter(pptx, titleSlide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
+    if (params.schoolLogo) addLogoToSlide(pptx, titleSlide, params.schoolLogo, true);
+    slideNumber += 1;
+  }
 
   for (let slideIdx = 1; slideIdx < deck.length; slideIdx++) {
     const model = deck[slideIdx]!;
@@ -1112,6 +1182,9 @@ export async function buildTeacherPackageZipBuffer(params: {
     grade: meta.grade,
     topic: meta.topic,
     teacherName: "Teacher",
+    ...(lessonPlan.curriculum_framework?.trim()
+      ? { curriculumFramework: lessonPlan.curriculum_framework.trim() }
+      : {}),
     ...(Object.keys(afl).length > 0 ? { aflSelections: afl } : {}),
   });
   const pptOutline = getPptSourceSlideOutline(lessonPlan).trim();

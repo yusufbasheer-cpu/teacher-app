@@ -38,6 +38,11 @@ export function getCurriculumFrameworkLabel(value: string): string {
   return opt?.label ?? v;
 }
 
+/** True when the teacher selected UAE MOE / KHDA / SPEA framework (slide 8 uses UAE connection mode). */
+export function isUaeCurriculumFramework(value: string): boolean {
+  return value.trim() === "uae_moe_khda_spea";
+}
+
 const UAE_FOCUS_AREAS = `Assessment-related topics (weave where relevant): Assessment for Learning (AfL), Assessment as Learning, Assessment of Learning, formative assessment, summative assessment, diagnostic assessment, peer assessment, self-assessment, success criteria, learning objectives, differentiated assessment, rubrics and marking schemes, feedback and feedforward, data analysis, progress tracking, questioning techniques, higher-order thinking skills (HOTS), Bloom's taxonomy, critical thinking, student reflection, exit tickets, retrieval practice, plenary assessment, mini-plenary, adaptive teaching, target setting, moderation of assessment, standardization, baseline assessment.
 
 Teaching and learning topics: student-centred learning, active learning, collaborative learning, inquiry-based learning, project-based learning, experiential learning, differentiation, personalized learning, engagement strategies, classroom management, metacognition, scaffolding, visible learning, cross-curricular learning, competency-based learning, 21st-century skills, innovation in education, digital learning, AI in education, gamification.

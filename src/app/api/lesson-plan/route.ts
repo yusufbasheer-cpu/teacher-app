@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   buildCurriculumFrameworkSystemAddendum,
   getCurriculumFrameworkLabel,
+  isUaeCurriculumFramework,
   isValidCurriculumFramework,
 } from "@/lib/curriculum-framework";
 import {
@@ -47,13 +48,18 @@ import {
   buildTeacherObjectivesSlide4Body,
   parseDeckBodiesFromPptOutline,
   parseSinglePptSlideModelResponse,
-  sanitizeEarlyPptSlideBody,
   slide5OutcomesAlignWithTeacherObjectives,
   slideBodyPassesQualityGate,
   type EarlySlideSanitizeContext,
 } from "@/lib/ppt-slide-by-slide";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { generatePptDeckSlideImages } from "@/lib/ppt-image-resolver";
+import {
+  buildPptSlidePreflightChecklist,
+  buildSlide8PptModeBlock,
+  sanitizePptSlideBody,
+  validatePptSlideBody,
+} from "@/lib/ppt-slide-validation";
 
 export const runtime = "nodejs";
 /** Thirteen sequential slide calls plus other sections may exceed the default 60s cap. */
@@ -227,6 +233,11 @@ async function generatePptSlideContentSlideBySlide(params: {
   const notices: string[] = [];
   const bodies: string[] = [];
   const isAr = usesArabicPptSlideTitles(input.subject.trim());
+  const uaeFrameworkSelected = isUaeCurriculumFramework(input.curriculumFramework);
+  const slide8ModeBlock = buildSlide8PptModeBlock(uaeFrameworkSelected);
+  console.log(
+    `[ppt-deck] slide-8 mode: ${uaeFrameworkSelected ? "UAE Framework (inspection-ready UAE connection)" : "global connection (no UAE)"}`,
+  );
   const fwLine = frameworkUserLineForPpt(input);
   const arabicExtra = arabicSlideExtraBlock(input);
   const locale = isAr ? "ar-AE" : "en-GB";
@@ -265,6 +276,15 @@ async function generatePptSlideContentSlideBySlide(params: {
       topic: input.topic.trim(),
       learningObjectives: input.learningObjectives.trim(),
     });
+    const validationCtx = {
+      slideNumber1Based: slide,
+      isAr,
+      uaeFrameworkSelected,
+      subject: input.subject.trim(),
+      topic: input.topic.trim(),
+      teacherObjectives: input.learningObjectives.trim(),
+    };
+    const preflightChecklist = buildPptSlidePreflightChecklist(validationCtx);
     let chosen = "";
     let lastHttpError: string | null = null;
 
@@ -275,6 +295,7 @@ async function generatePptSlideContentSlideBySlide(params: {
           content: buildSinglePptSlideDeepseekSystemPrompt(slide, {
             curriculumFrameworkAddendum: frameworkAddendum,
             subject: input.subject.trim(),
+            uaeFrameworkSelected,
           }),
         },
         {
@@ -283,15 +304,21 @@ async function generatePptSlideContentSlideBySlide(params: {
             slideNumber1Based: slide,
             input,
             sourceMaterial,
-            frameworkUserLine: fwLine,
+            frameworkUserLine: `${fwLine}${slide === 8 || attempt === 1 ? `\n\n${slide8ModeBlock}` : ""}`,
             fullLessonPlan,
             arabicExtraBlock: arabicExtra,
             aflForThisSlide: aflForSlide,
+            uaeFrameworkSelected,
+            preflightChecklist,
             regenerateHint:
               attempt > 1
                 ? slide === 5
                   ? "Regenerate: write one measurable outcome per teacher objective only — never more outcomes than objectives; stay within Bloom verbs and objective scope; no verbatim objective copy."
-                  : "Regenerate: previous attempt was too short, missing markers, or failed validation. Produce a fuller on-brief slide body for THIS slide only; keep strict isolation."
+                  : slide === 8
+                    ? uaeFrameworkSelected
+                      ? "Regenerate: include UAE-specific landmarks/values, MOE alignment, KHDA/SPEA, national identity, and SDG in UAE context. Do not repeat the slide title in the body."
+                      : "Regenerate: choose ONE non-UAE link only. Remove every UAE/Emirates/Dubai/MOE/KHDA/SPEA reference."
+                    : "Regenerate: previous attempt was too short, missing markers, or failed validation. Produce a fuller on-brief slide body for THIS slide only; keep strict isolation."
                 : undefined,
           }),
         },
@@ -346,32 +373,42 @@ async function generatePptSlideContentSlideBySlide(params: {
           slideBodyPassesQualityGate(slide, chosen) &&
           slide5OutcomesAlignWithTeacherObjectives(chosen, input.learningObjectives)
         ) {
-          break;
+          const v = validatePptSlideBody(chosen, validationCtx);
+          if (v.ok) break;
+          notices.push(
+            `PPT Slide Content slide ${slide} attempt ${attempt}: structure validation — ${v.reasons.join("; ")}`,
+          );
+          continue;
         }
         notices.push(
           `PPT Slide Content slide ${slide} attempt ${attempt}: outcomes must align to teacher objectives (count/scope).`,
         );
         continue;
       }
-      if (slideBodyPassesQualityGate(slide, chosen)) {
+      const structureOk = validatePptSlideBody(chosen, validationCtx);
+      if (slideBodyPassesQualityGate(slide, chosen) && structureOk.ok) {
         break;
       }
-      notices.push(
-        `PPT Slide Content slide ${slide} attempt ${attempt}: quality gate not satisfied (length or empty).`,
-      );
+      if (!structureOk.ok) {
+        notices.push(
+          `PPT Slide Content slide ${slide} attempt ${attempt}: structure validation — ${structureOk.reasons.join("; ")}`,
+        );
+      } else {
+        notices.push(
+          `PPT Slide Content slide ${slide} attempt ${attempt}: quality gate not satisfied (length or empty).`,
+        );
+      }
     }
 
     if (!chosen.trim()) {
       chosen = `_(This slide could not be generated after ${PPT_SLIDE_MAX_ATTEMPTS} attempts.)_${lastHttpError ? `\n\n${lastHttpError}` : ""}`;
     }
-    if (slide >= 2 && slide <= 5) {
-      chosen = sanitizeEarlyPptSlideBody(slide, chosen, earlyCtx);
-    }
+    chosen = sanitizePptSlideBody(slide, chosen, { ...earlyCtx, uaeFrameworkSelected });
     bodies.push(chosen.trim());
   }
 
   return {
-    text: assembleFullPptFromSlideBodies(bodies, isAr),
+    text: assembleFullPptFromSlideBodies(bodies, isAr, uaeFrameworkSelected),
     notices,
   };
 }
@@ -571,6 +608,7 @@ async function runFluxAndBuildResponsePayload(
         topic: input.topic.trim(),
         subject: input.subject.trim(),
         grade: input.grade.trim(),
+        curriculumFramework: input.curriculumFramework.trim() || undefined,
       });
       workingPlan = mergePptSlideImageUrlsIntoPlan(workingPlan, urls);
       pptSlideImageUrls = urls;

@@ -121,7 +121,7 @@ export async function fetchPexelsUniqueLandscapeUrl(
                 totalResults:
                   "total_results" in result ? (result as { total_results?: number }).total_results : undefined,
                 nextPage:
-                  "next_page" in result ? String((result as { next_page?: string }).next_page ?? "") : "",
+                  "next_page" in result ? String((result as { next_page?: string | number }).next_page ?? "") : "",
               };
         console.log(`[pexels][${label}] API response (page ${page}):`, JSON.stringify(summary));
         console.log(`[pexels][${label}] full API response body (page ${page}):\n${safeJsonForLog(result)}`);

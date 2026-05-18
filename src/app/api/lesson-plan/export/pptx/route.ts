@@ -81,6 +81,7 @@ export async function POST(req: Request) {
       fullLessonPlan: fullLessonPlan || undefined,
       pptContent: pptContent || undefined,
       homeworkTask: homeworkTask || undefined,
+      curriculumFramework: curriculumFramework || undefined,
       ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
 
@@ -111,6 +112,7 @@ export async function POST(req: Request) {
       structuredSlides: deck,
       slideImageUrls,
       themeId: pptTheme,
+      curriculumFramework: curriculumFramework || undefined,
       ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
 

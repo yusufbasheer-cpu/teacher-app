@@ -16,8 +16,7 @@ import {
 } from "@/lib/ppt-slide-by-slide";
 import {
   STRUCTURED_LESSON_DECK_SLIDE_COUNT,
-  STRUCTURED_LESSON_SLIDE_TITLES_AR,
-  STRUCTURED_LESSON_SLIDE_TITLES_EN,
+  getStructuredLessonSlideTitle,
 } from "@/lib/ppt-structured-lesson";
 
 /** Pedagogy and quality rules; labeled-block contract is appended per request. */
@@ -107,19 +106,21 @@ The lesson plan must include:
 The app builds **exactly 13 slides** in this **fixed order**. **Each slide has one purpose only:** do not put objectives on the starter, do not put chapter names on slide 1, do not repeat the same paragraph on multiple slides, and do not add decorative filler, transition phrases, “next we will…”, or summaries of other slides. Content must be **rich, detailed, and classroom-ready** while staying on-brief for that slide.
 
 **Slide titles and bodies (use these exact English titles in order; Arabic plans may use Arabic titles but same order):**
-1. **Subject Grade Date** — Body lines only: **grade** and **date** (two lines). The slide **title** already carries subject — do **not** repeat the subject name or write Subject/Grade/Date headings inside the body. Nothing else (no topic, objectives, chapter, or activities).
+1. **Subject, Grade, Date** — Body lines only: **grade** and **date** (two lines). The slide **title** already carries subject — do **not** repeat the subject name or write Subject/Grade/Date headings inside the body. Nothing else (no topic, objectives, chapter, or activities).
 2. **Starter Activity** — **AFL-powered** starter hook and activity (teacher-selected **or** AI-selected tool) — fully implemented classroom process, not a label. **Primary purpose:** guide students to **predict, infer, or discover** the upcoming lesson topic through structured thinking — do **not** reveal the topic directly at the start. The activity must contain clues, prompts, comparisons, questions, scenarios, images, or observation tasks so students can reason toward the topic. Must encourage critical thinking, discussion, prediction, and analysis. Balance difficulty for the grade level. Do **not** write “Starter Activity” inside the body. No chapter, topic, SDG, objectives, or outcomes.
-3. **Chapter Topic and SDG Goal** — Chapter name, topic name, and one SDG (number + title) — **each once**. Do **not** repeat the slide title inside the body. No objectives, outcomes, or explanations.
+3. **Chapter, Topic and SDG Goal** — Chapter name, topic name, and one SDG (number + title) — **each once**. Do **not** repeat the slide title inside the body. No objectives, outcomes, or explanations.
 4. **Learning Objectives** — **Only** the teacher’s form objectives, **verbatim** (same count, same wording). Do **not** generate, edit, paraphrase, or add objectives. Do **not** write “Learning Objectives” inside the body.
 5. **Learning Outcomes** — Measurable outcomes generated **only** from the teacher’s verbatim objectives; typically one per objective; Bloom verbs; **no** scope beyond those objectives. Do **not** write “Learning Outcomes” inside the body.
 6. **Main Phase Core Teaching** — **First** the **full core teaching content** (concepts, vocabulary, explanation, concise worked meaning). **After** that, **AFL-based** learning activities (I Do / We Do / You Do, stations, etc.) that **apply** the taught content — fully implemented classroom process, not a tool label. Activities must not replace the explanation. No plenary, differentiation, or exit ticket here.
-7. **Differentiated Activity Mini Plenary** — **Differentiation** AFL tool: tasks for **lower**, **middle**, and **higher** attainers aligned with lesson content (e.g. Must/Should/Could, tiered tasks, choice board). No core teaching, homework, UAE link, or outcomes.
-8. **UAE Real Life Cross Curricular Link** — **Only one** of: a UAE connection, OR a real-life application, OR a cross-curricular link (whichever is strongest for this topic). Do not combine all three on one slide. No extra sections.
+7. **Differentiated Activity and Mini Plenary** — **Differentiation** AFL tool: tasks for **lower**, **middle**, and **higher** attainers plus a short mini plenary check. No core teaching, homework, UAE link (that is slide 8 only), or outcomes.
+8. **Connection slide (slide 8 — UAE Framework conditional; see user message “Slide 8 mode”):**
+   - **If UAE Framework selected:** title **UAE Real Life and Cross Curricular Connection** — UAE landmarks/values, UAE MOE alignment, KHDA/SPEA inspection connection, UAE National Identity, SDG in UAE context; inspection-ready; **no** non-UAE-only generic link.
+   - **If UAE Framework NOT selected:** title **Real Life and Cross Curricular Connection** — choose **exactly ONE** of: cross-curricular link, real-life application, career connection, global/SDG link, or subject integration. **Must NOT** mention UAE, Emirates, Dubai, MOE UAE, KHDA, or SPEA anywhere on this slide.
 9. **Plenary** — One **real classroom plenary activity** using teacher-selected **or** AI-selected **Plenary** AFL tool — fully implemented (student tasks, prompts, interaction). No new teaching, homework, objectives, or future-slide references.
 10. **Extended Task** — Extended task or homework only (research, rubric task, creative, practice, investigation). Embed **Extended** AFL when selected or auto-selected. No plenary or re-teaching.
 11. **Exit Ticket** — **Exit ticket** AFL tool only: short, focused assessment — immediate understanding check (teacher-selected **or** AI-selected). No homework paragraph, success criteria, or lesson explanation.
-12. **Success Criteria Self Evaluation** — **Success criteria** AFL tool: help students assess their own learning (traffic lights, checklist, two stars and a wish, rubric scale). No new teaching and no repeating the exit ticket.
-13. **Thank You Slide** — Thank you plus one short positive closing line for students only. No recap, objectives, or activities.
+12. **Success Criteria and Self Evaluation** — **Success criteria** AFL tool: help students assess their own learning (traffic lights, checklist, two stars and a wish, rubric scale). No new teaching and no repeating the exit ticket.
+13. **Thank You** — Thank you plus one short positive closing line for students only. No recap, objectives, or activities.
 
 **Images (automatic):** up to **three** images on slides **2, 6, and 9** only (Starter, Main Phase Core Teaching, Plenary). Slide 1 has **no** image.
 
@@ -292,11 +293,16 @@ ${extra}`;
  */
 export function buildSinglePptSlideDeepseekSystemPrompt(
   slideNumber1Based: number,
-  options?: { curriculumFrameworkAddendum?: string | null; subject?: string | null },
+  options?: {
+    curriculumFrameworkAddendum?: string | null;
+    subject?: string | null;
+    uaeFrameworkSelected?: boolean;
+  },
 ): string {
   const n = slideNumber1Based;
-  const enTitle = STRUCTURED_LESSON_SLIDE_TITLES_EN[n - 1] ?? `Slide ${n}`;
-  const arTitle = STRUCTURED_LESSON_SLIDE_TITLES_AR[n - 1] ?? enTitle;
+  const uaeOn = options?.uaeFrameworkSelected === true;
+  const enTitle = getStructuredLessonSlideTitle(n - 1, false, uaeOn);
+  const arTitle = getStructuredLessonSlideTitle(n - 1, true, uaeOn);
   const bodyLangHint = buildPptSlideBodyLanguageHint(options?.subject);
 
   let core = `${DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE.trim()}
@@ -344,8 +350,16 @@ ${PPT_AFL_DRIVEN_SYSTEM_RULES}
                 : n === 7
                   ? `
 
-**Slide 7 body rule:** Differentiation AFL tool — tasks for lower/middle/higher achievers (fully implemented). No UAE, homework, or core re-teach.`
-                  : n === 9
+**Slide 7 body rule:** Differentiation AFL tool — tasks for lower/middle/higher achievers plus mini plenary (fully implemented). No UAE link (slide 8 only), homework, or core re-teach.`
+                  : n === 8
+                    ? uaeOn
+                      ? `
+
+**Slide 8 body rule (UAE Framework ON):** Title **UAE Real Life and Cross Curricular Connection**. Include UAE landmark/value link, UAE MOE alignment, KHDA/SPEA inspection connection, UAE National Identity, and SDG in UAE context. Inspection-ready. Do not repeat the slide title in the body.`
+                      : `
+
+**Slide 8 body rule (UAE Framework OFF):** Title **Real Life and Cross Curricular Connection**. Choose exactly ONE: cross-curricular, real-life application, career, global/SDG, or subject integration. **Never** mention UAE, Emirates, Dubai, MOE UAE, KHDA, or SPEA. Do not repeat the slide title in the body.`
+                    : n === 9
                     ? `
 
 **Slide 9 body rule:** Real classroom plenary with teacher-selected or AI-selected Plenary AFL tool — full implementation. No homework or future references.`

@@ -8,6 +8,7 @@
  * Rules: Pexels → fal fallback per slide; fal failures skip; URLs unique within deck; landscape only.
  */
 
+import { isUaeCurriculumFramework } from "@/lib/curriculum-framework";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { fetchPexelsUniqueLandscapeUrl } from "@/lib/pexels-images";
 import {
@@ -16,7 +17,18 @@ import {
   type PptSlideImageMeta,
 } from "@/lib/fal-ppt-slide-images";
 
-export type PptDeckImageMeta = PptSlideImageMeta;
+export type PptDeckImageMeta = PptSlideImageMeta & {
+  curriculumFramework?: string;
+};
+
+function slide8PexelsQuery(m: PptDeckImageMeta): string {
+  if (isUaeCurriculumFramework(m.curriculumFramework ?? "")) {
+    return `UAE Dubai ${m.topic.trim()} education`.replace(/\s+/g, " ").trim();
+  }
+  return `cross curricular real life ${m.subject.trim()} ${m.topic.trim()} education`
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function titleSlidePexelsQuery(m: PptDeckImageMeta): string {
   const subject = m.subject.trim().toLowerCase().replace(/\s+/g, " ");
@@ -31,7 +43,7 @@ const PEXELS_DECK_SPECS: readonly { idx: number; query: (m: PptDeckImageMeta) =>
   { idx: 1, query: () => "curiosity discovery thinking students" },
   {
     idx: 7,
-    query: (m) => `UAE Dubai ${m.topic.trim()} real life`.replace(/\s+/g, " ").trim(),
+    query: slide8PexelsQuery,
   },
   { idx: 8, query: () => "reflection classroom learning summary" },
   { idx: 9, query: () => "research study homework learning" },

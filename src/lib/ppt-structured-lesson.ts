@@ -5,6 +5,7 @@ import {
   sanitizeEarlyPptSlideBody,
   type EarlySlideSanitizeContext,
 } from "@/lib/ppt-slide-by-slide";
+import { isUaeCurriculumFramework } from "@/lib/curriculum-framework";
 import { AFL_PHASE_IDS, formatToolsBlockForSlide, type AflPhaseId, type AflSelectionsPayload } from "@/lib/afl-tools";
 import {
   usesArabicPptSlideTitles,
@@ -335,6 +336,31 @@ const deckExtractors = {
     extractByHints(
       plan,
       ["cross curricular", "cross-curricular", "cross curricular link", "another subject", "الربط بين المواد"],
+      DECK_STOP_UAE,
+    ),
+  careerOnly: (plan: string) =>
+    extractByHints(
+      plan,
+      ["career", "profession", "job role", "occupation", "مهنة", "وظيفة"],
+      DECK_STOP_UAE,
+    ),
+  globalOnly: (plan: string) =>
+    extractByHints(
+      plan,
+      ["global", "world issue", "worldwide", "sdg", "sustainable development goal", "عالمي", "قضية عالمية"],
+      DECK_STOP_UAE,
+    ),
+  subjectIntegrationOnly: (plan: string) =>
+    extractByHints(
+      plan,
+      [
+        "subject integration",
+        "integrate with science",
+        "integrate with math",
+        "integrate with english",
+        "ربط مع العلوم",
+        "ربط مع الرياضيات",
+      ],
       DECK_STOP_UAE,
     ),
   plenary: (plan: string) =>
@@ -705,33 +731,80 @@ function pickDeck(
 
 const MIN_SINGLE_LINK_CHARS = 72;
 
-/** Slide 8: exactly one of UAE, real life, or cross-curricular — longest substantive extract wins. */
-function pickSingleContextualLink(
+type NonUaeLinkKey = "cross" | "realLife" | "career" | "global" | "subjectIntegration";
+
+/** Slide 8 when UAE Framework is selected — UAE-specific, inspection-ready connection. */
+function pickUaeFrameworkSlide8(
   plan: string,
   ppt: string,
   topic: string,
   subj: string,
   gr: string,
   isAr: boolean,
-  contextAnchor: string,
   suggestedTiming: string,
 ): { body: string; notes: string } {
-  type Key = "uae" | "realLife" | "cross";
+  const uaePlan = plan ? extractFromFullPlanDeck(plan, "uaeOnly") : "";
+  const crossPlan = plan ? extractFromFullPlanDeck(plan, "crossOnly") : "";
+  const pptUae = ppt ? extractFromPptContent(ppt, ["uae", "emirates", "khda", "spea", "moe", "الإمارات"]) : "";
+  const pptCross = ppt ? extractFromPptContent(ppt, ["cross curricular", "cross-curricular", "الربط"]) : "";
+  let body = stripMarkdownSymbolsForStudents(
+    mergeBodies(
+      mergeBodies(uaePlan, crossPlan, ""),
+      mergeBodies(pptUae, pptCross, ""),
+      "",
+    ).trim(),
+  );
+  if (body.replace(/\s+/g, "").length < MIN_SINGLE_LINK_CHARS) {
+    body = stripMarkdownSymbolsForStudents(
+      isAr
+        ? `ربط إماراتي لموضوع «${topic}» في ${subj} (${gr}): معلم أو قيمة وطنية، مواءمة وزارة التربية، معايير خدة/سپيا، هوية وطنية، وهدف تنمية مستدامة في سياق الإمارات.`
+        : `UAE connection for "${topic}" (${subj}, ${gr}): name a UAE landmark or national value; align to UAE MOE expectations; note KHDA/SPEA inspection-quality teaching; link UAE National Identity; connect one SDG to UAE context.`,
+    );
+  }
+  const notes = buildTeacherSlideNotes(
+    suggestedTiming,
+    isAr
+      ? "شريحة 8 — إطار الإمارات: ربط محلي، مواءمة، تفتيش، هوية، وتنمية مستدامة."
+      : "Slide 8 — UAE framework: landmarks/values, MOE, KHDA/SPEA, national identity, SDG in UAE context.",
+    isAr,
+  );
+  return { body, notes };
+}
+
+/** Slide 8 when UAE Framework is off — exactly one non-UAE link type (A–E). */
+function pickNonUaeSlide8(
+  plan: string,
+  ppt: string,
+  topic: string,
+  subj: string,
+  gr: string,
+  isAr: boolean,
+  suggestedTiming: string,
+): { body: string; notes: string } {
+  type Key = NonUaeLinkKey;
   const fromPlan = (k: Key) => {
     if (!plan) return "";
-    if (k === "uae") return extractFromFullPlanDeck(plan, "uaeOnly");
     if (k === "realLife") return extractFromFullPlanDeck(plan, "realLifeOnly");
-    return extractFromFullPlanDeck(plan, "crossOnly");
+    if (k === "cross") return extractFromFullPlanDeck(plan, "crossOnly");
+    if (k === "career") return extractFromFullPlanDeck(plan, "careerOnly");
+    if (k === "global") return extractFromFullPlanDeck(plan, "globalOnly");
+    return extractFromFullPlanDeck(plan, "subjectIntegrationOnly");
   };
   const fromPptBlocks: Record<Key, string> = {
-    uae: ppt ? extractFromPptContent(ppt, ["uae", "emirates", "الإمارات"]) : "",
-    realLife: ppt ? extractFromPptContent(ppt, ["real life", "real world", "الحياة"]) : "",
     cross: ppt ? extractFromPptContent(ppt, ["cross curricular", "cross-curricular", "الربط"]) : "",
+    realLife: ppt ? extractFromPptContent(ppt, ["real life", "real world", "الحياة"]) : "",
+    career: ppt ? extractFromPptContent(ppt, ["career", "profession", "مهنة"]) : "",
+    global: ppt ? extractFromPptContent(ppt, ["global", "world", "sdg", "عالمي"]) : "",
+    subjectIntegration: ppt
+      ? extractFromPptContent(ppt, ["integrate with", "subject integration", "science", "math", "english"])
+      : "",
   };
   const merged = (k: Key) =>
     stripMarkdownSymbolsForStudents(mergeBodies(fromPlan(k), fromPptBlocks[k], "").trim());
 
-  const scored: { key: Key; text: string; len: number }[] = (["uae", "realLife", "cross"] as const).map((key) => {
+  const scored: { key: Key; text: string; len: number }[] = (
+    ["cross", "realLife", "career", "global", "subjectIntegration"] as const
+  ).map((key) => {
     const text = merged(key);
     return { key, text, len: text.replace(/\s+/g, "").length };
   });
@@ -741,18 +814,41 @@ function pickSingleContextualLink(
   if (body.replace(/\s+/g, "").length < MIN_SINGLE_LINK_CHARS) {
     body = stripMarkdownSymbolsForStudents(
       isAr
-        ? `ربط واحد فقط: اربط «${topic}» بمادة أخرى أو سياق واقعي أو قيمة من الإمارات في فقرة واحدة واضحة من خطة الدرس.`
-        : `Single link only: one clear paragraph for "${topic}" (${subj}, ${gr}) choosing either a UAE connection, a real-life application, or one cross-curricular subject link from your lesson plan.`,
+        ? `ربط واحد فقط لموضوع «${topic}»: اختر تطبيقاً واقعياً أو ربطاً بمادة أخرى أو مهنة أو قضية عالمية — دون أي إشارة للإمارات.`
+        : `Single connection for "${topic}" (${subj}, ${gr}): choose one of cross-curricular link, real-life application, career link, global/SDG link, or subject integration — no UAE references.`,
     );
   }
+  const label: Record<Key, string> = {
+    cross: isAr ? "ربط بين المواد" : "cross-curricular",
+    realLife: isAr ? "حياة واقعية" : "real-life application",
+    career: isAr ? "مهنة" : "career connection",
+    global: isAr ? "قضية عالمية/هدف تنمية" : "global/SDG link",
+    subjectIntegration: isAr ? "دمج مواد" : "subject integration",
+  };
   const notes = buildTeacherSlideNotes(
     suggestedTiming,
     isAr
-      ? `هذه الشريحة لربط واحد فقط (${best.key === "uae" ? "الإمارات" : best.key === "realLife" ? "حياة واقعية" : "ربط بين المواد"}).`
-      : `This slide holds one link type only (${best.key === "uae" ? "UAE" : best.key === "realLife" ? "real life" : "cross-curricular"}).`,
+      ? `شريحة 8 — ربط واحد فقط (${label[best.key]}).`
+      : `Slide 8 — one link only (${label[best.key]}). No UAE content.`,
     isAr,
   );
   return { body, notes };
+}
+
+function pickSlide8Connection(
+  uaeFrameworkSelected: boolean,
+  plan: string,
+  ppt: string,
+  topic: string,
+  subj: string,
+  gr: string,
+  isAr: boolean,
+  suggestedTiming: string,
+): { body: string; notes: string } {
+  if (uaeFrameworkSelected) {
+    return pickUaeFrameworkSlide8(plan, ppt, topic, subj, gr, isAr, suggestedTiming);
+  }
+  return pickNonUaeSlide8(plan, ppt, topic, subj, gr, isAr, suggestedTiming);
 }
 
 function aflPayloadHasTools(afl: AflSelectionsPayload | undefined): boolean {
@@ -808,26 +904,33 @@ export type StructuredLessonPptContext = {
   pptContent?: string;
   homeworkTask?: string;
   aflSelections?: AflSelectionsPayload;
+  /** Curriculum framework id; drives slide 8 UAE vs global connection mode. */
+  curriculumFramework?: string;
 };
 
-/** Fixed English slide titles (deck order). Exported for slide-by-slide generation. */
+export const SLIDE_8_TITLE_UAE_EN = "UAE Real Life and Cross Curricular Connection" as const;
+export const SLIDE_8_TITLE_GLOBAL_EN = "Real Life and Cross Curricular Connection" as const;
+export const SLIDE_8_TITLE_UAE_AR = "الإمارات والحياة الواقعية والربط بين المواد" as const;
+export const SLIDE_8_TITLE_GLOBAL_AR = "الحياة الواقعية والربط بين المواد" as const;
+
+/** Fixed English slide titles (deck order). Slide 8 title is set via {@link getStructuredLessonSlideTitle}. */
 export const STRUCTURED_LESSON_SLIDE_TITLES_EN: readonly string[] = [
-  "Subject Grade Date",
+  "Subject, Grade, Date",
   "Starter Activity",
-  "Chapter Topic and SDG Goal",
+  "Chapter, Topic and SDG Goal",
   "Learning Objectives",
   "Learning Outcomes",
   "Main Phase Core Teaching",
-  "Differentiated Activity Mini Plenary",
-  "UAE Real Life Cross Curricular Link",
+  "Differentiated Activity and Mini Plenary",
+  SLIDE_8_TITLE_GLOBAL_EN,
   "Plenary",
   "Extended Task",
   "Exit Ticket",
-  "Success Criteria Self Evaluation",
-  "Thank You Slide",
+  "Success Criteria and Self Evaluation",
+  "Thank You",
 ];
 
-/** Arabic slide titles (same order as English). */
+/** Arabic slide titles (same order as English). Slide 8 uses {@link getStructuredLessonSlideTitle}. */
 export const STRUCTURED_LESSON_SLIDE_TITLES_AR: readonly string[] = [
   "المادة والصف والتاريخ",
   "نشاط التمهيد",
@@ -836,13 +939,42 @@ export const STRUCTURED_LESSON_SLIDE_TITLES_AR: readonly string[] = [
   "نواتج التعلم",
   "المرحلة الأساسية للتعليم",
   "نشاط متمايز وتلخيص مصغر",
-  "الإمارات أو الحياة الواقعية أو الربط بين المواد",
+  SLIDE_8_TITLE_GLOBAL_AR,
   "الختام",
   "مهمة موسعة",
   "بطاقة الخروج",
   "معايير النجاح والتقييم الذاتي",
-  "شريحة الشكر",
+  "شكراً لكم",
 ];
+
+/** Legacy slide 8 titles still accepted when parsing older PPT outlines. */
+export const SLIDE_8_TITLE_LEGACY_EN: readonly string[] = [
+  "UAE Real Life Cross Curricular Link",
+  SLIDE_8_TITLE_UAE_EN,
+  SLIDE_8_TITLE_GLOBAL_EN,
+];
+
+export function getStructuredLessonSlideTitle(
+  slideIndex0Based: number,
+  isAr: boolean,
+  uaeFrameworkSelected: boolean,
+): string {
+  if (slideIndex0Based === 7) {
+    if (isAr) return uaeFrameworkSelected ? SLIDE_8_TITLE_UAE_AR : SLIDE_8_TITLE_GLOBAL_AR;
+    return uaeFrameworkSelected ? SLIDE_8_TITLE_UAE_EN : SLIDE_8_TITLE_GLOBAL_EN;
+  }
+  const titles = isAr ? STRUCTURED_LESSON_SLIDE_TITLES_AR : STRUCTURED_LESSON_SLIDE_TITLES_EN;
+  return titles[slideIndex0Based] ?? `Slide ${slideIndex0Based + 1}`;
+}
+
+export function getStructuredLessonSlideTitles(
+  isAr: boolean,
+  uaeFrameworkSelected: boolean,
+): readonly string[] {
+  return Array.from({ length: STRUCTURED_LESSON_DECK_SLIDE_COUNT }, (_, i) =>
+    getStructuredLessonSlideTitle(i, isAr, uaeFrameworkSelected),
+  );
+}
 
 export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): StructuredLessonSlideModel[] {
   const topic = ctx.topic.trim() || "this topic";
@@ -864,9 +996,11 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     day: "numeric",
   });
 
-  const T = isAr ? STRUCTURED_LESSON_SLIDE_TITLES_AR : STRUCTURED_LESSON_SLIDE_TITLES_EN;
+  const uaeFrameworkSelected = isUaeCurriculumFramework(ctx.curriculumFramework ?? "");
+  const T = getStructuredLessonSlideTitles(isAr, uaeFrameworkSelected);
   const slides: StructuredLessonSlideModel[] = [];
-  const parsedDeckBodies = ppt.length >= 40 ? parseDeckBodiesFromPptOutline(ppt, isAr) : null;
+  const parsedDeckBodies =
+    ppt.length >= 40 ? parseDeckBodiesFromPptOutline(ppt, isAr, uaeFrameworkSelected) : null;
   const earlyCtx: EarlySlideSanitizeContext = {
     subject: subj,
     grade: gr,
@@ -898,7 +1032,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   };
 
   slides.push({
-    slideTitle: T[0]!,
+    slideTitle: isAr ? T[0]! : `${subj}, ${gr}`,
     body: stripMarkdownSymbolsForStudents(buildProgrammaticSlide1Body(gr, dateStr)),
     speakerNotes: buildTeacherSlideNotes(
       "1 minute",
@@ -997,7 +1131,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   );
   slides.push({ slideTitle: T[6]!, body: s7.body, speakerNotes: s7.notes, includeImageSlot: true });
 
-  const s8 = pickSingleContextualLink(plan, ppt, topic, subj, gr, isAr, contextAnchor, "4–6 minutes");
+  const s8 = pickSlide8Connection(uaeFrameworkSelected, plan, ppt, topic, subj, gr, isAr, "4–6 minutes");
   slides.push({ slideTitle: T[7]!, body: s8.body, speakerNotes: s8.notes, includeImageSlot: true });
 
   const s9 = pickDeck(
@@ -1113,6 +1247,7 @@ export function buildLessonPlanContextFromResult(
     teacherName: string;
     learningObjectives?: string;
     aflSelections?: AflSelectionsPayload;
+    curriculumFramework?: string;
   },
 ): StructuredLessonPptContext {
   const fullLessonText = getPptSourceLessonText(plan);
@@ -1127,6 +1262,11 @@ export function buildLessonPlanContextFromResult(
     fullLessonPlan: fullLessonText || undefined,
     pptContent: pptOutlineText || undefined,
     homeworkTask: typeof plan["Homework Task"] === "string" ? plan["Homework Task"] : undefined,
+    ...(meta.curriculumFramework?.trim()
+      ? { curriculumFramework: meta.curriculumFramework.trim() }
+      : plan.curriculum_framework?.trim()
+        ? { curriculumFramework: plan.curriculum_framework.trim() }
+        : {}),
     ...(aflPayloadHasTools(meta.aflSelections) ? { aflSelections: meta.aflSelections } : {}),
   };
 }
