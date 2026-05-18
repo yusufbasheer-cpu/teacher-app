@@ -112,7 +112,7 @@ The app builds **exactly 13 slides** in this **fixed order**. **Each slide has o
 4. **Learning Objectives** — **Only** the teacher’s form objectives, **verbatim** (same count, same wording). Do **not** generate, edit, paraphrase, or add objectives. Do **not** write “Learning Objectives” inside the body.
 5. **Learning Outcomes** — Measurable outcomes generated **only** from the teacher’s verbatim objectives; typically one per objective; Bloom verbs; **no** scope beyond those objectives. Do **not** write “Learning Outcomes” inside the body.
 6. **Main Phase Core Teaching** — **First** the **full core teaching content** (concepts, vocabulary, explanation, concise worked meaning). **After** that, **AFL-based** learning activities (I Do / We Do / You Do, stations, etc.) that **apply** the taught content — fully implemented classroom process, not a tool label. Activities must not replace the explanation. No plenary, differentiation, or exit ticket here.
-7. **Differentiated Activity and Mini Plenary** — **Differentiation** AFL tool: tasks for **lower**, **middle**, and **higher** attainers plus a short mini plenary check. No core teaching, homework, UAE link (that is slide 8 only), or outcomes.
+7. **Differentiated Activity and Mini Plenary** — **Differentiation** AFL tool: tasks for **higher**, **middle**, and **lower** attainers only. Optional **one** brief Quick Check line at the end (one sentence, e.g. “Quick Check: …”) — **not** a “Mini Plenary” heading or separate section. No core teaching, homework, UAE link (slide 8 only), or outcomes.
 8. **Connection slide (slide 8 — UAE Framework conditional; see user message “Slide 8 mode”):**
    - **If UAE Framework selected:** title **UAE Real Life and Cross Curricular Connection** — UAE landmarks/values, UAE MOE alignment, KHDA/SPEA inspection connection, UAE National Identity, SDG in UAE context; inspection-ready; **no** non-UAE-only generic link.
    - **If UAE Framework NOT selected:** title **Real Life and Cross Curricular Connection** — choose **exactly ONE** of: cross-curricular link, real-life application, career connection, global/SDG link, or subject integration. **Must NOT** mention UAE, Emirates, Dubai, MOE UAE, KHDA, or SPEA anywhere on this slide.
@@ -342,7 +342,7 @@ ${PPT_AFL_DRIVEN_SYSTEM_RULES}
             : n === 5
               ? `
 
-**Slide 5 body rule:** Write measurable learning outcomes aligned **only** to the teacher’s verbatim objectives in the user message — typically **one outcome per objective**, never more outcomes than objectives. Use Bloom’s Taxonomy verbs without broadening scope. Do **not** copy objectives verbatim. Do **not** write “Learning Outcomes” inside the body.`
+**Slide 5 body rule:** Write **exactly one** measurable learning outcome per teacher objective — **same count and same order** (if 2 objectives → 2 outcomes; if 3 → 3). Each outcome must correspond directly to its matching objective (1→1, 2→2). Use Bloom’s Taxonomy verbs without broadening scope. Do **not** copy objectives verbatim. Do **not** write “Learning Outcomes” inside the body.`
               : n === 6
                 ? `
 
@@ -350,7 +350,7 @@ ${PPT_AFL_DRIVEN_SYSTEM_RULES}
                 : n === 7
                   ? `
 
-**Slide 7 body rule:** Differentiation AFL tool — tasks for lower/middle/higher achievers plus mini plenary (fully implemented). No UAE link (slide 8 only), homework, or core re-teach.`
+**Slide 7 body rule:** Differentiation AFL tool — tasks for **higher**, **middle**, and **lower** achievers only (fully implemented). At the end you may add **one** Quick Check sentence only — do **not** use a “Mini Plenary” heading or a separate plenary section. No UAE link (slide 8 only), homework, or core re-teach.`
                   : n === 8
                     ? uaeOn
                       ? `

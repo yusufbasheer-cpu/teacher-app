@@ -55,21 +55,61 @@ export function slideBodyPassesQualityGate(slideNumber1Based: number, body: stri
   return t.length >= min;
 }
 
-/** Slide 5: outcomes count should not exceed teacher objective count (when objectives are known). */
+const OUTCOME_INTRO_LINE_RE =
+  /^(learning\s+outcomes?|outcomes?|students\s+will\s+be\s+able\s+to)\s*:?\s*$/i;
+const OUTCOME_LINE_PREFIX_RE = /^(?:\d+[.)]\s*|[-•*]\s+|\u2022\s*)/;
+
+/** Extract one outcome per measurable line (numbered, bulleted, or standalone). */
+export function extractLearningOutcomeLines(outcomesBody: string, isAr = false): string[] {
+  const out: string[] = [];
+  for (const raw of outcomesBody.replace(/\r\n/g, "\n").split("\n")) {
+    const line = raw.trim();
+    if (!line || line === "(Content unavailable for this slide.)") continue;
+    if (lineIsSlideTitleEcho(5, line, false) || lineIsSlideTitleEcho(5, line, isAr)) continue;
+    if (OUTCOME_INTRO_LINE_RE.test(line)) continue;
+    const stripped = line.replace(OUTCOME_LINE_PREFIX_RE, "").trim();
+    if (!stripped) continue;
+    if (stripped.length < 8) continue;
+    out.push(stripped);
+  }
+  return out;
+}
+
+/** Slide 5: exactly one outcome per teacher objective, same order (when objectives are known). */
 export function slide5OutcomesAlignWithTeacherObjectives(
   outcomesBody: string,
   teacherObjectivesRaw: string,
+  isAr = false,
 ): boolean {
   const objectiveCount = countTeacherObjectiveLines(teacherObjectivesRaw);
   if (objectiveCount === 0) return outcomesBody.trim().length >= 24;
-  const outcomeLines = outcomesBody
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0 && !lineIsSlideTitleEcho(5, l, false) && !lineIsSlideTitleEcho(5, l, true));
-  if (outcomeLines.length === 0) return false;
-  if (outcomeLines.length !== objectiveCount) return false;
-  return true;
+  const outcomeLines = extractLearningOutcomeLines(outcomesBody, isAr);
+  return outcomeLines.length === objectiveCount;
+}
+
+export function slide5OutcomesValidationMessage(
+  outcomesBody: string,
+  teacherObjectivesRaw: string,
+  isAr = false,
+): string | null {
+  const objectiveCount = countTeacherObjectiveLines(teacherObjectivesRaw);
+  if (objectiveCount === 0) return null;
+  const outcomeLines = extractLearningOutcomeLines(outcomesBody, isAr);
+  if (outcomeLines.length === objectiveCount) return null;
+  return `expected exactly ${objectiveCount} learning outcome(s) matching ${objectiveCount} teacher objective(s) in the same order; got ${outcomeLines.length}`;
+}
+
+/** Trim to the first N outcome lines when the model over-generates. */
+export function sanitizeSlide5OutcomesBody(
+  outcomesBody: string,
+  teacherObjectivesRaw: string,
+  isAr = false,
+): string {
+  const objectiveCount = countTeacherObjectiveLines(teacherObjectivesRaw);
+  if (objectiveCount === 0) return outcomesBody.trim();
+  const lines = extractLearningOutcomeLines(outcomesBody, isAr);
+  if (lines.length <= objectiveCount) return lines.join("\n").trim();
+  return lines.slice(0, objectiveCount).join("\n").trim();
 }
 
 /**
@@ -334,9 +374,9 @@ export const SINGLE_SLIDE_USER_FOCUS_EN: readonly string[] = [
   "Starter Activity — teacher-selected or AI-selected AFL tool, FULLY implemented as a classroom process. PRIMARY PURPOSE: guide students to PREDICT, INFER, or DISCOVER the upcoming lesson topic through structured thinking — not to reveal it directly. The activity must contain clues, prompts, comparisons, questions, scenarios, or observation tasks that help students reason toward the topic. Balance difficulty for the grade level. Encourage critical thinking, discussion, prediction, and analysis. Do NOT write 'Starter Activity' inside the body. Do NOT include learning objectives, outcomes, chapter explanations, or future slide references.",
   "Exactly three items once each: chapter name, topic name, one SDG (number + title). No 'Chapter, Topic and SDG Goal' heading inside the body. No objectives, outcomes, or explanations.",
   "(Slide 4 is filled from the teacher form automatically — not generated in this call.)",
-  "Measurable learning outcomes ONLY — exactly one outcome per teacher objective (same count). Bloom verbs; stay within objective scope. No 'Learning Outcomes' heading in body. Do not copy objectives verbatim.",
+  "Learning Outcomes ONLY: write exactly ONE measurable outcome per teacher objective — if the teacher entered 2 objectives write exactly 2 outcomes; if 3 objectives write exactly 3. Keep the SAME ORDER (outcome 1 aligns to objective 1, etc.). Use Bloom verbs; paraphrase into observable outcomes but do not add or remove items. No 'Learning Outcomes' heading in the body. Do not copy objectives verbatim.",
   "Main phase: FULL core teaching content FIRST, then AFL-based activities (fully implemented classroom process). No plenary, differentiation, or exit ticket.",
-  "Differentiation AFL tool: tasks for lower, middle, and higher achievers plus mini plenary — fully implemented. No UAE link (slide 8 only), homework, or core re-teach.",
+  "Differentiated Activity ONLY: three sections — Higher achievers, Middle achievers, Lower achievers (fully implemented tasks for each). At the very end add ONE brief checkpoint line only, e.g. 'Quick Check: Can you explain the main concept in one sentence?' Do NOT write 'Mini Plenary' as a heading. Do NOT add a separate mini plenary section or activity. No UAE link (slide 8), homework, or core re-teach.",
   "SLIDE_8_PLACEHOLDER",
   "Plenary: real classroom activity using teacher-selected or AI-selected Plenary AFL tool — full implementation. No homework, future references, or new teaching.",
   "Extended task or homework only — embed Extended AFL if selected or auto-selected. No plenary re-teach.",
@@ -350,6 +390,127 @@ export function singleSlideUserFocusForSlide8(uaeFrameworkSelected: boolean): st
     return `UAE Real Life and Cross Curricular Connection — include: (1) specific UAE landmark or national value link to the topic, (2) UAE MOE alignment, (3) KHDA and SPEA inspection-quality connection, (4) UAE National Identity link, (5) SDG in UAE context. Inspection-ready, UAE-specific only. Do not repeat the slide title in the body.`;
   }
   return `Real Life and Cross Curricular Connection — choose exactly ONE: (A) cross-curricular link to another subject, (B) real-life daily application, (C) career connection, (D) global issue or SDG, (E) subject integration (Science/Math/English etc.). Must NOT mention UAE, Emirates, Dubai, MOE UAE, KHDA, or SPEA anywhere. Do not repeat the slide title in the body.`;
+}
+
+const SLIDE7_MINI_PLENARY_HEADING_RE =
+  /^#*\s*(mini\s+plenary|mini-plenary|mini\s+plenary\s+activity)\s*:?\s*$/i;
+const SLIDE7_FULL_PLENARY_HEADING_RE = /^#*\s*plenary\s*:?\s*$/i;
+const SLIDE7_QUICK_CHECK_RE = /^(quick\s+check|checkpoint)\s*[:.\-]?\s*/i;
+const SLIDE7_TIER_RE =
+  /\b(higher|middle|lower|support|extension|core|must\s*\/\s*should|greater\s+depth|less\s+support)\b|أعلى|أوسط|أدنى|تمايز/i;
+
+/** Remove mini plenary headings/sections; keep at most one brief Quick Check line at the end. */
+export function sanitizeSlide7DifferentiatedBody(body: string): string {
+  const rawLines = body.replace(/\r\n/g, "\n").split("\n");
+  const main: string[] = [];
+  const checkpointCandidates: string[] = [];
+
+  let i = 0;
+  while (i < rawLines.length) {
+    const line = rawLines[i] ?? "";
+    const t = line.trim();
+    if (!t) {
+      i += 1;
+      continue;
+    }
+    if (SLIDE7_MINI_PLENARY_HEADING_RE.test(t) || SLIDE7_FULL_PLENARY_HEADING_RE.test(t)) {
+      i += 1;
+      while (i < rawLines.length) {
+        const inner = (rawLines[i] ?? "").trim();
+        if (!inner) {
+          i += 1;
+          continue;
+        }
+        if (
+          SLIDE7_MINI_PLENARY_HEADING_RE.test(inner) ||
+          SLIDE7_FULL_PLENARY_HEADING_RE.test(inner) ||
+          (SLIDE7_TIER_RE.test(inner) && !SLIDE7_QUICK_CHECK_RE.test(inner))
+        ) {
+          break;
+        }
+        checkpointCandidates.push(inner.replace(/^mini\s+plenary\s*[:.\-]?\s*/i, "").trim());
+        i += 1;
+      }
+      continue;
+    }
+    if (/^mini\s+plenary\s*[:.\-]/i.test(t) && t.length < 120) {
+      const rest = t.replace(/^mini\s+plenary\s*[:.\-]\s*/i, "").trim();
+      if (rest) checkpointCandidates.push(rest);
+      i += 1;
+      continue;
+    }
+    main.push(line.trimEnd());
+    i += 1;
+  }
+
+  const nonEmptyMain = main.filter((l) => l.trim().length > 0);
+  let quickLine = checkpointCandidates.find((c) => c.length > 0) ?? "";
+  for (let j = nonEmptyMain.length - 1; j >= 0 && !quickLine; j--) {
+    const t = nonEmptyMain[j]?.trim() ?? "";
+    if (SLIDE7_QUICK_CHECK_RE.test(t) || /^mini\s+plenary\b/i.test(t)) {
+      quickLine = t.replace(SLIDE7_QUICK_CHECK_RE, "").replace(/^mini\s+plenary\s*[:.\-]?\s*/i, "").trim();
+      nonEmptyMain.splice(j, 1);
+    }
+  }
+
+  const out = [...nonEmptyMain];
+  if (quickLine) {
+    const q = quickLine.replace(SLIDE7_QUICK_CHECK_RE, "").trim();
+    out.push(q ? `Quick Check: ${q}` : "Quick Check: Can you explain the main concept in one sentence?");
+  }
+  return out.join("\n").trim();
+}
+
+export function validateSlide7DifferentiatedBody(body: string): { ok: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  const t = body.trim();
+  if (!t) return { ok: false, reasons: ["empty body"] };
+
+  const lines = t.replace(/\r\n/g, "\n").split("\n").map((l) => l.trim()).filter(Boolean);
+  const tierHits = lines.filter((l) => SLIDE7_TIER_RE.test(l)).length;
+  if (tierHits < 2) {
+    reasons.push("must include differentiated tasks for higher, middle, and lower achievers");
+  }
+
+  for (const line of lines) {
+    if (SLIDE7_MINI_PLENARY_HEADING_RE.test(line)) {
+      reasons.push('forbidden heading "Mini Plenary" — use a single Quick Check line only');
+      break;
+    }
+    if (SLIDE7_FULL_PLENARY_HEADING_RE.test(line)) {
+      reasons.push("forbidden full plenary section on slide 7");
+      break;
+    }
+    if (/\b(?<!mini\s)plenary\b/i.test(line) && !SLIDE7_QUICK_CHECK_RE.test(line) && line.length > 48) {
+      reasons.push("lesson plenary content must not appear on slide 7");
+      break;
+    }
+  }
+
+  const miniRelated = lines.filter(
+    (l) =>
+      SLIDE7_MINI_PLENARY_HEADING_RE.test(l) ||
+      (/^mini\s+plenary\b/i.test(l) && !SLIDE7_QUICK_CHECK_RE.test(l)),
+  );
+  if (miniRelated.length > 0) {
+    reasons.push("mini plenary must not be a separate section — one Quick Check line only");
+  }
+
+  const quickLines = lines.filter(
+    (l) => SLIDE7_QUICK_CHECK_RE.test(l) || /^quick\s+check\b/i.test(l.toLowerCase()),
+  );
+  if (quickLines.length > 2) {
+    reasons.push("at most one brief Quick Check (1–2 lines) at the end of slide 7");
+  }
+
+  const plenaryParagraphLines = lines.filter(
+    (l) => /mini\s+plenary/i.test(l) && l.length > 100 && !SLIDE7_QUICK_CHECK_RE.test(l),
+  );
+  if (plenaryParagraphLines.length > 0) {
+    reasons.push("mini plenary content is too long — use one short checkpoint question only");
+  }
+
+  return { ok: reasons.length === 0, reasons };
 }
 
 export function resolveSingleSlideUserFocus(
@@ -422,8 +583,8 @@ ${fullLessonPlan.trim().slice(0, 14_000)}
     sn === 5
       ? `
 
-### Teacher learning objectives (SOLE authorised basis — outcomes must not exceed this scope)
-Write measurable learning outcomes that align **directly** with these objectives only — **exactly one outcome per objective** (same number of lines as objectives). Use Bloom's Taxonomy verbs; do not broaden scope beyond what the teacher wrote.
+### Teacher learning objectives (SOLE authorised basis — outcomes must match exactly)
+The teacher entered **${countTeacherObjectiveLines(input.learningObjectives)}** objective(s). Write **exactly ${countTeacherObjectiveLines(input.learningObjectives)}** learning outcome(s) — no more, no fewer — in the **same order** as below. Each outcome must correspond directly to the matching objective (1→1, 2→2, 3→3). Use Bloom's Taxonomy verbs; do not broaden scope beyond what the teacher wrote.
 
 ${teacherObjectivesVerbatim}
 `

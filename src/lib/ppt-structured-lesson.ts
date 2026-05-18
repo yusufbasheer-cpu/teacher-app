@@ -3,6 +3,7 @@ import {
   buildTeacherObjectivesSlide4Body,
   parseDeckBodiesFromPptOutline,
   sanitizeEarlyPptSlideBody,
+  sanitizeSlide7DifferentiatedBody,
   type EarlySlideSanitizeContext,
 } from "@/lib/ppt-slide-by-slide";
 import { isUaeCurriculumFramework } from "@/lib/curriculum-framework";
@@ -311,15 +312,12 @@ const deckExtractors = {
     const youDo = extractByHints(plan, ["you do", "independent practice", "التطبيق المستقل"], DECK_STOP_MAIN);
     return [iDo, weDo, youDo].filter(Boolean).join("\n\n").trim();
   },
-  differentiated: (plan: string) => {
-    const d = extractByHints(
+  differentiated: (plan: string) =>
+    extractByHints(
       plan,
       ["differentiation", "differentiated", "support challenge", "sen", "eal", "التمايز", "التنويع"],
       DECK_STOP_DIFF,
-    );
-    const m = extractByHints(plan, ["mini plenary", "quick check", "التلخيص المختصر"], DECK_STOP_DIFF);
-    return [d, m].filter(Boolean).join("\n\n").trim();
-  },
+    ),
   uaeOnly: (plan: string) =>
     extractByHints(
       plan,
@@ -1122,14 +1120,18 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ["differentiation", "mini plenary", "support", "extension", "التمايز", "تلخيص"],
     isAr
       ? `فقط: مهام متمايزة لذوي التحصيل الأعلى والأوسط والأدنى لموضوع «${topic}»، ثم فقرة واحدة كتلخيص مصغر للتحقق السريع. لا محتوى الشرح الرئيسي ولا واجب ولا نواتج.`
-      : `Differentiated tasks only for higher, middle, and lower attainers on "${topic}", then one short mini plenary checkpoint. No core teaching content, homework, or outcomes on this slide.`,
+      : `Differentiated tasks only for higher, middle, and lower attainers on "${topic}". End with one Quick Check line only (one sentence). No Mini Plenary heading or section. No core teaching, homework, or outcomes.`,
     "10–12 minutes",
     isAr,
     plan,
     ppt,
     contextAnchor,
   );
-  slides.push({ slideTitle: T[6]!, body: s7.body, speakerNotes: s7.notes, includeImageSlot: true });
+  let s7Body = sanitizeSlide7DifferentiatedBody(s7.body);
+  if (s7Body && !/quick\s+check/i.test(s7Body)) {
+    s7Body = `${s7Body}\n\nQuick Check: Can you explain the main idea of "${topic}" in one sentence?`;
+  }
+  slides.push({ slideTitle: T[6]!, body: s7Body, speakerNotes: s7.notes, includeImageSlot: true });
 
   const s8 = pickSlide8Connection(uaeFrameworkSelected, plan, ppt, topic, subj, gr, isAr, "4–6 minutes");
   slides.push({ slideTitle: T[7]!, body: s8.body, speakerNotes: s8.notes, includeImageSlot: true });

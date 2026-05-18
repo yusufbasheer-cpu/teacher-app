@@ -46,6 +46,7 @@ import {
   buildProgrammaticSlide1Body,
   buildSinglePptSlideUserMessage,
   buildTeacherObjectivesSlide4Body,
+  countTeacherObjectiveLines,
   parseDeckBodiesFromPptOutline,
   parseSinglePptSlideModelResponse,
   slide5OutcomesAlignWithTeacherObjectives,
@@ -313,8 +314,10 @@ async function generatePptSlideContentSlideBySlide(params: {
             regenerateHint:
               attempt > 1
                 ? slide === 5
-                  ? "Regenerate: write one measurable outcome per teacher objective only — never more outcomes than objectives; stay within Bloom verbs and objective scope; no verbatim objective copy."
-                  : slide === 8
+                  ? `Regenerate: write exactly ${countTeacherObjectiveLines(input.learningObjectives)} outcome(s) in the same order as the teacher objectives — one outcome per objective, no extras.`
+                  : slide === 7
+                    ? "Regenerate: only Higher/Middle/Lower differentiated tasks, then one Quick Check sentence at the end. Remove any Mini Plenary heading or separate plenary section."
+                    : slide === 8
                     ? uaeFrameworkSelected
                       ? "Regenerate: include UAE-specific landmarks/values, MOE alignment, KHDA/SPEA, national identity, and SDG in UAE context. Do not repeat the slide title in the body."
                       : "Regenerate: choose ONE non-UAE link only. Remove every UAE/Emirates/Dubai/MOE/KHDA/SPEA reference."
@@ -368,10 +371,13 @@ async function generatePptSlideContentSlideBySlide(params: {
         chosen = stripOuterMarkdownFences((content ?? "").trim());
         notices.push(`PPT Slide Content slide ${slide} attempt ${attempt}: marker fallback used.`);
       }
+      if (slide !== 1 && slide !== 4) {
+        chosen = sanitizePptSlideBody(slide, chosen, { ...earlyCtx, uaeFrameworkSelected });
+      }
       if (slide === 5) {
         if (
           slideBodyPassesQualityGate(slide, chosen) &&
-          slide5OutcomesAlignWithTeacherObjectives(chosen, input.learningObjectives)
+          slide5OutcomesAlignWithTeacherObjectives(chosen, input.learningObjectives, isAr)
         ) {
           const v = validatePptSlideBody(chosen, validationCtx);
           if (v.ok) break;
@@ -381,7 +387,7 @@ async function generatePptSlideContentSlideBySlide(params: {
           continue;
         }
         notices.push(
-          `PPT Slide Content slide ${slide} attempt ${attempt}: outcomes must align to teacher objectives (count/scope).`,
+          `PPT Slide Content slide ${slide} attempt ${attempt}: outcomes must match teacher objectives (exact count and order).`,
         );
         continue;
       }
@@ -402,8 +408,9 @@ async function generatePptSlideContentSlideBySlide(params: {
 
     if (!chosen.trim()) {
       chosen = `_(This slide could not be generated after ${PPT_SLIDE_MAX_ATTEMPTS} attempts.)_${lastHttpError ? `\n\n${lastHttpError}` : ""}`;
+    } else if (slide === 1 || slide === 4) {
+      chosen = sanitizePptSlideBody(slide, chosen, { ...earlyCtx, uaeFrameworkSelected });
     }
-    chosen = sanitizePptSlideBody(slide, chosen, { ...earlyCtx, uaeFrameworkSelected });
     bodies.push(chosen.trim());
   }
 

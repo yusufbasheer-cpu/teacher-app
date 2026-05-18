@@ -8,6 +8,10 @@ import {
   buildProgrammaticSlide1Body,
   buildTeacherObjectivesSlide4Body,
   sanitizeEarlyPptSlideBody,
+  sanitizeSlide5OutcomesBody,
+  sanitizeSlide7DifferentiatedBody,
+  slide5OutcomesValidationMessage,
+  validateSlide7DifferentiatedBody,
 } from "@/lib/ppt-slide-by-slide";
 
 export type PptSlideValidationContext = {
@@ -50,7 +54,13 @@ const CROSS_SLIDE_DENY: Partial<Record<number, readonly RegExp[]>> = {
     /الأهداف|النواتج|التمهيد/,
   ],
   6: [/\bexit\s+ticket\b/i, /\bplenary\b/i, /\bdifferentiated\b/i, /\buae\b/i, /بطاقة الخروج|الختام|التمايز|الإمارات/],
-  7: [/\bexit\s+ticket\b/i, /\bplenary\b/i, /\bmain\s+phase\b/i, /\bhomework\b/i, /بطاقة الخروج|الختام|المرحلة الأساسية/],
+  7: [
+    /\bexit\s+ticket\b/i,
+    /\b(?<!mini\s)plenary\b/i,
+    /\bmain\s+phase\b/i,
+    /\bhomework\b/i,
+    /بطاقة الخروج|المرحلة الأساسية/,
+  ],
   8: [
     /\blearning\s+objectives?\b/i,
     /\blearning\s+outcomes?\b/i,
@@ -89,9 +99,9 @@ export function buildPptSlidePreflightChecklist(ctx: PptSlideValidationContext):
     2: "starter activity / AFL hook only",
     3: "chapter name, topic name, and one SDG (number + title) only",
     4: "teacher learning objectives verbatim only",
-    5: "measurable learning outcomes only (one per objective)",
+    5: "exactly one measurable learning outcome per teacher objective, same order, same count",
     6: "core teaching content first, then main-phase AFL activities only",
-    7: "differentiated tasks and mini plenary only",
+    7: "differentiated tasks for higher, middle, and lower achievers only, plus one optional Quick Check line (1 sentence) at the end — no Mini Plenary heading or section",
     8: ctx.uaeFrameworkSelected
       ? "UAE real life + cross-curricular + inspection-ready UAE links only"
       : "one real-life / cross-curricular / career / global / subject-integration link only — no UAE",
@@ -105,7 +115,8 @@ export function buildPptSlidePreflightChecklist(ctx: PptSlideValidationContext):
     2: "objectives, outcomes, chapter block, plenary, homework, UAE link",
     3: "starter, objectives, outcomes, teaching sequence",
     6: "plenary, differentiation, exit ticket, UAE link",
-    7: "core re-teach, homework, UAE link (unless slide 8)",
+    5: "extra outcomes, missing outcomes, or copying objectives verbatim",
+    7: "core re-teach, homework, UAE link, Mini Plenary heading, or multi-line plenary activity",
     8: ctx.uaeFrameworkSelected ? "non-UAE generic-only content without UAE alignment" : "any UAE-specific references",
     11: "success criteria, extended homework essay",
     12: "exit ticket repeat, new teaching",
@@ -153,6 +164,16 @@ export function validatePptSlideBody(
     }
   }
 
+  if (ctx.slideNumber1Based === 5 && ctx.teacherObjectives?.trim()) {
+    const msg = slide5OutcomesValidationMessage(t, ctx.teacherObjectives, ctx.isAr);
+    if (msg) reasons.push(msg);
+  }
+
+  if (ctx.slideNumber1Based === 7) {
+    const s7 = validateSlide7DifferentiatedBody(t);
+    if (!s7.ok) reasons.push(...s7.reasons);
+  }
+
   if (ctx.slideNumber1Based === 8) {
     if (ctx.uaeFrameworkSelected) {
       if (!UAE_EXPECTED_WHEN_ON.test(t)) {
@@ -191,6 +212,14 @@ export function sanitizePptSlideBody(
     slideNumber1Based <= 5
       ? sanitizeEarlyPptSlideBody(slideNumber1Based, body, ctx)
       : body.replace(/\r\n/g, "\n").trim();
+
+  if (slideNumber1Based === 5 && ctx.teacherObjectives?.trim()) {
+    out = sanitizeSlide5OutcomesBody(out, ctx.teacherObjectives, ctx.isAr);
+  }
+
+  if (slideNumber1Based === 7) {
+    out = sanitizeSlide7DifferentiatedBody(out);
+  }
 
   if (slideNumber1Based === 8 && !ctx.uaeFrameworkSelected) {
     out = out
