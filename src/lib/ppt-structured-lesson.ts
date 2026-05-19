@@ -3,6 +3,7 @@ import {
   buildTeacherObjectivesSlide4Body,
   parseDeckBodiesFromPptOutline,
   sanitizeEarlyPptSlideBody,
+  sanitizeSlide10ExtendedBody,
   sanitizeSlide7DifferentiatedBody,
   type EarlySlideSanitizeContext,
 } from "@/lib/ppt-slide-by-slide";
@@ -676,7 +677,10 @@ function stripMisplacedSectionHeadingLines(slideIndex: number, body: string): st
  * Rules 1–3: strip forward references, dedupe within slide, drop lines copied from earlier slides;
  * run after AFL merge, before length clamp.
  */
-function applyPptIsolationValidationToDeck(slides: StructuredLessonSlideModel[]): void {
+function applyPptIsolationValidationToDeck(
+  slides: StructuredLessonSlideModel[],
+  topic = "",
+): void {
   const prevBodies: string[] = [];
   for (let i = 0; i < slides.length; i++) {
     const slide = slides[i]!;
@@ -685,6 +689,8 @@ function applyPptIsolationValidationToDeck(slides: StructuredLessonSlideModel[])
     b = dedupeRepeatedContentInSlideBody(b);
     b = stripMisplacedSectionHeadingLines(i, b);
     b = stripLinesDuplicatedFromEarlierSlides(b, prevBodies);
+    if (i === 6) b = sanitizeSlide7DifferentiatedBody(b, topic);
+    if (i === 9) b = sanitizeSlide10ExtendedBody(b, slide.slideTitle);
     slide.body = stripMarkdownSymbolsForStudents(b);
     prevBodies.push(slide.body);
   }
@@ -1120,17 +1126,14 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ["differentiation", "mini plenary", "support", "extension", "التمايز", "تلخيص"],
     isAr
       ? `فقط: مهام متمايزة لذوي التحصيل الأعلى والأوسط والأدنى لموضوع «${topic}»، ثم فقرة واحدة كتلخيص مصغر للتحقق السريع. لا محتوى الشرح الرئيسي ولا واجب ولا نواتج.`
-      : `Differentiated tasks only for higher, middle, and lower attainers on "${topic}". End with one Quick Check line only (one sentence). No Mini Plenary heading or section. No core teaching, homework, or outcomes.`,
+      : `Exactly three sections only on "${topic}": Higher Achievers task, Middle Achievers task, Lower Achievers task — each with a full differentiated task. No Quick Check, Mini Plenary, plenary, homework, success criteria, or exit ticket.`,
     "10–12 minutes",
     isAr,
     plan,
     ppt,
     contextAnchor,
   );
-  let s7Body = sanitizeSlide7DifferentiatedBody(s7.body);
-  if (s7Body && !/quick\s+check/i.test(s7Body)) {
-    s7Body = `${s7Body}\n\nQuick Check: Can you explain the main idea of "${topic}" in one sentence?`;
-  }
+  const s7Body = sanitizeSlide7DifferentiatedBody(s7.body, topic);
   slides.push({ slideTitle: T[6]!, body: s7Body, speakerNotes: s7.notes, includeImageSlot: true });
 
   const s8 = pickSlide8Connection(uaeFrameworkSelected, plan, ppt, topic, subj, gr, isAr, "4–6 minutes");
@@ -1155,15 +1158,20 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ["extended task", "homework", "early finisher", "الواجب", "توسعة"],
     isAr
       ? `فقط مهمة موسعة أو واجب لموضوع «${topic}»: بحث، تطبيق إبداعي، تدريب، أو مهمة تحقيقية مع معايير نجاح مختصرة. لا شرح درس كامل ولا ختام.`
-      : `Extended task or homework only for "${topic}": research, creative application, practice, or investigative work with brief success criteria. No full lesson explanation or plenary on this slide.`,
+      : `Extended task or homework only for "${topic}": research, creative application, practice, or investigative work. Do not repeat the slide title. No success criteria, self-evaluation, exit ticket, or plenary.`,
     "set expectations only",
     isAr,
     plan,
     ppt,
     contextAnchor,
   );
+  const s10Merged = mergeBodies(
+    hw,
+    s10Pick.body,
+    isAr ? `${contextAnchor}\nمهمة واحدة فقط.` : `${contextAnchor}\nSingle extended task only.`,
+  );
   const s10Body = stripMarkdownSymbolsForStudents(
-    mergeBodies(hw, s10Pick.body, isAr ? `${contextAnchor}\nمهمة واحدة فقط.` : `${contextAnchor}\nSingle extended task only.`),
+    sanitizeSlide10ExtendedBody(s10Merged, T[9]!),
   );
   slides.push({ slideTitle: T[9]!, body: s10Body, speakerNotes: s10Pick.notes, includeImageSlot: true });
 
@@ -1211,7 +1219,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   });
 
   applyAflDeckInjections(slides, ctx.aflSelections);
-  applyPptIsolationValidationToDeck(slides);
+  applyPptIsolationValidationToDeck(slides, topic);
   clampSlideBodyToDeckRules(slides);
 
   if (slides.length !== STRUCTURED_LESSON_DECK_SLIDE_COUNT) {

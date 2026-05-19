@@ -316,7 +316,9 @@ async function generatePptSlideContentSlideBySlide(params: {
                 ? slide === 5
                   ? `Regenerate: write exactly ${countTeacherObjectiveLines(input.learningObjectives)} outcome(s) in the same order as the teacher objectives — one outcome per objective, no extras.`
                   : slide === 7
-                    ? "Regenerate: only Higher/Middle/Lower differentiated tasks, then one Quick Check sentence at the end. Remove any Mini Plenary heading or separate plenary section."
+                    ? 'Regenerate: exactly three sections only — "Higher Achievers task", "Middle Achievers task", "Lower Achievers task" — each with a full task. No Quick Check, Mini Plenary, plenary, homework, or success criteria.'
+                    : slide === 10
+                      ? "Regenerate: extended task or homework only. Do not repeat the slide title. Remove all success criteria, self-evaluation, and exit ticket content."
                     : slide === 8
                     ? uaeFrameworkSelected
                       ? "Regenerate: include UAE-specific landmarks/values, MOE alignment, KHDA/SPEA, national identity, and SDG in UAE context. Do not repeat the slide title in the body."

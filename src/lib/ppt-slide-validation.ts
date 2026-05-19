@@ -9,8 +9,10 @@ import {
   buildTeacherObjectivesSlide4Body,
   sanitizeEarlyPptSlideBody,
   sanitizeSlide5OutcomesBody,
+  sanitizeSlide10ExtendedBody,
   sanitizeSlide7DifferentiatedBody,
   slide5OutcomesValidationMessage,
+  validateSlide10ExtendedBody,
   validateSlide7DifferentiatedBody,
 } from "@/lib/ppt-slide-by-slide";
 
@@ -101,12 +103,12 @@ export function buildPptSlidePreflightChecklist(ctx: PptSlideValidationContext):
     4: "teacher learning objectives verbatim only",
     5: "exactly one measurable learning outcome per teacher objective, same order, same count",
     6: "core teaching content first, then main-phase AFL activities only",
-    7: "differentiated tasks for higher, middle, and lower achievers only, plus one optional Quick Check line (1 sentence) at the end — no Mini Plenary heading or section",
+    7: 'exactly three sections only: "Higher Achievers task", "Middle Achievers task", "Lower Achievers task" (each with a full task)',
     8: ctx.uaeFrameworkSelected
       ? "UAE real life + cross-curricular + inspection-ready UAE links only"
       : "one real-life / cross-curricular / career / global / subject-integration link only — no UAE",
     9: "plenary activity only",
-    10: "extended task or homework only",
+    10: "extended task or homework only — no success criteria, no slide title in the body",
     11: "exit ticket only",
     12: "success criteria and self-evaluation only",
     13: "thank-you closing line only",
@@ -116,7 +118,8 @@ export function buildPptSlidePreflightChecklist(ctx: PptSlideValidationContext):
     3: "starter, objectives, outcomes, teaching sequence",
     6: "plenary, differentiation, exit ticket, UAE link",
     5: "extra outcomes, missing outcomes, or copying objectives verbatim",
-    7: "core re-teach, homework, UAE link, Mini Plenary heading, or multi-line plenary activity",
+    7: "Quick Check, Mini Plenary, plenary, homework, success criteria, exit ticket, or UAE link",
+    10: "success criteria, self-evaluation, I can statements, exit ticket, plenary, or repeating the slide title",
     8: ctx.uaeFrameworkSelected ? "non-UAE generic-only content without UAE alignment" : "any UAE-specific references",
     11: "success criteria, extended homework essay",
     12: "exit ticket repeat, new teaching",
@@ -174,6 +177,11 @@ export function validatePptSlideBody(
     if (!s7.ok) reasons.push(...s7.reasons);
   }
 
+  if (ctx.slideNumber1Based === 10) {
+    const s10 = validateSlide10ExtendedBody(t, title);
+    if (!s10.ok) reasons.push(...s10.reasons);
+  }
+
   if (ctx.slideNumber1Based === 8) {
     if (ctx.uaeFrameworkSelected) {
       if (!UAE_EXPECTED_WHEN_ON.test(t)) {
@@ -218,7 +226,12 @@ export function sanitizePptSlideBody(
   }
 
   if (slideNumber1Based === 7) {
-    out = sanitizeSlide7DifferentiatedBody(out);
+    out = sanitizeSlide7DifferentiatedBody(out, ctx.topic);
+  }
+
+  if (slideNumber1Based === 10) {
+    const title = getStructuredLessonSlideTitle(9, ctx.isAr, ctx.uaeFrameworkSelected);
+    out = sanitizeSlide10ExtendedBody(out, title);
   }
 
   if (slideNumber1Based === 8 && !ctx.uaeFrameworkSelected) {

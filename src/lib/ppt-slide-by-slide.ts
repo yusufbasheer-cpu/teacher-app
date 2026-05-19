@@ -376,10 +376,10 @@ export const SINGLE_SLIDE_USER_FOCUS_EN: readonly string[] = [
   "(Slide 4 is filled from the teacher form automatically — not generated in this call.)",
   "Learning Outcomes ONLY: write exactly ONE measurable outcome per teacher objective — if the teacher entered 2 objectives write exactly 2 outcomes; if 3 objectives write exactly 3. Keep the SAME ORDER (outcome 1 aligns to objective 1, etc.). Use Bloom verbs; paraphrase into observable outcomes but do not add or remove items. No 'Learning Outcomes' heading in the body. Do not copy objectives verbatim.",
   "Main phase: FULL core teaching content FIRST, then AFL-based activities (fully implemented classroom process). No plenary, differentiation, or exit ticket.",
-  "Differentiated Activity ONLY: three sections — Higher achievers, Middle achievers, Lower achievers (fully implemented tasks for each). At the very end add ONE brief checkpoint line only, e.g. 'Quick Check: Can you explain the main concept in one sentence?' Do NOT write 'Mini Plenary' as a heading. Do NOT add a separate mini plenary section or activity. No UAE link (slide 8), homework, or core re-teach.",
+  "Differentiated Activity ONLY: exactly three labeled sections and nothing else — (1) Higher Achievers task, (2) Middle Achievers task, (3) Lower Achievers task. Each section must have a full task. Do NOT add Quick Check, Mini Plenary, plenary, homework, success criteria, or exit ticket. No UAE link (slide 8), homework, or core re-teach.",
   "SLIDE_8_PLACEHOLDER",
   "Plenary: real classroom activity using teacher-selected or AI-selected Plenary AFL tool — full implementation. No homework, future references, or new teaching.",
-  "Extended task or homework only — embed Extended AFL if selected or auto-selected. No plenary re-teach.",
+  "Extended task or homework only — one clear task. Do NOT repeat the slide title in the body. Do NOT include success criteria, self-evaluation, I can statements, exit ticket, or plenary. Success criteria belong on slide 12 only.",
   "Exit ticket AFL tool: short focused assessment — immediate understanding check. No success criteria or homework paragraph.",
   "Success criteria and self-evaluation AFL tool — fully implemented. No exit ticket repeat.",
   "Thank you plus one short positive closing line for students — no recap or new tasks.",
@@ -392,73 +392,128 @@ export function singleSlideUserFocusForSlide8(uaeFrameworkSelected: boolean): st
   return `Real Life and Cross Curricular Connection — choose exactly ONE: (A) cross-curricular link to another subject, (B) real-life daily application, (C) career connection, (D) global issue or SDG, (E) subject integration (Science/Math/English etc.). Must NOT mention UAE, Emirates, Dubai, MOE UAE, KHDA, or SPEA anywhere. Do not repeat the slide title in the body.`;
 }
 
+export const SLIDE7_HIGHER_LABEL = "Higher Achievers task" as const;
+export const SLIDE7_MIDDLE_LABEL = "Middle Achievers task" as const;
+export const SLIDE7_LOWER_LABEL = "Lower Achievers task" as const;
+
+const SLIDE7_CANONICAL_LABELS = [SLIDE7_HIGHER_LABEL, SLIDE7_MIDDLE_LABEL, SLIDE7_LOWER_LABEL] as const;
+
+type Slide7Tier = "higher" | "middle" | "lower";
+
 const SLIDE7_MINI_PLENARY_HEADING_RE =
   /^#*\s*(mini\s+plenary|mini-plenary|mini\s+plenary\s+activity)\s*:?\s*$/i;
 const SLIDE7_FULL_PLENARY_HEADING_RE = /^#*\s*plenary\s*:?\s*$/i;
-const SLIDE7_QUICK_CHECK_RE = /^(quick\s+check|checkpoint)\s*[:.\-]?\s*/i;
-const SLIDE7_TIER_RE =
-  /\b(higher|middle|lower|support|extension|core|must\s*\/\s*should|greater\s+depth|less\s+support)\b|أعلى|أوسط|أدنى|تمايز/i;
+const SLIDE7_QUICK_CHECK_RE = /^(quick\s+check|checkpoint)\b/i;
+const SLIDE7_DISCARD_LINE_RE =
+  /^(quick\s+check|checkpoint|mini\s+plenary|differentiated\s+activity|success\s+criteria|exit\s+ticket|extended\s+task|homework)\b/i;
+const SLIDE7_TITLE_ECHO_RE = /^#*\s*differentiated\s+activity(\s+and\s+mini\s+plenary)?\s*:?\s*$/i;
 
-/** Remove mini plenary headings/sections; keep at most one brief Quick Check line at the end. */
-export function sanitizeSlide7DifferentiatedBody(body: string): string {
-  const rawLines = body.replace(/\r\n/g, "\n").split("\n");
-  const main: string[] = [];
-  const checkpointCandidates: string[] = [];
+const SLIDE7_HIGHER_HEADING_RE =
+  /^#*\s*(higher\s*(achiev|attain|ability|level|tier)s?(\s+task)?|extension(\s+task)?|greater\s+depth|most\s+able|gifted|أعلى)\b/i;
+const SLIDE7_MIDDLE_HEADING_RE =
+  /^#*\s*(middle\s*(achiev|attain|ability|level|tier)s?(\s+task)?|core(\s+group)?(\s+task)?|on[\s-]track|أوسط)\b/i;
+const SLIDE7_LOWER_HEADING_RE =
+  /^#*\s*(lower\s*(achiev|attain|ability|level|tier)s?(\s+task)?|support(\s+task)?|must\s*\/\s*should|less\s+support|foundation|أدنى)\b/i;
 
-  let i = 0;
-  while (i < rawLines.length) {
-    const line = rawLines[i] ?? "";
-    const t = line.trim();
-    if (!t) {
-      i += 1;
+const SLIDE7_INLINE_TIER_RE =
+  /^(higher|middle|lower)\s*(achiev|attain|ability|level|tier)s?\s*[:.\-]\s*(.+)$/i;
+
+function classifySlide7TierLine(line: string): Slide7Tier | null {
+  const t = line.trim();
+  if (!t || SLIDE7_DISCARD_LINE_RE.test(t) || SLIDE7_TITLE_ECHO_RE.test(t)) return null;
+  if (SLIDE7_MINI_PLENARY_HEADING_RE.test(t) || SLIDE7_FULL_PLENARY_HEADING_RE.test(t)) return null;
+  if (SLIDE7_QUICK_CHECK_RE.test(t)) return null;
+  if (SLIDE7_HIGHER_HEADING_RE.test(t) || /^higher\s+achievers?\s+task\s*$/i.test(t)) return "higher";
+  if (SLIDE7_MIDDLE_HEADING_RE.test(t) || /^middle\s+achievers?\s+task\s*$/i.test(t)) return "middle";
+  if (SLIDE7_LOWER_HEADING_RE.test(t) || /^lower\s+achievers?\s+task\s*$/i.test(t)) return "lower";
+  return null;
+}
+
+function defaultSlide7TierTask(tier: Slide7Tier, topic: string): string {
+  const t = topic.trim() || "the lesson topic";
+  switch (tier) {
+    case "higher":
+      return `Analyse, evaluate, or design an extension challenge applying "${t}" with greater depth.`;
+    case "middle":
+      return `Complete the standard activity for "${t}" with clear steps and expected evidence of understanding.`;
+    case "lower":
+      return `Work through a scaffolded version of "${t}" with sentence starters, worked examples, or guided prompts.`;
+  }
+}
+
+function parseSlide7TierBlocks(body: string): Record<Slide7Tier, string[]> {
+  const tiers: Record<Slide7Tier, string[]> = { higher: [], middle: [], lower: [] };
+  let current: Slide7Tier | null = null;
+
+  for (const raw of body.replace(/\r\n/g, "\n").split("\n")) {
+    const t = raw.trim();
+    if (!t) continue;
+
+    const inline = t.match(SLIDE7_INLINE_TIER_RE);
+    if (inline) {
+      const key = inline[1]!.toLowerCase() as Slide7Tier;
+      const rest = inline[3]?.trim();
+      current = key;
+      if (rest) tiers[key].push(rest);
       continue;
     }
-    if (SLIDE7_MINI_PLENARY_HEADING_RE.test(t) || SLIDE7_FULL_PLENARY_HEADING_RE.test(t)) {
-      i += 1;
-      while (i < rawLines.length) {
-        const inner = (rawLines[i] ?? "").trim();
-        if (!inner) {
-          i += 1;
-          continue;
-        }
-        if (
-          SLIDE7_MINI_PLENARY_HEADING_RE.test(inner) ||
-          SLIDE7_FULL_PLENARY_HEADING_RE.test(inner) ||
-          (SLIDE7_TIER_RE.test(inner) && !SLIDE7_QUICK_CHECK_RE.test(inner))
-        ) {
-          break;
-        }
-        checkpointCandidates.push(inner.replace(/^mini\s+plenary\s*[:.\-]?\s*/i, "").trim());
-        i += 1;
+
+    const heading = classifySlide7TierLine(t);
+    if (heading) {
+      current = heading;
+      const afterColon = t.replace(/^[^:]+:\s*/, "").trim();
+      const strippedLabel = afterColon
+        .replace(/^(higher|middle|lower)\s*(achiev|attain|ability|level|tier)s?\s*(task)?\s*/i, "")
+        .trim();
+      if (
+        strippedLabel &&
+        strippedLabel !== t &&
+        !/^(higher|middle|lower)\s+achievers?\s+task\s*$/i.test(strippedLabel)
+      ) {
+        tiers[heading].push(strippedLabel);
       }
       continue;
     }
-    if (/^mini\s+plenary\s*[:.\-]/i.test(t) && t.length < 120) {
-      const rest = t.replace(/^mini\s+plenary\s*[:.\-]\s*/i, "").trim();
-      if (rest) checkpointCandidates.push(rest);
-      i += 1;
+
+    if (SLIDE7_DISCARD_LINE_RE.test(t) || SLIDE7_QUICK_CHECK_RE.test(t) || SLIDE7_TITLE_ECHO_RE.test(t)) {
+      current = null;
       continue;
     }
-    main.push(line.trimEnd());
-    i += 1;
-  }
-
-  const nonEmptyMain = main.filter((l) => l.trim().length > 0);
-  let quickLine = checkpointCandidates.find((c) => c.length > 0) ?? "";
-  for (let j = nonEmptyMain.length - 1; j >= 0 && !quickLine; j--) {
-    const t = nonEmptyMain[j]?.trim() ?? "";
-    if (SLIDE7_QUICK_CHECK_RE.test(t) || /^mini\s+plenary\b/i.test(t)) {
-      quickLine = t.replace(SLIDE7_QUICK_CHECK_RE, "").replace(/^mini\s+plenary\s*[:.\-]?\s*/i, "").trim();
-      nonEmptyMain.splice(j, 1);
+    if (/\b(?<!mini\s)plenary\b/i.test(t) && t.length > 24) {
+      current = null;
+      continue;
     }
+    if (/\b(success\s+criteria|exit\s+ticket|homework|extended\s+task)\b/i.test(t)) {
+      current = null;
+      continue;
+    }
+
+    if (current) tiers[current].push(t);
   }
 
-  const out = [...nonEmptyMain];
-  if (quickLine) {
-    const q = quickLine.replace(SLIDE7_QUICK_CHECK_RE, "").trim();
-    out.push(q ? `Quick Check: ${q}` : "Quick Check: Can you explain the main concept in one sentence?");
-  }
-  return out.join("\n").trim();
+  return tiers;
+}
+
+function formatSlide7CanonicalBody(tiers: Record<Slide7Tier, string[]>, topic: string): string {
+  const labels: Record<Slide7Tier, string> = {
+    higher: SLIDE7_HIGHER_LABEL,
+    middle: SLIDE7_MIDDLE_LABEL,
+    lower: SLIDE7_LOWER_LABEL,
+  };
+  const order: Slide7Tier[] = ["higher", "middle", "lower"];
+  return order
+    .map((tier) => {
+      const content = tiers[tier].join("\n").trim() || defaultSlide7TierTask(tier, topic);
+      return `${labels[tier]}\n${content}`;
+    })
+    .join("\n\n")
+    .trim();
+}
+
+/** Keep only three tier sections with canonical labels; strip plenary, quick check, and other slide types. */
+export function sanitizeSlide7DifferentiatedBody(body: string, topic = ""): string {
+  const tiers = parseSlide7TierBlocks(body);
+  return formatSlide7CanonicalBody(tiers, topic);
 }
 
 export function validateSlide7DifferentiatedBody(body: string): { ok: boolean; reasons: string[] } {
@@ -467,47 +522,147 @@ export function validateSlide7DifferentiatedBody(body: string): { ok: boolean; r
   if (!t) return { ok: false, reasons: ["empty body"] };
 
   const lines = t.replace(/\r\n/g, "\n").split("\n").map((l) => l.trim()).filter(Boolean);
-  const tierHits = lines.filter((l) => SLIDE7_TIER_RE.test(l)).length;
-  if (tierHits < 2) {
-    reasons.push("must include differentiated tasks for higher, middle, and lower achievers");
+
+  for (const required of SLIDE7_CANONICAL_LABELS) {
+    if (!lines.some((l) => l.toLowerCase() === required.toLowerCase())) {
+      reasons.push(`must include section "${required}"`);
+    }
+  }
+
+  const labelCount = lines.filter((l) =>
+    SLIDE7_CANONICAL_LABELS.some((label) => l.toLowerCase() === label.toLowerCase()),
+  ).length;
+  if (labelCount !== 3) {
+    reasons.push("must contain exactly three tier section labels and no duplicates");
   }
 
   for (const line of lines) {
-    if (SLIDE7_MINI_PLENARY_HEADING_RE.test(line)) {
-      reasons.push('forbidden heading "Mini Plenary" — use a single Quick Check line only');
+    if (SLIDE7_MINI_PLENARY_HEADING_RE.test(line) || SLIDE7_FULL_PLENARY_HEADING_RE.test(line)) {
+      reasons.push('forbidden "Mini Plenary" or plenary section on slide 7');
       break;
     }
-    if (SLIDE7_FULL_PLENARY_HEADING_RE.test(line)) {
-      reasons.push("forbidden full plenary section on slide 7");
+    if (SLIDE7_QUICK_CHECK_RE.test(line) || /^quick\s+check\b/i.test(line)) {
+      reasons.push("forbidden Quick Check on slide 7 — only three achiever tasks allowed");
       break;
     }
-    if (/\b(?<!mini\s)plenary\b/i.test(line) && !SLIDE7_QUICK_CHECK_RE.test(line) && line.length > 48) {
-      reasons.push("lesson plenary content must not appear on slide 7");
+    if (/\b(success\s+criteria|exit\s+ticket|homework|extended\s+task)\b/i.test(line)) {
+      reasons.push("forbidden content from other slides (success criteria, exit ticket, homework)");
+      break;
+    }
+    if (/\bdifferentiated\s+activity\b/i.test(line) && line.length < 80) {
+      reasons.push("do not repeat the slide title inside the body");
       break;
     }
   }
 
-  const miniRelated = lines.filter(
+  const contentLines = lines.filter(
+    (l) => !SLIDE7_CANONICAL_LABELS.some((label) => l.toLowerCase() === label.toLowerCase()),
+  );
+  if (contentLines.length < 3) {
+    reasons.push("each achiever section must include task content");
+  }
+
+  return { ok: reasons.length === 0, reasons };
+}
+
+const SLIDE10_SUCCESS_CRITERIA_LINE_RE =
+  /\b(success\s+criteria|self[\s-]?evaluation|self[\s-]?assessment|i\s+can\b|traffic\s+light|two\s+stars\s+and\s+a\s+wish|rating\s+scale|checklist|معايير\s+النجاح|التقييم\s+الذاتي|أستطيع\s+أن)\b/i;
+
+const SLIDE10_FORBIDDEN_LINE_RE =
+  /\b(exit\s+ticket|plenary|differentiated\s+activity|learning\s+objectives?|learning\s+outcomes?|main\s+phase|starter\s+activity)\b/i;
+
+function lineEchoesSlideTitle(line: string, slideTitle: string): boolean {
+  const lc = line.trim().toLowerCase();
+  const titleLc = slideTitle.trim().toLowerCase();
+  if (!titleLc) return false;
+  return (
+    lc === titleLc ||
+    lc.startsWith(`${titleLc}:`) ||
+    lc === "extended task" ||
+    lc === "extended task:" ||
+    lc === "homework" ||
+    lc === "homework:"
+  );
+}
+
+/** Extended task / homework only — no title echo, success criteria, or other slide types. */
+export function sanitizeSlide10ExtendedBody(body: string, slideTitle = "Extended Task"): string {
+  const lines = body.replace(/\r\n/g, "\n").split("\n");
+  const kept: string[] = [];
+  let inSuccessCriteriaBlock = false;
+
+  for (const raw of lines) {
+    const t = raw.trim();
+    if (!t) {
+      if (!inSuccessCriteriaBlock && kept.length > 0 && kept[kept.length - 1] !== "") kept.push("");
+      continue;
+    }
+
+    if (lineEchoesSlideTitle(t, slideTitle)) continue;
+    if (/^context:/i.test(t) || /single extended task only/i.test(t) || /^السياق:/i.test(t)) continue;
+
+    if (/^#*\s*success\s+criteria\b/i.test(t) || /^#*\s*self[\s-]?evaluation\b/i.test(t)) {
+      inSuccessCriteriaBlock = true;
+      continue;
+    }
+
+    if (inSuccessCriteriaBlock) {
+      if (
+        /^#*\s*(extended\s+task|homework|exit\s+ticket|plenary|differentiated)\b/i.test(t) ||
+        classifySlide7TierLine(t)
+      ) {
+        inSuccessCriteriaBlock = false;
+      } else {
+        continue;
+      }
+    }
+
+    if (SLIDE10_SUCCESS_CRITERIA_LINE_RE.test(t)) continue;
+    if (SLIDE10_FORBIDDEN_LINE_RE.test(t)) continue;
+    if (/^i\s+can\b/i.test(t)) continue;
+
+    kept.push(t);
+  }
+
+  return kept
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export function validateSlide10ExtendedBody(
+  body: string,
+  slideTitle = "Extended Task",
+): { ok: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  const t = body.trim();
+  if (!t) return { ok: false, reasons: ["empty body"] };
+
+  const lines = t.replace(/\r\n/g, "\n").split("\n").map((l) => l.trim()).filter(Boolean);
+
+  for (const line of lines) {
+    if (lineEchoesSlideTitle(line, slideTitle)) {
+      reasons.push("slide title repeated inside body");
+      break;
+    }
+    if (SLIDE10_SUCCESS_CRITERIA_LINE_RE.test(line)) {
+      reasons.push("success criteria or self-evaluation must not appear on slide 10");
+      break;
+    }
+    if (SLIDE10_FORBIDDEN_LINE_RE.test(line)) {
+      reasons.push("forbidden content from another slide type");
+      break;
+    }
+  }
+
+  const taskLines = lines.filter(
     (l) =>
-      SLIDE7_MINI_PLENARY_HEADING_RE.test(l) ||
-      (/^mini\s+plenary\b/i.test(l) && !SLIDE7_QUICK_CHECK_RE.test(l)),
+      !lineEchoesSlideTitle(l, slideTitle) &&
+      !SLIDE10_SUCCESS_CRITERIA_LINE_RE.test(l) &&
+      l.length >= 12,
   );
-  if (miniRelated.length > 0) {
-    reasons.push("mini plenary must not be a separate section — one Quick Check line only");
-  }
-
-  const quickLines = lines.filter(
-    (l) => SLIDE7_QUICK_CHECK_RE.test(l) || /^quick\s+check\b/i.test(l.toLowerCase()),
-  );
-  if (quickLines.length > 2) {
-    reasons.push("at most one brief Quick Check (1–2 lines) at the end of slide 7");
-  }
-
-  const plenaryParagraphLines = lines.filter(
-    (l) => /mini\s+plenary/i.test(l) && l.length > 100 && !SLIDE7_QUICK_CHECK_RE.test(l),
-  );
-  if (plenaryParagraphLines.length > 0) {
-    reasons.push("mini plenary content is too long — use one short checkpoint question only");
+  if (taskLines.length === 0) {
+    reasons.push("must include extended task or homework content");
   }
 
   return { ok: reasons.length === 0, reasons };
