@@ -1,19 +1,14 @@
 /**
  * Pexels image fetching utility for Layah.ai PPT generation.
  *
- * 6 slides receive images (text left, image right — no overlap):
- *   Index 0  – Title Slide
- *   Index 1  – Starter Activity
- *   Index 5  – Main Phase
- *   Index 8  – Plenary
- *   Index 9  – Differentiated Activity
- *   Index 10 – Extended Task / Exit Ticket
+ * Pexels photo slides (deck indices): 0 Title, 1 Starter, 7 Connection, 8 Plenary, 9 Extended Task.
  */
 
-import { createClient } from "pexels";
-import { resolvePexelsApiKey } from "@/lib/image-api-env";
+import { logPexelsEnvStatus, resolvePexelsApiKey } from "@/lib/image-api-env";
 
-/** The 6 PPT slide types that receive a Pexels image. */
+const PEXELS_API_BASE = "https://api.pexels.com/v1";
+
+/** The 6 PPT slide types that receive a Pexels image (legacy helper). */
 export type PptImageSlot =
   | "title"
   | "starter"
@@ -24,55 +19,41 @@ export type PptImageSlot =
 
 /** Deck index for each image slot. */
 export const PPT_IMAGE_SLIDE_INDICES: Record<PptImageSlot, number> = {
-  title:          0,
-  starter:        1,
-  main:           5,
-  plenary:        8,
+  title: 0,
+  starter: 1,
+  main: 5,
+  plenary: 8,
   differentiated: 9,
-  extended_task:  10,
+  extended_task: 10,
 };
 
-/**
- * Build a focused, topic-specific Pexels search query for each slot.
- * Keep queries concrete so results are visually relevant.
- */
-export function buildPexelsQuery(
-  slot: PptImageSlot,
-  topic: string,
-  subject: string,
-): string {
-  const t = topic.trim();
-  const s = subject.trim();
-  switch (slot) {
-    case "title":
-      // Broad hero image for the topic
-      return `${t} ${s}`;
-    case "starter":
-      // Curiosity / discovery feel for engaging openers
-      return `${t} ${s} discovery curiosity`;
-    case "main":
-      // Educational / instructional content
-      return `${t} ${s} learning education`;
-    case "plenary":
-      // Reflection / summary feel
-      return `${t} ${s} reflection summary`;
-    case "differentiated":
-      // Collaborative / group activity
-      return `${t} classroom activity teamwork`;
-    case "extended_task":
-      // Independent / homework / study
-      return `${t} ${s} study research`;
-    default:
-      return `${t} education`;
-  }
+export function buildPexelsSearchRequestUrl(query: string, page: number, perPage = 15): string {
+  const params = new URLSearchParams({
+    query: query.replace(/\s+/g, " ").trim() || "education",
+    per_page: String(perPage),
+    page: String(page),
+    orientation: "landscape",
+  });
+  return `${PEXELS_API_BASE}/search?${params.toString()}`;
 }
 
 export type PexelsLandscapeFetchOptions = {
-  /** Extra logging for debugging weak queries (logs summarized API payloads per page). */
   verboseLog?: boolean;
-  /** Label for logs, e.g. `slide-1-title`. */
   logLabel?: string;
+  /** 1-based slide number for logs (e.g. 1 = title). */
+  slideNumber1Based?: number;
 };
+
+type PexelsPhotoSrc = { large?: string; medium?: string };
+type PexelsPhoto = { src: PexelsPhotoSrc };
+type PexelsSearchSuccess = {
+  photos: PexelsPhoto[];
+  total_results?: number;
+  next_page?: string | number;
+};
+type PexelsSearchResult =
+  | { ok: true; status: number; statusText: string; data: PexelsSearchSuccess }
+  | { ok: false; status: number; statusText: string; error: string; rawBody?: string };
 
 function safeJsonForLog(value: unknown, maxLen = 12_000): string {
   try {
@@ -83,131 +64,185 @@ function safeJsonForLog(value: unknown, maxLen = 12_000): string {
   }
 }
 
+async function fetchPexelsSearchPage(
+  apiKey: string,
+  query: string,
+  page: number,
+  label: string,
+): Promise<PexelsSearchResult> {
+  const url = buildPexelsSearchRequestUrl(query, page);
+  console.log(`[pexels][${label}] → HTTP GET ${url}`);
+  console.log(`[pexels][${label}] → Authorization header: <PEXELS_API_KEY> (Pexels uses the raw key, value hidden)`);
+
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: apiKey },
+      cache: "no-store",
+    });
+    const rawBody = await res.text();
+    console.log(
+      `[pexels][${label}] ← HTTP ${res.status} ${res.statusText} | bodyLength=${rawBody.length}`,
+    );
+
+    if (!res.ok) {
+      console.error(`[pexels][${label}] error response body:\n${rawBody.slice(0, 2000)}`);
+      return {
+        ok: false,
+        status: res.status,
+        statusText: res.statusText,
+        error: rawBody.slice(0, 500) || res.statusText,
+        rawBody,
+      };
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawBody) as unknown;
+    } catch {
+      console.error(`[pexels][${label}] failed to parse JSON body`);
+      return {
+        ok: false,
+        status: res.status,
+        statusText: res.statusText,
+        error: "Invalid JSON from Pexels",
+        rawBody,
+      };
+    }
+
+    if (parsed && typeof parsed === "object" && "error" in parsed) {
+      const errMsg = String((parsed as { error: unknown }).error);
+      console.error(`[pexels][${label}] API error field in JSON: ${errMsg}`);
+      return {
+        ok: false,
+        status: res.status,
+        statusText: res.statusText,
+        error: errMsg,
+        rawBody,
+      };
+    }
+
+    const data = parsed as PexelsSearchSuccess;
+    const summary = {
+      status: res.status,
+      photosReturned: data.photos?.length ?? 0,
+      totalResults: data.total_results,
+      nextPage: data.next_page,
+    };
+    console.log(`[pexels][${label}] parsed response summary:`, JSON.stringify(summary));
+    console.log(`[pexels][${label}] full response JSON:\n${safeJsonForLog(parsed)}`);
+
+    return {
+      ok: true,
+      status: res.status,
+      statusText: res.statusText,
+      data: { photos: data.photos ?? [], total_results: data.total_results, next_page: data.next_page },
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[pexels][${label}] fetch exception:`, msg, e);
+    return { ok: false, status: 0, statusText: "FETCH_FAILED", error: msg };
+  }
+}
+
 /**
  * Search Pexels (landscape) across pages until an unused image URL is found.
- * Returns null if API missing, no results, or all candidates already used.
+ * Uses direct HTTP so every call logs URL + status. Independent of fal.ai.
  */
 export async function fetchPexelsUniqueLandscapeUrl(
   query: string,
   usedUrls: Set<string>,
   options?: PexelsLandscapeFetchOptions,
 ): Promise<string | null> {
-  const apiKey = resolvePexelsApiKey();
   const label = options?.logLabel ?? "pexels";
+  const slideHint =
+    options?.slideNumber1Based !== undefined ? ` (slide ${options.slideNumber1Based})` : "";
+
+  logPexelsEnvStatus(`fetchPexelsUniqueLandscapeUrl${slideHint}`);
+
+  const apiKey = resolvePexelsApiKey();
   if (!apiKey) {
+    console.warn(`[pexels][${label}] SKIPPED — no valid PEXELS_API_KEY (call not sent)`);
     return null;
   }
 
+  console.log(`[pexels][${label}] START Pexels search — query="${query.replace(/\s+/g, " ").trim()}"`);
+
+  const q = query.replace(/\s+/g, " ").trim() || "education";
+
   try {
-    const client = createClient(apiKey);
-    const q = query.replace(/\s+/g, " ").trim() || "education";
-
     for (let page = 1; page <= 10; page++) {
-      const result = await client.photos.search({
-        query: q,
-        per_page: 15,
-        page,
-        orientation: "landscape",
-      });
+      const result = await fetchPexelsSearchPage(apiKey, q, page, label);
 
-      if (options?.verboseLog) {
-        const summary =
-          "error" in result
-            ? { error: (result as { error: string }).error, page, query: q }
-            : {
-                page,
-                query: q,
-                photosReturned: result.photos?.length ?? 0,
-                totalResults:
-                  "total_results" in result ? (result as { total_results?: number }).total_results : undefined,
-                nextPage:
-                  "next_page" in result ? String((result as { next_page?: string | number }).next_page ?? "") : "",
-              };
-        console.log(`[pexels][${label}] API response (page ${page}):`, JSON.stringify(summary));
-        console.log(`[pexels][${label}] full API response body (page ${page}):\n${safeJsonForLog(result)}`);
-      }
-
-      if ("error" in result) {
-        console.error(`[pexels][${label}] API error on page ${page}:`, (result as { error: string }).error);
-        if (options?.verboseLog) {
-          console.error(`[pexels][${label}] full error payload:\n${safeJsonForLog(result)}`);
+      if (!result.ok) {
+        if (result.status === 401 || result.status === 403) {
+          console.error(
+            `[pexels][${label}] Auth failed (HTTP ${result.status}). Verify PEXELS_API_KEY at https://www.pexels.com/api/`,
+          );
         }
         break;
       }
 
-      for (const photo of result.photos) {
-        const url = photo.src.large ?? photo.src.medium ?? null;
+      for (const photo of result.data.photos) {
+        const url = photo.src?.large ?? photo.src?.medium ?? null;
         if (url && !usedUrls.has(url)) {
-          console.log(`[pexels][${label}] ✔ unique landscape hit page ${page}: ${url.slice(0, 90)}…`);
+          console.log(
+            `[pexels][${label}] ✔ SUCCESS — selected image URL for deck (page ${page}): ${url}`,
+          );
           return url;
         }
       }
 
-      if (options?.verboseLog && result.photos.length > 0) {
+      if (result.data.photos.length > 0 && options?.verboseLog) {
         console.warn(
-          `[pexels][${label}] page ${page}: all ${result.photos.length} photo URLs already used in this deck — continuing`,
+          `[pexels][${label}] page ${page}: all ${result.data.photos.length} URLs already used in deck — trying next page`,
         );
       }
 
-      if (result.photos.length === 0) break;
+      if (result.data.photos.length === 0) {
+        console.warn(`[pexels][${label}] page ${page}: zero photos in response — stopping paging`);
+        break;
+      }
     }
 
-    console.warn(`[pexels][${label}] No unused landscape image after paging — query: "${q}"`);
-    if (options?.verboseLog) {
-      console.warn(`[pexels][${label}] failure detail: usedUrlsSize=${usedUrls.size}, pagesScannedUpTo=10`);
-    }
+    console.warn(`[pexels][${label}] FAILED — no unused landscape image after paging — query: "${q}"`);
     return null;
   } catch (e) {
-    console.error(`[pexels][${label}] fetchPexelsUniqueLandscapeUrl exception for query "${query}":`, e);
-    if (options?.verboseLog) {
-      console.error(`[pexels][${label}] exception detail:`, e instanceof Error ? e.stack ?? e.message : e);
-    }
+    console.error(`[pexels][${label}] fetchPexelsUniqueLandscapeUrl exception:`, e);
     return null;
   }
 }
 
 export async function fetchPexelsImage(query: string): Promise<string | null> {
-  const apiKey = resolvePexelsApiKey();
-  if (!apiKey) {
-    return null;
-  }
+  return fetchPexelsUniqueLandscapeUrl(query, new Set(), { verboseLog: true, logLabel: "single-fetch" });
+}
 
-  try {
-    const client = createClient(apiKey);
-    const result = await client.photos.search({
-      query,
-      per_page: 1,
-      orientation: "landscape",
-    });
-
-    if ("error" in result) {
-      console.error("[pexels] API error:", (result as { error: string }).error);
-      return null;
-    }
-
-    const photo = result.photos[0];
-    if (!photo) {
-      console.log(`[pexels] No results for query: "${query}"`);
-      return null;
-    }
-
-    // Prefer large (1280 px wide) for crisp PPT rendering; fall back to medium
-    const url = photo.src.large ?? photo.src.medium ?? null;
-    console.log(`[pexels] ✔ Image for "${query}": ${url?.slice(0, 90)}`);
-    return url;
-  } catch (e) {
-    console.error("[pexels] fetchPexelsImage failed for query:", query, e);
-    return null;
+export function buildPexelsQuery(
+  slot: PptImageSlot,
+  topic: string,
+  subject: string,
+): string {
+  const t = topic.trim();
+  const s = subject.trim();
+  switch (slot) {
+    case "title":
+      return `${t} ${s}`;
+    case "starter":
+      return `${t} ${s} discovery curiosity`;
+    case "main":
+      return `${t} ${s} learning education`;
+    case "plenary":
+      return `${t} ${s} reflection summary`;
+    case "differentiated":
+      return `${t} classroom activity teamwork`;
+    case "extended_task":
+      return `${t} ${s} study research`;
+    default:
+      return `${t} education`;
   }
 }
 
-/**
- * Fetch all 6 PPT slot images in parallel.
- * Any individual failure resolves to null — the PPT always downloads.
- *
- * Returns a full-deck-length array where only the 6 image slot indices
- * may be non-null (0, 1, 5, 8, 9, 10).
- */
+/** Fetch legacy 6-slot PPT images in parallel. */
 export async function fetchPptPexelsImages(
   topic: string,
   subject: string,
@@ -222,31 +257,23 @@ export async function fetchPptPexelsImages(
     "extended_task",
   ];
 
-  console.log(
-    `[pexels] Fetching ${slots.length} PPT images — topic="${topic}", subject="${subject}"`,
-  );
+  logPexelsEnvStatus("fetchPptPexelsImages");
+  console.log(`[pexels] Fetching ${slots.length} PPT images — topic="${topic}", subject="${subject}"`);
 
-  // Fire all requests in parallel; allSettled ensures one failure doesn't abort others
   const results = await Promise.allSettled(
     slots.map((slot) => {
-      const query = buildPexelsQuery(slot, topic, subject);
-      console.log(`[pexels] Slot "${slot}" → query: "${query}"`);
-      return fetchPexelsImage(query);
+      const q = buildPexelsQuery(slot, topic, subject);
+      return fetchPexelsImage(q);
     }),
   );
 
   const urls = results.map((r) => (r.status === "fulfilled" ? r.value : null));
-
-  // Place each URL at its correct deck index; all other indices remain null
   const deck: (string | null)[] = Array.from({ length: deckSize }, () => null);
   slots.forEach((slot, i) => {
     const idx = PPT_IMAGE_SLIDE_INDICES[slot];
-    if (idx < deckSize) {
-      deck[idx] = urls[i] ?? null;
-    }
+    if (idx < deckSize) deck[idx] = urls[i] ?? null;
   });
 
-  const found = urls.filter(Boolean).length;
-  console.log(`[pexels] ${found}/${slots.length} images fetched successfully`);
+  console.log(`[pexels] ${urls.filter(Boolean).length}/${slots.length} images fetched successfully`);
   return deck;
 }

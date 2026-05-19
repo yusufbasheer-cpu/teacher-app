@@ -1037,7 +1037,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
       isAr ? `رحب بالطلاب وابدأ دون إضافة أي نص على هذه الشريحة سوى المادة والصف والتاريخ.` : `Welcome the class; keep this slide limited to subject, grade, and date only.`,
       isAr,
     ),
-    includeImageSlot: false,
+    includeImageSlot: true,
   });
 
   const s2 = pickDeck(

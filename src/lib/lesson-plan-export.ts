@@ -772,6 +772,17 @@ export async function buildPptxFromPptContent(params: {
   };
   const deck = params.structuredSlides ?? buildStructuredLessonSlides(ctx);
   const slideUrls = normalizeDeckImageUrls(deck.length, params.slideImageUrls);
+  const pexelsDeckIndices = [0, 1, 7, 8, 9] as const;
+  console.log(
+    "[pptx] slideImageUrls for Pexels slides:",
+    JSON.stringify(
+      pexelsDeckIndices.map((i) => ({
+        slide: i + 1,
+        hasUrl: Boolean(slideUrls[i]),
+        includeImageSlot: deck[i]?.includeImageSlot ?? false,
+      })),
+    ),
+  );
   const useStrictThirteenSlideDeck =
     Array.isArray(params.structuredSlides) &&
     params.structuredSlides.length === STRUCTURED_LESSON_DECK_SLIDE_COUNT;
@@ -1015,9 +1026,20 @@ export async function buildPptxFromPptContent(params: {
     if (remoteUrl && model.includeImageSlot) {
       try {
         imageDataUri = await fetchImageUrlAsDataUri(remoteUrl);
+        if (pexelsDeckIndices.includes(slideIdx as (typeof pexelsDeckIndices)[number])) {
+          console.log(`[pptx] Pexels slide ${slideIdx + 1}: embedded image OK`);
+        }
       } catch (e) {
-        console.warn("[pptx] could not embed slide image", slideIdx + 1, e);
+        console.warn("[pptx] could not embed slide image", slideIdx + 1, remoteUrl.slice(0, 80), e);
       }
+    } else if (
+      pexelsDeckIndices.includes(slideIdx as (typeof pexelsDeckIndices)[number]) &&
+      remoteUrl &&
+      !model.includeImageSlot
+    ) {
+      console.warn(
+        `[pptx] Pexels slide ${slideIdx + 1}: URL present but includeImageSlot=false — image skipped`,
+      );
     }
 
     const wantSlot = model.includeImageSlot;

@@ -619,7 +619,24 @@ async function runFluxAndBuildResponsePayload(
       workingPlan = mergePptSlideImageUrlsIntoPlan(workingPlan, urls);
       pptSlideImageUrls = urls;
       imageNotices.push(...imgNotices);
-      console.log("[lesson-plan] PPT deck images attached:", urls.filter(Boolean).length, "URLs");
+      const pexelsFilled = [0, 1, 7, 8, 9].filter((i) => Boolean(urls[i])).length;
+      console.log(
+        "[lesson-plan] PPT deck images attached:",
+        urls.filter(Boolean).length,
+        "total URLs;",
+        "Pexels slides 1,2,8,9,10:",
+        pexelsFilled,
+        "/5",
+      );
+      console.log(
+        "[lesson-plan] pptSlideImageUrls passed to client:",
+        JSON.stringify(
+          [0, 1, 7, 8, 9].map((i) => ({
+            slide: i + 1,
+            hasUrl: Boolean(urls[i]),
+          })),
+        ),
+      );
     } catch (e) {
       const msg = formatFalError(e);
       imageNotices.push(`PPT image generation failed: ${msg}`);

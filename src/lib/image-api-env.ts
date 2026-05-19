@@ -33,3 +33,20 @@ export function resolvePexelsApiKey(): string | undefined {
   }
   return raw;
 }
+
+/** Logs whether the key exists and validates — never prints the secret. */
+export function logPexelsEnvStatus(context: string): void {
+  const raw = process.env.PEXELS_API_KEY;
+  const trimmed = raw?.trim() ?? "";
+  const exists = trimmed.length > 0;
+  const valid = exists && !isInvalidPexelsApiKeyValue(trimmed);
+  console.log(
+    `[pexels][env][${context}] PEXELS_API_KEY present in process.env: ${exists ? "YES" : "NO"} | ` +
+      `trimmedLength=${trimmed.length} | passesValidation=${valid ? "YES" : "NO"}`,
+  );
+  if (exists && !valid) {
+    console.error(
+      `[pexels][env][${context}] Key is set but rejected (often a URL was pasted instead of the API key).`,
+    );
+  }
+}

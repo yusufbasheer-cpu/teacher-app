@@ -417,6 +417,22 @@ export function mergePptSlideImageUrlsIntoPlan(
   urls: (string | null)[] | null | undefined,
 ): LessonPlanResult {
   if (!urls || urls.length === 0) return plan;
+
+  const pexelsSlots = [0, 1, 7, 8, 9] as const;
+  const summary = pexelsSlots.map((i) => ({
+    deckIndex: i,
+    slide: i + 1,
+    hasUrl: Boolean(urls[i]),
+    urlPreview: typeof urls[i] === "string" ? urls[i]!.slice(0, 80) : null,
+  }));
+  console.log(
+    "[lesson-plan] mergePptSlideImageUrlsIntoPlan — storing",
+    urls.filter(Boolean).length,
+    "URLs;",
+    "Pexels slots:",
+    JSON.stringify(summary),
+  );
+
   return {
     ...plan,
     [LESSON_PLAN_PPT_SLIDE_IMAGE_URLS_KEY]: JSON.stringify(urls),
