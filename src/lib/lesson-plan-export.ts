@@ -1,3 +1,5 @@
+import { readFile } from "fs/promises";
+import path from "path";
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import JSZip from "jszip";
 import PptxGenJS from "pptxgenjs";
@@ -31,6 +33,9 @@ const PPT_LEFT_ACCENT_W = 0.1;
 const PPT_IMG_W = 4.42;
 const PPT_COL_GAP = 0.12;
 const PPT_FOOTER_BLOCK = 0.34;
+/** ~1 cm in inches (pptxgenjs uses inches). */
+const PPT_LAYAH_LOGO_H = 0.39;
+const PPT_LAYAH_LOGO_W = 1.15;
 const PPT_BODY_PT = 19;
 const PPT_BODY_LINE_IN = 0.32;
 
@@ -375,6 +380,26 @@ function parseMarkdownContentToDocxParagraphs(content: string): Paragraph[] {
   return paragraphs;
 }
 
+let layahLogoDataUriCache: string | null | undefined;
+
+/** Brand logo from `public/Logo.png` (or `logo.png`) for PPT footers. */
+async function loadLayahLogoDataUri(): Promise<string | null> {
+  if (layahLogoDataUriCache !== undefined) return layahLogoDataUriCache;
+  for (const fileName of ["Logo.png", "logo.png"]) {
+    try {
+      const logoPath = path.join(process.cwd(), "public", fileName);
+      const buf = await readFile(logoPath);
+      layahLogoDataUriCache = `data:image/png;base64,${buf.toString("base64")}`;
+      return layahLogoDataUriCache;
+    } catch {
+      /* try next filename */
+    }
+  }
+  console.warn("[pptx] Layah logo not found in public/Logo.png");
+  layahLogoDataUriCache = null;
+  return null;
+}
+
 async function fetchImageUrlAsDataUri(url: string): Promise<string> {
   const res = await fetch(url);
   if (!res.ok) {
@@ -597,9 +622,13 @@ function addSlideFooter(
   subject: string,
   grade: string,
   slideNumberText: string,
+  layahLogoDataUri?: string | null,
 ) {
   const ff = theme.fontFace ?? "Calibri";
   const lineY = IN_SLIDE_H - IN_MARGIN - 0.22;
+  const logoY = lineY + 0.03;
+  const subjectX = IN_MARGIN + (layahLogoDataUri ? PPT_LAYAH_LOGO_W + 0.14 : 0.02);
+
   slide.addShape(pptx.ShapeType.line, {
     x: IN_MARGIN,
     y: lineY,
@@ -607,10 +636,22 @@ function addSlideFooter(
     h: 0,
     line: { color: theme.footerLine, pt: 1 },
   });
+
+  if (layahLogoDataUri) {
+    slide.addImage({
+      data: layahLogoDataUri,
+      x: IN_MARGIN,
+      y: logoY,
+      w: PPT_LAYAH_LOGO_W,
+      h: PPT_LAYAH_LOGO_H,
+      altText: "Layah",
+    });
+  }
+
   slide.addText(subject.trim(), {
-    x: IN_MARGIN + 0.02,
+    x: subjectX,
     y: lineY + 0.04,
-    w: 8.5,
+    w: Math.max(3, IN_SLIDE_W - IN_MARGIN - subjectX - 2.4),
     h: 0.22,
     fontSize: 14,
     color: theme.footerText,
@@ -731,6 +772,7 @@ export async function buildPptxFromPptContent(params: {
   const theme = params.customRenderTheme ?? getPptRenderTheme(params.themeId);
   /** Font face from school template, or default "Calibri". */
   const ff = theme.fontFace ?? "Calibri";
+  const layahLogoDataUri = await loadLayahLogoDataUri();
 
   if (params.schoolLogo) {
     console.log("[pptx-build] School logo will be applied to every slide.");
@@ -884,7 +926,15 @@ export async function buildPptxFromPptContent(params: {
       });
     }
 
-    addSlideFooter(pptx, titleSlide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
+    addSlideFooter(
+      pptx,
+      titleSlide,
+      theme,
+      params.subject,
+      params.grade,
+      `Slide ${slideNumber}`,
+      layahLogoDataUri,
+    );
     if (params.schoolLogo) addLogoToSlide(pptx, titleSlide, params.schoolLogo, false);
     titleSlide.addNotes(titleModel.speakerNotes);
     slideNumber += 1;
@@ -1014,7 +1064,15 @@ export async function buildPptxFromPptContent(params: {
 
   if (!useStrictThirteenSlideDeck) {
     titleSlide.addNotes(titleModel.speakerNotes);
-    addSlideFooter(pptx, titleSlide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
+    addSlideFooter(
+      pptx,
+      titleSlide,
+      theme,
+      params.subject,
+      params.grade,
+      `Slide ${slideNumber}`,
+      layahLogoDataUri,
+    );
     if (params.schoolLogo) addLogoToSlide(pptx, titleSlide, params.schoolLogo, true);
     slideNumber += 1;
   }
@@ -1169,7 +1227,15 @@ export async function buildPptxFromPptContent(params: {
           ? `${model.speakerNotes}\n\n(Part ${chunkIdx + 1} — same section; adjust timing proportionally.)`
           : model.speakerNotes;
       slide.addNotes(notes);
-      addSlideFooter(pptx, slide, theme, params.subject, params.grade, `Slide ${slideNumber}`);
+      addSlideFooter(
+        pptx,
+        slide,
+        theme,
+        params.subject,
+        params.grade,
+        `Slide ${slideNumber}`,
+        layahLogoDataUri,
+      );
       if (params.schoolLogo) addLogoToSlide(pptx, slide, params.schoolLogo, false);
       slideNumber += 1;
     }

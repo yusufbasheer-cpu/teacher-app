@@ -56,16 +56,14 @@ export function Navbar() {
     >
       <Container className="py-3">
         <div className="flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <span
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
-              style={{ background: "#00C6A7" }}
-            >
-              L
-            </span>
-            <span className="font-layah-logo text-base font-bold tracking-tight text-white sm:text-lg">
-              Layah.ai
-            </span>
+          <Link href="/" className="inline-flex items-center">
+            <img
+              src="/Logo.png"
+              alt="Layah"
+              height={40}
+              className="h-10 w-auto"
+              style={{ height: 40, width: "auto" }}
+            />
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
