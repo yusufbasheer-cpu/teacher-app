@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  buildQuestionPaperDocxBuffer,
-  questionPaperDownloadFileName,
-} from "@/lib/question-paper-export";
+import { questionPaperDownloadFileName } from "@/lib/question-paper-download-names";
+import { buildQuestionPaperDocxBuffer } from "@/lib/question-paper-export";
 
 export const runtime = "nodejs";
 

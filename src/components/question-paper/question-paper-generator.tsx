@@ -29,7 +29,7 @@ import {
   type QuestionTypeId,
 } from "@/lib/question-paper";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
-import { questionPaperDownloadFileName } from "@/lib/question-paper-export";
+import { questionPaperDownloadFileName } from "@/lib/question-paper-download-names";
 
 type SourceUploadChunk = {
   id: string;

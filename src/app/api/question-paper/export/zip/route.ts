@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import JSZip from "jszip";
 import { buildBlueprintTextDocxBuffer } from "@/lib/question-paper-blueprint-export";
-import {
-  buildQuestionPaperDocxBuffer,
-  questionPaperDownloadFileName,
-} from "@/lib/question-paper-export";
+import { questionPaperDownloadFileName } from "@/lib/question-paper-download-names";
+import { buildQuestionPaperDocxBuffer } from "@/lib/question-paper-export";
 
 export const runtime = "nodejs";
 

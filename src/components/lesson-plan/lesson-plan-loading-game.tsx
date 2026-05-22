@@ -304,7 +304,9 @@ export function LessonPlanLoadingGame({
 
   const [factIdx, setFactIdx]         = useState(0);
   const [factVisible, setFactVisible] = useState(true);
-  const [statuses, setStatuses]       = useState<Record<string, SectionStatus>>(emptyStatuses());
+  const [statuses, setStatuses]       = useState<Record<string, SectionStatus>>(() =>
+    emptyStatusesFor(sectionCatalog),
+  );
   const [smoothProgress, setSmoothProgress] = useState(5);
   const [celebrating, setCelebrating] = useState(false);
   const [elapsedSecs, setElapsedSecs] = useState(0);

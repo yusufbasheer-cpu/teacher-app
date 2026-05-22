@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildBlueprintTextDocxBuffer } from "@/lib/question-paper-blueprint-export";
-import { questionPaperDownloadFileName } from "@/lib/question-paper-export";
+import { questionPaperDownloadFileName } from "@/lib/question-paper-download-names";
 
 export const runtime = "nodejs";
 
