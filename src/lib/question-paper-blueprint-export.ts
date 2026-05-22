@@ -290,3 +290,103 @@ export async function buildBlueprintDocxBuffer(params: {
 
   return Packer.toBuffer(doc);
 }
+
+function blueprintPlainTextToParagraphs(text: string): (Paragraph | Table)[] {
+  const lines = text.split(/\r?\n/);
+  const out: (Paragraph | Table)[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      out.push(new Paragraph({ spacing: { after: 60 } }));
+      continue;
+    }
+    if (trimmed.startsWith("## ")) {
+      out.push(sectionHeading(trimmed.slice(3).trim()));
+      continue;
+    }
+    out.push(
+      new Paragraph({
+        spacing: { after: 60 },
+        children: [new TextRun({ text: trimmed, size: 20, color: "1A1A2E" })],
+      }),
+    );
+  }
+  return out;
+}
+
+/** Word export for plain-text blueprint (no JSON). */
+export async function buildBlueprintTextDocxBuffer(params: {
+  subject: string;
+  grade: string;
+  topic: string;
+  curriculumType: string;
+  timeAllowed: string;
+  blueprintText: string;
+}): Promise<Buffer> {
+  const logoBuf = await loadLayahLogoBuffer();
+  const children: (Paragraph | Table)[] = [];
+
+  if (logoBuf) {
+    children.push(
+      new Paragraph({
+        children: [
+          new ImageRun({
+            data: logoBuf,
+            transformation: { width: 140, height: 48 },
+            type: "png",
+          }),
+        ],
+        spacing: { after: 160 },
+      }),
+    );
+  } else {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: "Layah.ai", bold: true, size: 32, color: TEAL })],
+        spacing: { after: 160 },
+      }),
+    );
+  }
+
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: "Examination Blueprint",
+          bold: true,
+          size: 40,
+          color: NAVY,
+        }),
+      ],
+      spacing: { after: 80 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `${params.subject}  ·  ${params.grade}  ·  ${params.topic}`,
+          size: 22,
+          color: "555577",
+        }),
+      ],
+      spacing: { after: 40 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `Curriculum: ${params.curriculumType}  ·  Time allowed: ${params.timeAllowed}`,
+          italics: true,
+          size: 20,
+          color: "666688",
+        }),
+      ],
+      spacing: { after: 200 },
+    }),
+    ...blueprintPlainTextToParagraphs(params.blueprintText.trim()),
+  );
+
+  const doc = new Document({
+    sections: [{ children }],
+  });
+
+  return Packer.toBuffer(doc);
+}

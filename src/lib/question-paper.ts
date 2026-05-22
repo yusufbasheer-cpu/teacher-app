@@ -7,8 +7,6 @@ import {
   buildGenerationSourceMaterial,
   SOURCE_MATERIAL_MAX_CHARS,
 } from "@/lib/lesson-plan";
-import type { QuestionPaperBlueprint } from "@/lib/question-paper-blueprint";
-
 export const QUESTION_PAPER_TIME_OPTIONS = [
   "30 minutes",
   "45 minutes",
@@ -93,8 +91,8 @@ export type QuestionPaperResult = {
   questionPaper: string;
   answerKey?: string;
   markingScheme?: string;
-  blueprint?: QuestionPaperBlueprint;
-  blueprintMarkdown?: string;
+  blueprintText?: string;
+  blueprintError?: string;
   parseNotice?: string;
 };
 

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { buildBlueprintDocxBuffer } from "@/lib/question-paper-blueprint-export";
+import { buildBlueprintTextDocxBuffer } from "@/lib/question-paper-blueprint-export";
 import { sanitizeExportFileName } from "@/lib/lesson-plan-export";
-import type { QuestionPaperBlueprint } from "@/lib/question-paper-blueprint";
 
 export const runtime = "nodejs";
 
@@ -11,7 +10,7 @@ type Body = {
   topic?: string;
   curriculumType?: string;
   timeAllowed?: string;
-  blueprint?: QuestionPaperBlueprint;
+  blueprintText?: string;
 };
 
 export async function POST(req: Request) {
@@ -27,23 +26,23 @@ export async function POST(req: Request) {
   const topic = body.topic?.trim();
   const curriculumType = body.curriculumType?.trim() ?? "";
   const timeAllowed = body.timeAllowed?.trim() ?? "";
-  const blueprint = body.blueprint;
+  const blueprintText = body.blueprintText?.trim();
 
-  if (!subject || !grade || !topic || !blueprint) {
+  if (!subject || !grade || !topic || !blueprintText) {
     return NextResponse.json(
-      { error: "subject, grade, topic, and blueprint are required." },
+      { error: "subject, grade, topic, and blueprintText are required." },
       { status: 400 },
     );
   }
 
   try {
-    const buffer = await buildBlueprintDocxBuffer({
+    const buffer = await buildBlueprintTextDocxBuffer({
       subject,
       grade,
       topic,
       curriculumType,
       timeAllowed,
-      blueprint,
+      blueprintText,
     });
     const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-blueprint`) || "blueprint";
 

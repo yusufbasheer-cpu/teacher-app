@@ -7,14 +7,19 @@ import {
   type QuestionPaperTimeOption,
 } from "@/lib/question-paper";
 
-export const QP_PAPER_START = "QUESTION PAPER START";
-export const QP_PAPER_END = "QUESTION PAPER END";
+/** Primary markers (underscore form). */
+export const QP_PAPER_START = "QUESTION_PAPER_START";
+export const QP_PAPER_END = "QUESTION_PAPER_END";
+export const QP_BLUEPRINT_START = "BLUEPRINT_START";
+export const QP_BLUEPRINT_END = "BLUEPRINT_END";
+
+/** Legacy / alternate markers still accepted when parsing. */
+export const QP_PAPER_START_ALIASES = [QP_PAPER_START, "QUESTION PAPER START"] as const;
+
 export const QP_ANSWER_KEY_START = "ANSWER KEY START";
 export const QP_ANSWER_KEY_END = "ANSWER KEY END";
 export const QP_MARKING_SCHEME_START = "MARKING SCHEME START";
 export const QP_MARKING_SCHEME_END = "MARKING SCHEME END";
-export const QP_BLUEPRINT_START = "BLUEPRINT JSON START";
-export const QP_BLUEPRINT_END = "BLUEPRINT JSON END";
 
 function formatQuestionTypeRequest(counts: QuestionCounts): string {
   const lines: string[] = [];
@@ -40,92 +45,46 @@ function enhancementGuidance(percent: number): string {
   return "Generate freely from topic knowledge; teacher content is optional background.";
 }
 
+/** Call 1 — question paper only (no blueprint). */
 export function buildQuestionPaperSystemPrompt(params: {
   mode: GenerationMode;
   enhancementPercent: number;
   includeAnswerKey: boolean;
   includeMarkingScheme: boolean;
   includeModelAnswers: boolean;
-  includeBlueprint: boolean;
 }): string {
   const modeBlock =
     params.mode === "strict"
       ? `Generate questions STRICTLY and ONLY from the provided content. Do not add any information not present in the provided content. Every question must be directly traceable to the provided content.`
       : `Generate questions based on the provided content and topic. You may paraphrase, expand, and enhance questions. Enhancement level is ${params.enhancementPercent}% — ${enhancementGuidance(params.enhancementPercent)}`;
 
-  const extras: string[] = [];
-  if (params.includeAnswerKey) extras.push("a full ANSWER KEY");
-  if (params.includeMarkingScheme) extras.push("a MARKING SCHEME with mark allocations");
-  if (params.includeModelAnswers) {
-    extras.push("model answers for long-answer and case-study questions");
-  }
+  return `You are an expert examination paper writer for Layah.ai. Output ONLY the question paper (and answer key sections if requested). Do NOT output a blueprint or JSON.
 
-  return `You are an expert examination paper writer for Layah.ai. Create a formal, classroom-ready question paper in clear English (unless the subject requires another language).
+### Mandatory delimiters — question paper
+Wrap the student question paper exactly between these two lines (no text outside except optional answer key blocks after ${QP_PAPER_END}):
 
-${modeBlock}
-
-### Output format (mandatory delimiters)
-1. Wrap the student question paper between:
 ${QP_PAPER_START}
-...
+(question paper content here)
 ${QP_PAPER_END}
 
-2. ${
-    params.includeAnswerKey || params.includeMarkingScheme || params.includeModelAnswers
-      ? `After the question paper, include:
-${params.includeAnswerKey ? `- Answer key between ${QP_ANSWER_KEY_START} and ${QP_ANSWER_KEY_END}` : ""}
-${params.includeMarkingScheme ? `- Marking scheme between ${QP_MARKING_SCHEME_START} and ${QP_MARKING_SCHEME_END}` : ""}
-${params.includeModelAnswers ? "- Within the answer key, provide detailed model answers for long-answer and case-study items." : ""}`
-      : "Do not include an answer key or marking scheme."
-  }
-
-3. ${
-    params.includeBlueprint
-      ? `After the question paper (and answer key if any), include an examination BLUEPRINT as **valid JSON only** between:
-${QP_BLUEPRINT_START}
-{ ...json... }
-${QP_BLUEPRINT_END}
-
-The JSON must match this schema exactly:
-{
-  "chapterWise": [{ "chapter": "string", "questions": number, "marks": number, "percent": number }],
-  "bloomsTaxonomy": [
-    { "level": "Remember"|"Understand"|"Apply"|"Analyze"|"Evaluate"|"Create", "questions": number, "marks": number, "percent": number }
-  ],
-  "questionTypes": [{ "type": "string", "questions": number, "marksPerQuestion": number, "totalMarks": number }],
-  "difficulty": [{ "level": "Easy"|"Medium"|"Hard", "questions": number, "marks": number }],
-  "summary": {
-    "totalQuestions": number,
-    "totalMarks": number,
-    "estimatedCompletionTime": "string",
-    "syllabusCoveragePercent": number
-  }
+${
+  params.includeAnswerKey || params.includeMarkingScheme || params.includeModelAnswers
+    ? `Optional sections AFTER ${QP_PAPER_END} only:
+${params.includeAnswerKey ? `- Answer key: ${QP_ANSWER_KEY_START} … ${QP_ANSWER_KEY_END}` : ""}
+${params.includeMarkingScheme ? `- Marking scheme: ${QP_MARKING_SCHEME_START} … ${QP_MARKING_SCHEME_END}` : ""}
+${params.includeModelAnswers ? "- Include model answers for long-answer and case-study items inside the answer key." : ""}`
+    : "Do not include an answer key or marking scheme."
 }
 
-Blueprint rules:
-- Derive distributions from the question paper you just created (chapter tags, Bloom levels, types, difficulty).
-- Table 1 (chapterWise): one row per chapter/topic segment; percents sum to ~100.
-- Table 2 (bloomsTaxonomy): all 6 Bloom levels must appear; percents sum to ~100.
-- Table 3 (questionTypes): one row per question type used; totalMarks must sum to total paper marks.
-- Table 4 (difficulty): Easy, Medium, Hard rows; marks sum to total.
-- summary.totalQuestions and summary.totalMarks must match the paper.`
-      : ""
-  }
+### Inside ${QP_PAPER_START} … ${QP_PAPER_END}
+- Header: School Name, Student Name, Date, Class (blank lines)
+- Subject, Grade, Topic, Total Marks, Time Allowed
+- Group by question type; number questions 1, 2, 3… across the paper
+- Show marks per question e.g. (2 marks); total marks must match the request
+- MCQ: options A, B, C, D on separate lines
+- No answers on the student paper
 
-### Question paper structure (inside ${QP_PAPER_START})
-- Header block with blank lines labeled: School Name, Student Name, Date, Class
-- Then show: Subject, Grade, Topic, Total Marks, Time Allowed
-- Group questions by type with clear section headings matching the requested types
-- Number all questions sequentially across the whole paper (1, 2, 3…)
-- Show marks in brackets after each question, e.g. (2 marks)
-- Total marks across all questions must equal the requested total exactly
-- MCQ: always provide options A, B, C, D on separate lines
-- Match the Following: two labeled columns
-- Diagram Based: describe what to draw/label if no image is available
-- Leave adequate spacing between questions for student answers
-- Do not include answers on the student paper
-
-Use plain text suitable for Word export (headings with ##, bullets with -, numbered lists).`;
+Use plain text (## headings, bullets, numbered lists). Do not use JSON.`;
 }
 
 export function buildQuestionPaperUserMessage(params: {
@@ -144,17 +103,89 @@ export function buildQuestionPaperUserMessage(params: {
     ? buildSourceMaterialPromptBlock(params.sourceMaterial)
     : "\n\nNo teacher source material was provided — generate from the topic using curriculum-appropriate knowledge.";
 
-  return `Create a question paper with these specifications:
+  return `Create ONLY the question paper (use ${QP_PAPER_START} and ${QP_PAPER_END} markers).
 
 - Subject: ${params.subject}
 - Grade: ${params.grade}
 - Curriculum: ${params.curriculumType}
 - Topic / Chapter: ${params.topic}
-- Total marks: ${params.totalMarks} (must sum exactly)
+- Total marks: ${params.totalMarks}
 - Time allowed: ${params.timeAllowed}
 - Difficulty: ${params.difficulty}
 
 ### Required question types and counts
 ${typeBlock}
 ${sourceBlock}`;
+}
+
+/** Call 2 — blueprint only (plain text tables, analyzed from finished paper). */
+export function buildBlueprintSystemPrompt(): string {
+  return `You are an examination blueprint analyst for Layah.ai. You will receive a completed question paper. Analyze it and produce an examination BLUEPRINT as plain text only.
+
+### Mandatory delimiters
+Wrap the entire blueprint between:
+
+${QP_BLUEPRINT_START}
+(blueprint content here)
+${QP_BLUEPRINT_END}
+
+### Required sections (plain text tables — NOT JSON)
+Use markdown-style pipe tables or clear column layouts. Include:
+
+## TABLE 1 — Chapter-wise distribution
+| Chapter / Topic | Questions | Marks | % of paper |
+(one row per chapter/topic represented in the paper)
+
+## TABLE 2 — Bloom's taxonomy distribution
+| Level | Questions | Marks | % of paper |
+Rows for: Remember, Understand, Apply, Analyze, Evaluate, Create
+
+## TABLE 3 — Question type distribution
+| Question type | Questions | Marks per question | Total marks |
+
+## TABLE 4 — Difficulty distribution
+| Difficulty | Questions | Marks |
+Rows for Easy, Medium, Hard
+
+## BLUEPRINT SUMMARY
+- Total questions:
+- Total marks:
+- Estimated completion time:
+- Syllabus coverage %:
+
+Rules:
+- Base all numbers on the supplied question paper (infer Bloom level and difficulty from each question).
+- Percentages should sum to approximately 100% where applicable.
+- Do NOT output JSON, code blocks, or a second copy of the question paper.
+- Output ONLY the blueprint between ${QP_BLUEPRINT_START} and ${QP_BLUEPRINT_END}.`;
+}
+
+export function buildBlueprintUserMessage(params: {
+  subject: string;
+  grade: string;
+  topic: string;
+  curriculumType: string;
+  totalMarks: number;
+  timeAllowed: QuestionPaperTimeOption;
+  difficulty: QuestionPaperDifficulty;
+  questionPaper: string;
+  answerKey?: string;
+}): string {
+  const extras = params.answerKey?.trim()
+    ? `\n\n### Answer key (for your analysis only)\n${params.answerKey.trim()}`
+    : "";
+
+  return `Analyze this question paper and write the blueprint (plain text tables only, between ${QP_BLUEPRINT_START} and ${QP_BLUEPRINT_END}).
+
+- Subject: ${params.subject}
+- Grade: ${params.grade}
+- Curriculum: ${params.curriculumType}
+- Topic: ${params.topic}
+- Target total marks: ${params.totalMarks}
+- Time allowed: ${params.timeAllowed}
+- Difficulty setting: ${params.difficulty}
+
+### Question paper to analyze
+${params.questionPaper.trim()}
+${extras}`;
 }

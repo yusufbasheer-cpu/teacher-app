@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import JSZip from "jszip";
-import { buildBlueprintDocxBuffer } from "@/lib/question-paper-blueprint-export";
+import { buildBlueprintTextDocxBuffer } from "@/lib/question-paper-blueprint-export";
 import { buildDocxBuffer, sanitizeExportFileName } from "@/lib/lesson-plan-export";
-import type { QuestionPaperBlueprint } from "@/lib/question-paper-blueprint";
 
 export const runtime = "nodejs";
 
@@ -15,7 +14,7 @@ type Body = {
   questionPaper?: string;
   answerKey?: string;
   markingScheme?: string;
-  blueprint?: QuestionPaperBlueprint;
+  blueprintText?: string;
 };
 
 export async function POST(req: Request) {
@@ -32,6 +31,7 @@ export async function POST(req: Request) {
   const questionPaper = body.questionPaper?.trim();
   const answerKey = body.answerKey?.trim();
   const markingScheme = body.markingScheme?.trim();
+  const blueprintText = body.blueprintText?.trim();
 
   if (!subject || !grade || !topic || !questionPaper) {
     return NextResponse.json(
@@ -67,14 +67,14 @@ export async function POST(req: Request) {
       zip.file(`${base}-answer-key.docx`, keyBuf);
     }
 
-    if (body.blueprint) {
-      const blueprintBuf = await buildBlueprintDocxBuffer({
+    if (blueprintText) {
+      const blueprintBuf = await buildBlueprintTextDocxBuffer({
         subject,
         grade,
         topic,
         curriculumType: body.curriculumType?.trim() ?? "",
         timeAllowed: body.timeAllowed?.trim() ?? "",
-        blueprint: body.blueprint,
+        blueprintText,
       });
       zip.file(`${base}-blueprint.docx`, blueprintBuf);
     }

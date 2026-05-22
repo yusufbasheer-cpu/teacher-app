@@ -48,6 +48,13 @@ type ExtractPayload = {
   partialErrors?: { sourceLabel: string; message: string }[];
 };
 
+type GenStepStatus = "idle" | "running" | "done" | "error";
+
+type GenProgress = {
+  paper: GenStepStatus;
+  blueprint: GenStepStatus;
+};
+
 const inputClass =
   "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2";
 
@@ -77,6 +84,7 @@ export function QuestionPaperGenerator() {
   const [uploadInfo, setUploadInfo] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
+  const [genProgress, setGenProgress] = useState<GenProgress>({ paper: "idle", blueprint: "idle" });
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<QuestionPaperResult | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -94,8 +102,8 @@ export function QuestionPaperGenerator() {
 
   const previewText = useMemo(() => {
     if (!result) return "";
-    if (previewTab === "blueprint" && result.blueprintMarkdown) {
-      return result.blueprintMarkdown;
+    if (previewTab === "blueprint" && result.blueprintText) {
+      return result.blueprintText;
     }
     const parts = [result.questionPaper];
     if (result.answerKey) parts.push(`\n\n--- ANSWER KEY ---\n\n${result.answerKey}`);
@@ -199,7 +207,7 @@ export function QuestionPaperGenerator() {
   };
 
   const downloadBlueprint = async () => {
-    if (!result?.blueprint) return;
+    if (!result?.blueprintText) return;
     setDownloading("blueprint");
     try {
       const res = await fetch("/api/question-paper/export/blueprint", {
@@ -211,7 +219,7 @@ export function QuestionPaperGenerator() {
           topic,
           curriculumType,
           timeAllowed,
-          blueprint: result.blueprint,
+          blueprintText: result.blueprintText,
         }),
       });
       if (!res.ok) {
@@ -244,7 +252,7 @@ export function QuestionPaperGenerator() {
           questionPaper: result.questionPaper,
           answerKey: result.answerKey,
           markingScheme: result.markingScheme,
-          blueprint: result.blueprint,
+          blueprintText: result.blueprintText,
         }),
       });
       if (!res.ok) {
@@ -261,54 +269,136 @@ export function QuestionPaperGenerator() {
     }
   };
 
+  const stepLabel = (status: GenStepStatus, label: string): string => {
+    if (status === "done") return `${label}… done`;
+    if (status === "error") return `${label}… failed`;
+    return `${label}…`;
+  };
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     setResult(null);
+    setPreviewTab("paper");
+    setGenProgress({
+      paper: "running",
+      blueprint: generateBlueprint ? "idle" : "idle",
+    });
+
+    const formPayload = {
+      curriculumType,
+      grade,
+      subject,
+      topic,
+      totalMarks,
+      timeAllowed,
+      difficulty,
+      questionCounts,
+      generationMode,
+      enhancementPercent,
+      includeAnswerKey,
+      includeMarkingScheme,
+      includeModelAnswers,
+      ...(pastedContent.trim() ? { pastedContent: pastedContent.trim() } : {}),
+      ...(extractedMaterial ? { sourceMaterial: extractedMaterial } : {}),
+    };
+
     try {
-      const res = await fetch("/api/question-paper", {
+      const paperRes = await fetch("/api/question-paper", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formPayload),
+      });
+      const paperRaw = await paperRes.text();
+      console.log("[question-paper-call-1] API response:", paperRaw);
+      const paperParsed = tryParseApiJson<
+        QuestionPaperResult & { error?: string; parseNotice?: string }
+      >(paperRaw, paperRes.status);
+      if (!paperParsed.ok) {
+        throw new Error(paperParsed.message);
+      }
+      if (!paperRes.ok) {
+        throw new Error(paperParsed.data.error ?? `Question paper failed (${paperRes.status})`);
+      }
+
+      setGenProgress((p) => ({ ...p, paper: "done" }));
+
+      const paperResult: QuestionPaperResult = {
+        questionPaper: paperParsed.data.questionPaper ?? "",
+        answerKey: paperParsed.data.answerKey,
+        markingScheme: paperParsed.data.markingScheme,
+        parseNotice: paperParsed.data.parseNotice,
+      };
+
+      setResult(paperResult);
+
+      if (!generateBlueprint) {
+        setGenProgress((p) => ({ ...p, blueprint: "idle" }));
+        return;
+      }
+
+      setGenProgress((p) => ({ ...p, blueprint: "running" }));
+
+      const bpRes = await fetch("/api/question-paper/blueprint", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          curriculumType,
-          grade,
           subject,
+          grade,
           topic,
+          curriculumType,
           totalMarks,
           timeAllowed,
           difficulty,
-          questionCounts,
-          generationMode,
-          enhancementPercent,
-          includeAnswerKey,
-          includeMarkingScheme,
-          includeModelAnswers,
-          generateBlueprint,
-          ...(pastedContent.trim() ? { pastedContent: pastedContent.trim() } : {}),
-          ...(extractedMaterial ? { sourceMaterial: extractedMaterial } : {}),
+          questionPaper: paperResult.questionPaper,
+          answerKey: paperResult.answerKey,
         }),
       });
-      const raw = await res.text();
-      const parsed = tryParseApiJson<
-        QuestionPaperResult & { error?: string; parseNotice?: string }
-      >(raw, res.status);
-      if (!parsed.ok) {
-        throw new Error(parsed.message);
+      const bpRaw = await bpRes.text();
+      console.log("[question-paper-call-2-blueprint] API response:", bpRaw);
+      const bpParsed = tryParseApiJson<{ blueprintText?: string; error?: string; blueprintError?: string }>(
+        bpRaw,
+        bpRes.status,
+      );
+
+      if (!bpParsed.ok) {
+        setGenProgress((p) => ({ ...p, blueprint: "error" }));
+        setResult((prev) =>
+          prev
+            ? {
+                ...prev,
+                blueprintError: bpParsed.message,
+              }
+            : prev,
+        );
+        return;
       }
-      if (!res.ok) {
-        throw new Error(parsed.data.error ?? `Generation failed (${res.status})`);
+
+      if (!bpRes.ok || !bpParsed.data.blueprintText) {
+        const msg =
+          bpParsed.data.blueprintError ??
+          bpParsed.data.error ??
+          `Blueprint generation failed (${bpRes.status})`;
+        setGenProgress((p) => ({ ...p, blueprint: "error" }));
+        setResult((prev) => (prev ? { ...prev, blueprintError: msg } : prev));
+        return;
       }
-      setPreviewTab(parsed.data.blueprint ? "paper" : "paper");
-      setResult({
-        questionPaper: parsed.data.questionPaper ?? "",
-        answerKey: parsed.data.answerKey,
-        markingScheme: parsed.data.markingScheme,
-        blueprint: parsed.data.blueprint,
-        blueprintMarkdown: parsed.data.blueprintMarkdown,
-        parseNotice: parsed.data.parseNotice,
-      });
+
+      setGenProgress((p) => ({ ...p, blueprint: "done" }));
+      setResult((prev) =>
+        prev
+          ? {
+              ...prev,
+              blueprintText: bpParsed.data.blueprintText,
+            }
+          : prev,
+      );
     } catch (err) {
+      setGenProgress((p) => ({
+        paper: p.paper === "running" ? "error" : p.paper,
+        blueprint: p.blueprint === "running" ? "error" : p.blueprint,
+      }));
       setError(err instanceof Error ? err.message : "Generation failed.");
     } finally {
       setLoading(false);
@@ -645,8 +735,8 @@ export function QuestionPaperGenerator() {
                 Generate Blueprint with Question Paper
               </span>
               <span className="mt-1 block text-xs text-slate-600">
-                Includes chapter-wise, Bloom&apos;s taxonomy, question type, and difficulty tables plus
-                a summary — generated in the same run as your paper.
+                After your paper is ready, a second pass analyzes it and builds chapter-wise,
+                Bloom&apos;s, question-type, and difficulty tables (plain text, not JSON).
               </span>
             </span>
           </label>
@@ -656,17 +746,42 @@ export function QuestionPaperGenerator() {
           <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
         ) : null}
 
+        {loading || genProgress.paper !== "idle" || genProgress.blueprint !== "idle" ? (
+          <ul className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <li
+              className={
+                genProgress.paper === "done"
+                  ? "text-emerald-800"
+                  : genProgress.paper === "error"
+                    ? "text-red-800"
+                    : ""
+              }
+            >
+              {stepLabel(genProgress.paper, "Generating question paper")}
+            </li>
+            {generateBlueprint ? (
+              <li
+                className={
+                  genProgress.blueprint === "done"
+                    ? "text-emerald-800"
+                    : genProgress.blueprint === "error"
+                      ? "text-red-800"
+                      : ""
+                }
+              >
+                {stepLabel(genProgress.blueprint, "Generating blueprint")}
+              </li>
+            ) : null}
+          </ul>
+        ) : null}
+
         <button
           type="submit"
           disabled={loading || totalQuestions < 1}
           className="w-full rounded-xl px-6 py-4 text-base font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-50"
           style={{ background: "#00C6A7" }}
         >
-          {loading
-            ? generateBlueprint
-              ? "Generating question paper & blueprint…"
-              : "Generating question paper…"
-            : "Generate question paper"}
+          {loading ? "Generating…" : "Generate question paper"}
         </button>
         <p className="text-center text-xs text-slate-500">
           Estimated time: {timeEstimate.detail} ({timeEstimate.tier})
@@ -684,7 +799,7 @@ export function QuestionPaperGenerator() {
           >
             Preview
           </div>
-          {result?.blueprint ? (
+          {result?.blueprintText ? (
             <div className="flex border-b border-slate-200 bg-slate-50 px-2 pt-2">
               <button
                 type="button"
@@ -712,15 +827,22 @@ export function QuestionPaperGenerator() {
           ) : null}
           <div className="max-h-[min(75vh,720px)] overflow-y-auto p-4 sm:p-5">
             {loading ? (
-              <p className="text-sm text-slate-600">
-                {generateBlueprint
-                  ? "Generating your question paper and examination blueprint…"
-                  : "Generating your paper with DeepSeek…"}
-              </p>
+              <ul className="space-y-1 text-sm text-slate-600">
+                <li>{stepLabel(genProgress.paper, "Generating question paper")}</li>
+                {generateBlueprint ? (
+                  <li>{stepLabel(genProgress.blueprint, "Generating blueprint")}</li>
+                ) : null}
+              </ul>
             ) : result ? (
               <>
                 {result.parseNotice ? (
                   <p className="mb-3 text-xs text-amber-800">{result.parseNotice}</p>
+                ) : null}
+                {result.blueprintError ? (
+                  <p className="mb-3 text-xs text-amber-800">
+                    Blueprint could not be generated: {result.blueprintError}. Your question paper and
+                    downloads are still available.
+                  </p>
                 ) : null}
                 <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-800">
                   {previewText}
@@ -744,7 +866,7 @@ export function QuestionPaperGenerator() {
                       {downloading === "answer-key" ? "Downloading…" : "Download answer key (Word)"}
                     </button>
                   ) : null}
-                  {result.blueprint ? (
+                  {result.blueprintText ? (
                     <button
                       type="button"
                       disabled={!!downloading}

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
-import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
+import { callDeepSeekChat } from "@/lib/question-paper-deepseek";
 import { parseQuestionPaperResponse } from "@/lib/parse-question-paper";
 import {
   buildQuestionPaperSystemPrompt,
@@ -15,39 +14,9 @@ import {
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_MAX_TOKENS = 10000;
-const DEEPSEEK_MAX_TOKENS_WITH_BLUEPRINT = 12000;
-
-function deepSeekHttpErrorMessage(status: number, rawBody: string): string {
-  const trimmed = rawBody.trim();
-  if (status === 401) {
-    return "DeepSeek API key is invalid or expired. Please update DEEPSEEK_API_KEY.";
-  }
-  if (status === 402) {
-    return "DeepSeek account has insufficient credits. Please top up your DeepSeek balance.";
-  }
-  if (status === 429) {
-    return "DeepSeek rate limit reached. Please retry in a few moments.";
-  }
-  return `DeepSeek HTTP ${status}: ${trimmed.slice(0, 800) || "No response body."}`;
-}
+const DEEPSEEK_MAX_TOKENS_PAPER = 8000;
 
 export async function POST(req: Request) {
-  const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "Missing DEEPSEEK_API_KEY in environment variables." },
-      { status: 500 },
-    );
-  }
-  if (apiKey.length < 12) {
-    return NextResponse.json(
-      { error: "DEEPSEEK_API_KEY appears invalid (too short)." },
-      { status: 500 },
-    );
-  }
-
   let body: QuestionPaperGenerateBody;
   try {
     body = (await req.json()) as QuestionPaperGenerateBody;
@@ -65,15 +34,12 @@ export async function POST(req: Request) {
     uploadedExtractedText: body.sourceMaterial,
   });
 
-  const generateBlueprint = Boolean(body.generateBlueprint);
-
   const systemPrompt = buildQuestionPaperSystemPrompt({
     mode: body.generationMode,
     enhancementPercent: body.generationMode === "enhanced" ? body.enhancementPercent : 0,
     includeAnswerKey: body.includeAnswerKey,
     includeMarkingScheme: body.includeMarkingScheme,
     includeModelAnswers: body.includeModelAnswers,
-    includeBlueprint: generateBlueprint,
   });
 
   const userMessage = buildQuestionPaperUserMessage({
@@ -88,73 +54,24 @@ export async function POST(req: Request) {
     sourceMaterial,
   });
 
-  let deepseekResponse: Response;
-  try {
-    deepseekResponse = await fetch(DEEPSEEK_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        temperature: body.generationMode === "strict" ? 0.35 : 0.55,
-        max_tokens: generateBlueprint ? DEEPSEEK_MAX_TOKENS_WITH_BLUEPRINT : DEEPSEEK_MAX_TOKENS,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-      }),
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: `DeepSeek request failed: ${msg}` }, { status: 502 });
-  }
-
-  const rawBody = await deepseekResponse.text();
-  logDeepSeekRawResponse("question-paper", deepseekResponse, rawBody);
-
-  if (!deepseekResponse.ok) {
-    return NextResponse.json(
-      { error: deepSeekHttpErrorMessage(deepseekResponse.status, rawBody) },
-      { status: 502 },
-    );
-  }
-
-  const completion = parseDeepSeekCompletionBody(rawBody);
-  const completionText = completion.content?.trim();
-  if (!completionText) {
-    return NextResponse.json(
-      { error: completion.errorMessage ?? "DeepSeek returned no content." },
-      { status: 502 },
-    );
-  }
-
-  const parsed = parseQuestionPaperResponse(completionText, {
-    expectBlueprint: generateBlueprint,
+  const ds = await callDeepSeekChat({
+    logLabel: "question-paper-call-1",
+    systemPrompt,
+    userMessage,
+    maxTokens: DEEPSEEK_MAX_TOKENS_PAPER,
+    temperature: body.generationMode === "strict" ? 0.35 : 0.55,
   });
 
-  if (generateBlueprint && !parsed.blueprint) {
-    return NextResponse.json(
-      {
-        error:
-          parsed.parseNotice?.includes("Blueprint")
-            ? `Blueprint generation failed: ${parsed.parseNotice}`
-            : "Blueprint was requested but could not be parsed from the AI response. Try again.",
-        questionPaper: parsed.questionPaper,
-        ...(parsed.answerKey ? { answerKey: parsed.answerKey } : {}),
-        ...(parsed.markingScheme ? { markingScheme: parsed.markingScheme } : {}),
-      },
-      { status: 502 },
-    );
+  if ("error" in ds) {
+    return NextResponse.json({ error: ds.error }, { status: 502 });
   }
+
+  const parsed = parseQuestionPaperResponse(ds.content);
 
   return NextResponse.json({
     questionPaper: parsed.questionPaper,
     ...(parsed.answerKey ? { answerKey: parsed.answerKey } : {}),
     ...(parsed.markingScheme ? { markingScheme: parsed.markingScheme } : {}),
-    ...(parsed.blueprint ? { blueprint: parsed.blueprint } : {}),
-    ...(parsed.blueprintMarkdown ? { blueprintMarkdown: parsed.blueprintMarkdown } : {}),
     ...(parsed.parseNotice ? { parseNotice: parsed.parseNotice } : {}),
   });
 }
