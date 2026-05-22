@@ -291,36 +291,76 @@ export async function buildBlueprintDocxBuffer(params: {
   return Packer.toBuffer(doc);
 }
 
-function blueprintPlainTextToParagraphs(text: string): (Paragraph | Table)[] {
-  const lines = text.split(/\r?\n/);
+function parsePipeRow(line: string): string[] {
+  return line
+    .split("|")
+    .map((c) => c.trim())
+    .filter((c) => c.length > 0);
+}
+
+function isTableSeparator(line: string): boolean {
+  const t = line.trim();
+  return /^\|?[\s:-]+\|[\s|:-]+\|?$/.test(t) || /^[-|:\s]+$/.test(t.replace(/\|/g, ""));
+}
+
+function blueprintPlainTextToDocxElements(text: string): (Paragraph | Table)[] {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
   const out: (Paragraph | Table)[] = [];
-  for (const line of lines) {
-    const trimmed = line.trim();
+  let i = 0;
+
+  while (i < lines.length) {
+    const trimmed = lines[i]?.trim() ?? "";
     if (!trimmed) {
-      out.push(new Paragraph({ spacing: { after: 60 } }));
+      i += 1;
       continue;
     }
+
     if (trimmed.startsWith("## ")) {
       out.push(sectionHeading(trimmed.slice(3).trim()));
+      i += 1;
       continue;
     }
+
+    if (trimmed.startsWith("|") && trimmed.includes("|")) {
+      const tableLines: string[] = [];
+      while (i < lines.length) {
+        const row = lines[i]?.trim() ?? "";
+        if (!row.startsWith("|")) break;
+        if (!isTableSeparator(row)) tableLines.push(row);
+        i += 1;
+      }
+      if (tableLines.length >= 1) {
+        const headers = parsePipeRow(tableLines[0]!);
+        const dataRows = tableLines.slice(1).map(parsePipeRow).filter((r) => r.length > 0);
+        if (headers.length > 0) {
+          const numericCols = headers.map((_, idx) => idx).filter((idx) => idx > 0);
+          out.push(buildDataTable(headers, dataRows, numericCols));
+          continue;
+        }
+      }
+      continue;
+    }
+
     out.push(
       new Paragraph({
-        spacing: { after: 60 },
-        children: [new TextRun({ text: trimmed, size: 20, color: "1A1A2E" })],
+        spacing: { after: 80 },
+        children: [new TextRun({ text: trimmed, size: 22, color: "1A1A2E" })],
       }),
     );
+    i += 1;
   }
+
   return out;
 }
 
-/** Word export for plain-text blueprint (no JSON). */
+/** Word export for plain-text blueprint (pipe tables → bordered docx tables). */
 export async function buildBlueprintTextDocxBuffer(params: {
   subject: string;
   grade: string;
   topic: string;
   curriculumType: string;
   timeAllowed: string;
+  totalMarks: number;
   blueprintText: string;
 }): Promise<Buffer> {
   const logoBuf = await loadLayahLogoBuffer();
@@ -363,7 +403,17 @@ export async function buildBlueprintTextDocxBuffer(params: {
     new Paragraph({
       children: [
         new TextRun({
-          text: `${params.subject}  ·  ${params.grade}  ·  ${params.topic}`,
+          text: `Subject: ${params.subject}  ·  Grade: ${params.grade}`,
+          size: 22,
+          color: "555577",
+        }),
+      ],
+      spacing: { after: 60 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `Total Marks: ${params.totalMarks}  ·  Time Allowed: ${params.timeAllowed}`,
           size: 22,
           color: "555577",
         }),
@@ -373,7 +423,7 @@ export async function buildBlueprintTextDocxBuffer(params: {
     new Paragraph({
       children: [
         new TextRun({
-          text: `Curriculum: ${params.curriculumType}  ·  Time allowed: ${params.timeAllowed}`,
+          text: `Topic: ${params.topic}  ·  Curriculum: ${params.curriculumType}`,
           italics: true,
           size: 20,
           color: "666688",
@@ -381,7 +431,7 @@ export async function buildBlueprintTextDocxBuffer(params: {
       ],
       spacing: { after: 200 },
     }),
-    ...blueprintPlainTextToParagraphs(params.blueprintText.trim()),
+    ...blueprintPlainTextToDocxElements(params.blueprintText.trim()),
   );
 
   const doc = new Document({

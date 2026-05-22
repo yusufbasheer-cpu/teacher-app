@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildBlueprintTextDocxBuffer } from "@/lib/question-paper-blueprint-export";
-import { sanitizeExportFileName } from "@/lib/lesson-plan-export";
+import { questionPaperDownloadFileName } from "@/lib/question-paper-export";
 
 export const runtime = "nodejs";
 
@@ -10,6 +10,7 @@ type Body = {
   topic?: string;
   curriculumType?: string;
   timeAllowed?: string;
+  totalMarks?: number;
   blueprintText?: string;
 };
 
@@ -27,12 +28,17 @@ export async function POST(req: Request) {
   const curriculumType = body.curriculumType?.trim() ?? "";
   const timeAllowed = body.timeAllowed?.trim() ?? "";
   const blueprintText = body.blueprintText?.trim();
+  const totalMarks = Number(body.totalMarks);
 
   if (!subject || !grade || !topic || !blueprintText) {
     return NextResponse.json(
       { error: "subject, grade, topic, and blueprintText are required." },
       { status: 400 },
     );
+  }
+
+  if (!Number.isFinite(totalMarks) || totalMarks < 1) {
+    return NextResponse.json({ error: "totalMarks must be a positive number." }, { status: 400 });
   }
 
   try {
@@ -42,16 +48,17 @@ export async function POST(req: Request) {
       topic,
       curriculumType,
       timeAllowed,
+      totalMarks,
       blueprintText,
     });
-    const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-blueprint`) || "blueprint";
+    const name = questionPaperDownloadFileName("blueprint", subject, grade);
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename="${name}.docx"`,
+        "Content-Disposition": `attachment; filename="${name}"`,
         "Cache-Control": "no-store",
       },
     });

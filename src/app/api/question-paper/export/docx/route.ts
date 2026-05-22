@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { buildDocxBuffer, sanitizeExportFileName } from "@/lib/lesson-plan-export";
+import {
+  buildQuestionPaperDocxBuffer,
+  questionPaperDownloadFileName,
+} from "@/lib/question-paper-export";
 
 export const runtime = "nodejs";
 
@@ -8,7 +11,8 @@ type Body = {
   grade?: string;
   topic?: string;
   content?: string;
-  variant?: "paper" | "answer-key";
+  totalMarks?: number;
+  timeAllowed?: string;
 };
 
 export async function POST(req: Request) {
@@ -23,7 +27,8 @@ export async function POST(req: Request) {
   const grade = body.grade?.trim();
   const topic = body.topic?.trim();
   const content = body.content?.trim();
-  const variant = body.variant === "answer-key" ? "answer-key" : "paper";
+  const totalMarks = Number(body.totalMarks);
+  const timeAllowed = body.timeAllowed?.trim() ?? "1 hour";
 
   if (!subject || !grade || !topic || !content) {
     return NextResponse.json(
@@ -32,27 +37,27 @@ export async function POST(req: Request) {
     );
   }
 
-  const documentTitle =
-    variant === "answer-key" ? "Answer Key" : "Question Paper";
-  const fileBaseName = variant === "answer-key" ? "answer-key" : "question-paper";
+  if (!Number.isFinite(totalMarks) || totalMarks < 1) {
+    return NextResponse.json({ error: "totalMarks must be a positive number." }, { status: 400 });
+  }
 
   try {
-    const buffer = await buildDocxBuffer({
-      documentTitle,
+    const buffer = await buildQuestionPaperDocxBuffer({
       subject,
       grade,
       topic,
+      totalMarks,
+      timeAllowed,
       content,
     });
-    const name =
-      sanitizeExportFileName(`${grade}-${subject}-${topic}-${fileBaseName}`) || "question-paper";
+    const name = questionPaperDownloadFileName("paper", subject, grade);
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename="${name}.docx"`,
+        "Content-Disposition": `attachment; filename="${name}"`,
         "Cache-Control": "no-store",
       },
     });

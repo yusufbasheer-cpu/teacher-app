@@ -380,6 +380,11 @@ function parseMarkdownContentToDocxParagraphs(content: string): Paragraph[] {
   return paragraphs;
 }
 
+/** Shared markdown → docx paragraphs (lesson plans, question papers, etc.). */
+export function markdownToDocxParagraphs(content: string): Paragraph[] {
+  return parseMarkdownContentToDocxParagraphs(content);
+}
+
 let layahLogoDataUriCache: string | null | undefined;
 
 /** Brand logo from `public/Logo.png` (or `logo.png`) for PPT footers. */

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import JSZip from "jszip";
 import { buildBlueprintTextDocxBuffer } from "@/lib/question-paper-blueprint-export";
-import { buildDocxBuffer, sanitizeExportFileName } from "@/lib/lesson-plan-export";
+import {
+  buildQuestionPaperDocxBuffer,
+  questionPaperDownloadFileName,
+} from "@/lib/question-paper-export";
 
 export const runtime = "nodejs";
 
@@ -11,9 +14,8 @@ type Body = {
   topic?: string;
   curriculumType?: string;
   timeAllowed?: string;
+  totalMarks?: number;
   questionPaper?: string;
-  answerKey?: string;
-  markingScheme?: string;
   blueprintText?: string;
 };
 
@@ -29,9 +31,10 @@ export async function POST(req: Request) {
   const grade = body.grade?.trim();
   const topic = body.topic?.trim();
   const questionPaper = body.questionPaper?.trim();
-  const answerKey = body.answerKey?.trim();
-  const markingScheme = body.markingScheme?.trim();
   const blueprintText = body.blueprintText?.trim();
+  const totalMarks = Number(body.totalMarks);
+  const timeAllowed = body.timeAllowed?.trim() ?? "1 hour";
+  const curriculumType = body.curriculumType?.trim() ?? "";
 
   if (!subject || !grade || !topic || !questionPaper) {
     return NextResponse.json(
@@ -40,52 +43,44 @@ export async function POST(req: Request) {
     );
   }
 
+  if (!Number.isFinite(totalMarks) || totalMarks < 1) {
+    return NextResponse.json({ error: "totalMarks must be a positive number." }, { status: 400 });
+  }
+
   try {
     const zip = new JSZip();
-    const base = sanitizeExportFileName(`${grade}-${subject}-${topic}`) || "question-paper";
 
-    const paperBuf = await buildDocxBuffer({
-      documentTitle: "Question Paper",
+    const paperBuf = await buildQuestionPaperDocxBuffer({
       subject,
       grade,
       topic,
+      totalMarks,
+      timeAllowed,
       content: questionPaper,
     });
-    zip.file(`${base}-question-paper.docx`, paperBuf);
-
-    if (answerKey || markingScheme) {
-      const keyParts = [answerKey, markingScheme ? `## Marking Scheme\n\n${markingScheme}` : ""]
-        .filter(Boolean)
-        .join("\n\n---\n\n");
-      const keyBuf = await buildDocxBuffer({
-        documentTitle: "Answer Key & Marking",
-        subject,
-        grade,
-        topic,
-        content: keyParts,
-      });
-      zip.file(`${base}-answer-key.docx`, keyBuf);
-    }
+    zip.file(questionPaperDownloadFileName("paper", subject, grade), paperBuf);
 
     if (blueprintText) {
       const blueprintBuf = await buildBlueprintTextDocxBuffer({
         subject,
         grade,
         topic,
-        curriculumType: body.curriculumType?.trim() ?? "",
-        timeAllowed: body.timeAllowed?.trim() ?? "",
+        curriculumType,
+        timeAllowed,
+        totalMarks,
         blueprintText,
       });
-      zip.file(`${base}-blueprint.docx`, blueprintBuf);
+      zip.file(questionPaperDownloadFileName("blueprint", subject, grade), blueprintBuf);
     }
 
     const buffer = await zip.generateAsync({ type: "nodebuffer" });
+    const zipName = questionPaperDownloadFileName("zip", subject, grade);
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${base}-complete-pack.zip"`,
+        "Content-Disposition": `attachment; filename="${zipName}"`,
         "Cache-Control": "no-store",
       },
     });

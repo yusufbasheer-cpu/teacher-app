@@ -27,6 +27,7 @@ import {
   type QuestionTypeId,
 } from "@/lib/question-paper";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
+import { questionPaperDownloadFileName } from "@/lib/question-paper-export";
 
 type SourceUploadChunk = {
   id: string;
@@ -170,16 +171,9 @@ export function QuestionPaperGenerator() {
     URL.revokeObjectURL(url);
   };
 
-  const downloadDocx = async (variant: "paper" | "answer-key") => {
-    if (!result) return;
-    const content =
-      variant === "paper"
-        ? result.questionPaper
-        : [result.answerKey, result.markingScheme ? `## Marking Scheme\n\n${result.markingScheme}` : ""]
-            .filter(Boolean)
-            .join("\n\n---\n\n");
-    if (!content?.trim()) return;
-    setDownloading(variant);
+  const downloadQuestionPaper = async () => {
+    if (!result?.questionPaper?.trim()) return;
+    setDownloading("paper");
     try {
       const res = await fetch("/api/question-paper/export/docx", {
         method: "POST",
@@ -188,8 +182,9 @@ export function QuestionPaperGenerator() {
           subject,
           grade,
           topic,
-          content,
-          variant,
+          totalMarks,
+          timeAllowed,
+          content: result.questionPaper,
         }),
       });
       if (!res.ok) {
@@ -198,7 +193,7 @@ export function QuestionPaperGenerator() {
         throw new Error(parsed.ok ? parsed.data.error ?? "Download failed" : parsed.message);
       }
       const blob = await res.blob();
-      downloadBlob(blob, `${grade}-${subject}-${topic}-${variant}.docx`);
+      downloadBlob(blob, questionPaperDownloadFileName("paper", subject, grade));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Download failed");
     } finally {
@@ -219,6 +214,7 @@ export function QuestionPaperGenerator() {
           topic,
           curriculumType,
           timeAllowed,
+          totalMarks,
           blueprintText: result.blueprintText,
         }),
       });
@@ -228,7 +224,7 @@ export function QuestionPaperGenerator() {
         throw new Error(parsed.ok ? parsed.data.error ?? "Blueprint download failed" : parsed.message);
       }
       const blob = await res.blob();
-      downloadBlob(blob, `${grade}-${subject}-${topic}-blueprint.docx`);
+      downloadBlob(blob, questionPaperDownloadFileName("blueprint", subject, grade));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Blueprint download failed");
     } finally {
@@ -249,9 +245,8 @@ export function QuestionPaperGenerator() {
           topic,
           curriculumType,
           timeAllowed,
+          totalMarks,
           questionPaper: result.questionPaper,
-          answerKey: result.answerKey,
-          markingScheme: result.markingScheme,
           blueprintText: result.blueprintText,
         }),
       });
@@ -261,7 +256,7 @@ export function QuestionPaperGenerator() {
         throw new Error(parsed.ok ? parsed.data.error ?? "ZIP failed" : parsed.message);
       }
       const blob = await res.blob();
-      downloadBlob(blob, `${grade}-${subject}-${topic}-pack.zip`);
+      downloadBlob(blob, questionPaperDownloadFileName("zip", subject, grade));
     } catch (e) {
       setError(e instanceof Error ? e.message : "ZIP download failed");
     } finally {
@@ -825,7 +820,7 @@ export function QuestionPaperGenerator() {
               </button>
             </div>
           ) : null}
-          <div className="max-h-[min(75vh,720px)] overflow-y-auto p-4 sm:p-5">
+          <div className="max-h-[min(60vh,560px)] overflow-y-auto p-4 sm:p-5">
             {loading ? (
               <ul className="space-y-1 text-sm text-slate-600">
                 <li>{stepLabel(genProgress.paper, "Generating question paper")}</li>
@@ -847,46 +842,6 @@ export function QuestionPaperGenerator() {
                 <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-800">
                   {previewText}
                 </pre>
-                <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                  <button
-                    type="button"
-                    disabled={!!downloading}
-                    onClick={() => downloadDocx("paper")}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                  >
-                    {downloading === "paper" ? "Downloading…" : "Download question paper (Word)"}
-                  </button>
-                  {(result.answerKey || result.markingScheme) && includeAnswerKey ? (
-                    <button
-                      type="button"
-                      disabled={!!downloading}
-                      onClick={() => downloadDocx("answer-key")}
-                      className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                    >
-                      {downloading === "answer-key" ? "Downloading…" : "Download answer key (Word)"}
-                    </button>
-                  ) : null}
-                  {result.blueprintText ? (
-                    <button
-                      type="button"
-                      disabled={!!downloading}
-                      onClick={() => downloadBlueprint()}
-                      className="rounded-xl border px-4 py-2.5 text-sm font-semibold"
-                      style={{ borderColor: "#0A1628", color: "#0A1628", background: "#fff" }}
-                    >
-                      {downloading === "blueprint" ? "Downloading…" : "Download blueprint (Word)"}
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={!!downloading}
-                    onClick={() => downloadZip()}
-                    className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
-                    style={{ background: "#00C6A7" }}
-                  >
-                    {downloading === "zip" ? "Downloading…" : "Download complete pack (ZIP)"}
-                  </button>
-                </div>
               </>
             ) : (
               <p className="text-sm text-slate-500">
@@ -895,6 +850,55 @@ export function QuestionPaperGenerator() {
               </p>
             )}
           </div>
+
+          {result && !loading ? (
+            <div
+              className="rounded-b-2xl border-t px-4 py-5 sm:px-5"
+              style={{ borderColor: "rgba(0,198,167,0.25)", background: "#F8FAFC" }}
+            >
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "#0A1628" }}>
+                Downloads
+              </h3>
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  disabled={!!downloading}
+                  onClick={() => downloadQuestionPaper()}
+                  className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+                  style={{ background: "#00C6A7" }}
+                >
+                  {downloading === "paper" ? "Downloading…" : "Download Question Paper as Word"}
+                </button>
+                {result.blueprintText ? (
+                  <button
+                    type="button"
+                    disabled={!!downloading}
+                    onClick={() => downloadBlueprint()}
+                    className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+                    style={{ background: "#0A1628" }}
+                  >
+                    {downloading === "blueprint" ? "Downloading…" : "Download Blueprint as Word"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={!!downloading}
+                  onClick={() => downloadZip()}
+                  className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+                  style={{
+                    background: "linear-gradient(135deg, #00C6A7 0%, #0A1628 100%)",
+                  }}
+                >
+                  {downloading === "zip" ? "Downloading…" : "Download Complete Pack as ZIP"}
+                </button>
+                {!result.blueprintText ? (
+                  <p className="text-center text-xs text-slate-500">
+                    ZIP includes the question paper only until a blueprint is generated.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
