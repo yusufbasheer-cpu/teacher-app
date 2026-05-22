@@ -9,10 +9,23 @@ import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+export type LoadingGamePreset = "lesson-plan" | "question-paper";
+
+type SectionDef = {
+  key: string;
+  sectionKey: string;
+  label: string;
+  keywords: string[];
+};
+
 type LessonPlanLoadingGameProps = {
   active: boolean;
   statusText?: string | null;
   selectedSections?: Record<string, boolean> | null;
+  /** Reuse this overlay for question paper generation (custom checklist + copy). */
+  preset?: LoadingGamePreset;
+  /** Used when preset is question-paper (lesson plan uses section selection ETA). */
+  estimatedSeconds?: number;
 };
 
 // ── Fun facts ─────────────────────────────────────────────────────────────────
@@ -42,7 +55,7 @@ const FUN_FACTS = [
 // ── Section checklist ─────────────────────────────────────────────────────────
 type SectionStatus = "waiting" | "generating" | "done";
 
-const SECTIONS: { key: string; sectionKey: string; label: string; keywords: string[] }[] = [
+const SECTIONS: SectionDef[] = [
   { key: "lesson",     sectionKey: "Full Lesson Plan",     label: "Lesson Plan",         keywords: ["lesson plan", "full lesson", "lesson content"] },
   { key: "ppt",        sectionKey: "PPT Slide Content",    label: "PPT Content",          keywords: ["ppt", "slide", "presentation", "deck"] },
   { key: "worksheet",  sectionKey: "Worksheet",            label: "Worksheet",            keywords: ["worksheet"] },
@@ -57,12 +70,38 @@ const SECTIONS: { key: string; sectionKey: string; label: string; keywords: stri
   },
 ];
 
-const emptyStatuses = (): Record<string, SectionStatus> =>
-  Object.fromEntries(SECTIONS.map((s) => [s.key, "waiting"])) as Record<string, SectionStatus>;
+/** Question paper generator checklist (same overlay component). */
+export const QUESTION_PAPER_LOADING_SECTIONS: SectionDef[] = [
+  {
+    key: "paper",
+    sectionKey: "qp-paper",
+    label: "Generating Question Paper",
+    keywords: ["question paper", "generating question"],
+  },
+  {
+    key: "blueprint",
+    sectionKey: "qp-blueprint",
+    label: "Generating Blueprint",
+    keywords: ["blueprint", "generating blueprint"],
+  },
+  {
+    key: "downloads",
+    sectionKey: "qp-downloads",
+    label: "Preparing Downloads",
+    keywords: ["preparing download", "download", "finaliz"],
+  },
+];
 
-function detectActiveSection(text: string): string | null {
+function sectionCatalogForPreset(preset: LoadingGamePreset): SectionDef[] {
+  return preset === "question-paper" ? QUESTION_PAPER_LOADING_SECTIONS : SECTIONS;
+}
+
+const emptyStatusesFor = (sections: SectionDef[]): Record<string, SectionStatus> =>
+  Object.fromEntries(sections.map((s) => [s.key, "waiting"])) as Record<string, SectionStatus>;
+
+function detectActiveSection(text: string, sections: SectionDef[]): string | null {
   const lower = text.toLowerCase();
-  for (const s of SECTIONS) {
+  for (const s of sections) {
     if (s.keywords.some((k) => lower.includes(k))) return s.key;
   }
   return null;
@@ -71,7 +110,7 @@ function detectActiveSection(text: string): string | null {
 function computeProgress(
   statuses: Record<string, SectionStatus>,
   statusText: string | null | undefined,
-  activeSections: typeof SECTIONS,
+  activeSections: SectionDef[],
 ): number {
   const total = activeSections.length;
   if (total === 0) return 4;
@@ -225,13 +264,43 @@ function fmtTime(secs: number): string {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function LessonPlanLoadingGame({ active, statusText, selectedSections }: LessonPlanLoadingGameProps) {
+export function LessonPlanLoadingGame({
+  active,
+  statusText,
+  selectedSections,
+  preset = "lesson-plan",
+  estimatedSeconds,
+}: LessonPlanLoadingGameProps) {
+  const sectionCatalog = sectionCatalogForPreset(preset);
+
   const activeSections =
     selectedSections && Object.values(selectedSections).some(Boolean)
-      ? SECTIONS.filter((s) => selectedSections[s.sectionKey] === true)
-      : SECTIONS;
+      ? sectionCatalog.filter((s) => selectedSections[s.sectionKey] === true)
+      : sectionCatalog;
 
-  const estimatedTotal = computeEstimatedTotal(selectedSections);
+  const estimatedTotal =
+    preset === "question-paper" && estimatedSeconds != null && estimatedSeconds > 0
+      ? estimatedSeconds
+      : computeEstimatedTotal(selectedSections);
+
+  const copy =
+    preset === "question-paper"
+      ? {
+          ariaLabel: "Generating your question paper",
+          title: "Crafting your question paper",
+          doneEarly: "Done early! Your question paper is ready!",
+          doneAll: "All done! Your question paper is ready!",
+          celebrateTitle: "Yaay! Your question paper is ready! 🎉",
+          celebrateSub: "Taking you to your downloads…",
+        }
+      : {
+          ariaLabel: "Generating your lesson plan",
+          title: "Crafting your lesson package",
+          doneEarly: "Done early! Your lesson pack is ready!",
+          doneAll: "All done! Your lesson pack is ready!",
+          celebrateTitle: "Yaay! Your lesson pack is ready! 🎉",
+          celebrateSub: "Preparing your download…",
+        };
 
   const [factIdx, setFactIdx]         = useState(0);
   const [factVisible, setFactVisible] = useState(true);
@@ -249,7 +318,7 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
   // ── Reset on start ───────────────────────────────────────────────────────
   useEffect(() => {
     if (active) {
-      setStatuses(emptyStatuses());
+      setStatuses(emptyStatusesFor(sectionCatalog));
       setSmoothProgress(5);
       targetProgressRef.current = 5;
       stageFloorRef.current = 5;
@@ -316,7 +385,7 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
     }
 
     // ── Normal section tracking ──────────────────────────────────────────
-    const found = detectActiveSection(statusText);
+    const found = detectActiveSection(statusText, activeSections);
     if (!found) return;
 
     const foundIdx = activeSections.findIndex((s) => s.key === found);
@@ -425,7 +494,7 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
         }}
         role="dialog"
         aria-modal="true"
-        aria-label="Generating your lesson plan"
+        aria-label={copy.ariaLabel}
       >
         {/* ── Main loading card ───────────────────────────────────────────── */}
         {!celebrating && (
@@ -447,7 +516,7 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
 
             {/* Title */}
             <p style={{ textAlign: "center", fontSize: 17, fontWeight: 700, color: "#FFFFFF", marginBottom: 4 }}>
-              Crafting your lesson package
+              {copy.title}
             </p>
             <p style={{ textAlign: "center", fontSize: 13, color: "#94a3b8", marginBottom: 20 }}>
               {currentLabel}
@@ -506,7 +575,7 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 18 }}>🎉</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: "#00C6A7" }}>
-                    {isDoneEarly ? "Done early! Your lesson pack is ready!" : "All done! Your lesson pack is ready!"}
+                    {isDoneEarly ? copy.doneEarly : copy.doneAll}
                   </span>
                 </div>
               ) : isOverrun ? (
@@ -623,10 +692,10 @@ export function LessonPlanLoadingGame({ active, statusText, selectedSections }: 
             </div>
 
             <p style={{ fontSize: 22, fontWeight: 800, color: "#0A1628", marginBottom: 8 }}>
-              Yaay! Your lesson pack is ready! 🎉
+              {copy.celebrateTitle}
             </p>
             <p style={{ fontSize: 14, color: "#6b7280" }}>
-              Preparing your download…
+              {copy.celebrateSub}
             </p>
           </div>
         )}

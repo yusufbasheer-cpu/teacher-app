@@ -8,10 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  QuestionPaperLoadingGame,
-  type QpGenProgress,
-} from "@/components/question-paper/question-paper-loading-game";
+import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import {
   CORE_SUBJECT_OPTIONS,
   CURRICULUM_TYPE_GROUPS,
@@ -83,11 +80,7 @@ export function QuestionPaperGenerator() {
   const [uploadInfo, setUploadInfo] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
-  const [genProgress, setGenProgress] = useState<QpGenProgress>({
-    paper: "idle",
-    blueprint: "idle",
-    downloads: "idle",
-  });
+  const [generationProgress, setGenerationProgress] = useState<string | null>(null);
   const [paperReady, setPaperReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<QuestionPaperResult | null>(null);
@@ -95,9 +88,17 @@ export function QuestionPaperGenerator() {
 
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const downloadsRef = useRef<HTMLDivElement>(null);
 
   const extractedMaterial = useMemo(() => combineSourceChunks(uploadedChunks), [uploadedChunks]);
+
+  const qpLoadingSections = useMemo(
+    () => ({
+      "qp-paper": true,
+      "qp-blueprint": generateBlueprint,
+      "qp-downloads": true,
+    }),
+    [generateBlueprint],
+  );
 
   const totalQuestions = useMemo(() => countSelectedQuestions(questionCounts), [questionCounts]);
   const timeEstimate = useMemo(
@@ -272,22 +273,10 @@ export function QuestionPaperGenerator() {
     if (!loading && result) {
       setPaperReady(true);
       const bannerTimer = setTimeout(() => setPaperReady(false), 3000);
-      const scrollTimer = setTimeout(() => {
-        downloadsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 150);
-      return () => {
-        clearTimeout(bannerTimer);
-        clearTimeout(scrollTimer);
-      };
+      document.getElementById("download-section")?.scrollIntoView({ behavior: "smooth" });
+      return () => clearTimeout(bannerTimer);
     }
   }, [loading, result]);
-
-  const finishWithCelebration = async () => {
-    setGenProgress((p) => ({ ...p, downloads: "running" }));
-    await new Promise<void>((r) => setTimeout(r, 500));
-    setGenProgress((p) => ({ ...p, downloads: "done" }));
-    await new Promise<void>((r) => setTimeout(r, 3000));
-  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -295,11 +284,7 @@ export function QuestionPaperGenerator() {
     setLoading(true);
     setResult(null);
     setPreviewTab("paper");
-    setGenProgress({
-      paper: "running",
-      blueprint: generateBlueprint ? "idle" : "skipped",
-      downloads: "idle",
-    });
+    setGenerationProgress("Generating question paper...");
 
     const formPayload = {
       curriculumType,
@@ -337,8 +322,6 @@ export function QuestionPaperGenerator() {
         throw new Error(paperParsed.data.error ?? `Question paper failed (${paperRes.status})`);
       }
 
-      setGenProgress((p) => ({ ...p, paper: "done" }));
-
       const paperResult: QuestionPaperResult = {
         questionPaper: paperParsed.data.questionPaper ?? "",
         answerKey: paperParsed.data.answerKey,
@@ -349,11 +332,14 @@ export function QuestionPaperGenerator() {
       setResult(paperResult);
 
       if (!generateBlueprint) {
-        await finishWithCelebration();
+        setGenerationProgress("Preparing downloads...");
+        await new Promise<void>((r) => setTimeout(r, 500));
+        setGenerationProgress("Finalizing...");
+        await new Promise<void>((r) => setTimeout(r, 3000));
         return;
       }
 
-      setGenProgress((p) => ({ ...p, blueprint: "running" }));
+      setGenerationProgress("Generating blueprint...");
 
       const bpRes = await fetch("/api/question-paper/blueprint", {
         method: "POST",
@@ -378,7 +364,6 @@ export function QuestionPaperGenerator() {
       );
 
       if (!bpParsed.ok) {
-        setGenProgress((p) => ({ ...p, blueprint: "error" }));
         setResult((prev) =>
           prev
             ? {
@@ -387,7 +372,10 @@ export function QuestionPaperGenerator() {
               }
             : prev,
         );
-        await finishWithCelebration();
+        setGenerationProgress("Preparing downloads...");
+        await new Promise<void>((r) => setTimeout(r, 500));
+        setGenerationProgress("Finalizing...");
+        await new Promise<void>((r) => setTimeout(r, 3000));
         return;
       }
 
@@ -396,13 +384,14 @@ export function QuestionPaperGenerator() {
           bpParsed.data.blueprintError ??
           bpParsed.data.error ??
           `Blueprint generation failed (${bpRes.status})`;
-        setGenProgress((p) => ({ ...p, blueprint: "error" }));
         setResult((prev) => (prev ? { ...prev, blueprintError: msg } : prev));
-        await finishWithCelebration();
+        setGenerationProgress("Preparing downloads...");
+        await new Promise<void>((r) => setTimeout(r, 500));
+        setGenerationProgress("Finalizing...");
+        await new Promise<void>((r) => setTimeout(r, 3000));
         return;
       }
 
-      setGenProgress((p) => ({ ...p, blueprint: "done" }));
       setResult((prev) =>
         prev
           ? {
@@ -411,17 +400,15 @@ export function QuestionPaperGenerator() {
             }
           : prev,
       );
-      await finishWithCelebration();
+      setGenerationProgress("Preparing downloads...");
+      await new Promise<void>((r) => setTimeout(r, 500));
+      setGenerationProgress("Finalizing...");
+      await new Promise<void>((r) => setTimeout(r, 3000));
     } catch (err) {
-      setGenProgress((p) => ({
-        paper: p.paper === "running" ? "error" : p.paper,
-        blueprint: p.blueprint === "running" ? "error" : p.blueprint,
-        downloads: "idle",
-      }));
       setError(err instanceof Error ? err.message : "Generation failed.");
     } finally {
       setLoading(false);
-      setGenProgress({ paper: "idle", blueprint: "idle", downloads: "idle" });
+      setGenerationProgress(null);
     }
   };
 
@@ -781,20 +768,6 @@ export function QuestionPaperGenerator() {
 
       <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-24">
         <div
-          role="status"
-          aria-live="polite"
-          style={{
-            transition: "opacity 0.4s ease, transform 0.4s ease",
-            opacity: paperReady ? 1 : 0,
-            transform: paperReady ? "translateY(0)" : "translateY(-8px)",
-            pointerEvents: paperReady ? "auto" : "none",
-          }}
-          className="rounded-2xl border border-[#00C6A7]/40 bg-[#00C6A7]/10 px-4 py-3 text-sm font-semibold text-[#007a66] shadow-sm"
-        >
-          Your Question Paper is ready!
-        </div>
-
-        <div
           className="min-h-[420px] rounded-2xl border shadow-sm"
           style={{ borderColor: "rgba(0,198,167,0.3)", background: "#fff" }}
         >
@@ -856,15 +829,25 @@ export function QuestionPaperGenerator() {
         </div>
 
         {result && !loading ? (
-          <div
-            ref={downloadsRef}
-            id="question-paper-downloads"
-            className="rounded-2xl border px-4 py-5 shadow-sm sm:px-5"
-            style={{ borderColor: "rgba(0,198,167,0.3)", background: "#fff" }}
-          >
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "#0A1628" }}>
-              Downloads
-            </h3>
+          <>
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                transition: "opacity 0.4s ease, transform 0.4s ease",
+                opacity: paperReady ? 1 : 0,
+                transform: paperReady ? "translateY(0)" : "translateY(-8px)",
+                pointerEvents: paperReady ? "auto" : "none",
+              }}
+              className="rounded-2xl border border-[#00C6A7]/40 bg-[#00C6A7]/10 px-4 py-3 text-sm font-semibold text-[#007a66] shadow-sm"
+            >
+              Your Question Paper is ready!
+            </div>
+            <div
+              id="download-section"
+              className="rounded-2xl border px-4 py-5 shadow-sm sm:px-5"
+              style={{ borderColor: "rgba(0,198,167,0.3)", background: "#fff" }}
+            >
             <div className="flex flex-col gap-3">
               <button
                 type="button"
@@ -896,15 +879,17 @@ export function QuestionPaperGenerator() {
                 {downloading === "zip" ? "Downloading…" : "Download Complete Pack as ZIP"}
               </button>
             </div>
-          </div>
+            </div>
+          </>
         ) : null}
       </div>
 
       {loading ? (
-        <QuestionPaperLoadingGame
+        <LessonPlanLoadingGame
           active={loading}
-          includeBlueprint={generateBlueprint}
-          progress={genProgress}
+          statusText={generationProgress}
+          selectedSections={qpLoadingSections}
+          preset="question-paper"
           estimatedSeconds={timeEstimate.seconds}
         />
       ) : null}
