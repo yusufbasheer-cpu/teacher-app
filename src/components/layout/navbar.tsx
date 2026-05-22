@@ -10,6 +10,7 @@ import { Container } from "@/components/ui/container";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/lesson-plan", label: "Generate Lesson Plan" },
+  { href: "/question-paper", label: "Question Paper" },
   { href: "/differentiated-worksheets", label: "Differentiated Worksheet Pack" },
   { href: "/my-lesson-plans", label: "My Lessons" },
 ];

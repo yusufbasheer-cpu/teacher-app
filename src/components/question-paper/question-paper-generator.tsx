@@ -1,0 +1,670 @@
+"use client";
+
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  CORE_SUBJECT_OPTIONS,
+  CURRICULUM_TYPE_GROUPS,
+  GRADE_YEAR_OPTIONS,
+  LANGUAGE_SUBJECT_OPTIONS,
+  STEM_SUBJECT_OPTIONS,
+} from "@/lib/lesson-plan";
+import {
+  QUESTION_PAPER_DIFFICULTY_OPTIONS,
+  QUESTION_PAPER_TIME_OPTIONS,
+  QUESTION_TYPE_SPECS,
+  countSelectedQuestions,
+  emptyQuestionCounts,
+  getQuestionPaperTimeEstimate,
+  type GenerationMode,
+  type QuestionCounts,
+  type QuestionPaperResult,
+  type QuestionTypeId,
+} from "@/lib/question-paper";
+import { tryParseApiJson } from "@/lib/try-parse-api-json";
+
+type SourceUploadChunk = {
+  id: string;
+  fileName: string;
+  kind: "pdf" | "image";
+  text: string;
+};
+
+function combineSourceChunks(chunks: SourceUploadChunk[]): string {
+  return chunks
+    .map((c) => `===== ${c.fileName} (${c.kind}) =====\n${c.text.trim()}`)
+    .join("\n\n")
+    .trim();
+}
+
+type ExtractPayload = {
+  error?: string;
+  parts?: { sourceLabel: string; kind: "pdf" | "image"; text: string }[];
+  partialErrors?: { sourceLabel: string; message: string }[];
+};
+
+const inputClass =
+  "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2";
+
+const sectionClass =
+  "rounded-2xl border bg-white p-4 shadow-sm sm:p-5";
+
+export function QuestionPaperGenerator() {
+  const [curriculumType, setCurriculumType] = useState("CBSE/NCERT");
+  const [grade, setGrade] = useState("Grade 8");
+  const [subject, setSubject] = useState("Science");
+  const [topic, setTopic] = useState("");
+  const [totalMarks, setTotalMarks] = useState(50);
+  const [timeAllowed, setTimeAllowed] = useState<(typeof QUESTION_PAPER_TIME_OPTIONS)[number]>("1 hour");
+  const [difficulty, setDifficulty] = useState<(typeof QUESTION_PAPER_DIFFICULTY_OPTIONS)[number]>("Medium");
+  const [questionCounts, setQuestionCounts] = useState<QuestionCounts>(emptyQuestionCounts);
+  const [generationMode, setGenerationMode] = useState<GenerationMode>("enhanced");
+  const [enhancementPercent, setEnhancementPercent] = useState(50);
+  const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
+  const [includeMarkingScheme, setIncludeMarkingScheme] = useState(true);
+  const [includeModelAnswers, setIncludeModelAnswers] = useState(true);
+
+  const [pastedContent, setPastedContent] = useState("");
+  const [uploadedChunks, setUploadedChunks] = useState<SourceUploadChunk[]>([]);
+  const [uploadExtracting, setUploadExtracting] = useState(false);
+  const [uploadInfo, setUploadInfo] = useState<string | null>(null);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<QuestionPaperResult | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const extractedMaterial = useMemo(() => combineSourceChunks(uploadedChunks), [uploadedChunks]);
+
+  const totalQuestions = useMemo(() => countSelectedQuestions(questionCounts), [questionCounts]);
+  const timeEstimate = useMemo(() => getQuestionPaperTimeEstimate(totalQuestions), [totalQuestions]);
+
+  const previewText = useMemo(() => {
+    if (!result) return "";
+    const parts = [result.questionPaper];
+    if (result.answerKey) parts.push(`\n\n--- ANSWER KEY ---\n\n${result.answerKey}`);
+    if (result.markingScheme) parts.push(`\n\n--- MARKING SCHEME ---\n\n${result.markingScheme}`);
+    return parts.join("");
+  }, [result]);
+
+  const setCount = (id: QuestionTypeId, value: number) => {
+    setQuestionCounts((prev) => ({
+      ...prev,
+      [id]: Math.max(0, Math.min(50, Math.floor(value) || 0)),
+    }));
+  };
+
+  const onUploadFileChange = async (e: ChangeEvent<HTMLInputElement>, kind: "pdf" | "image") => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    e.target.value = "";
+    setUploadExtracting(true);
+    setUploadInfo(null);
+    setError(null);
+    const fd = new FormData();
+    for (const f of Array.from(files)) fd.append("files", f);
+    try {
+      const res = await fetch("/api/lesson-plan/extract-upload", { method: "POST", body: fd });
+      const raw = await res.text();
+      const parsed = tryParseApiJson<ExtractPayload>(raw, res.status);
+      if (!parsed.ok) {
+        setError(parsed.message);
+        return;
+      }
+      if (!res.ok) {
+        setError(parsed.data.error ?? `Upload failed (${res.status})`);
+        return;
+      }
+      const parts = parsed.data.parts ?? [];
+      if (parts.length === 0) {
+        setUploadInfo("No text extracted from the file(s).");
+        return;
+      }
+      setUploadedChunks((prev) => [
+        ...prev,
+        ...parts.map((p, i) => ({
+          id: `${Date.now()}-${i}-${p.sourceLabel}`,
+          fileName: p.sourceLabel,
+          kind: p.kind,
+          text: p.text,
+        })),
+      ]);
+      setUploadInfo(`Added ${parts.length} file(s) to source material.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploadExtracting(false);
+    }
+  };
+
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadDocx = async (variant: "paper" | "answer-key") => {
+    if (!result) return;
+    const content =
+      variant === "paper"
+        ? result.questionPaper
+        : [result.answerKey, result.markingScheme ? `## Marking Scheme\n\n${result.markingScheme}` : ""]
+            .filter(Boolean)
+            .join("\n\n---\n\n");
+    if (!content?.trim()) return;
+    setDownloading(variant);
+    try {
+      const res = await fetch("/api/question-paper/export/docx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject,
+          grade,
+          topic,
+          content,
+          variant,
+        }),
+      });
+      if (!res.ok) {
+        const raw = await res.text();
+        const parsed = tryParseApiJson<{ error?: string }>(raw, res.status);
+        throw new Error(parsed.ok ? parsed.data.error ?? "Download failed" : parsed.message);
+      }
+      const blob = await res.blob();
+      downloadBlob(blob, `${grade}-${subject}-${topic}-${variant}.docx`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Download failed");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const downloadZip = async () => {
+    if (!result) return;
+    setDownloading("zip");
+    try {
+      const res = await fetch("/api/question-paper/export/zip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject,
+          grade,
+          topic,
+          questionPaper: result.questionPaper,
+          answerKey: result.answerKey,
+          markingScheme: result.markingScheme,
+        }),
+      });
+      if (!res.ok) {
+        const raw = await res.text();
+        const parsed = tryParseApiJson<{ error?: string }>(raw, res.status);
+        throw new Error(parsed.ok ? parsed.data.error ?? "ZIP failed" : parsed.message);
+      }
+      const blob = await res.blob();
+      downloadBlob(blob, `${grade}-${subject}-${topic}-pack.zip`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ZIP download failed");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/question-paper", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          curriculumType,
+          grade,
+          subject,
+          topic,
+          totalMarks,
+          timeAllowed,
+          difficulty,
+          questionCounts,
+          generationMode,
+          enhancementPercent,
+          includeAnswerKey,
+          includeMarkingScheme,
+          includeModelAnswers,
+          ...(pastedContent.trim() ? { pastedContent: pastedContent.trim() } : {}),
+          ...(extractedMaterial ? { sourceMaterial: extractedMaterial } : {}),
+        }),
+      });
+      const raw = await res.text();
+      const parsed = tryParseApiJson<
+        QuestionPaperResult & { error?: string; parseNotice?: string }
+      >(raw, res.status);
+      if (!parsed.ok) {
+        throw new Error(parsed.message);
+      }
+      if (!res.ok) {
+        throw new Error(parsed.data.error ?? `Generation failed (${res.status})`);
+      }
+      setResult({
+        questionPaper: parsed.data.questionPaper ?? "",
+        answerKey: parsed.data.answerKey,
+        markingScheme: parsed.data.markingScheme,
+        parseNotice: parsed.data.parseNotice,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Generation failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+      <form onSubmit={onSubmit} className="space-y-6">
+        <section className={sectionClass} style={{ borderColor: "rgba(0,198,167,0.25)" }}>
+          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "#0A1628" }}>
+            Basic details
+          </h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-slate-700">Curriculum type</label>
+              <select
+                value={curriculumType}
+                onChange={(e) => setCurriculumType(e.target.value)}
+                className={inputClass}
+                required
+              >
+                {CURRICULUM_TYPE_GROUPS.map((g) => (
+                  <optgroup key={g.label} label={g.label}>
+                    {g.options.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Grade</label>
+              <select value={grade} onChange={(e) => setGrade(e.target.value)} className={inputClass} required>
+                {GRADE_YEAR_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Subject</label>
+              <select value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} required>
+                <optgroup label="Subjects">
+                  {CORE_SUBJECT_OPTIONS.filter(
+                    (opt) => !(STEM_SUBJECT_OPTIONS as readonly string[]).includes(opt),
+                  ).map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Computer Science & STEM">
+                  {STEM_SUBJECT_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Language Subjects">
+                  {LANGUAGE_SUBJECT_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-slate-700">Topic or chapter name</label>
+              <input
+                type="text"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                className={inputClass}
+                placeholder="e.g. Photosynthesis"
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Total marks</label>
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={totalMarks}
+                onChange={(e) => setTotalMarks(Number(e.target.value))}
+                className={inputClass}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Time allowed</label>
+              <select
+                value={timeAllowed}
+                onChange={(e) =>
+                  setTimeAllowed(e.target.value as (typeof QUESTION_PAPER_TIME_OPTIONS)[number])
+                }
+                className={inputClass}
+              >
+                {QUESTION_PAPER_TIME_OPTIONS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-slate-700">Difficulty level</label>
+              <select
+                value={difficulty}
+                onChange={(e) =>
+                  setDifficulty(e.target.value as (typeof QUESTION_PAPER_DIFFICULTY_OPTIONS)[number])
+                }
+                className={inputClass}
+              >
+                {QUESTION_PAPER_DIFFICULTY_OPTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section className={`${sectionClass} border-dashed`} style={{ borderColor: "rgba(0,198,167,0.35)" }}>
+          <h2 className="text-sm font-semibold" style={{ color: "#0A1628" }}>
+            Provide your content
+          </h2>
+          <p className="mt-1 text-xs text-slate-600">
+            Optional — AI will generate based on topic if no content is provided (except in Strict
+            mode).
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              multiple
+              className="hidden"
+              onChange={(e) => onUploadFileChange(e, "pdf")}
+            />
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+              multiple
+              className="hidden"
+              onChange={(e) => onUploadFileChange(e, "image")}
+            />
+            <button
+              type="button"
+              disabled={uploadExtracting || loading}
+              onClick={() => pdfInputRef.current?.click()}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+            >
+              Upload PDF
+            </button>
+            <button
+              type="button"
+              disabled={uploadExtracting || loading}
+              onClick={() => imageInputRef.current?.click()}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+            >
+              Upload image
+            </button>
+          </div>
+          <textarea
+            value={pastedContent}
+            onChange={(e) => setPastedContent(e.target.value)}
+            disabled={uploadExtracting || loading}
+            rows={6}
+            className={`${inputClass} mt-4`}
+            placeholder="Paste chapter notes, textbook extract, or teaching content…"
+          />
+          {uploadInfo ? <p className="mt-2 text-xs text-teal-800">{uploadInfo}</p> : null}
+          {uploadedChunks.length > 0 ? (
+            <p className="mt-2 text-xs text-slate-600">
+              {uploadedChunks.length} file(s) attached ({extractedMaterial.length.toLocaleString()}{" "}
+              chars extracted)
+            </p>
+          ) : null}
+        </section>
+
+        <section className={sectionClass} style={{ borderColor: "rgba(10,22,40,0.08)" }}>
+          <h2 className="text-sm font-semibold" style={{ color: "#0A1628" }}>
+            Question types
+          </h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {QUESTION_TYPE_SPECS.map((spec) => (
+              <div
+                key={spec.id}
+                className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-900">{spec.label}</p>
+                  <p className="text-[11px] text-slate-500">{spec.description}</p>
+                </div>
+                <input
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={questionCounts[spec.id]}
+                  onChange={(e) => setCount(spec.id, Number(e.target.value))}
+                  className="w-14 rounded-lg border border-slate-300 px-2 py-1 text-center text-sm"
+                  aria-label={`Count for ${spec.label}`}
+                />
+              </div>
+            ))}
+          </div>
+          <div
+            className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm"
+            style={{ background: "#0A1628", color: "#fff" }}
+          >
+            <span>
+              Total questions: <strong>{totalQuestions}</strong>
+            </span>
+            <span>
+              Paper marks: <strong>{totalMarks}</strong>
+            </span>
+          </div>
+        </section>
+
+        <section className={sectionClass}>
+          <h2 className="text-sm font-semibold" style={{ color: "#0A1628" }}>
+            Generation mode
+          </h2>
+          <div className="mt-4 space-y-3">
+            <label className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 p-3 has-[:checked]:border-[#00C6A7] has-[:checked]:bg-[#00C6A7]/5">
+              <input
+                type="radio"
+                name="genMode"
+                checked={generationMode === "strict"}
+                onChange={() => setGenerationMode("strict")}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-semibold text-slate-900">Strictly based on my content</span>
+                <span className="mt-1 block text-xs text-slate-600">
+                  AI will generate questions using ONLY the content you provided. No additional
+                  information will be added.
+                </span>
+              </span>
+            </label>
+            {generationMode === "strict" ? (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Please upload or paste your content above for best results.
+              </p>
+            ) : null}
+            <label className="flex cursor-pointer gap-3 rounded-xl border border-slate-200 p-3 has-[:checked]:border-[#00C6A7] has-[:checked]:bg-[#00C6A7]/5">
+              <input
+                type="radio"
+                name="genMode"
+                checked={generationMode === "enhanced"}
+                onChange={() => setGenerationMode("enhanced")}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-semibold text-slate-900">AI enhanced generation</span>
+                <span className="mt-1 block text-xs text-slate-600">
+                  AI may paraphrase and enhance questions beyond your provided content.
+                </span>
+              </span>
+            </label>
+            {generationMode === "enhanced" ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between text-sm font-medium text-slate-800">
+                  <span>Enhancement level</span>
+                  <span style={{ color: "#00C6A7" }}>{enhancementPercent}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={enhancementPercent}
+                  onChange={(e) => setEnhancementPercent(Number(e.target.value))}
+                  className="mt-3 w-full accent-[#00C6A7]"
+                />
+                <p className="mt-2 text-[11px] text-slate-600">
+                  0–20%: mostly your content · 21–50%: balanced · 51–80%: mostly AI · 81–100%: fully AI
+                  from topic
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className={sectionClass}>
+          <h2 className="text-sm font-semibold" style={{ color: "#0A1628" }}>
+            Answer key options
+          </h2>
+          <div className="mt-3 space-y-2">
+            <label className="flex items-center gap-2 text-sm text-slate-800">
+              <input
+                type="checkbox"
+                checked={includeAnswerKey}
+                onChange={(e) => setIncludeAnswerKey(e.target.checked)}
+              />
+              Include answer key
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-800">
+              <input
+                type="checkbox"
+                checked={includeMarkingScheme}
+                onChange={(e) => setIncludeMarkingScheme(e.target.checked)}
+              />
+              Include marking scheme
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-800">
+              <input
+                type="checkbox"
+                checked={includeModelAnswers}
+                onChange={(e) => setIncludeModelAnswers(e.target.checked)}
+              />
+              Include model answers for long questions
+            </label>
+          </div>
+        </section>
+
+        {error ? (
+          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={loading || totalQuestions < 1}
+          className="w-full rounded-xl px-6 py-4 text-base font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-50"
+          style={{ background: "#00C6A7" }}
+        >
+          {loading ? "Generating question paper…" : "Generate question paper"}
+        </button>
+        <p className="text-center text-xs text-slate-500">
+          Estimated time: {timeEstimate.detail} ({timeEstimate.tier})
+        </p>
+      </form>
+
+      <div className="lg:sticky lg:top-24">
+        <div
+          className="min-h-[420px] rounded-2xl border shadow-sm"
+          style={{ borderColor: "rgba(0,198,167,0.3)", background: "#fff" }}
+        >
+          <div
+            className="rounded-t-2xl px-4 py-3 text-sm font-semibold text-white sm:px-5"
+            style={{ background: "#0A1628" }}
+          >
+            Question paper preview
+          </div>
+          <div className="max-h-[min(75vh,720px)] overflow-y-auto p-4 sm:p-5">
+            {loading ? (
+              <p className="text-sm text-slate-600">Generating your paper with DeepSeek…</p>
+            ) : result ? (
+              <>
+                {result.parseNotice ? (
+                  <p className="mb-3 text-xs text-amber-800">{result.parseNotice}</p>
+                ) : null}
+                <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-800">
+                  {previewText}
+                </pre>
+                <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  <button
+                    type="button"
+                    disabled={!!downloading}
+                    onClick={() => downloadDocx("paper")}
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  >
+                    {downloading === "paper" ? "Downloading…" : "Download question paper (Word)"}
+                  </button>
+                  {(result.answerKey || result.markingScheme) && includeAnswerKey ? (
+                    <button
+                      type="button"
+                      disabled={!!downloading}
+                      onClick={() => downloadDocx("answer-key")}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                    >
+                      {downloading === "answer-key" ? "Downloading…" : "Download answer key (Word)"}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={!!downloading}
+                    onClick={() => downloadZip()}
+                    className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
+                    style={{ background: "#00C6A7" }}
+                  >
+                    {downloading === "zip" ? "Downloading…" : "Download complete pack (ZIP)"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-slate-500">
+                Your generated question paper will appear here. Configure options on the left and
+                click Generate.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
