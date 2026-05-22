@@ -1,18 +1,28 @@
+import Link from "next/link";
 import { Container } from "@/components/ui/container";
 
 const features = [
   {
     title: "Lesson Plan Generator",
+    href: "/lesson-plan",
     description:
       "Create complete lesson structures with objectives, activities, assessments, and timing suggestions.",
   },
   {
+    title: "Question Paper Generator",
+    href: "/question-paper",
+    description:
+      "Build exam papers with multiple question types, blueprints, and Word downloads for your classroom.",
+  },
+  {
     title: "PowerPoint Outline Builder",
+    href: "/lesson-plan",
     description:
       "Turn lesson content into clear slide-by-slide outlines ready to paste into PowerPoint.",
   },
   {
     title: "Curriculum Alignment",
+    href: "/lesson-plan",
     description:
       "Keep plans aligned to grade level outcomes and learning standards for consistent quality.",
   },
@@ -50,6 +60,15 @@ export function FeaturesSection() {
               <p className="mt-2 text-sm leading-6" style={{ color: "#4A5568" }}>
                 {feature.description}
               </p>
+              {"href" in feature && feature.href ? (
+                <Link
+                  href={feature.href}
+                  className="mt-4 inline-flex text-sm font-semibold transition hover:opacity-80"
+                  style={{ color: "#00C6A7" }}
+                >
+                  Open tool →
+                </Link>
+              ) : null}
             </article>
           ))}
         </div>

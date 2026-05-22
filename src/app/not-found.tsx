@@ -25,6 +25,12 @@ export default function NotFound() {
             >
               Lesson generator
             </Link>
+            <Link
+              href="/question-paper"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-blue-200 bg-white px-5 py-2.5 text-sm font-semibold text-blue-900 transition hover:bg-blue-50"
+            >
+              Question Paper
+            </Link>
           </div>
         </div>
       </Container>

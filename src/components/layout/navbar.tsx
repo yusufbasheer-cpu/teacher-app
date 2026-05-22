@@ -4,16 +4,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { APP_NAV_LINKS, isNavLinkActive } from "@/lib/app-nav-links";
 import { supabase } from "@/lib/supabase";
 import { Container } from "@/components/ui/container";
-
-const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/lesson-plan", label: "Generate Lesson Plan" },
-  { href: "/question-paper", label: "Question Paper" },
-  { href: "/differentiated-worksheets", label: "Differentiated Worksheet Pack" },
-  { href: "/my-lesson-plans", label: "My Lessons" },
-];
 
 export function Navbar() {
   const pathname = usePathname();
@@ -56,8 +49,8 @@ export function Navbar() {
       style={{ background: "#0A1628", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
     >
       <Container className="py-3">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center">
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/" className="inline-flex shrink-0 items-center">
             <img
               src="/Logo.png"
               alt="Layah"
@@ -67,14 +60,14 @@ export function Navbar() {
             />
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex">
-            {navLinks.map((link) => {
-              const active = pathname === link.href;
+          <nav className="hidden min-w-0 flex-1 flex-wrap items-center justify-end gap-1 lg:flex">
+            {APP_NAV_LINKS.map((link) => {
+              const active = isNavLinkActive(pathname, link.href);
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="inline-flex min-h-10 items-center rounded-lg px-3 py-2 text-sm font-medium transition"
+                  className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition"
                   style={{
                     color: active ? "#00C6A7" : "rgba(255,255,255,0.7)",
                     background: active ? "rgba(0,198,167,0.1)" : "transparent",
@@ -88,7 +81,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={onLogout}
-                className="ml-2 inline-flex min-h-10 items-center rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                className="ml-1 inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
                 style={{ background: "#00C6A7" }}
               >
                 Logout
@@ -96,7 +89,7 @@ export function Navbar() {
             ) : (
               <Link
                 href="/auth"
-                className="ml-2 inline-flex min-h-10 items-center rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                className="ml-1 inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
                 style={{ background: "#00C6A7" }}
               >
                 Login
@@ -107,7 +100,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setMenuOpen((prev) => !prev)}
-            className="inline-flex min-h-11 min-w-[4.5rem] items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-white md:hidden"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-white lg:hidden"
             style={{ border: "1px solid rgba(255,255,255,0.15)" }}
             aria-label="Toggle navigation menu"
             aria-expanded={menuOpen}
@@ -118,22 +111,25 @@ export function Navbar() {
 
         {menuOpen ? (
           <nav
-            className="mt-3 space-y-1 rounded-xl p-3 md:hidden"
+            className="mt-3 space-y-1 rounded-xl p-3 lg:hidden"
             style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
           >
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-medium"
-                style={{
-                  color: pathname === link.href ? "#00C6A7" : "rgba(255,255,255,0.75)",
-                  background: pathname === link.href ? "rgba(0,198,167,0.1)" : "transparent",
-                }}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {APP_NAV_LINKS.map((link) => {
+              const active = isNavLinkActive(pathname, link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-medium"
+                  style={{
+                    color: active ? "#00C6A7" : "rgba(255,255,255,0.75)",
+                    background: active ? "rgba(0,198,167,0.1)" : "transparent",
+                  }}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
             {user ? (
               <button
                 type="button"

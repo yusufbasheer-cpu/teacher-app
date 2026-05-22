@@ -34,6 +34,13 @@ export function HeroSection() {
               Generate Lesson Plan
             </Link>
             <Link
+              href="/question-paper"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border px-5 py-3 text-center text-sm font-semibold transition hover:opacity-90"
+              style={{ borderColor: "#0A1628", color: "#0A1628", background: "#fff" }}
+            >
+              Question Paper
+            </Link>
+            <Link
               href="/auth"
               className="inline-flex min-h-11 items-center justify-center rounded-lg border px-5 py-3 text-center text-sm font-semibold transition hover:opacity-80"
               style={{ borderColor: "#00C6A7", color: "#00C6A7", background: "transparent" }}
