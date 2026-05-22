@@ -16,7 +16,8 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_MAX_TOKENS = 8000;
+const DEEPSEEK_MAX_TOKENS = 10000;
+const DEEPSEEK_MAX_TOKENS_WITH_BLUEPRINT = 12000;
 
 function deepSeekHttpErrorMessage(status: number, rawBody: string): string {
   const trimmed = rawBody.trim();
@@ -64,12 +65,15 @@ export async function POST(req: Request) {
     uploadedExtractedText: body.sourceMaterial,
   });
 
+  const generateBlueprint = Boolean(body.generateBlueprint);
+
   const systemPrompt = buildQuestionPaperSystemPrompt({
     mode: body.generationMode,
     enhancementPercent: body.generationMode === "enhanced" ? body.enhancementPercent : 0,
     includeAnswerKey: body.includeAnswerKey,
     includeMarkingScheme: body.includeMarkingScheme,
     includeModelAnswers: body.includeModelAnswers,
+    includeBlueprint: generateBlueprint,
   });
 
   const userMessage = buildQuestionPaperUserMessage({
@@ -95,7 +99,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         model: "deepseek-chat",
         temperature: body.generationMode === "strict" ? 0.35 : 0.55,
-        max_tokens: DEEPSEEK_MAX_TOKENS,
+        max_tokens: generateBlueprint ? DEEPSEEK_MAX_TOKENS_WITH_BLUEPRINT : DEEPSEEK_MAX_TOKENS,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
@@ -126,12 +130,31 @@ export async function POST(req: Request) {
     );
   }
 
-  const parsed = parseQuestionPaperResponse(completionText);
+  const parsed = parseQuestionPaperResponse(completionText, {
+    expectBlueprint: generateBlueprint,
+  });
+
+  if (generateBlueprint && !parsed.blueprint) {
+    return NextResponse.json(
+      {
+        error:
+          parsed.parseNotice?.includes("Blueprint")
+            ? `Blueprint generation failed: ${parsed.parseNotice}`
+            : "Blueprint was requested but could not be parsed from the AI response. Try again.",
+        questionPaper: parsed.questionPaper,
+        ...(parsed.answerKey ? { answerKey: parsed.answerKey } : {}),
+        ...(parsed.markingScheme ? { markingScheme: parsed.markingScheme } : {}),
+      },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json({
     questionPaper: parsed.questionPaper,
     ...(parsed.answerKey ? { answerKey: parsed.answerKey } : {}),
     ...(parsed.markingScheme ? { markingScheme: parsed.markingScheme } : {}),
+    ...(parsed.blueprint ? { blueprint: parsed.blueprint } : {}),
+    ...(parsed.blueprintMarkdown ? { blueprintMarkdown: parsed.blueprintMarkdown } : {}),
     ...(parsed.parseNotice ? { parseNotice: parsed.parseNotice } : {}),
   });
 }

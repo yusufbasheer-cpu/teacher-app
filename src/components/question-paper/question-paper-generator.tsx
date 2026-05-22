@@ -68,6 +68,8 @@ export function QuestionPaperGenerator() {
   const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
   const [includeMarkingScheme, setIncludeMarkingScheme] = useState(true);
   const [includeModelAnswers, setIncludeModelAnswers] = useState(true);
+  const [generateBlueprint, setGenerateBlueprint] = useState(false);
+  const [previewTab, setPreviewTab] = useState<"paper" | "blueprint">("paper");
 
   const [pastedContent, setPastedContent] = useState("");
   const [uploadedChunks, setUploadedChunks] = useState<SourceUploadChunk[]>([]);
@@ -85,15 +87,21 @@ export function QuestionPaperGenerator() {
   const extractedMaterial = useMemo(() => combineSourceChunks(uploadedChunks), [uploadedChunks]);
 
   const totalQuestions = useMemo(() => countSelectedQuestions(questionCounts), [questionCounts]);
-  const timeEstimate = useMemo(() => getQuestionPaperTimeEstimate(totalQuestions), [totalQuestions]);
+  const timeEstimate = useMemo(
+    () => getQuestionPaperTimeEstimate(totalQuestions, generateBlueprint),
+    [totalQuestions, generateBlueprint],
+  );
 
   const previewText = useMemo(() => {
     if (!result) return "";
+    if (previewTab === "blueprint" && result.blueprintMarkdown) {
+      return result.blueprintMarkdown;
+    }
     const parts = [result.questionPaper];
     if (result.answerKey) parts.push(`\n\n--- ANSWER KEY ---\n\n${result.answerKey}`);
     if (result.markingScheme) parts.push(`\n\n--- MARKING SCHEME ---\n\n${result.markingScheme}`);
     return parts.join("");
-  }, [result]);
+  }, [result, previewTab]);
 
   const setCount = (id: QuestionTypeId, value: number) => {
     setQuestionCounts((prev) => ({
@@ -190,6 +198,36 @@ export function QuestionPaperGenerator() {
     }
   };
 
+  const downloadBlueprint = async () => {
+    if (!result?.blueprint) return;
+    setDownloading("blueprint");
+    try {
+      const res = await fetch("/api/question-paper/export/blueprint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject,
+          grade,
+          topic,
+          curriculumType,
+          timeAllowed,
+          blueprint: result.blueprint,
+        }),
+      });
+      if (!res.ok) {
+        const raw = await res.text();
+        const parsed = tryParseApiJson<{ error?: string }>(raw, res.status);
+        throw new Error(parsed.ok ? parsed.data.error ?? "Blueprint download failed" : parsed.message);
+      }
+      const blob = await res.blob();
+      downloadBlob(blob, `${grade}-${subject}-${topic}-blueprint.docx`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Blueprint download failed");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   const downloadZip = async () => {
     if (!result) return;
     setDownloading("zip");
@@ -201,9 +239,12 @@ export function QuestionPaperGenerator() {
           subject,
           grade,
           topic,
+          curriculumType,
+          timeAllowed,
           questionPaper: result.questionPaper,
           answerKey: result.answerKey,
           markingScheme: result.markingScheme,
+          blueprint: result.blueprint,
         }),
       });
       if (!res.ok) {
@@ -243,6 +284,7 @@ export function QuestionPaperGenerator() {
           includeAnswerKey,
           includeMarkingScheme,
           includeModelAnswers,
+          generateBlueprint,
           ...(pastedContent.trim() ? { pastedContent: pastedContent.trim() } : {}),
           ...(extractedMaterial ? { sourceMaterial: extractedMaterial } : {}),
         }),
@@ -257,10 +299,13 @@ export function QuestionPaperGenerator() {
       if (!res.ok) {
         throw new Error(parsed.data.error ?? `Generation failed (${res.status})`);
       }
+      setPreviewTab(parsed.data.blueprint ? "paper" : "paper");
       setResult({
         questionPaper: parsed.data.questionPaper ?? "",
         answerKey: parsed.data.answerKey,
         markingScheme: parsed.data.markingScheme,
+        blueprint: parsed.data.blueprint,
+        blueprintMarkdown: parsed.data.blueprintMarkdown,
         parseNotice: parsed.data.parseNotice,
       });
     } catch (err) {
@@ -587,6 +632,26 @@ export function QuestionPaperGenerator() {
           </div>
         </section>
 
+        <section className={sectionClass} style={{ borderColor: "rgba(0,198,167,0.2)" }}>
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={generateBlueprint}
+              onChange={(e) => setGenerateBlueprint(e.target.checked)}
+              className="mt-1 size-4 rounded border-slate-300 text-[#00C6A7] focus:ring-[#00C6A7]"
+            />
+            <span>
+              <span className="text-sm font-semibold text-slate-900">
+                Generate Blueprint with Question Paper
+              </span>
+              <span className="mt-1 block text-xs text-slate-600">
+                Includes chapter-wise, Bloom&apos;s taxonomy, question type, and difficulty tables plus
+                a summary — generated in the same run as your paper.
+              </span>
+            </span>
+          </label>
+        </section>
+
         {error ? (
           <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
         ) : null}
@@ -597,7 +662,11 @@ export function QuestionPaperGenerator() {
           className="w-full rounded-xl px-6 py-4 text-base font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-50"
           style={{ background: "#00C6A7" }}
         >
-          {loading ? "Generating question paper…" : "Generate question paper"}
+          {loading
+            ? generateBlueprint
+              ? "Generating question paper & blueprint…"
+              : "Generating question paper…"
+            : "Generate question paper"}
         </button>
         <p className="text-center text-xs text-slate-500">
           Estimated time: {timeEstimate.detail} ({timeEstimate.tier})
@@ -613,11 +682,41 @@ export function QuestionPaperGenerator() {
             className="rounded-t-2xl px-4 py-3 text-sm font-semibold text-white sm:px-5"
             style={{ background: "#0A1628" }}
           >
-            Question paper preview
+            Preview
           </div>
+          {result?.blueprint ? (
+            <div className="flex border-b border-slate-200 bg-slate-50 px-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setPreviewTab("paper")}
+                className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
+                style={{
+                  background: previewTab === "paper" ? "#fff" : "transparent",
+                  color: previewTab === "paper" ? "#0A1628" : "#64748b",
+                }}
+              >
+                Question paper
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewTab("blueprint")}
+                className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
+                style={{
+                  background: previewTab === "blueprint" ? "#fff" : "transparent",
+                  color: previewTab === "blueprint" ? "#0A1628" : "#64748b",
+                }}
+              >
+                Blueprint
+              </button>
+            </div>
+          ) : null}
           <div className="max-h-[min(75vh,720px)] overflow-y-auto p-4 sm:p-5">
             {loading ? (
-              <p className="text-sm text-slate-600">Generating your paper with DeepSeek…</p>
+              <p className="text-sm text-slate-600">
+                {generateBlueprint
+                  ? "Generating your question paper and examination blueprint…"
+                  : "Generating your paper with DeepSeek…"}
+              </p>
             ) : result ? (
               <>
                 {result.parseNotice ? (
@@ -643,6 +742,17 @@ export function QuestionPaperGenerator() {
                       className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                     >
                       {downloading === "answer-key" ? "Downloading…" : "Download answer key (Word)"}
+                    </button>
+                  ) : null}
+                  {result.blueprint ? (
+                    <button
+                      type="button"
+                      disabled={!!downloading}
+                      onClick={() => downloadBlueprint()}
+                      className="rounded-xl border px-4 py-2.5 text-sm font-semibold"
+                      style={{ borderColor: "#0A1628", color: "#0A1628", background: "#fff" }}
+                    >
+                      {downloading === "blueprint" ? "Downloading…" : "Download blueprint (Word)"}
                     </button>
                   ) : null}
                   <button

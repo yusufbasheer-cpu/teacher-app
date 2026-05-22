@@ -13,6 +13,8 @@ export const QP_ANSWER_KEY_START = "ANSWER KEY START";
 export const QP_ANSWER_KEY_END = "ANSWER KEY END";
 export const QP_MARKING_SCHEME_START = "MARKING SCHEME START";
 export const QP_MARKING_SCHEME_END = "MARKING SCHEME END";
+export const QP_BLUEPRINT_START = "BLUEPRINT JSON START";
+export const QP_BLUEPRINT_END = "BLUEPRINT JSON END";
 
 function formatQuestionTypeRequest(counts: QuestionCounts): string {
   const lines: string[] = [];
@@ -44,6 +46,7 @@ export function buildQuestionPaperSystemPrompt(params: {
   includeAnswerKey: boolean;
   includeMarkingScheme: boolean;
   includeModelAnswers: boolean;
+  includeBlueprint: boolean;
 }): string {
   const modeBlock =
     params.mode === "strict"
@@ -74,6 +77,39 @@ ${params.includeAnswerKey ? `- Answer key between ${QP_ANSWER_KEY_START} and ${Q
 ${params.includeMarkingScheme ? `- Marking scheme between ${QP_MARKING_SCHEME_START} and ${QP_MARKING_SCHEME_END}` : ""}
 ${params.includeModelAnswers ? "- Within the answer key, provide detailed model answers for long-answer and case-study items." : ""}`
       : "Do not include an answer key or marking scheme."
+  }
+
+3. ${
+    params.includeBlueprint
+      ? `After the question paper (and answer key if any), include an examination BLUEPRINT as **valid JSON only** between:
+${QP_BLUEPRINT_START}
+{ ...json... }
+${QP_BLUEPRINT_END}
+
+The JSON must match this schema exactly:
+{
+  "chapterWise": [{ "chapter": "string", "questions": number, "marks": number, "percent": number }],
+  "bloomsTaxonomy": [
+    { "level": "Remember"|"Understand"|"Apply"|"Analyze"|"Evaluate"|"Create", "questions": number, "marks": number, "percent": number }
+  ],
+  "questionTypes": [{ "type": "string", "questions": number, "marksPerQuestion": number, "totalMarks": number }],
+  "difficulty": [{ "level": "Easy"|"Medium"|"Hard", "questions": number, "marks": number }],
+  "summary": {
+    "totalQuestions": number,
+    "totalMarks": number,
+    "estimatedCompletionTime": "string",
+    "syllabusCoveragePercent": number
+  }
+}
+
+Blueprint rules:
+- Derive distributions from the question paper you just created (chapter tags, Bloom levels, types, difficulty).
+- Table 1 (chapterWise): one row per chapter/topic segment; percents sum to ~100.
+- Table 2 (bloomsTaxonomy): all 6 Bloom levels must appear; percents sum to ~100.
+- Table 3 (questionTypes): one row per question type used; totalMarks must sum to total paper marks.
+- Table 4 (difficulty): Easy, Medium, Hard rows; marks sum to total.
+- summary.totalQuestions and summary.totalMarks must match the paper.`
+      : ""
   }
 
 ### Question paper structure (inside ${QP_PAPER_START})

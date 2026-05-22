@@ -7,6 +7,7 @@ import {
   QP_PAPER_START,
 } from "@/lib/question-paper-prompt";
 import type { QuestionPaperResult } from "@/lib/question-paper";
+import { parseQuestionPaperBlueprint } from "@/lib/parse-question-paper-blueprint";
 import { stripOuterMarkdownFences } from "@/lib/parse-teacher-package-response";
 
 function escapeRe(s: string): string {
@@ -24,7 +25,10 @@ function extractBetween(raw: string, start: string, end: string): string {
   return m?.[1]?.trim() ?? "";
 }
 
-export function parseQuestionPaperResponse(raw: string): QuestionPaperResult {
+export function parseQuestionPaperResponse(
+  raw: string,
+  options?: { expectBlueprint?: boolean },
+): QuestionPaperResult {
   const trimmed = stripOuterMarkdownFences(raw?.trim() ?? "");
   const notices: string[] = [];
 
@@ -49,10 +53,23 @@ export function parseQuestionPaperResponse(raw: string): QuestionPaperResult {
     notices.push("empty question paper");
   }
 
+  let blueprint: QuestionPaperResult["blueprint"];
+  let blueprintMarkdown: string | undefined;
+  if (options?.expectBlueprint) {
+    const bp = parseQuestionPaperBlueprint(trimmed);
+    if (bp.blueprint) {
+      blueprint = bp.blueprint;
+      blueprintMarkdown = bp.markdown;
+    } else if (bp.error) {
+      notices.push(bp.error);
+    }
+  }
+
   return {
     questionPaper,
     ...(answerKey ? { answerKey } : {}),
     ...(markingScheme ? { markingScheme } : {}),
+    ...(blueprint ? { blueprint, blueprintMarkdown } : {}),
     ...(notices.length ? { parseNotice: notices.join(" ") } : {}),
   };
 }

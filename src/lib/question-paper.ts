@@ -7,6 +7,7 @@ import {
   buildGenerationSourceMaterial,
   SOURCE_MATERIAL_MAX_CHARS,
 } from "@/lib/lesson-plan";
+import type { QuestionPaperBlueprint } from "@/lib/question-paper-blueprint";
 
 export const QUESTION_PAPER_TIME_OPTIONS = [
   "30 minutes",
@@ -80,6 +81,7 @@ export type QuestionPaperFormInput = {
   includeAnswerKey: boolean;
   includeMarkingScheme: boolean;
   includeModelAnswers: boolean;
+  generateBlueprint: boolean;
 };
 
 export type QuestionPaperGenerateBody = QuestionPaperFormInput & {
@@ -91,6 +93,8 @@ export type QuestionPaperResult = {
   questionPaper: string;
   answerKey?: string;
   markingScheme?: string;
+  blueprint?: QuestionPaperBlueprint;
+  blueprintMarkdown?: string;
   parseNotice?: string;
 };
 
@@ -113,7 +117,10 @@ export function estimateMarksPreview(totalMarks: number, counts: QuestionCounts)
   return totalMarks;
 }
 
-export function getQuestionPaperTimeEstimate(questionCount: number): {
+export function getQuestionPaperTimeEstimate(
+  questionCount: number,
+  withBlueprint = false,
+): {
   tier: string;
   detail: string;
   seconds: number;
@@ -121,7 +128,7 @@ export function getQuestionPaperTimeEstimate(questionCount: number): {
   if (questionCount <= 0) {
     return { tier: "—", detail: "Select at least one question", seconds: 0 };
   }
-  const seconds = Math.min(420, Math.max(20, 18 + questionCount * 4));
+  const seconds = Math.min(480, Math.max(20, 18 + questionCount * 4 + (withBlueprint ? 25 : 0)));
   const tier = seconds < 45 ? "Fast" : seconds < 120 ? "Medium" : "Full paper";
   const mins = Math.ceil(seconds / 60);
   return { tier, detail: `~${mins} min (${seconds}s)`, seconds };
