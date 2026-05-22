@@ -3,10 +3,15 @@
 import {
   type ChangeEvent,
   type FormEvent,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import {
+  QuestionPaperLoadingGame,
+  type QpGenProgress,
+} from "@/components/question-paper/question-paper-loading-game";
 import {
   CORE_SUBJECT_OPTIONS,
   CURRICULUM_TYPE_GROUPS,
@@ -49,13 +54,6 @@ type ExtractPayload = {
   partialErrors?: { sourceLabel: string; message: string }[];
 };
 
-type GenStepStatus = "idle" | "running" | "done" | "error";
-
-type GenProgress = {
-  paper: GenStepStatus;
-  blueprint: GenStepStatus;
-};
-
 const inputClass =
   "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2";
 
@@ -85,13 +83,19 @@ export function QuestionPaperGenerator() {
   const [uploadInfo, setUploadInfo] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
-  const [genProgress, setGenProgress] = useState<GenProgress>({ paper: "idle", blueprint: "idle" });
+  const [genProgress, setGenProgress] = useState<QpGenProgress>({
+    paper: "idle",
+    blueprint: "idle",
+    downloads: "idle",
+  });
+  const [paperReady, setPaperReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<QuestionPaperResult | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
 
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const downloadsRef = useRef<HTMLDivElement>(null);
 
   const extractedMaterial = useMemo(() => combineSourceChunks(uploadedChunks), [uploadedChunks]);
 
@@ -264,10 +268,25 @@ export function QuestionPaperGenerator() {
     }
   };
 
-  const stepLabel = (status: GenStepStatus, label: string): string => {
-    if (status === "done") return `${label}… done`;
-    if (status === "error") return `${label}… failed`;
-    return `${label}…`;
+  useEffect(() => {
+    if (!loading && result) {
+      setPaperReady(true);
+      const bannerTimer = setTimeout(() => setPaperReady(false), 3000);
+      const scrollTimer = setTimeout(() => {
+        downloadsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+      return () => {
+        clearTimeout(bannerTimer);
+        clearTimeout(scrollTimer);
+      };
+    }
+  }, [loading, result]);
+
+  const finishWithCelebration = async () => {
+    setGenProgress((p) => ({ ...p, downloads: "running" }));
+    await new Promise<void>((r) => setTimeout(r, 500));
+    setGenProgress((p) => ({ ...p, downloads: "done" }));
+    await new Promise<void>((r) => setTimeout(r, 3000));
   };
 
   const onSubmit = async (e: FormEvent) => {
@@ -278,7 +297,8 @@ export function QuestionPaperGenerator() {
     setPreviewTab("paper");
     setGenProgress({
       paper: "running",
-      blueprint: generateBlueprint ? "idle" : "idle",
+      blueprint: generateBlueprint ? "idle" : "skipped",
+      downloads: "idle",
     });
 
     const formPayload = {
@@ -329,7 +349,7 @@ export function QuestionPaperGenerator() {
       setResult(paperResult);
 
       if (!generateBlueprint) {
-        setGenProgress((p) => ({ ...p, blueprint: "idle" }));
+        await finishWithCelebration();
         return;
       }
 
@@ -367,6 +387,7 @@ export function QuestionPaperGenerator() {
               }
             : prev,
         );
+        await finishWithCelebration();
         return;
       }
 
@@ -377,6 +398,7 @@ export function QuestionPaperGenerator() {
           `Blueprint generation failed (${bpRes.status})`;
         setGenProgress((p) => ({ ...p, blueprint: "error" }));
         setResult((prev) => (prev ? { ...prev, blueprintError: msg } : prev));
+        await finishWithCelebration();
         return;
       }
 
@@ -389,14 +411,17 @@ export function QuestionPaperGenerator() {
             }
           : prev,
       );
+      await finishWithCelebration();
     } catch (err) {
       setGenProgress((p) => ({
         paper: p.paper === "running" ? "error" : p.paper,
         blueprint: p.blueprint === "running" ? "error" : p.blueprint,
+        downloads: "idle",
       }));
       setError(err instanceof Error ? err.message : "Generation failed.");
     } finally {
       setLoading(false);
+      setGenProgress({ paper: "idle", blueprint: "idle", downloads: "idle" });
     }
   };
 
@@ -741,35 +766,6 @@ export function QuestionPaperGenerator() {
           <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
         ) : null}
 
-        {loading || genProgress.paper !== "idle" || genProgress.blueprint !== "idle" ? (
-          <ul className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-            <li
-              className={
-                genProgress.paper === "done"
-                  ? "text-emerald-800"
-                  : genProgress.paper === "error"
-                    ? "text-red-800"
-                    : ""
-              }
-            >
-              {stepLabel(genProgress.paper, "Generating question paper")}
-            </li>
-            {generateBlueprint ? (
-              <li
-                className={
-                  genProgress.blueprint === "done"
-                    ? "text-emerald-800"
-                    : genProgress.blueprint === "error"
-                      ? "text-red-800"
-                      : ""
-                }
-              >
-                {stepLabel(genProgress.blueprint, "Generating blueprint")}
-              </li>
-            ) : null}
-          </ul>
-        ) : null}
-
         <button
           type="submit"
           disabled={loading || totalQuestions < 1}
@@ -783,7 +779,21 @@ export function QuestionPaperGenerator() {
         </p>
       </form>
 
-      <div className="lg:sticky lg:top-24">
+      <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-24">
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            transition: "opacity 0.4s ease, transform 0.4s ease",
+            opacity: paperReady ? 1 : 0,
+            transform: paperReady ? "translateY(0)" : "translateY(-8px)",
+            pointerEvents: paperReady ? "auto" : "none",
+          }}
+          className="rounded-2xl border border-[#00C6A7]/40 bg-[#00C6A7]/10 px-4 py-3 text-sm font-semibold text-[#007a66] shadow-sm"
+        >
+          Your Question Paper is ready!
+        </div>
+
         <div
           className="min-h-[420px] rounded-2xl border shadow-sm"
           style={{ borderColor: "rgba(0,198,167,0.3)", background: "#fff" }}
@@ -821,14 +831,7 @@ export function QuestionPaperGenerator() {
             </div>
           ) : null}
           <div className="max-h-[min(60vh,560px)] overflow-y-auto p-4 sm:p-5">
-            {loading ? (
-              <ul className="space-y-1 text-sm text-slate-600">
-                <li>{stepLabel(genProgress.paper, "Generating question paper")}</li>
-                {generateBlueprint ? (
-                  <li>{stepLabel(genProgress.blueprint, "Generating blueprint")}</li>
-                ) : null}
-              </ul>
-            ) : result ? (
+            {result ? (
               <>
                 {result.parseNotice ? (
                   <p className="mb-3 text-xs text-amber-800">{result.parseNotice}</p>
@@ -850,57 +853,61 @@ export function QuestionPaperGenerator() {
               </p>
             )}
           </div>
-
-          {result && !loading ? (
-            <div
-              className="rounded-b-2xl border-t px-4 py-5 sm:px-5"
-              style={{ borderColor: "rgba(0,198,167,0.25)", background: "#F8FAFC" }}
-            >
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "#0A1628" }}>
-                Downloads
-              </h3>
-              <div className="flex flex-col gap-3">
-                <button
-                  type="button"
-                  disabled={!!downloading}
-                  onClick={() => downloadQuestionPaper()}
-                  className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                  style={{ background: "#00C6A7" }}
-                >
-                  {downloading === "paper" ? "Downloading…" : "Download Question Paper as Word"}
-                </button>
-                {result.blueprintText ? (
-                  <button
-                    type="button"
-                    disabled={!!downloading}
-                    onClick={() => downloadBlueprint()}
-                    className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                    style={{ background: "#0A1628" }}
-                  >
-                    {downloading === "blueprint" ? "Downloading…" : "Download Blueprint as Word"}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  disabled={!!downloading}
-                  onClick={() => downloadZip()}
-                  className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                  style={{
-                    background: "linear-gradient(135deg, #00C6A7 0%, #0A1628 100%)",
-                  }}
-                >
-                  {downloading === "zip" ? "Downloading…" : "Download Complete Pack as ZIP"}
-                </button>
-                {!result.blueprintText ? (
-                  <p className="text-center text-xs text-slate-500">
-                    ZIP includes the question paper only until a blueprint is generated.
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
         </div>
+
+        {result && !loading ? (
+          <div
+            ref={downloadsRef}
+            id="question-paper-downloads"
+            className="rounded-2xl border px-4 py-5 shadow-sm sm:px-5"
+            style={{ borderColor: "rgba(0,198,167,0.3)", background: "#fff" }}
+          >
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide" style={{ color: "#0A1628" }}>
+              Downloads
+            </h3>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                disabled={!!downloading}
+                onClick={() => downloadQuestionPaper()}
+                className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+                style={{ background: "#00C6A7" }}
+              >
+                {downloading === "paper" ? "Downloading…" : "Download Question Paper as Word"}
+              </button>
+              <button
+                type="button"
+                disabled={!!downloading || !result.blueprintText}
+                onClick={() => downloadBlueprint()}
+                className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+                style={{ background: "#0A1628" }}
+              >
+                {downloading === "blueprint" ? "Downloading…" : "Download Blueprint as Word"}
+              </button>
+              <button
+                type="button"
+                disabled={!!downloading}
+                onClick={() => downloadZip()}
+                className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+                style={{
+                  background: "linear-gradient(135deg, #00C6A7 0%, #0A1628 100%)",
+                }}
+              >
+                {downloading === "zip" ? "Downloading…" : "Download Complete Pack as ZIP"}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
+
+      {loading ? (
+        <QuestionPaperLoadingGame
+          active={loading}
+          includeBlueprint={generateBlueprint}
+          progress={genProgress}
+          estimatedSeconds={timeEstimate.seconds}
+        />
+      ) : null}
     </div>
   );
 }
