@@ -25,10 +25,9 @@ const PRO_FEATURES = [
   "Question Paper Generator",
   "Blueprint Generator",
   "Differentiated Worksheet Pack",
-  "UAE Framework Alignment",
+  "Global Curriculum Framework Alignment - Supports UAE MOE, CBSE, British, American, Cambridge, IB and 15+ more curriculums",
   "All Curriculum Types",
   "Priority Support",
-  "School Logo Upload",
 ] as const;
 
 const FAQ = [
