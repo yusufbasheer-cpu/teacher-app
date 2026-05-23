@@ -172,3 +172,18 @@ input[type="checkbox"]:checked {
 .stagger-6 { animation-delay: 0.30s; }
 .stagger-7 { animation-delay: 0.35s; }
 .stagger-8 { animation-delay: 0.40s; }
+
+/* Custom marker cursor — desktop pointer devices only (see MarkerCursor) */
+@media (hover: hover) and (pointer: fine) {
+  html.layah-custom-cursor,
+  html.layah-custom-cursor * {
+    cursor: none !important;
+  }
+
+  html.layah-custom-cursor input,
+  html.layah-custom-cursor textarea,
+  html.layah-custom-cursor select,
+  html.layah-custom-cursor [contenteditable="true"] {
+    cursor: text !important;
+  }
+}

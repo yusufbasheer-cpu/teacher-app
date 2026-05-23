@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Poppins } from "next/font/google";
+import { MarkerCursor } from "@/components/cursor/marker-cursor";
 import { NavbarWrapper } from "@/components/layout/navbar-wrapper";
 import { PageTransitionWrapper } from "@/components/layout/page-transition-wrapper";
 import "./globals.css";
@@ -38,6 +39,7 @@ export default function RootLayout({
         className={`${inter.variable} ${poppins.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
         style={{ color: "#0A1628" }}
       >
+        <MarkerCursor />
         <NavbarWrapper />
         <PageTransitionWrapper>
           {children}
