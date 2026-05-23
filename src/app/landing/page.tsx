@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { AnimatedHeroGradient } from "@/components/effects/animated-hero-gradient";
+import { LandingNavSound } from "@/components/landing/landing-nav-sound";
 
 export const metadata: Metadata = {
   title: "Layah.ai — AI Lesson Planning for Teachers",
@@ -55,6 +57,7 @@ export default function LandingPage() {
             >
               Login
             </Link>
+            <LandingNavSound />
             <Link
               href="/lesson-plan"
               className="rounded-lg px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:opacity-90"
@@ -76,29 +79,8 @@ export default function LandingPage() {
       </header>
 
       {/* ── HERO ── */}
-      <section
-        className="relative overflow-hidden"
-        style={{
-          background: "linear-gradient(135deg, #0A1628 0%, #0d2040 60%, #0e2647 100%)",
-        }}
-      >
-        {/* Subtle grid pattern */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage:
-              "linear-gradient(#00C6A7 1px, transparent 1px), linear-gradient(90deg, #00C6A7 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
-          }}
-        />
-
-        {/* Glow blob */}
-        <div
-          className="pointer-events-none absolute -top-32 right-1/3 h-[500px] w-[500px] rounded-full opacity-20 blur-[120px]"
-          style={{ background: "#00C6A7" }}
-        />
-
-        <div className="relative mx-auto max-w-7xl px-6 py-24 md:py-36 lg:py-44">
+      <AnimatedHeroGradient showGrid className="relative">
+        <div className="mx-auto max-w-7xl px-6 py-24 md:py-36 lg:py-44">
           <div className="mx-auto max-w-3xl text-center">
             {/* Badge */}
             <span
@@ -157,7 +139,7 @@ export default function LandingPage() {
             </p>
           </div>
         </div>
-      </section>
+      </AnimatedHeroGradient>
 
       {/* ── FEATURES ── */}
       <section id="features" className="py-24 md:py-32" style={{ background: "#F7F9FC" }}>
@@ -480,7 +462,7 @@ function FeatureCard({
 }) {
   return (
     <div
-      className="rounded-2xl bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+      className="layah-tilt-card rounded-2xl bg-white p-8 shadow-sm transition hover:shadow-md"
       style={{ border: "1px solid #E2E8F0" }}
     >
       <div
@@ -509,7 +491,10 @@ function StepCard({
   description: string;
 }) {
   return (
-    <div className="relative rounded-2xl p-8" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div
+      className="layah-tilt-card relative rounded-2xl p-8"
+      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+    >
       {/* Number */}
       <span
         className="mb-5 block text-5xl font-bold leading-none"

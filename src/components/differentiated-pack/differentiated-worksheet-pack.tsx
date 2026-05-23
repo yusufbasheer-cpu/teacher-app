@@ -9,18 +9,9 @@ import {
   clearDiffPackSession,
   readDiffPackSession,
 } from "@/lib/differentiated-pack-session";
+import { dispatchLayahGenerationComplete } from "@/lib/layah-sounds";
+import { triggerFileDownload } from "@/lib/trigger-file-download";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
-
-function triggerDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
 
 function safeFilePart(topic: string) {
   return topic
@@ -206,6 +197,7 @@ export function DifferentiatedWorksheetPack() {
       }
 
       setPack(combined);
+      dispatchLayahGenerationComplete();
       setParseNotice(notices.length ? notices.join(" ") : null);
       if (failures.length) {
         setError(`Some levels failed, but successful levels are shown. ${failures.join(" | ")}`);
@@ -330,7 +322,7 @@ export function DifferentiatedWorksheetPack() {
       }
       const blob = await res.blob();
       if (blob.size === 0) throw new Error("Empty file.");
-      triggerDownload(blob, `${safeFilePart(topic)}-${fileBaseName}.docx`);
+      triggerFileDownload(blob, `${safeFilePart(topic)}-${fileBaseName}.docx`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Download failed.");
     } finally {
@@ -358,7 +350,7 @@ export function DifferentiatedWorksheetPack() {
         throw new Error(j.error ?? "ZIP failed.");
       }
       const blob = await res.blob();
-      triggerDownload(blob, `${safeFilePart(topic)}-differentiated-pack.zip`);
+      triggerFileDownload(blob, `${safeFilePart(topic)}-differentiated-pack.zip`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "ZIP failed.");
     } finally {

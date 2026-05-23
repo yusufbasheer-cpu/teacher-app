@@ -45,7 +45,7 @@ export function FeaturesSection() {
           {features.map((feature) => (
             <article
               key={feature.title}
-              className="rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              className="layah-tilt-card rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-md"
               style={{ borderColor: "rgba(0,198,167,0.2)" }}
             >
               <div

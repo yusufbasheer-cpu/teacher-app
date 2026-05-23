@@ -30,6 +30,7 @@ import {
 } from "@/lib/question-paper";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import { questionPaperDownloadFileName } from "@/lib/question-paper-download-names";
+import { triggerFileDownload } from "@/lib/trigger-file-download";
 
 type SourceUploadChunk = {
   id: string;
@@ -168,12 +169,7 @@ export function QuestionPaperGenerator() {
   };
 
   const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    triggerFileDownload(blob, filename);
   };
 
   const downloadQuestionPaper = async () => {

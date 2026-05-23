@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { SoundToggleButton } from "@/components/effects/sound-toggle-button";
 import { APP_NAV_LINKS, isNavLinkActive } from "@/lib/app-nav-links";
 import { supabase } from "@/lib/supabase";
 import { Container } from "@/components/ui/container";
@@ -77,6 +78,7 @@ export function Navbar() {
                 </Link>
               );
             })}
+            <SoundToggleButton />
             {user ? (
               <button
                 type="button"
@@ -130,6 +132,10 @@ export function Navbar() {
                 </Link>
               );
             })}
+            <div className="flex items-center justify-between gap-2 px-1 py-1">
+              <span className="text-xs font-medium text-white/50">Sounds</span>
+              <SoundToggleButton />
+            </div>
             {user ? (
               <button
                 type="button"

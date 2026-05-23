@@ -15,6 +15,7 @@ import {
 import { AFL_PHASE_IDS, type AflSelectionsPayload } from "@/lib/afl-tools";
 import { DEFAULT_PPT_THEME_ID, type PptThemeId } from "@/lib/ppt-themes";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
+import { triggerFileDownload } from "@/lib/trigger-file-download";
 
 function hasAflSelections(s: AflSelectionsPayload | undefined): boolean {
   if (!s) return false;
@@ -53,17 +54,6 @@ type ExportKey =
   | "notes"
   | "afl-sheets"
   | "zip";
-
-function triggerDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
 
 // ── PPT export progress (visual only; images are usually pre-built during generation) ──
 const TOTAL_IMAGES = 10;
@@ -338,7 +328,7 @@ export function TeacherPackageViewer({
       if (blob.size === 0) {
         throw new Error("Downloaded file was empty.");
       }
-      triggerDownload(blob, filename);
+      triggerFileDownload(blob, filename);
     } catch (e) {
       setExportError(e instanceof Error ? e.message : "Download failed.");
     } finally {
