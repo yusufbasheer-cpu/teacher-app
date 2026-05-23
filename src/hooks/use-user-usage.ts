@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getAuthHeaders } from "@/lib/auth-headers";
-import { getUpgradePitch, type UserUsageSnapshot } from "@/lib/user-usage";
+import { getUpgradePitch, logUsageSnapshot, type UserUsageSnapshot } from "@/lib/user-usage";
 
 type UsageState = {
   usage: UserUsageSnapshot | null;
@@ -33,9 +33,14 @@ export function useUserUsage(enabled: boolean) {
         error?: string;
       };
       if (!res.ok || !data.usage) {
-        setState((s) => ({ ...s, loading: false }));
+        console.warn("[user-usage] failed to load usage", {
+          status: res.status,
+          error: data.error,
+        });
+        setState((s) => ({ ...s, usage: null, loading: false }));
         return;
       }
+      logUsageSnapshot("page load", data.usage);
       const pitch = data.upgradePitch ?? getUpgradePitch(data.usage.planType);
       setState({
         usage: data.usage,

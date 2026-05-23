@@ -552,7 +552,12 @@ export function LessonPlanGenerator() {
       return;
     }
 
-    if (!usage?.canGenerate) {
+    if (usageLoading) {
+      setError("Loading your generation allowance…");
+      return;
+    }
+
+    if (usage && !usage.canGenerate) {
       setLimitModalOpen(true);
       return;
     }

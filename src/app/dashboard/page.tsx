@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { registerActiveSession } from "@/lib/active-session";
 import { supabase } from "@/lib/supabase";
+import { ensureUserUsageOnClient } from "@/lib/user-usage-client";
 
 /** OAuth redirect target — registers session then sends teachers to the app. */
 export default function DashboardPage() {
@@ -27,6 +28,8 @@ export default function DashboardPage() {
       } catch {
         /* session row optional; continue into app */
       }
+
+      await ensureUserUsageOnClient(session.user.id);
 
       router.replace("/lesson-plan");
       router.refresh();

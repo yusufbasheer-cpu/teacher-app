@@ -316,7 +316,12 @@ export function QuestionPaperGenerator() {
     e.preventDefault();
     setError(null);
 
-    if (!usage?.canGenerate) {
+    if (usageLoading) {
+      setError("Loading your generation allowance…");
+      return;
+    }
+
+    if (usage && !usage.canGenerate) {
       setLimitModalOpen(true);
       return;
     }

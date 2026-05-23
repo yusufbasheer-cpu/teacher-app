@@ -24,7 +24,7 @@ export function GenerationLimitModal({
   if (!open) return null;
 
   const limit = usage?.generationsLimit ?? 3;
-  const used = usage?.generationsUsed ?? limit;
+  const used = usage?.generationsUsed ?? 0;
 
   return (
     <div

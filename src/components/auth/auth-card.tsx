@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { registerActiveSession, SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
 import { supabase } from "@/lib/supabase";
+import { ensureUserUsageOnClient } from "@/lib/user-usage-client";
 
 type AuthMode = "login" | "signup";
 
@@ -108,6 +109,7 @@ export function AuthCard() {
 
         if (data.session?.user) {
           await registerActiveSession(data.session.user.id);
+          await ensureUserUsageOnClient(data.session.user.id);
           router.push("/lesson-plan");
           router.refresh();
           return;
@@ -128,6 +130,7 @@ export function AuthCard() {
         } = await supabase.auth.getSession();
         if (session?.user) {
           await registerActiveSession(session.user.id);
+          await ensureUserUsageOnClient(session.user.id);
         }
         router.push("/lesson-plan");
         router.refresh();
