@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { AnimatedHeroGradient } from "@/components/effects/animated-hero-gradient";
 import { LandingNavSound } from "@/components/landing/landing-nav-sound";
 
 export const metadata: Metadata = {
@@ -79,8 +78,20 @@ export default function LandingPage() {
       </header>
 
       {/* ── HERO ── */}
-      <AnimatedHeroGradient showGrid className="relative">
-        <div className="mx-auto max-w-7xl px-6 py-24 md:py-36 lg:py-44">
+      <section
+        className="relative overflow-hidden"
+        style={{ background: "#0A1628" }}
+      >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "linear-gradient(#00C6A7 1px, transparent 1px), linear-gradient(90deg, #00C6A7 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
+
+        <div className="relative mx-auto max-w-7xl px-6 py-24 md:py-36 lg:py-44">
           <div className="mx-auto max-w-3xl text-center">
             {/* Badge */}
             <span
@@ -139,7 +150,7 @@ export default function LandingPage() {
             </p>
           </div>
         </div>
-      </AnimatedHeroGradient>
+      </section>
 
       {/* ── FEATURES ── */}
       <section id="features" className="py-24 md:py-32" style={{ background: "#F7F9FC" }}>
