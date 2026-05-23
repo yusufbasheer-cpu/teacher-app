@@ -436,15 +436,24 @@ export default function LandingPage() {
 
             {/* Links */}
             <nav className="flex flex-wrap gap-x-8 gap-y-3">
-              {["Features", "Pricing", "Contact", "Privacy Policy"].map((link) => (
-                <a
-                  key={link}
-                  href="#"
-                  className="text-sm text-white/50 transition hover:text-white"
-                >
-                  {link}
-                </a>
-              ))}
+              <a href="#features" className="text-sm text-white/50 transition hover:text-white">
+                Features
+              </a>
+              <a href="/pricing" className="text-sm text-white/50 transition hover:text-white">
+                Pricing
+              </a>
+              <a
+                href="mailto:support@layah.in"
+                className="text-sm text-white/50 transition hover:text-white"
+              >
+                Contact
+              </a>
+              <a href="/privacy" className="text-sm text-white/50 transition hover:text-white">
+                Privacy Policy
+              </a>
+              <a href="/terms" className="text-sm text-white/50 transition hover:text-white">
+                Terms of Service
+              </a>
             </nav>
           </div>
 
