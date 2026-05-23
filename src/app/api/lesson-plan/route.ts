@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import {
+  assertCanGenerate,
+  authenticateRequest,
+  incrementGenerationsUsed,
+} from "@/lib/user-usage-server";
+import {
   buildCurriculumFrameworkSystemAddendum,
   getCurriculumFrameworkLabel,
   isUaeCurriculumFramework,
@@ -730,6 +735,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
+  const gate = await assertCanGenerate(auth.supabase, auth.userId);
+  if (!gate.ok) {
+    return NextResponse.json(
+      {
+        error: gate.message,
+        code: gate.code,
+        usage: gate.usage,
+        upgradePitch: {
+          headline: gate.message,
+          subline:
+            gate.usage.planType === "free"
+              ? "Upgrade to Pro for 30 generations per month for just 15 AED."
+              : "Upgrade your plan for more generations this month.",
+        },
+      },
+      { status: gate.status },
+    );
+  }
+
   const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(input.curriculumFramework);
 
   const aflSelections = sanitizeAflSelections(body.aflSelections);
@@ -762,6 +791,7 @@ export async function POST(req: Request) {
             onProgress: (message) => send({ type: "progress", message }),
           });
           const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
+          await incrementGenerationsUsed(auth.supabase, auth.userId);
           send({ type: "complete", ...payload });
         } catch (e) {
           const message = e instanceof Error ? e.message : String(e);
@@ -786,6 +816,7 @@ export async function POST(req: Request) {
       aflPromptBlock,
     });
     const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
+    await incrementGenerationsUsed(auth.supabase, auth.userId);
     return NextResponse.json(payload);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

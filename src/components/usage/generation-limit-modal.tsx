@@ -1,0 +1,93 @@
+"use client";
+
+import Link from "next/link";
+import type { UserUsageSnapshot } from "@/lib/user-usage";
+
+const NAVY = "#0A1628";
+const TEAL = "#00C6A7";
+
+type GenerationLimitModalProps = {
+  open: boolean;
+  usage: UserUsageSnapshot | null;
+  headline: string;
+  subline: string;
+  onClose: () => void;
+};
+
+export function GenerationLimitModal({
+  open,
+  usage,
+  headline,
+  subline,
+  onClose,
+}: GenerationLimitModalProps) {
+  if (!open) return null;
+
+  const limit = usage?.generationsLimit ?? 3;
+  const used = usage?.generationsUsed ?? limit;
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="generation-limit-title"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 bg-[#0A1628]/60 backdrop-blur-sm"
+        aria-label="Close"
+        onClick={onClose}
+      />
+      <div
+        className="relative w-full max-w-md rounded-3xl border bg-white p-8 shadow-2xl"
+        style={{ borderColor: "rgba(0,198,167,0.35)" }}
+      >
+        <div
+          className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
+          style={{ background: "rgba(0,198,167,0.12)" }}
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              stroke={TEAL}
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+
+        <h2 id="generation-limit-title" className="text-center text-xl font-bold" style={{ color: NAVY }}>
+          Monthly limit reached
+        </h2>
+
+        <p className="mt-3 text-center text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+          You have used all {limit} generations for this month.
+          {used >= limit ? ` (${used} of ${limit} used)` : null}
+        </p>
+        <p className="mt-2 text-center text-sm font-medium leading-relaxed" style={{ color: NAVY }}>
+          {subline || headline}
+        </p>
+
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/pricing"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:opacity-95"
+            style={{ background: TEAL, color: NAVY }}
+            onClick={onClose}
+          >
+            Upgrade Now
+          </Link>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition hover:bg-slate-50"
+            style={{ borderColor: "#CBD5E0", color: "#4A5568" }}
+          >
+            Maybe Later
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

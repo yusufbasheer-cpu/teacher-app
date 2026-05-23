@@ -49,6 +49,11 @@ import {
   type PptThemeId,
 } from "@/lib/ppt-themes";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
+import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
+import { GenerationUsageIndicator } from "@/components/usage/generation-usage-indicator";
+import { useUserUsage } from "@/hooks/use-user-usage";
+import { getAuthHeaders } from "@/lib/auth-headers";
+import { GENERATION_LIMIT_ERROR_CODE } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import {
@@ -212,6 +217,14 @@ export function LessonPlanGenerator() {
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const {
+    usage,
+    loading: usageLoading,
+    refresh: refreshUsage,
+    headline: limitHeadline,
+    subline: limitSubline,
+  } = useUserUsage(Boolean(user));
   const [form, setForm] = useState<LessonPlanInput>(initialForm);
   const [lessonPlan, setLessonPlan] = useState<LessonPlanResult | null>(null);
   const [sectionImages, setSectionImages] = useState<SectionImageMap | null>(null);
@@ -539,6 +552,11 @@ export function LessonPlanGenerator() {
       return;
     }
 
+    if (!usage?.canGenerate) {
+      setLimitModalOpen(true);
+      return;
+    }
+
     // State updates before any await so the loading screen renders with them
     setLoading(true);
     setGenerationProgress("Initializing...");
@@ -551,7 +569,7 @@ export function LessonPlanGenerator() {
       setGenerationProgress("Preparing AI request...");
       const response = await fetch("/api/lesson-plan", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           ...form,
           sections,
@@ -617,6 +635,7 @@ export function LessonPlanGenerator() {
               ? stripped.pptSlideImageUrls
               : null;
         setPptSlideImageUrls(ppt);
+        void refreshUsage();
       };
 
       if (response.ok && pptSelected && contentType.includes("application/x-ndjson")) {
@@ -676,6 +695,13 @@ export function LessonPlanGenerator() {
         const data = parsed.data;
 
         if (!response.ok) {
+          if (
+            response.status === 403 &&
+            (data as { code?: string }).code === GENERATION_LIMIT_ERROR_CODE
+          ) {
+            setLimitModalOpen(true);
+            return;
+          }
           const extra =
             typeof data.rawResponse === "string" && data.rawResponse.trim()
               ? `\n\n--- Raw response from server ---\n${data.rawResponse}`
@@ -814,8 +840,11 @@ export function LessonPlanGenerator() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-[#00C6A7]/20 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
-        Signed in as <span className="font-semibold">{user.email}</span>
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-[#00C6A7]/20 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
+          Signed in as <span className="font-semibold">{user.email}</span>
+        </div>
+        <GenerationUsageIndicator usage={usage} loading={usageLoading} />
       </div>
 
       <div className="grid min-w-0 gap-8 lg:grid-cols-[0.95fr_1.05fr]">
@@ -1561,6 +1590,14 @@ export function LessonPlanGenerator() {
       ) : null}
 
       {loading ? <LessonPlanLoadingGame active statusText={generationProgress} selectedSections={sectionSelection} /> : null}
+
+      <GenerationLimitModal
+        open={limitModalOpen}
+        usage={usage}
+        headline={limitHeadline}
+        subline={limitSubline}
+        onClose={() => setLimitModalOpen(false)}
+      />
     </div>
   );
 }

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { callDeepSeekChat } from "@/lib/question-paper-deepseek";
+import {
+  assertCanGenerate,
+  authenticateRequest,
+  incrementGenerationsUsed,
+} from "@/lib/user-usage-server";
 import { parseQuestionPaperResponse } from "@/lib/parse-question-paper";
 import {
   buildQuestionPaperSystemPrompt,
@@ -27,6 +32,19 @@ export async function POST(req: Request) {
   const validationError = validateQuestionPaperBody(body);
   if (validationError) {
     return NextResponse.json({ error: validationError }, { status: 400 });
+  }
+
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
+  const gate = await assertCanGenerate(auth.supabase, auth.userId);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: gate.message, code: gate.code, usage: gate.usage },
+      { status: gate.status },
+    );
   }
 
   const sourceMaterial = buildQuestionPaperSourceMaterial({
@@ -67,6 +85,8 @@ export async function POST(req: Request) {
   }
 
   const parsed = parseQuestionPaperResponse(ds.content);
+
+  await incrementGenerationsUsed(auth.supabase, auth.userId);
 
   return NextResponse.json({
     questionPaper: parsed.questionPaper,

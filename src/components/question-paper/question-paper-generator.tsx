@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   type ChangeEvent,
   type FormEvent,
@@ -8,7 +9,14 @@ import {
   useRef,
   useState,
 } from "react";
+import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
+import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
+import { GenerationUsageIndicator } from "@/components/usage/generation-usage-indicator";
+import { useUserUsage } from "@/hooks/use-user-usage";
+import { getAuthHeaders } from "@/lib/auth-headers";
+import { GENERATION_LIMIT_ERROR_CODE } from "@/lib/user-usage";
+import { supabase } from "@/lib/supabase";
 import {
   CORE_SUBJECT_OPTIONS,
   CURRICULUM_TYPE_GROUPS,
@@ -59,6 +67,17 @@ const sectionClass =
   "rounded-2xl border bg-white p-4 shadow-sm sm:p-5";
 
 export function QuestionPaperGenerator() {
+  const [user, setUser] = useState<User | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const {
+    usage,
+    loading: usageLoading,
+    refresh: refreshUsage,
+    headline: limitHeadline,
+    subline: limitSubline,
+  } = useUserUsage(Boolean(user));
+
   const [curriculumType, setCurriculumType] = useState("CBSE/NCERT");
   const [grade, setGrade] = useState("Grade 8");
   const [subject, setSubject] = useState("Science");
@@ -89,6 +108,25 @@ export function QuestionPaperGenerator() {
 
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const init = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      setCheckingAuth(false);
+    };
+    void init();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const extractedMaterial = useMemo(() => combineSourceChunks(uploadedChunks), [uploadedChunks]);
 
@@ -277,6 +315,12 @@ export function QuestionPaperGenerator() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!usage?.canGenerate) {
+      setLimitModalOpen(true);
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     setPreviewTab("paper");
@@ -303,7 +347,7 @@ export function QuestionPaperGenerator() {
     try {
       const paperRes = await fetch("/api/question-paper", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify(formPayload),
       });
       const paperRaw = await paperRes.text();
@@ -315,6 +359,13 @@ export function QuestionPaperGenerator() {
         throw new Error(paperParsed.message);
       }
       if (!paperRes.ok) {
+        if (
+          paperRes.status === 403 &&
+          (paperParsed.data as { code?: string }).code === GENERATION_LIMIT_ERROR_CODE
+        ) {
+          setLimitModalOpen(true);
+          return;
+        }
         throw new Error(paperParsed.data.error ?? `Question paper failed (${paperRes.status})`);
       }
 
@@ -400,6 +451,7 @@ export function QuestionPaperGenerator() {
       await new Promise<void>((r) => setTimeout(r, 500));
       setGenerationProgress("Finalizing...");
       await new Promise<void>((r) => setTimeout(r, 3000));
+      void refreshUsage();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed.");
     } finally {
@@ -408,8 +460,41 @@ export function QuestionPaperGenerator() {
     }
   };
 
+  if (checkingAuth) {
+    return (
+      <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 text-sm text-slate-600 shadow-sm">
+        Checking your account…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-semibold text-slate-900">Login required</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Please log in to generate question papers and track your monthly generation limit.
+        </p>
+        <Link
+          href="/auth"
+          className="mt-5 inline-flex rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
+        >
+          Go to Login
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-[#00C6A7]/20 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
+          Signed in as <span className="font-semibold">{user.email}</span>
+        </div>
+        <GenerationUsageIndicator usage={usage} loading={usageLoading} />
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
       <form onSubmit={onSubmit} className="space-y-6">
         <section className={sectionClass} style={{ borderColor: "rgba(0,198,167,0.25)" }}>
           <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "#0A1628" }}>
@@ -889,6 +974,15 @@ export function QuestionPaperGenerator() {
           estimatedSeconds={timeEstimate.seconds}
         />
       ) : null}
+      </div>
+
+      <GenerationLimitModal
+        open={limitModalOpen}
+        usage={usage}
+        headline={limitHeadline}
+        subline={limitSubline}
+        onClose={() => setLimitModalOpen(false)}
+      />
     </div>
   );
 }
