@@ -3,19 +3,25 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Container } from "@/components/ui/container";
+import { usePricingRegion } from "@/hooks/use-pricing-region";
+import {
+  formatRegionalPrice,
+  getCountryFlag,
+  PRICING_REGION_LIST,
+  type PaidPlanKey,
+  type PricingRegion,
+} from "@/lib/pricing-regions";
 
 const NAVY = "#0A1628";
 const TEAL = "#00C6A7";
 
 type Billing = "monthly" | "annual";
 
-type PlanCard = {
+type PlanDef = {
   id: string;
   name: string;
   badge?: "Most Popular" | "Best Value";
-  priceMonthly: number | null;
-  priceAnnual: number | null;
-  priceLabel?: string;
+  priceKey: PaidPlanKey | null;
   generations: string;
   teachers?: string;
   features: readonly string[];
@@ -23,13 +29,11 @@ type PlanCard = {
   variant?: "light" | "featured" | "school";
 };
 
-const TEACHER_PLANS: PlanCard[] = [
+const TEACHER_PLAN_DEFS: PlanDef[] = [
   {
     id: "free",
     name: "Free",
-    priceMonthly: null,
-    priceAnnual: null,
-    priceLabel: "Free Forever",
+    priceKey: null,
     generations: "3 per month",
     features: [
       "3 Lesson Plans",
@@ -46,8 +50,7 @@ const TEACHER_PLANS: PlanCard[] = [
     id: "pro",
     name: "Pro",
     badge: "Most Popular",
-    priceMonthly: 15,
-    priceAnnual: 150,
+    priceKey: "pro",
     generations: "30 per month",
     features: [
       "Everything in Free",
@@ -67,8 +70,7 @@ const TEACHER_PLANS: PlanCard[] = [
     id: "pro-plus",
     name: "Pro Plus",
     badge: "Best Value",
-    priceMonthly: 25,
-    priceAnnual: 250,
+    priceKey: "proPlus",
     generations: "60 per month",
     features: [
       "Everything in Pro",
@@ -81,12 +83,11 @@ const TEACHER_PLANS: PlanCard[] = [
   },
 ];
 
-const SCHOOL_PLANS: PlanCard[] = [
+const SCHOOL_PLAN_DEFS: PlanDef[] = [
   {
     id: "school-starter",
     name: "School Starter",
-    priceMonthly: 149,
-    priceAnnual: 990,
+    priceKey: "schoolStarter",
     generations: "Unlimited for all teachers",
     teachers: "Up to 10 teachers",
     features: [
@@ -103,8 +104,7 @@ const SCHOOL_PLANS: PlanCard[] = [
   {
     id: "school-pro",
     name: "School Pro",
-    priceMonthly: 349,
-    priceAnnual: 2490,
+    priceKey: "schoolPro",
     generations: "Unlimited for all teachers",
     teachers: "Up to 30 teachers",
     features: [
@@ -119,8 +119,7 @@ const SCHOOL_PLANS: PlanCard[] = [
   {
     id: "school-enterprise",
     name: "School Enterprise",
-    priceMonthly: 599,
-    priceAnnual: 4990,
+    priceKey: "schoolEnterprise",
     generations: "Unlimited",
     teachers: "Unlimited teachers",
     features: [
@@ -176,38 +175,32 @@ function CheckIcon({ className = "" }: { className?: string }) {
   );
 }
 
-function formatPrice(amount: number, billing: Billing) {
-  return billing === "annual"
-    ? `${amount} AED / year`
-    : `${amount} AED / month`;
-}
-
 function PlanPrice({
   plan,
+  region,
   billing,
   lightText,
 }: {
-  plan: PlanCard;
+  plan: PlanDef;
+  region: PricingRegion;
   billing: Billing;
   lightText?: boolean;
 }) {
-  if (plan.priceLabel) {
+  if (!plan.priceKey) {
     return (
       <p
         className="text-3xl font-extrabold tracking-tight"
         style={{ color: lightText ? "#fff" : NAVY }}
       >
-        {plan.priceLabel}
+        Free Forever
       </p>
     );
   }
 
-  const amount = billing === "annual" ? plan.priceAnnual : plan.priceMonthly;
-  if (amount == null) return null;
-
-  const monthlyEquiv = plan.priceMonthly;
-  const showStrike =
-    billing === "annual" && monthlyEquiv != null && plan.priceAnnual != null;
+  const prices = region.prices[plan.priceKey];
+  const amount = billing === "annual" ? prices.annual : prices.monthly;
+  const period = billing === "annual" ? "year" : "month";
+  const showStrike = billing === "annual";
 
   return (
     <div>
@@ -216,16 +209,16 @@ function PlanPrice({
           className="text-sm line-through"
           style={{ color: lightText ? "rgba(255,255,255,0.5)" : "#94a3b8" }}
         >
-          {monthlyEquiv * 12} AED / year
+          {formatRegionalPrice(region, prices.monthly * 12, "year")}
         </p>
       ) : null}
       <p
         className="text-3xl font-extrabold tracking-tight"
         style={{ color: lightText ? "#fff" : NAVY }}
       >
-        {formatPrice(amount, billing)}
+        {formatRegionalPrice(region, amount, period)}
       </p>
-      {billing === "annual" && plan.priceMonthly != null ? (
+      {billing === "annual" ? (
         <span
           className="mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide"
           style={{ background: "rgba(0,198,167,0.2)", color: TEAL }}
@@ -233,12 +226,12 @@ function PlanPrice({
           Save 2 months
         </span>
       ) : null}
-      {billing === "monthly" && plan.priceAnnual != null ? (
+      {billing === "monthly" ? (
         <p
           className="mt-2 text-sm"
           style={{ color: lightText ? "rgba(255,255,255,0.65)" : "#64748b" }}
         >
-          Or {plan.priceAnnual} AED / year
+          Or {formatRegionalPrice(region, prices.annual, "year")}
         </p>
       ) : null}
     </div>
@@ -247,24 +240,24 @@ function PlanPrice({
 
 function PricingCard({
   plan,
+  region,
   billing,
 }: {
-  plan: PlanCard;
+  plan: PlanDef;
+  region: PricingRegion;
   billing: Billing;
 }) {
   const isFeatured = plan.variant === "featured";
   const isSchool = plan.variant === "school";
   const lightText = isFeatured;
-
   const isMailto = plan.cta.href.startsWith("mailto:");
   const ctaClassName =
     "mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 py-3 text-center text-sm font-semibold transition hover:opacity-95";
-  const ctaStyle =
-    isFeatured
-      ? { background: TEAL, color: NAVY }
-      : plan.id === "school-enterprise"
-        ? { background: NAVY, color: "#fff", border: `2px solid ${TEAL}` }
-        : { background: NAVY, color: "#fff" };
+  const ctaStyle = isFeatured
+    ? { background: TEAL, color: NAVY }
+    : plan.id === "school-enterprise"
+      ? { background: NAVY, color: "#fff", border: `2px solid ${TEAL}` }
+      : { background: NAVY, color: "#fff" };
 
   return (
     <article
@@ -279,14 +272,8 @@ function PricingCard({
               boxShadow: `0 20px 50px rgba(0,198,167,0.18)`,
             }
           : isSchool
-            ? {
-                background: "#fff",
-                border: `2px solid ${NAVY}`,
-              }
-            : {
-                background: "#fff",
-                border: `1px solid rgba(10,22,40,0.12)`,
-              }
+            ? { background: "#fff", border: `2px solid ${NAVY}` }
+            : { background: "#fff", border: `1px solid rgba(10,22,40,0.12)` }
       }
     >
       {plan.badge ? (
@@ -301,28 +288,19 @@ function PricingCard({
         </span>
       ) : null}
 
-      <h3
-        className="text-xl font-bold"
-        style={{ color: lightText ? "#fff" : NAVY }}
-      >
+      <h3 className="text-xl font-bold" style={{ color: lightText ? "#fff" : NAVY }}>
         {plan.name}
       </h3>
 
       <div className="mt-3">
-        <PlanPrice plan={plan} billing={billing} lightText={lightText} />
+        <PlanPrice plan={plan} region={region} billing={billing} lightText={lightText} />
       </div>
 
-      <p
-        className="mt-4 text-sm font-semibold"
-        style={{ color: lightText ? TEAL : "#0A8F7A" }}
-      >
+      <p className="mt-4 text-sm font-semibold" style={{ color: lightText ? TEAL : "#0A8F7A" }}>
         {plan.generations}
       </p>
       {plan.teachers ? (
-        <p
-          className="mt-1 text-sm"
-          style={{ color: lightText ? "rgba(255,255,255,0.75)" : "#64748b" }}
-        >
+        <p className="mt-1 text-sm" style={{ color: lightText ? "rgba(255,255,255,0.75)" : "#64748b" }}>
           {plan.teachers}
         </p>
       ) : null}
@@ -355,7 +333,14 @@ function PricingCard({
 
 export function PricingPage() {
   const [billing, setBilling] = useState<Billing>("monthly");
+  const { region, regionId, countryCode, countryName, loading, setRegionManually } =
+    usePricingRegion();
   const isAnnual = billing === "annual";
+
+  const locationLabel =
+    countryName ??
+    region.selectorLabel.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const displayFlag = getCountryFlag(countryCode, region);
 
   return (
     <main
@@ -380,6 +365,50 @@ export function PricingPage() {
             Start free. Upgrade when you are ready. Schools get unlimited generations for every teacher.
           </p>
         </header>
+
+        <div className="mx-auto mt-8 flex max-w-xl flex-col items-center gap-3 sm:max-w-none">
+          {loading ? (
+            <p className="text-sm font-medium" style={{ color: "#64748b" }}>
+              Detecting your region…
+            </p>
+          ) : (
+            <p
+              className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm"
+              style={{ background: "#fff", border: `1px solid rgba(0,198,167,0.3)`, color: NAVY }}
+            >
+              <span className="text-lg leading-none" aria-hidden>
+                {displayFlag}
+              </span>
+              <span>
+                Showing prices in <strong>{region.currency}</strong> ({region.currencyName}) for{" "}
+                <strong>{locationLabel}</strong>
+              </span>
+            </p>
+          )}
+
+          <label className="flex w-full max-w-sm flex-col gap-1.5 text-left sm:max-w-xs">
+            <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#64748b" }}>
+              Change currency
+            </span>
+            <select
+              value={regionId}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v) setRegionManually(v as typeof regionId);
+              }}
+              disabled={loading}
+              className="w-full rounded-xl border bg-white px-4 py-2.5 text-sm font-medium outline-none transition"
+              style={{ borderColor: "rgba(10,22,40,0.15)", color: NAVY }}
+              aria-label="Select pricing currency"
+            >
+              {PRICING_REGION_LIST.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.flag} {r.selectorLabel}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         <div className="mx-auto mt-10 flex flex-col items-center gap-3">
           <div
@@ -416,32 +445,22 @@ export function PricingPage() {
               className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold"
               style={{ background: "rgba(0,198,167,0.12)", color: "#0A8F7A" }}
             >
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ background: TEAL }}
-                aria-hidden
-              />
+              <span className="inline-block h-2 w-2 rounded-full" style={{ background: TEAL }} aria-hidden />
               Save 2 months on all annual plans
             </p>
           ) : null}
         </div>
 
         <section className="mt-14">
-          <h2
-            className="text-center text-sm font-bold uppercase tracking-widest"
-            style={{ color: TEAL }}
-          >
+          <h2 className="text-center text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
             For teachers
           </h2>
-          <p
-            className="mt-2 text-center text-lg font-semibold sm:text-xl"
-            style={{ color: NAVY }}
-          >
+          <p className="mt-2 text-center text-lg font-semibold sm:text-xl" style={{ color: NAVY }}>
             Individual plans
           </p>
           <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3 xl:items-stretch">
-            {TEACHER_PLANS.map((plan) => (
-              <PricingCard key={plan.id} plan={plan} billing={billing} />
+            {TEACHER_PLAN_DEFS.map((plan) => (
+              <PricingCard key={plan.id} plan={plan} region={region} billing={billing} />
             ))}
           </div>
         </section>
@@ -463,8 +482,8 @@ export function PricingPage() {
             Unlimited generations for every teacher on your plan. Enterprise includes custom branding and API access.
           </p>
           <div className="mt-10 grid gap-6 lg:grid-cols-3 lg:items-stretch">
-            {SCHOOL_PLANS.map((plan) => (
-              <PricingCard key={plan.id} plan={plan} billing={billing} />
+            {SCHOOL_PLAN_DEFS.map((plan) => (
+              <PricingCard key={plan.id} plan={plan} region={region} billing={billing} />
             ))}
           </div>
         </section>
