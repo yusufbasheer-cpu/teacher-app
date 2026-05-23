@@ -4,6 +4,7 @@ export const APP_NAV_LINKS = [
   { href: "/lesson-plan", label: "Generate Lesson Plan" },
   { href: "/question-paper", label: "Question Paper" },
   { href: "/differentiated-worksheets", label: "Differentiated Worksheet Pack" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/my-lesson-plans", label: "My Lessons" },
 ] as const;
 
