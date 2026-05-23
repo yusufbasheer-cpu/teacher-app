@@ -7,45 +7,153 @@ import { Container } from "@/components/ui/container";
 const NAVY = "#0A1628";
 const TEAL = "#00C6A7";
 
-const FREE_FEATURES = [
-  "3 Lesson Plans per month",
-  "3 PPT Downloads per month",
-  "3 Worksheets per month",
-  "Basic AFL Tools",
-  "Standard themes",
-  "Email support",
-] as const;
+type Billing = "monthly" | "annual";
 
-const PRO_FEATURES = [
-  "Unlimited Lesson Plans",
-  "Unlimited PPT Downloads",
-  "Unlimited Worksheets",
-  "Full AFL Tools Library",
-  "All 5 Premium Themes",
-  "Question Paper Generator",
-  "Blueprint Generator",
-  "Differentiated Worksheet Pack",
-  "Global Curriculum Framework Alignment - Supports UAE MOE, CBSE, British, American, Cambridge, IB and 15+ more curriculums",
-  "All Curriculum Types",
-  "Priority Support",
-] as const;
+type PlanCard = {
+  id: string;
+  name: string;
+  badge?: "Most Popular" | "Best Value";
+  priceMonthly: number | null;
+  priceAnnual: number | null;
+  priceLabel?: string;
+  generations: string;
+  teachers?: string;
+  features: readonly string[];
+  cta: { label: string; href: string };
+  variant?: "light" | "featured" | "school";
+};
+
+const TEACHER_PLANS: PlanCard[] = [
+  {
+    id: "free",
+    name: "Free",
+    priceMonthly: null,
+    priceAnnual: null,
+    priceLabel: "Free Forever",
+    generations: "3 per month",
+    features: [
+      "3 Lesson Plans",
+      "3 PPT Downloads",
+      "3 Worksheets",
+      "Basic AFL Tools",
+      "Standard Themes",
+      "Email Support",
+    ],
+    cta: { label: "Get Started Free", href: "/auth" },
+    variant: "light",
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    badge: "Most Popular",
+    priceMonthly: 15,
+    priceAnnual: 150,
+    generations: "30 per month",
+    features: [
+      "Everything in Free",
+      "Unlimited within 30 generations",
+      "All AFL Tools",
+      "All 5 Themes",
+      "Question Paper Generator",
+      "Blueprint Generator",
+      "Differentiated Worksheet Pack",
+      "Global Curriculum Framework Alignment",
+      "Priority Support",
+    ],
+    cta: { label: "Start Pro Plan", href: "/auth" },
+    variant: "featured",
+  },
+  {
+    id: "pro-plus",
+    name: "Pro Plus",
+    badge: "Best Value",
+    priceMonthly: 25,
+    priceAnnual: 250,
+    generations: "60 per month",
+    features: [
+      "Everything in Pro",
+      "60 generations per month",
+      "Advanced Analytics",
+      "Early Access to New Features",
+    ],
+    cta: { label: "Start Pro Plus", href: "/auth" },
+    variant: "light",
+  },
+];
+
+const SCHOOL_PLANS: PlanCard[] = [
+  {
+    id: "school-starter",
+    name: "School Starter",
+    priceMonthly: 149,
+    priceAnnual: 990,
+    generations: "Unlimited for all teachers",
+    teachers: "Up to 10 teachers",
+    features: [
+      "Everything in Pro Plus",
+      "HOD Dashboard",
+      "Department Groups",
+      "School Branding on PPTs",
+      "Usage Analytics",
+      "Priority Support",
+    ],
+    cta: { label: "Contact Sales", href: "mailto:support@layah.in?subject=School%20Starter%20Plan" },
+    variant: "school",
+  },
+  {
+    id: "school-pro",
+    name: "School Pro",
+    priceMonthly: 349,
+    priceAnnual: 2490,
+    generations: "Unlimited for all teachers",
+    teachers: "Up to 30 teachers",
+    features: [
+      "Everything in School Starter",
+      "Lesson Plan Approval System",
+      "Advanced Analytics",
+      "Dedicated Account Manager",
+    ],
+    cta: { label: "Contact Sales", href: "mailto:support@layah.in?subject=School%20Pro%20Plan" },
+    variant: "school",
+  },
+  {
+    id: "school-enterprise",
+    name: "School Enterprise",
+    priceMonthly: 599,
+    priceAnnual: 4990,
+    generations: "Unlimited",
+    teachers: "Unlimited teachers",
+    features: [
+      "Everything in School Pro",
+      "Custom School Branding",
+      "API Access",
+      "Custom Feature Requests",
+      "SLA Support",
+    ],
+    cta: {
+      label: "Contact Us",
+      href: "mailto:support@layah.in?subject=School%20Enterprise%20Plan",
+    },
+    variant: "school",
+  },
+];
 
 const FAQ = [
   {
     q: "Can I cancel anytime?",
-    a: "Yes absolutely. No contracts or commitments.",
+    a: "Yes. No contracts — cancel monthly or annual plans whenever you like.",
   },
   {
-    q: "Is there a free trial?",
-    a: "Yes our free plan gives you 3 lesson plans per month forever.",
+    q: "What counts as a generation?",
+    a: "Each full AI run (lesson plan, question paper, worksheet pack, etc.) counts as one generation toward your monthly limit.",
   },
   {
-    q: "What payment methods do you accept?",
-    a: "Credit card, debit card, and UPI for Indian teachers.",
+    q: "Do school plans share one login?",
+    a: "No. Each teacher gets their own account under your school plan, with unlimited generations for the school.",
   },
   {
-    q: "Can my whole school use Layah?",
-    a: "Yes contact us for special school pricing.",
+    q: "How does annual billing save money?",
+    a: "Annual plans are priced at 10 months — you get 2 months free compared to paying monthly.",
   },
 ] as const;
 
@@ -68,15 +176,191 @@ function CheckIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export function PricingPage() {
-  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+function formatPrice(amount: number, billing: Billing) {
+  return billing === "annual"
+    ? `${amount} AED / year`
+    : `${amount} AED / month`;
+}
 
+function PlanPrice({
+  plan,
+  billing,
+  lightText,
+}: {
+  plan: PlanCard;
+  billing: Billing;
+  lightText?: boolean;
+}) {
+  if (plan.priceLabel) {
+    return (
+      <p
+        className="text-3xl font-extrabold tracking-tight"
+        style={{ color: lightText ? "#fff" : NAVY }}
+      >
+        {plan.priceLabel}
+      </p>
+    );
+  }
+
+  const amount = billing === "annual" ? plan.priceAnnual : plan.priceMonthly;
+  if (amount == null) return null;
+
+  const monthlyEquiv = plan.priceMonthly;
+  const showStrike =
+    billing === "annual" && monthlyEquiv != null && plan.priceAnnual != null;
+
+  return (
+    <div>
+      {showStrike ? (
+        <p
+          className="text-sm line-through"
+          style={{ color: lightText ? "rgba(255,255,255,0.5)" : "#94a3b8" }}
+        >
+          {monthlyEquiv * 12} AED / year
+        </p>
+      ) : null}
+      <p
+        className="text-3xl font-extrabold tracking-tight"
+        style={{ color: lightText ? "#fff" : NAVY }}
+      >
+        {formatPrice(amount, billing)}
+      </p>
+      {billing === "annual" && plan.priceMonthly != null ? (
+        <span
+          className="mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide"
+          style={{ background: "rgba(0,198,167,0.2)", color: TEAL }}
+        >
+          Save 2 months
+        </span>
+      ) : null}
+      {billing === "monthly" && plan.priceAnnual != null ? (
+        <p
+          className="mt-2 text-sm"
+          style={{ color: lightText ? "rgba(255,255,255,0.65)" : "#64748b" }}
+        >
+          Or {plan.priceAnnual} AED / year
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function PricingCard({
+  plan,
+  billing,
+}: {
+  plan: PlanCard;
+  billing: Billing;
+}) {
+  const isFeatured = plan.variant === "featured";
+  const isSchool = plan.variant === "school";
+  const lightText = isFeatured;
+
+  const isMailto = plan.cta.href.startsWith("mailto:");
+  const ctaClassName =
+    "mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 py-3 text-center text-sm font-semibold transition hover:opacity-95";
+  const ctaStyle =
+    isFeatured
+      ? { background: TEAL, color: NAVY }
+      : plan.id === "school-enterprise"
+        ? { background: NAVY, color: "#fff", border: `2px solid ${TEAL}` }
+        : { background: NAVY, color: "#fff" };
+
+  return (
+    <article
+      className={`layah-tilt-card relative flex flex-col rounded-3xl p-7 shadow-sm transition sm:p-8 ${
+        isFeatured ? "lg:scale-[1.02] lg:shadow-xl" : ""
+      }`}
+      style={
+        isFeatured
+          ? {
+              background: `linear-gradient(160deg, ${NAVY} 0%, #132a4a 55%, ${NAVY} 100%)`,
+              border: `2px solid ${TEAL}`,
+              boxShadow: `0 20px 50px rgba(0,198,167,0.18)`,
+            }
+          : isSchool
+            ? {
+                background: "#fff",
+                border: `2px solid ${NAVY}`,
+              }
+            : {
+                background: "#fff",
+                border: `1px solid rgba(10,22,40,0.12)`,
+              }
+      }
+    >
+      {plan.badge ? (
+        <span
+          className="absolute right-5 top-5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide"
+          style={{
+            background: plan.badge === "Best Value" ? NAVY : TEAL,
+            color: plan.badge === "Best Value" ? "#fff" : NAVY,
+          }}
+        >
+          {plan.badge}
+        </span>
+      ) : null}
+
+      <h3
+        className="text-xl font-bold"
+        style={{ color: lightText ? "#fff" : NAVY }}
+      >
+        {plan.name}
+      </h3>
+
+      <div className="mt-3">
+        <PlanPrice plan={plan} billing={billing} lightText={lightText} />
+      </div>
+
+      <p
+        className="mt-4 text-sm font-semibold"
+        style={{ color: lightText ? TEAL : "#0A8F7A" }}
+      >
+        {plan.generations}
+      </p>
+      {plan.teachers ? (
+        <p
+          className="mt-1 text-sm"
+          style={{ color: lightText ? "rgba(255,255,255,0.75)" : "#64748b" }}
+        >
+          {plan.teachers}
+        </p>
+      ) : null}
+
+      <ul className="mt-6 flex flex-1 flex-col gap-2.5">
+        {plan.features.map((item) => (
+          <li
+            key={item}
+            className="flex items-start gap-2.5 text-sm leading-snug"
+            style={{ color: lightText ? "rgba(255,255,255,0.9)" : "#334155" }}
+          >
+            <CheckIcon className={lightText ? "text-[#00C6A7]" : "text-[#0A8F7A]"} />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+
+      {isMailto ? (
+        <a href={plan.cta.href} className={ctaClassName} style={ctaStyle}>
+          {plan.cta.label}
+        </a>
+      ) : (
+        <Link href={plan.cta.href} className={ctaClassName} style={ctaStyle}>
+          {plan.cta.label}
+        </Link>
+      )}
+    </article>
+  );
+}
+
+export function PricingPage() {
+  const [billing, setBilling] = useState<Billing>("monthly");
   const isAnnual = billing === "annual";
 
   return (
     <main
-      className="min-h-screen pb-20 pt-10"
-      style={{ background: "linear-gradient(180deg, #f0f4f8 0%, #ffffff 45%)" }}
+      className="min-h-screen pb-24 pt-10"
+      style={{ background: "linear-gradient(180deg, #eef2f7 0%, #f7f9fc 35%, #ffffff 70%)" }}
     >
       <Container>
         <header className="mx-auto max-w-3xl text-center">
@@ -90,14 +374,14 @@ export function PricingPage() {
             className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl"
             style={{ color: NAVY }}
           >
-            Simple, Affordable Pricing for Teachers
+            Plans for every teacher and school
           </h1>
           <p className="mt-4 text-base sm:text-lg" style={{ color: "#4A5568" }}>
-            Start free. Upgrade when you are ready.
+            Start free. Upgrade when you are ready. Schools get unlimited generations for every teacher.
           </p>
         </header>
 
-        <div className="mx-auto mt-10 flex justify-center">
+        <div className="mx-auto mt-10 flex flex-col items-center gap-3">
           <div
             className="inline-flex rounded-full p-1 shadow-sm"
             style={{ background: "#fff", border: `1px solid rgba(10,22,40,0.12)` }}
@@ -127,105 +411,63 @@ export function PricingPage() {
               Annual
             </button>
           </div>
-        </div>
-
-        {isAnnual ? (
-          <p className="mt-4 text-center text-sm font-medium" style={{ color: TEAL }}>
-            Save 2 months with the annual plan — pay 150 AED/year instead of 180 AED
-          </p>
-        ) : null}
-
-        <div className="mt-12 grid gap-8 lg:grid-cols-2 lg:items-stretch">
-          {/* Free */}
-          <article
-            className="flex flex-col rounded-3xl border-2 bg-white p-8 shadow-sm transition hover:shadow-md"
-            style={{ borderColor: NAVY }}
-          >
-            <h2 className="text-xl font-bold" style={{ color: NAVY }}>
-              Free
-            </h2>
-            <p className="mt-3 text-3xl font-extrabold tracking-tight" style={{ color: NAVY }}>
-              Free Forever
+          {isAnnual ? (
+            <p
+              className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold"
+              style={{ background: "rgba(0,198,167,0.12)", color: "#0A8F7A" }}
+            >
+              <span
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ background: TEAL }}
+                aria-hidden
+              />
+              Save 2 months on all annual plans
             </p>
-            <ul className="mt-8 flex flex-1 flex-col gap-3">
-              {FREE_FEATURES.map((item) => (
-                <li key={item} className="flex items-start gap-3 text-sm" style={{ color: "#334155" }}>
-                  <CheckIcon className="text-[#0A1628]" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/auth"
-              className="mt-8 inline-flex min-h-12 items-center justify-center rounded-xl px-6 py-3 text-center text-sm font-semibold text-white transition hover:opacity-95"
-              style={{ background: NAVY }}
-            >
-              Get Started Free
-            </Link>
-          </article>
-
-          {/* Pro */}
-          <article
-            className="relative flex flex-col overflow-hidden rounded-3xl p-8 shadow-xl"
-            style={{
-              background: `linear-gradient(160deg, ${NAVY} 0%, #132a4a 55%, ${NAVY} 100%)`,
-              border: `2px solid ${TEAL}`,
-              boxShadow: `0 20px 50px rgba(0,198,167,0.2)`,
-            }}
-          >
-            <span
-              className="absolute right-6 top-6 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-white"
-              style={{ background: TEAL }}
-            >
-              Most Popular
-            </span>
-
-            <h2 className="text-xl font-bold text-white">Pro</h2>
-
-            <div className="mt-3">
-              {isAnnual ? (
-                <>
-                  <p className="text-sm text-white/60 line-through">180 AED / year</p>
-                  <p className="text-3xl font-extrabold tracking-tight text-white">
-                    150 AED
-                    <span className="text-lg font-semibold text-white/80"> / year</span>
-                  </p>
-                  <p className="mt-2 text-sm font-semibold" style={{ color: TEAL }}>
-                    Save 2 months with annual plan
-                  </p>
-                </>
-              ) : (
-                <p className="text-3xl font-extrabold tracking-tight text-white">
-                  15 AED
-                  <span className="text-lg font-semibold text-white/80"> / month</span>
-                </p>
-              )}
-            </div>
-
-            {!isAnnual ? (
-              <p className="mt-2 text-sm text-white/70">
-                Or <span className="font-semibold text-white">150 AED / year</span> — save 2 months
-              </p>
-            ) : null}
-
-            <ul className="mt-8 flex flex-1 flex-col gap-3">
-              {PRO_FEATURES.map((item) => (
-                <li key={item} className="flex items-start gap-3 text-sm text-white/90">
-                  <CheckIcon className="text-[#00C6A7]" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-
-            <Link
-              href="/auth"
-              className="mt-8 inline-flex min-h-12 items-center justify-center rounded-xl px-6 py-3 text-center text-sm font-semibold transition hover:opacity-95"
-              style={{ background: TEAL, color: NAVY }}
-            >
-              Start Pro Plan
-            </Link>
-          </article>
+          ) : null}
         </div>
+
+        <section className="mt-14">
+          <h2
+            className="text-center text-sm font-bold uppercase tracking-widest"
+            style={{ color: TEAL }}
+          >
+            For teachers
+          </h2>
+          <p
+            className="mt-2 text-center text-lg font-semibold sm:text-xl"
+            style={{ color: NAVY }}
+          >
+            Individual plans
+          </p>
+          <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3 xl:items-stretch">
+            {TEACHER_PLANS.map((plan) => (
+              <PricingCard key={plan.id} plan={plan} billing={billing} />
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="mt-20 rounded-3xl p-6 sm:p-10"
+          style={{
+            background: `linear-gradient(135deg, ${NAVY} 0%, #132a4a 100%)`,
+            border: `1px solid rgba(0,198,167,0.25)`,
+          }}
+        >
+          <h2 className="text-center text-sm font-bold uppercase tracking-widest text-[#00C6A7]">
+            For schools
+          </h2>
+          <p className="mt-2 text-center text-lg font-semibold text-white sm:text-xl">
+            School &amp; district plans
+          </p>
+          <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-white/65">
+            Unlimited generations for every teacher on your plan. Enterprise includes custom branding and API access.
+          </p>
+          <div className="mt-10 grid gap-6 lg:grid-cols-3 lg:items-stretch">
+            {SCHOOL_PLANS.map((plan) => (
+              <PricingCard key={plan.id} plan={plan} billing={billing} />
+            ))}
+          </div>
+        </section>
 
         <section className="mt-20">
           <h2 className="text-center text-2xl font-bold sm:text-3xl" style={{ color: NAVY }}>
@@ -235,7 +477,7 @@ export function PricingPage() {
             {FAQ.map((item) => (
               <details
                 key={item.q}
-                className="group rounded-2xl border bg-white p-5 shadow-sm open:shadow-md"
+                className="group layah-tilt-card rounded-2xl border bg-white p-5 shadow-sm open:shadow-md"
                 style={{ borderColor: "rgba(0,198,167,0.25)" }}
               >
                 <summary

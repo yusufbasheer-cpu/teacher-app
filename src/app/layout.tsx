@@ -3,6 +3,7 @@ import { Inter, Poppins } from "next/font/google";
 import { MarkerCursor } from "@/components/cursor/marker-cursor";
 import { AppEffects } from "@/components/effects/app-effects";
 import { SoundProvider } from "@/components/effects/sound-provider";
+import { ActiveSessionGuard } from "@/components/auth/active-session-guard";
 import { NavbarWrapper } from "@/components/layout/navbar-wrapper";
 import { PageTransitionWrapper } from "@/components/layout/page-transition-wrapper";
 import "./globals.css";
@@ -45,7 +46,9 @@ export default function RootLayout({
           <MarkerCursor />
           <AppEffects />
           <NavbarWrapper />
-          <PageTransitionWrapper>{children}</PageTransitionWrapper>
+          <ActiveSessionGuard>
+            <PageTransitionWrapper>{children}</PageTransitionWrapper>
+          </ActiveSessionGuard>
         </SoundProvider>
       </body>
     </html>

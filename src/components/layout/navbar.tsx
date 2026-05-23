@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { SoundToggleButton } from "@/components/effects/sound-toggle-button";
+import { clearActiveSession } from "@/lib/active-session";
 import { APP_NAV_LINKS, isNavLinkActive } from "@/lib/app-nav-links";
 import { supabase } from "@/lib/supabase";
 import { Container } from "@/components/ui/container";
@@ -39,6 +40,12 @@ export function Navbar() {
   }, [pathname]);
 
   const onLogout = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.user) {
+      await clearActiveSession(session.user.id);
+    }
     await supabase.auth.signOut();
     router.push("/auth");
     router.refresh();

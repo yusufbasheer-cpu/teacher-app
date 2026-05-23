@@ -1,19 +1,27 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { registerActiveSession, SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
 import { supabase } from "@/lib/supabase";
 
 type AuthMode = "login" | "signup";
 
 export function AuthCard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("revoked") === "1") {
+      setError(SESSION_REVOKED_MESSAGE);
+    }
+  }, [searchParams]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -30,7 +38,8 @@ export function AuthCard() {
 
         if (signUpError) throw signUpError;
 
-        if (data.session) {
+        if (data.session?.user) {
+          await registerActiveSession(data.session.user.id);
           router.push("/lesson-plan");
           router.refresh();
           return;
@@ -46,6 +55,12 @@ export function AuthCard() {
           password,
         });
         if (signInError) throw signInError;
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.user) {
+          await registerActiveSession(session.user.id);
+        }
         router.push("/lesson-plan");
         router.refresh();
       }
