@@ -1,28 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { completeGooglePostAuthLogin } from "@/lib/auth-post-login";
+import { resolveGoogleOAuthSession } from "@/lib/google-oauth-callback";
 import { supabase } from "@/lib/supabase";
 
-/** OAuth redirect target — registers session then sends teachers to the app. */
+/** Google OAuth redirect target — exchange code, detect school domain, then enter app. */
 export default function DashboardPage() {
   const router = useRouter();
   const [status, setStatus] = useState("Signing you in…");
+  const processingRef = useRef(false);
 
   useEffect(() => {
-    const finish = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    const finishGoogleLogin = async () => {
+      if (processingRef.current) return;
 
-      if (!session?.user) {
-        setStatus("Redirecting to login…");
-        router.replace("/auth");
+      const session = await resolveGoogleOAuthSession();
+
+      if (!session?.user?.email) {
         return;
       }
 
-      const postAuth = await completeGooglePostAuthLogin(session.user.id);
+      processingRef.current = true;
+
+      const email = session.user.email;
+      console.log("[google-oauth] Callback — running school domain check", { email });
+
+      const postAuth = await completeGooglePostAuthLogin(session.user.id, email);
       if (!postAuth.ok) {
         setStatus(postAuth.message);
         router.replace(`/auth?error=${encodeURIComponent(postAuth.message)}`);
@@ -33,7 +38,23 @@ export default function DashboardPage() {
       router.refresh();
     };
 
-    void finish();
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user?.email) {
+        void finishGoogleLogin();
+      }
+    });
+
+    void (async () => {
+      await finishGoogleLogin();
+      if (!processingRef.current) {
+        setStatus("Redirecting to login…");
+        router.replace("/auth");
+      }
+    })();
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, [router]);
 
   return (

@@ -31,15 +31,14 @@ export function buildSchoolMaxTeachersMessage(adminEmail: string): string {
 }
 
 export function buildSchoolWelcomeMessage(schoolName: string): string {
-  return `Welcome to Layah! You have been added to your school account - ${schoolName}`;
+  return `Welcome! You have been added to ${schoolName} account`;
 }
 
 export function extractEmailDomain(email: string): string | null {
   const trimmed = email.trim().toLowerCase();
-  const at = trimmed.lastIndexOf("@");
-  if (at < 1 || at === trimmed.length - 1) return null;
-  const domain = trimmed.slice(at + 1);
-  return domain.length > 0 ? domain : null;
+  const parts = trimmed.split("@");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+  return normalizeEmailDomain(parts[1]);
 }
 
 export function normalizeEmailDomain(domain: string): string {

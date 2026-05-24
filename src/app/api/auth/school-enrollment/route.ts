@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildSchoolWelcomeMessage } from "@/lib/school-accounts";
-import {
-  isGoogleAuthUser,
-  processSchoolEnrollment,
-} from "@/lib/school-enrollment-server";
+import { processSchoolEnrollment } from "@/lib/school-enrollment-server";
 import { authenticateRequest } from "@/lib/user-usage-server";
 
 export const runtime = "nodejs";
@@ -14,6 +10,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
   }
 
+  let bodyEmail: string | undefined;
+  try {
+    const body = (await req.json()) as { email?: string; fromGoogleLogin?: boolean };
+    bodyEmail = body.email?.trim();
+    console.log("[school-enrollment] API called", {
+      userId: auth.userId,
+      fromGoogleLogin: body.fromGoogleLogin === true,
+      bodyEmail: bodyEmail ?? null,
+    });
+  } catch {
+    /* no body */
+  }
+
   const {
     data: { user },
   } = await auth.supabase.auth.getUser(auth.accessToken);
@@ -22,13 +31,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
   }
 
-  const userEmail = user.email?.trim() ?? "";
+  const userEmail = (bodyEmail ?? user.email ?? "").trim();
   if (!userEmail) {
     return NextResponse.json({ error: "No email on account." }, { status: 400 });
   }
 
-  const googleOnly = isGoogleAuthUser(user);
-  const result = await processSchoolEnrollment(auth.userId, userEmail, { googleOnly });
+  const result = await processSchoolEnrollment(auth.userId, userEmail);
 
   if (!result.ok) {
     return NextResponse.json(
@@ -37,17 +45,13 @@ export async function POST(req: Request) {
     );
   }
 
-  const welcomeMessage =
-    !result.individual && result.schoolName
-      ? buildSchoolWelcomeMessage(result.schoolName)
-      : null;
-
   return NextResponse.json({
     blocked: false,
     individual: result.individual,
     newlyJoined: result.newlyJoined,
     schoolName: result.schoolName ?? null,
+    schoolId: result.schoolId ?? null,
     planType: result.planType ?? null,
-    welcomeMessage,
+    welcomeMessage: result.welcomeMessage ?? null,
   });
 }

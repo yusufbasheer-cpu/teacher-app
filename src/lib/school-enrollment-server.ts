@@ -1,7 +1,8 @@
-import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import {
   buildSchoolMaxTeachersMessage,
+  buildSchoolWelcomeMessage,
   extractEmailDomain,
   isSchoolPlanType,
   normalizeEmailDomain,
@@ -18,7 +19,9 @@ export type SchoolEnrollmentResult =
       individual: boolean;
       newlyJoined: boolean;
       schoolName?: string;
+      schoolId?: string;
       planType?: SchoolPlanType;
+      welcomeMessage?: string;
     }
   | {
       ok: false;
@@ -26,35 +29,41 @@ export type SchoolEnrollmentResult =
       message: string;
     };
 
-export function isGoogleAuthUser(user: User): boolean {
-  const providers = user.app_metadata?.providers;
-  if (Array.isArray(providers) && providers.includes("google")) {
-    return true;
-  }
-  if (user.app_metadata?.provider === "google") {
-    return true;
-  }
-  return user.identities?.some((identity) => identity.provider === "google") ?? false;
-}
-
 async function findSchoolByDomain(
   admin: SupabaseClient,
   domain: string,
 ): Promise<SchoolAccountRow | null> {
   const normalized = normalizeEmailDomain(domain);
-  const { data, error } = await admin
+
+  const { data: exact, error: exactError } = await admin
     .from("school_accounts")
     .select("*")
     .eq("email_domain", normalized)
     .maybeSingle();
 
-  if (error) {
-    console.error("[school-enrollment] find school by domain failed:", error.message);
+  if (exactError) {
+    console.error("[school-enrollment] find school by domain failed:", exactError.message);
     return null;
   }
 
-  if (!data || !isSchoolPlanType(data.plan_type)) return null;
-  return data as SchoolAccountRow;
+  if (exact && isSchoolPlanType(exact.plan_type)) {
+    return exact as SchoolAccountRow;
+  }
+
+  const { data: rows, error: listError } = await admin.from("school_accounts").select("*");
+
+  if (listError) {
+    console.error("[school-enrollment] list schools failed:", listError.message);
+    return null;
+  }
+
+  const match = (rows ?? []).find(
+    (row) =>
+      isSchoolPlanType(row.plan_type) &&
+      normalizeEmailDomain(String(row.email_domain)) === normalized,
+  );
+
+  return match ? (match as SchoolAccountRow) : null;
 }
 
 async function getTeacherMembership(
@@ -131,6 +140,60 @@ async function upsertSchoolUsage(
   }
 }
 
+async function storeSchoolOnUserProfile(
+  admin: SupabaseClient,
+  userId: string,
+  school: SchoolAccountRow,
+): Promise<void> {
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    user_metadata: {
+      school_id: school.id,
+      school_name: school.school_name,
+      school_plan_type: school.plan_type,
+    },
+  });
+
+  if (error) {
+    console.error("[school-enrollment] update user profile school_id failed:", error.message);
+  }
+}
+
+async function ensureSchoolTeacherRow(
+  admin: SupabaseClient,
+  school: SchoolAccountRow,
+  userId: string,
+  email: string,
+): Promise<{ newlyJoined: boolean }> {
+  const existing = await getTeacherMembership(admin, userId);
+  if (existing?.school_account_id === school.id) {
+    return { newlyJoined: false };
+  }
+
+  const teacherCount = await countTeachersInSchool(admin, school.id);
+  if (teacherCount >= school.max_teachers) {
+    throw new Error("SCHOOL_FULL");
+  }
+
+  const { error: insertError } = await admin.from("school_teachers").insert({
+    school_account_id: school.id,
+    user_id: userId,
+    email: email.trim().toLowerCase(),
+  });
+
+  if (insertError) {
+    if (insertError.code === "23505") {
+      const membership = await getTeacherMembership(admin, userId);
+      if (membership) {
+        return { newlyJoined: false };
+      }
+    }
+    console.error("[school-enrollment] insert school_teachers failed:", insertError.message);
+    throw insertError;
+  }
+
+  return { newlyJoined: true };
+}
+
 async function ensureIndividualUsage(admin: SupabaseClient, userId: string): Promise<void> {
   const membership = await getTeacherMembership(admin, userId);
   if (membership) return;
@@ -157,14 +220,29 @@ async function ensureIndividualUsage(admin: SupabaseClient, userId: string): Pro
   }
 }
 
+function schoolSuccess(
+  school: SchoolAccountRow,
+  newlyJoined: boolean,
+): Extract<SchoolEnrollmentResult, { ok: true }> {
+  const welcomeMessage = buildSchoolWelcomeMessage(school.school_name);
+  return {
+    ok: true,
+    blocked: false,
+    individual: false,
+    newlyJoined,
+    schoolName: school.school_name,
+    schoolId: school.id,
+    planType: school.plan_type,
+    welcomeMessage,
+  };
+}
+
 /**
- * Google sign-in only: match email domain, enforce max_teachers, assign school plan (-1 limit).
- * active_teachers is updated via DB trigger on school_teachers insert/delete.
+ * On every Google login: match email domain → school_accounts, sync plan & profile.
  */
 export async function processSchoolEnrollment(
   userId: string,
   email: string,
-  options: { googleOnly: boolean },
 ): Promise<SchoolEnrollmentResult> {
   const admin = getSupabaseServiceRole();
   if (!admin) {
@@ -172,94 +250,60 @@ export async function processSchoolEnrollment(
     return { ok: true, blocked: false, individual: true, newlyJoined: false };
   }
 
-  if (!options.googleOnly) {
-    await ensureIndividualUsage(admin, userId);
-    return { ok: true, blocked: false, individual: true, newlyJoined: false };
-  }
+  const trimmedEmail = email.trim().toLowerCase();
+  const domain = extractEmailDomain(trimmedEmail);
 
-  const domain = extractEmailDomain(email);
+  console.log("[school-enrollment] Checking domain for user", {
+    email: trimmedEmail,
+    domain,
+  });
+
   if (!domain) {
+    console.log(`No school found for domain (invalid email): ${trimmedEmail}`);
     await ensureIndividualUsage(admin, userId);
     return { ok: true, blocked: false, individual: true, newlyJoined: false };
   }
 
   const school = await findSchoolByDomain(admin, domain);
+
   if (!school) {
+    console.log(`No school found for domain: ${domain}`);
     await ensureIndividualUsage(admin, userId);
     return { ok: true, blocked: false, individual: true, newlyJoined: false };
   }
 
-  const existing = await getTeacherMembership(admin, userId);
-  if (existing) {
-    const { data: memberSchool } = await admin
-      .from("school_accounts")
-      .select("*")
-      .eq("id", existing.school_account_id)
-      .maybeSingle();
-
-    if (memberSchool && isSchoolPlanType(memberSchool.plan_type)) {
-      await upsertSchoolUsage(admin, userId, memberSchool.plan_type as SchoolPlanType);
-      return {
-        ok: true,
-        blocked: false,
-        individual: false,
-        newlyJoined: false,
-        schoolName: memberSchool.school_name,
-        planType: memberSchool.plan_type as SchoolPlanType,
-      };
-    }
-  }
-
-  const teacherCount = await countTeachersInSchool(admin, school.id);
-  if (teacherCount >= school.max_teachers) {
-    return {
-      ok: false,
-      blocked: true,
-      message: buildSchoolMaxTeachersMessage(school.admin_email),
-    };
-  }
-
-  const { error: insertError } = await admin.from("school_teachers").insert({
-    school_account_id: school.id,
-    user_id: userId,
-    email: email.trim().toLowerCase(),
-  });
-
-  if (insertError) {
-    if (insertError.code === "23505") {
-      await upsertSchoolUsage(admin, userId, school.plan_type);
-      return {
-        ok: true,
-        blocked: false,
-        individual: false,
-        newlyJoined: false,
-        schoolName: school.school_name,
-        planType: school.plan_type,
-      };
-    }
-    console.error("[school-enrollment] insert school_teachers failed:", insertError.message);
-    await ensureIndividualUsage(admin, userId);
-    return { ok: true, blocked: false, individual: true, newlyJoined: false };
-  }
-
-  await upsertSchoolUsage(admin, userId, school.plan_type);
-
-  console.log("[school-enrollment] teacher joined school via Google", {
-    userId,
+  console.log(`School detected for user email: ${trimmedEmail}`, {
     schoolId: school.id,
     schoolName: school.school_name,
     planType: school.plan_type,
-    activeTeachers: school.active_teachers + 1,
   });
 
-  return {
-    ok: true,
-    blocked: false,
-    individual: false,
-    newlyJoined: true,
-    schoolName: school.school_name,
-    planType: school.plan_type,
-  };
+  try {
+    const { newlyJoined } = await ensureSchoolTeacherRow(admin, school, userId, trimmedEmail);
+
+    await upsertSchoolUsage(admin, userId, school.plan_type);
+    await storeSchoolOnUserProfile(admin, userId, school);
+
+    console.log("[school-enrollment] School teacher synced on login", {
+      userId,
+      schoolId: school.id,
+      newlyJoined,
+      activeTeachers: school.active_teachers,
+    });
+
+    return schoolSuccess(school, newlyJoined);
+  } catch (err) {
+    if (err instanceof Error && err.message === "SCHOOL_FULL") {
+      return {
+        ok: false,
+        blocked: true,
+        message: buildSchoolMaxTeachersMessage(school.admin_email),
+      };
+    }
+    console.error("[school-enrollment] failed to enroll teacher:", err);
+    await ensureIndividualUsage(admin, userId);
+    return { ok: true, blocked: false, individual: true, newlyJoined: false };
+  }
 }
 
 export async function isSchoolAdminEmail(email: string): Promise<SchoolAccountRow | null> {

@@ -15,7 +15,7 @@ export type SchoolEnrollmentClientResult =
       message: string;
     };
 
-export async function runSchoolEnrollment(): Promise<SchoolEnrollmentClientResult> {
+export async function runSchoolEnrollment(userEmail: string): Promise<SchoolEnrollmentClientResult> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -24,13 +24,20 @@ export async function runSchoolEnrollment(): Promise<SchoolEnrollmentClientResul
     return { ok: false, message: "Session expired. Please log in again." };
   }
 
+  console.log("[school-enrollment] Client calling API", { email: userEmail });
+
   let response: Response;
   try {
     response = await fetch("/api/auth/school-enrollment", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        email: userEmail,
+        fromGoogleLogin: true,
+      }),
     });
   } catch {
     return { ok: false, message: "Could not verify school account. Please try again." };
@@ -50,6 +57,12 @@ export async function runSchoolEnrollment(): Promise<SchoolEnrollmentClientResul
   } catch {
     return { ok: false, message: "Could not verify school account. Please try again." };
   }
+
+  console.log("[school-enrollment] API response", {
+    status: response.status,
+    individual: body.individual,
+    welcomeMessage: body.welcomeMessage ?? null,
+  });
 
   if (response.status === 403 && body.blocked) {
     return { ok: false, blocked: true, message: body.message ?? "School account limit reached." };

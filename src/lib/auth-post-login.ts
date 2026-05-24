@@ -15,14 +15,23 @@ async function registerSession(userId: string): Promise<void> {
   }
 }
 
-/** Google OAuth: school domain enrollment, then usage row if missing. */
-export async function completeGooglePostAuthLogin(userId: string): Promise<PostAuthLoginResult> {
+/**
+ * Google OAuth callback: school domain check runs every login, then usage row if still missing.
+ */
+export async function completeGooglePostAuthLogin(
+  userId: string,
+  userEmail: string,
+): Promise<PostAuthLoginResult> {
   await registerSession(userId);
 
-  const enrollment = await runSchoolEnrollment();
+  const enrollment = await runSchoolEnrollment(userEmail);
   if (!enrollment.ok) {
     await supabase.auth.signOut();
     return { ok: false, message: enrollment.message };
+  }
+
+  if (!enrollment.individual) {
+    return { ok: true };
   }
 
   await ensureUserUsageOnClient(userId);
