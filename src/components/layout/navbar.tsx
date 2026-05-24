@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { SoundToggleButton } from "@/components/effects/sound-toggle-button";
 import { clearActiveSession } from "@/lib/active-session";
-import { APP_NAV_LINKS, isNavLinkActive } from "@/lib/app-nav-links";
+import { APP_NAV_LINKS, SCHOOL_ADMIN_NAV_LINK, isNavLinkActive } from "@/lib/app-nav-links";
 import { supabase } from "@/lib/supabase";
 import { Container } from "@/components/ui/container";
 
@@ -15,6 +15,7 @@ export function Navbar() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [isSchoolAdmin, setIsSchoolAdmin] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -34,6 +35,36 @@ export function Navbar() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        setIsSchoolAdmin(false);
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setIsSchoolAdmin(false);
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/school-admin/me", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const body = (await res.json()) as { isAdmin?: boolean };
+        setIsSchoolAdmin(Boolean(body.isAdmin));
+      } catch {
+        setIsSchoolAdmin(false);
+      }
+    };
+
+    void checkAdmin();
+  }, [user]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -85,6 +116,22 @@ export function Navbar() {
                 </Link>
               );
             })}
+            {isSchoolAdmin ? (
+              <Link
+                href={SCHOOL_ADMIN_NAV_LINK.href}
+                className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition"
+                style={{
+                  color: isNavLinkActive(pathname, SCHOOL_ADMIN_NAV_LINK.href)
+                    ? "#00C6A7"
+                    : "rgba(255,255,255,0.7)",
+                  background: isNavLinkActive(pathname, SCHOOL_ADMIN_NAV_LINK.href)
+                    ? "rgba(0,198,167,0.1)"
+                    : "transparent",
+                }}
+              >
+                {SCHOOL_ADMIN_NAV_LINK.label}
+              </Link>
+            ) : null}
             <SoundToggleButton />
             {user ? (
               <button
@@ -139,6 +186,22 @@ export function Navbar() {
                 </Link>
               );
             })}
+            {isSchoolAdmin ? (
+              <Link
+                href={SCHOOL_ADMIN_NAV_LINK.href}
+                className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-medium"
+                style={{
+                  color: isNavLinkActive(pathname, SCHOOL_ADMIN_NAV_LINK.href)
+                    ? "#00C6A7"
+                    : "rgba(255,255,255,0.75)",
+                  background: isNavLinkActive(pathname, SCHOOL_ADMIN_NAV_LINK.href)
+                    ? "rgba(0,198,167,0.1)"
+                    : "transparent",
+                }}
+              >
+                {SCHOOL_ADMIN_NAV_LINK.label}
+              </Link>
+            ) : null}
             <div className="flex items-center justify-between gap-2 px-1 py-1">
               <span className="text-xs font-medium text-white/50">Sounds</span>
               <SoundToggleButton />

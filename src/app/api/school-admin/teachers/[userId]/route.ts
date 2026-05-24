@@ -26,7 +26,7 @@ export async function DELETE(req: Request, context: RouteContext) {
     return NextResponse.json({ error: "No email on account." }, { status: 400 });
   }
 
-  const result = await removeTeacherFromSchool(email, teacherUserId);
+  const result = await removeTeacherFromSchool(email, teacherUserId, auth.supabase);
   if (!result.ok) {
     return NextResponse.json({ error: result.message }, { status: 400 });
   }

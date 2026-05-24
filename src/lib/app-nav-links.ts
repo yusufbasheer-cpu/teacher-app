@@ -8,6 +8,11 @@ export const APP_NAV_LINKS = [
   { href: "/my-lesson-plans", label: "My Lessons" },
 ] as const;
 
+export const SCHOOL_ADMIN_NAV_LINK = {
+  href: "/school-admin",
+  label: "School Admin",
+} as const;
+
 export type AppNavLink = (typeof APP_NAV_LINKS)[number];
 
 export function isNavLinkActive(pathname: string, href: string): boolean {

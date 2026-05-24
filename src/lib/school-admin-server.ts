@@ -1,13 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { isSchoolPlanType, type SchoolAccountRow } from "@/lib/school-accounts";
-import { isSchoolAdminEmail } from "@/lib/school-enrollment-server";
 import { firstDayOfNextMonthUtc } from "@/lib/user-usage";
 
 export type SchoolAdminTeacher = {
   userId: string;
+  name: string;
   email: string;
   joinedAt: string;
+  generationsUsedThisMonth: number;
 };
 
 export type SchoolAdminDashboard = {
@@ -23,26 +24,98 @@ export type SchoolAdminDashboard = {
   teachers: SchoolAdminTeacher[];
   usage: {
     totalGenerationsUsedThisMonth: number;
-    teacherCount: number;
+    mostActiveTeacher: {
+      name: string;
+      email: string;
+      generationsUsed: number;
+    } | null;
   };
 };
 
-async function assertSchoolAdmin(
+function normalizeAdminEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export async function findSchoolForAdmin(
   adminEmail: string,
-): Promise<{ admin: SupabaseClient; school: SchoolAccountRow } | null> {
-  const school = await isSchoolAdminEmail(adminEmail);
+  sessionClient?: SupabaseClient,
+): Promise<SchoolAccountRow | null> {
+  const normalized = normalizeAdminEmail(adminEmail);
+
+  if (sessionClient) {
+    const { data, error } = await sessionClient
+      .from("school_accounts")
+      .select("*")
+      .eq("admin_email", normalized)
+      .maybeSingle();
+
+    if (!error && data && isSchoolPlanType(data.plan_type)) {
+      return data as SchoolAccountRow;
+    }
+  }
+
   const admin = getSupabaseServiceRole();
-  if (!school || !admin) return null;
-  return { admin, school };
+  if (!admin) return null;
+
+  const { data, error } = await admin
+    .from("school_accounts")
+    .select("*")
+    .eq("admin_email", normalized)
+    .maybeSingle();
+
+  if (error || !data || !isSchoolPlanType(data.plan_type)) return null;
+  return data as SchoolAccountRow;
+}
+
+export async function isUserSchoolAdmin(
+  adminEmail: string,
+  sessionClient?: SupabaseClient,
+): Promise<boolean> {
+  const school = await findSchoolForAdmin(adminEmail, sessionClient);
+  return Boolean(school);
+}
+
+function teacherDisplayName(
+  email: string,
+  metadata: Record<string, unknown> | undefined,
+): string {
+  const fullName = metadata?.full_name;
+  if (typeof fullName === "string" && fullName.trim()) return fullName.trim();
+  const name = metadata?.name;
+  if (typeof name === "string" && name.trim()) return name.trim();
+  const local = email.split("@")[0] ?? "Teacher";
+  return local.replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+async function resolveTeacherName(
+  admin: SupabaseClient,
+  userId: string,
+  email: string,
+): Promise<string> {
+  try {
+    const { data, error } = await admin.auth.admin.getUserById(userId);
+    if (!error && data.user) {
+      return teacherDisplayName(email, data.user.user_metadata as Record<string, unknown>);
+    }
+  } catch {
+    /* fall through */
+  }
+  return teacherDisplayName(email, undefined);
+}
+
+async function getDataClient(sessionClient?: SupabaseClient): Promise<SupabaseClient | null> {
+  return getSupabaseServiceRole() ?? sessionClient ?? null;
 }
 
 export async function getSchoolAdminDashboard(
   adminEmail: string,
+  sessionClient?: SupabaseClient,
 ): Promise<SchoolAdminDashboard | null> {
-  const ctx = await assertSchoolAdmin(adminEmail);
-  if (!ctx) return null;
+  const school = await findSchoolForAdmin(adminEmail, sessionClient);
+  if (!school) return null;
 
-  const { admin, school } = ctx;
+  const admin = await getDataClient(sessionClient);
+  if (!admin) return null;
 
   const { data: teachers, error: teachersError } = await admin
     .from("school_teachers")
@@ -56,7 +129,7 @@ export async function getSchoolAdminDashboard(
   }
 
   const userIds = (teachers ?? []).map((t) => t.user_id as string);
-  let totalGenerationsUsedThisMonth = 0;
+  const usageByUser = new Map<string, number>();
 
   if (userIds.length > 0) {
     const { data: usageRows } = await admin
@@ -65,15 +138,40 @@ export async function getSchoolAdminDashboard(
       .in("user_id", userIds);
 
     for (const row of usageRows ?? []) {
-      totalGenerationsUsedThisMonth += Math.max(0, Number(row.generations_used) || 0);
+      usageByUser.set(row.user_id as string, Math.max(0, Number(row.generations_used) || 0));
     }
   }
 
-  const teacherList: SchoolAdminTeacher[] = (teachers ?? []).map((t) => ({
-    userId: t.user_id as string,
-    email: t.email as string,
-    joinedAt: t.joined_at as string,
-  }));
+  const teacherList: SchoolAdminTeacher[] = await Promise.all(
+    (teachers ?? []).map(async (t) => {
+      const uid = t.user_id as string;
+      const email = t.email as string;
+      return {
+        userId: uid,
+        name: await resolveTeacherName(admin, uid, email),
+        email,
+        joinedAt: t.joined_at as string,
+        generationsUsedThisMonth: usageByUser.get(uid) ?? 0,
+      };
+    }),
+  );
+
+  let totalGenerationsUsedThisMonth = 0;
+  let mostActive: SchoolAdminDashboard["usage"]["mostActiveTeacher"] = null;
+
+  for (const teacher of teacherList) {
+    totalGenerationsUsedThisMonth += teacher.generationsUsedThisMonth;
+    if (
+      !mostActive ||
+      teacher.generationsUsedThisMonth > mostActive.generationsUsed
+    ) {
+      mostActive = {
+        name: teacher.name,
+        email: teacher.email,
+        generationsUsed: teacher.generationsUsedThisMonth,
+      };
+    }
+  }
 
   return {
     school: {
@@ -88,7 +186,7 @@ export async function getSchoolAdminDashboard(
     teachers: teacherList,
     usage: {
       totalGenerationsUsedThisMonth,
-      teacherCount: teacherList.length,
+      mostActiveTeacher: mostActive,
     },
   };
 }
@@ -96,13 +194,17 @@ export async function getSchoolAdminDashboard(
 export async function removeTeacherFromSchool(
   adminEmail: string,
   teacherUserId: string,
+  sessionClient?: SupabaseClient,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const ctx = await assertSchoolAdmin(adminEmail);
-  if (!ctx) {
+  const school = await findSchoolForAdmin(adminEmail, sessionClient);
+  if (!school) {
     return { ok: false, message: "You are not authorized to manage this school." };
   }
 
-  const { admin, school } = ctx;
+  const admin = getSupabaseServiceRole() ?? sessionClient;
+  if (!admin) {
+    return { ok: false, message: "Could not remove teacher. Please try again." };
+  }
 
   const { data: membership } = await admin
     .from("school_teachers")
@@ -127,17 +229,20 @@ export async function removeTeacherFromSchool(
   }
 
   const resetDate = firstDayOfNextMonthUtc();
-  const { error: usageError } = await admin
-    .from("user_usage")
-    .update({
-      plan_type: "free",
-      generations_limit: 3,
-      reset_date: resetDate,
-    })
-    .eq("user_id", teacherUserId);
+  const serviceAdmin = getSupabaseServiceRole();
+  if (serviceAdmin) {
+    const { error: usageError } = await serviceAdmin
+      .from("user_usage")
+      .update({
+        plan_type: "free",
+        generations_limit: 3,
+        reset_date: resetDate,
+      })
+      .eq("user_id", teacherUserId);
 
-  if (usageError) {
-    console.error("[school-admin] reset teacher usage failed:", usageError.message);
+    if (usageError) {
+      console.error("[school-admin] reset teacher usage failed:", usageError.message);
+    }
   }
 
   return { ok: true };

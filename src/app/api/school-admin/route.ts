@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "No email on account." }, { status: 400 });
   }
 
-  const dashboard = await getSchoolAdminDashboard(email);
+  const dashboard = await getSchoolAdminDashboard(email, auth.supabase);
   if (!dashboard) {
     return NextResponse.json(
       { error: "You are not authorized to manage a school account." },

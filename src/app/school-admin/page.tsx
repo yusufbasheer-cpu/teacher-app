@@ -4,7 +4,7 @@ import { FadeIn } from "@/components/ui/animate";
 
 export default function SchoolAdminPage() {
   return (
-    <main className="min-h-screen pb-16 pt-10">
+    <main className="min-h-screen pb-16 pt-10" style={{ background: "#F7F9FC" }}>
       <Container>
         <FadeIn>
           <SchoolAdminDashboard />
