@@ -40,8 +40,21 @@ export function getDeviceInfo(): string {
   return `${platform} | ${lang} | ${ua}`;
 }
 
-/** Register this device as the only active session for the user. */
-export async function registerActiveSession(userId: string): Promise<string> {
+function isActiveSessionsTableError(error: { code?: string; message?: string }): boolean {
+  const code = error.code ?? "";
+  const msg = error.message?.toLowerCase() ?? "";
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    msg.includes("active_sessions") && msg.includes("does not exist")
+  );
+}
+
+/**
+ * Register this device as the only active session (active_sessions table).
+ * Columns: user_id, session_token, device_info
+ */
+export async function registerActiveSession(userId: string): Promise<string | null> {
   const sessionToken = crypto.randomUUID();
   const device_info = getDeviceInfo();
 
@@ -49,13 +62,20 @@ export async function registerActiveSession(userId: string): Promise<string> {
     {
       user_id: userId,
       session_token: sessionToken,
-      created_at: new Date().toISOString(),
       device_info,
     },
     { onConflict: "user_id" },
   );
 
-  if (error) throw error;
+  if (error) {
+    if (isActiveSessionsTableError(error)) {
+      console.warn("[active-session] active_sessions table unavailable:", error.message);
+    } else {
+      console.warn("[active-session] upsert failed:", error.message, error.code, error);
+    }
+    return null;
+  }
+
   setLocalSessionToken(sessionToken);
   return sessionToken;
 }
@@ -63,7 +83,12 @@ export async function registerActiveSession(userId: string): Promise<string> {
 /** Remove active session row and local token on logout. */
 export async function clearActiveSession(userId: string): Promise<void> {
   clearLocalSessionToken();
-  await supabase.from("active_sessions").delete().eq("user_id", userId);
+
+  const { error } = await supabase.from("active_sessions").delete().eq("user_id", userId);
+
+  if (error && !isActiveSessionsTableError(error)) {
+    console.warn("[active-session] delete failed:", error.message);
+  }
 }
 
 export type ValidateActiveSessionResult =
@@ -92,17 +117,16 @@ export async function validateActiveSession(): Promise<ValidateActiveSessionResu
     .maybeSingle();
 
   if (error) {
+    if (isActiveSessionsTableError(error)) {
+      return { ok: true };
+    }
     console.warn("[active-session] validate failed:", error.message);
     return { ok: true };
   }
 
   if (!data?.session_token) {
     if (!localToken) {
-      try {
-        await registerActiveSession(session.user.id);
-      } catch (e) {
-        console.warn("[active-session] register failed:", e);
-      }
+      await registerActiveSession(session.user.id);
       return { ok: true };
     }
     return { ok: false, revoked: true };

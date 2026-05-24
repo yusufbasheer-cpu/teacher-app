@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { registerActiveSession } from "@/lib/active-session";
+import { schoolPlanResetDate } from "@/lib/school-plan-reset-date";
 import { SCHOOL_WELCOME_SESSION_KEY } from "@/lib/school-accounts";
 import { supabase } from "@/lib/supabase";
 
@@ -24,6 +25,15 @@ function DashboardContent() {
       if (code) {
         console.log("[dashboard] OAuth code detected — forwarding to /auth/callback");
         router.replace(`/auth/callback?code=${encodeURIComponent(code)}`);
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        router.replace("/auth");
         return;
       }
 
@@ -50,6 +60,25 @@ function DashboardContent() {
         console.log("School found:", school);
         console.log("School matched (server):", params?.get("school_matched"));
 
+        if (school && user.data.user?.id) {
+          const { error: upsertError } = await supabase.from("user_usage").upsert(
+            {
+              user_id: user.data.user.id,
+              plan_type: school.plan_type,
+              generations_limit: -1,
+              generations_used: 0,
+              reset_date: schoolPlanResetDate(),
+            },
+            { onConflict: "user_id" },
+          );
+
+          if (upsertError) {
+            console.log("user_usage upsert error (client):", upsertError.message);
+          } else {
+            console.log("School plan applied successfully");
+          }
+        }
+
         const welcome = params?.get("school_welcome");
         if (welcome) {
           try {
@@ -60,20 +89,7 @@ function DashboardContent() {
         }
       }
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.user) {
-        router.replace("/auth");
-        return;
-      }
-
-      try {
-        await registerActiveSession(session.user.id);
-      } catch {
-        /* optional */
-      }
+      await registerActiveSession(session.user.id);
 
       router.replace("/lesson-plan");
       router.refresh();
