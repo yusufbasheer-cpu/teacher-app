@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import type { SchoolAdminDashboard } from "@/lib/school-admin-server";
+import { useCallback, useState } from "react";
+import type { SchoolAdminDashboardData } from "@/lib/school-admin-server";
 import { supabase } from "@/lib/supabase";
 
 const NAVY = "#0A1628";
@@ -21,32 +20,32 @@ function formatDate(iso: string): string {
   });
 }
 
-export function SchoolAdminDashboard() {
-  const router = useRouter();
-  const [data, setData] = useState<SchoolAdminDashboard | null>(null);
-  const [loading, setLoading] = useState(true);
+type SchoolAdminDashboardProps = {
+  initialData: SchoolAdminDashboardData;
+};
+
+export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps) {
+  const [data, setData] = useState(initialData);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
+    setLoading(true);
+
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      router.replace("/auth");
+      window.location.href = "/auth";
       return;
     }
 
     const response = await fetch("/api/school-admin", {
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
-
-    if (response.status === 403) {
-      router.replace("/dashboard");
-      return;
-    }
 
     if (!response.ok) {
       const body = (await response.json().catch(() => ({}))) as { error?: string };
@@ -55,14 +54,10 @@ export function SchoolAdminDashboard() {
       return;
     }
 
-    const json = (await response.json()) as SchoolAdminDashboard;
+    const json = (await response.json()) as SchoolAdminDashboardData;
     setData(json);
     setLoading(false);
-  }, [router]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  }, []);
 
   const onRemoveTeacher = async (userId: string, teacherName: string) => {
     if (
@@ -112,14 +107,6 @@ export function SchoolAdminDashboard() {
         <p className="text-sm font-medium" style={{ color: MUTED }}>
           Loading school admin…
         </p>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-        {error ?? "School dashboard unavailable."}
       </div>
     );
   }

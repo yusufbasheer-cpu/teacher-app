@@ -11,7 +11,7 @@ export type SchoolAdminTeacher = {
   generationsUsedThisMonth: number;
 };
 
-export type SchoolAdminDashboard = {
+export type SchoolAdminDashboardData = {
   school: {
     id: string;
     name: string;
@@ -36,42 +36,35 @@ function normalizeAdminEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export async function findSchoolForAdmin(
-  adminEmail: string,
-  sessionClient?: SupabaseClient,
-): Promise<SchoolAccountRow | null> {
-  const normalized = normalizeAdminEmail(adminEmail);
-
-  if (sessionClient) {
-    const { data, error } = await sessionClient
-      .from("school_accounts")
-      .select("*")
-      .eq("admin_email", normalized)
-      .maybeSingle();
-
-    if (!error && data && isSchoolPlanType(data.plan_type)) {
-      return data as SchoolAccountRow;
-    }
+/** Service role only — bypasses RLS for reliable admin_email lookup. */
+export async function findSchoolForAdmin(adminEmail: string): Promise<SchoolAccountRow | null> {
+  const admin = getSupabaseServiceRole();
+  if (!admin) {
+    console.error("[school-admin] SUPABASE_SERVICE_ROLE_KEY is not configured");
+    return null;
   }
 
-  const admin = getSupabaseServiceRole();
-  if (!admin) return null;
-
+  const normalized = normalizeAdminEmail(adminEmail);
   const { data, error } = await admin
     .from("school_accounts")
     .select("*")
     .eq("admin_email", normalized)
     .maybeSingle();
 
-  if (error || !data || !isSchoolPlanType(data.plan_type)) return null;
+  if (error) {
+    console.error("[school-admin] school_accounts lookup failed:", error.message);
+    return null;
+  }
+
+  if (!data || !isSchoolPlanType(data.plan_type)) {
+    return null;
+  }
+
   return data as SchoolAccountRow;
 }
 
-export async function isUserSchoolAdmin(
-  adminEmail: string,
-  sessionClient?: SupabaseClient,
-): Promise<boolean> {
-  const school = await findSchoolForAdmin(adminEmail, sessionClient);
+export async function isUserSchoolAdmin(adminEmail: string): Promise<boolean> {
+  const school = await findSchoolForAdmin(adminEmail);
   return Boolean(school);
 }
 
@@ -103,18 +96,13 @@ async function resolveTeacherName(
   return teacherDisplayName(email, undefined);
 }
 
-async function getDataClient(sessionClient?: SupabaseClient): Promise<SupabaseClient | null> {
-  return getSupabaseServiceRole() ?? sessionClient ?? null;
-}
-
 export async function getSchoolAdminDashboard(
   adminEmail: string,
-  sessionClient?: SupabaseClient,
-): Promise<SchoolAdminDashboard | null> {
-  const school = await findSchoolForAdmin(adminEmail, sessionClient);
+): Promise<SchoolAdminDashboardData | null> {
+  const school = await findSchoolForAdmin(adminEmail);
   if (!school) return null;
 
-  const admin = await getDataClient(sessionClient);
+  const admin = getSupabaseServiceRole();
   if (!admin) return null;
 
   const { data: teachers, error: teachersError } = await admin
@@ -157,7 +145,7 @@ export async function getSchoolAdminDashboard(
   );
 
   let totalGenerationsUsedThisMonth = 0;
-  let mostActive: SchoolAdminDashboard["usage"]["mostActiveTeacher"] = null;
+  let mostActive: SchoolAdminDashboardData["usage"]["mostActiveTeacher"] = null;
 
   for (const teacher of teacherList) {
     totalGenerationsUsedThisMonth += teacher.generationsUsedThisMonth;
@@ -194,14 +182,13 @@ export async function getSchoolAdminDashboard(
 export async function removeTeacherFromSchool(
   adminEmail: string,
   teacherUserId: string,
-  sessionClient?: SupabaseClient,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const school = await findSchoolForAdmin(adminEmail, sessionClient);
+  const school = await findSchoolForAdmin(adminEmail);
   if (!school) {
     return { ok: false, message: "You are not authorized to manage this school." };
   }
 
-  const admin = getSupabaseServiceRole() ?? sessionClient;
+  const admin = getSupabaseServiceRole();
   if (!admin) {
     return { ok: false, message: "Could not remove teacher. Please try again." };
   }
@@ -229,20 +216,17 @@ export async function removeTeacherFromSchool(
   }
 
   const resetDate = firstDayOfNextMonthUtc();
-  const serviceAdmin = getSupabaseServiceRole();
-  if (serviceAdmin) {
-    const { error: usageError } = await serviceAdmin
-      .from("user_usage")
-      .update({
-        plan_type: "free",
-        generations_limit: 3,
-        reset_date: resetDate,
-      })
-      .eq("user_id", teacherUserId);
+  const { error: usageError } = await admin
+    .from("user_usage")
+    .update({
+      plan_type: "free",
+      generations_limit: 3,
+      reset_date: resetDate,
+    })
+    .eq("user_id", teacherUserId);
 
-    if (usageError) {
-      console.error("[school-admin] reset teacher usage failed:", usageError.message);
-    }
+  if (usageError) {
+    console.error("[school-admin] reset teacher usage failed:", usageError.message);
   }
 
   return { ok: true };

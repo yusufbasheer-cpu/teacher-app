@@ -9,6 +9,14 @@ export async function middleware(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const pathname = request.nextUrl.pathname;
 
+  // /school-admin is a server page — do not intercept OAuth or auth redirects here.
+  if (pathname === "/school-admin") {
+    let response = NextResponse.next({ request });
+    const supabase = createMiddlewareSupabaseClient(request, response);
+    await supabase.auth.getUser();
+    return response;
+  }
+
   if (code && pathname !== "/auth/callback") {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/auth/callback";

@@ -14,15 +14,15 @@ export async function GET(req: Request) {
     data: { user },
   } = await auth.supabase.auth.getUser(auth.accessToken);
 
-  const email = user?.email?.trim().toLowerCase() ?? "";
+  const email = user?.email?.trim() ?? "";
   if (!email) {
     return NextResponse.json({ error: "No email on account." }, { status: 400 });
   }
 
-  const dashboard = await getSchoolAdminDashboard(email, auth.supabase);
+  const dashboard = await getSchoolAdminDashboard(email);
   if (!dashboard) {
     return NextResponse.json(
-      { error: "You are not authorized to manage a school account." },
+      { error: "You do not have admin access." },
       { status: 403 },
     );
   }

@@ -4,7 +4,7 @@ import { authenticateRequest } from "@/lib/user-usage-server";
 
 export const runtime = "nodejs";
 
-/** Returns whether the logged-in user is a school admin (for nav). */
+/** Returns whether the logged-in user is a school admin (service role lookup). */
 export async function GET(req: Request) {
   const auth = await authenticateRequest(req);
   if (!auth.ok) {
@@ -20,6 +20,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ isAdmin: false });
   }
 
-  const isAdmin = await isUserSchoolAdmin(email, auth.supabase);
+  const isAdmin = await isUserSchoolAdmin(email);
   return NextResponse.json({ isAdmin });
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useRef } from "react";
+import Link from "next/link";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { registerActiveSession } from "@/lib/active-session";
 import { schoolPlanResetDate } from "@/lib/school-plan-reset-date";
@@ -10,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 function DashboardContent() {
   const router = useRouter();
   const startedRef = useRef(false);
+  const [adminDenied, setAdminDenied] = useState(false);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -19,11 +21,10 @@ function DashboardContent() {
       const params =
         typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
 
-      console.log("[dashboard] loaded", window.location.href);
+      const denied = params?.get("admin_denied") === "1";
 
       const code = params?.get("code");
       if (code) {
-        console.log("[dashboard] OAuth code detected — forwarding to /auth/callback");
         router.replace(`/auth/callback?code=${encodeURIComponent(code)}`);
         return;
       }
@@ -39,29 +40,18 @@ function DashboardContent() {
 
       const schoolCheck = params?.get("school_check") === "1";
       if (schoolCheck) {
-        console.log("=== AUTH CALLBACK (browser) — after server route ===");
-
         const user = await supabase.auth.getUser();
         const email = user.data.user?.email;
         const domain = email?.split("@")[1];
 
-        console.log("Checking school domain for:", domain);
-
-        const { data: school, error } = await supabase
+        const { data: school } = await supabase
           .from("school_accounts")
           .select("*")
           .eq("email_domain", domain ?? "")
           .maybeSingle();
 
-        if (error) {
-          console.log("School lookup error (client):", error.message);
-        }
-
-        console.log("School found:", school);
-        console.log("School matched (server):", params?.get("school_matched"));
-
         if (school && user.data.user?.id) {
-          const { error: upsertError } = await supabase.from("user_usage").upsert(
+          await supabase.from("user_usage").upsert(
             {
               user_id: user.data.user.id,
               plan_type: school.plan_type,
@@ -71,12 +61,6 @@ function DashboardContent() {
             },
             { onConflict: "user_id" },
           );
-
-          if (upsertError) {
-            console.log("user_usage upsert error (client):", upsertError.message);
-          } else {
-            console.log("School plan applied successfully");
-          }
         }
 
         const welcome = params?.get("school_welcome");
@@ -91,12 +75,46 @@ function DashboardContent() {
 
       await registerActiveSession(session.user.id);
 
+      if (denied) {
+        setAdminDenied(true);
+        window.history.replaceState(null, "", "/dashboard");
+        return;
+      }
+
       router.replace("/lesson-plan");
       router.refresh();
     };
 
     void run();
   }, [router]);
+
+  if (adminDenied) {
+    return (
+      <main
+        className="flex min-h-screen items-center justify-center px-4"
+        style={{ background: "#F7F9FC" }}
+      >
+        <div
+          className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm"
+          style={{ borderColor: "rgba(0,198,167,0.25)" }}
+        >
+          <p className="text-lg font-semibold" style={{ color: "#0A1628" }}>
+            You do not have admin access
+          </p>
+          <p className="mt-2 text-sm" style={{ color: "#4A5568" }}>
+            Your account is not listed as a school administrator.
+          </p>
+          <Link
+            href="/lesson-plan"
+            className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold text-white"
+            style={{ background: "#00C6A7" }}
+          >
+            Go to lesson plan generator
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center" style={{ background: "#F7F9FC" }}>
