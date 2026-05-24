@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { registerActiveSession } from "@/lib/active-session";
+import { completePostAuthLogin } from "@/lib/auth-post-login";
 import { supabase } from "@/lib/supabase";
-import { ensureUserUsageOnClient } from "@/lib/user-usage-client";
 
 /** OAuth redirect target — registers session then sends teachers to the app. */
 export default function DashboardPage() {
@@ -23,13 +22,12 @@ export default function DashboardPage() {
         return;
       }
 
-      try {
-        await registerActiveSession(session.user.id);
-      } catch {
-        /* session row optional; continue into app */
+      const postAuth = await completePostAuthLogin(session.user.id);
+      if (!postAuth.ok) {
+        setStatus(postAuth.message);
+        router.replace(`/auth?error=${encodeURIComponent(postAuth.message)}`);
+        return;
       }
-
-      await ensureUserUsageOnClient(session.user.id);
 
       router.replace("/lesson-plan");
       router.refresh();

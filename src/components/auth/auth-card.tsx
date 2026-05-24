@@ -2,9 +2,9 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { registerActiveSession, SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
+import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
+import { completePostAuthLogin } from "@/lib/auth-post-login";
 import { supabase } from "@/lib/supabase";
-import { ensureUserUsageOnClient } from "@/lib/user-usage-client";
 
 type AuthMode = "login" | "signup";
 
@@ -70,6 +70,11 @@ export function AuthCard() {
   useEffect(() => {
     if (searchParams.get("revoked") === "1") {
       setError(SESSION_REVOKED_MESSAGE);
+      return;
+    }
+    const authError = searchParams.get("error");
+    if (authError) {
+      setError(decodeURIComponent(authError));
     }
   }, [searchParams]);
 
@@ -108,8 +113,11 @@ export function AuthCard() {
         if (signUpError) throw signUpError;
 
         if (data.session?.user) {
-          await registerActiveSession(data.session.user.id);
-          await ensureUserUsageOnClient(data.session.user.id);
+          const postAuth = await completePostAuthLogin(data.session.user.id);
+          if (!postAuth.ok) {
+            setError(postAuth.message);
+            return;
+          }
           router.push("/lesson-plan");
           router.refresh();
           return;
@@ -129,8 +137,11 @@ export function AuthCard() {
           data: { session },
         } = await supabase.auth.getSession();
         if (session?.user) {
-          await registerActiveSession(session.user.id);
-          await ensureUserUsageOnClient(session.user.id);
+          const postAuth = await completePostAuthLogin(session.user.id);
+          if (!postAuth.ok) {
+            setError(postAuth.message);
+            return;
+          }
         }
         router.push("/lesson-plan");
         router.refresh();

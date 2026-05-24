@@ -1,5 +1,6 @@
 ﻿import { Suspense } from "react";
 import { LessonPlanGenerator } from "@/components/lesson-plan/lesson-plan-generator";
+import { SchoolWelcomeBanner } from "@/components/school/school-welcome-banner";
 import { Container } from "@/components/ui/container";
 import { Skeleton } from "@/components/ui/animate";
 
@@ -21,6 +22,7 @@ export default function LessonPlanPage() {
   return (
     <main className="min-h-screen pb-16 pt-10">
       <Container>
+        <SchoolWelcomeBanner />
         <div className="mb-8 rounded-3xl border bg-white p-5 shadow-sm sm:p-6 md:p-8" style={{ borderColor: "rgba(0,198,167,0.2)" }}>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" style={{ color: "#0A1628" }}>
             AI Lesson Plan Generator
