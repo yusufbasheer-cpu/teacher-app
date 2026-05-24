@@ -9,7 +9,13 @@ export function isFalRelatedUserNotice(text: string): boolean {
     lower.includes("top up") ||
     lower.includes("dashboard/billing") ||
     lower.includes("ai image failed") ||
-    lower.includes("image generation failed")
+    lower.includes("image generation failed") ||
+    lower.includes("deepseek") ||
+    lower.includes("deekseek") ||
+    lower.includes("env.local") ||
+    lower.includes("could not parse") ||
+    lower.includes("recovery notice") ||
+    lower.includes("marker fallback")
   );
 }
 

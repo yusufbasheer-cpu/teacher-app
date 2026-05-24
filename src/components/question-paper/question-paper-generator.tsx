@@ -37,6 +37,8 @@ import {
   type QuestionTypeId,
 } from "@/lib/question-paper";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
+import { sanitizeUserMessage, toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
+import { filterUserFacingNotices } from "@/lib/image-notices";
 import { questionPaperDownloadFileName } from "@/lib/question-paper-download-names";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
 
@@ -176,13 +178,14 @@ export function QuestionPaperGenerator() {
     try {
       const res = await fetch("/api/lesson-plan/extract-upload", { method: "POST", body: fd });
       const raw = await res.text();
-      const parsed = tryParseApiJson<ExtractPayload>(raw, res.status);
+      const parsed = tryParseApiJson<ExtractPayload>(raw, res.status, "question-paper-upload");
       if (!parsed.ok) {
         setError(parsed.message);
         return;
       }
       if (!res.ok) {
-        setError(parsed.data.error ?? `Upload failed (${res.status})`);
+        console.error("[question-paper upload]", parsed.data.error);
+        setError(USER_FACING_ERROR);
         return;
       }
       const parts = parsed.data.parts ?? [];
@@ -201,7 +204,7 @@ export function QuestionPaperGenerator() {
       ]);
       setUploadInfo(`Added ${parts.length} file(s) to source material.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
+      setError(toUserFacingError(err, "question-paper-upload"));
     } finally {
       setUploadExtracting(false);
     }
@@ -235,7 +238,7 @@ export function QuestionPaperGenerator() {
       const blob = await res.blob();
       downloadBlob(blob, questionPaperDownloadFileName("paper", subject, grade));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Download failed");
+      setError(toUserFacingError(e, "question-paper-download"));
     } finally {
       setDownloading(null);
     }
@@ -266,7 +269,7 @@ export function QuestionPaperGenerator() {
       const blob = await res.blob();
       downloadBlob(blob, questionPaperDownloadFileName("blueprint", subject, grade));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Blueprint download failed");
+      setError(toUserFacingError(e, "question-paper-blueprint-download"));
     } finally {
       setDownloading(null);
     }
@@ -298,7 +301,7 @@ export function QuestionPaperGenerator() {
       const blob = await res.blob();
       downloadBlob(blob, questionPaperDownloadFileName("zip", subject, grade));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "ZIP download failed");
+      setError(toUserFacingError(e, "question-paper-zip-download"));
     } finally {
       setDownloading(null);
     }
@@ -362,10 +365,10 @@ export function QuestionPaperGenerator() {
         body: JSON.stringify(formPayload),
       });
       const paperRaw = await paperRes.text();
-      console.log("[question-paper-call-1] API response:", paperRaw);
+      console.log("[question-paper-call-1]", { status: paperRes.status, bodyLength: paperRaw.length });
       const paperParsed = tryParseApiJson<
         QuestionPaperResult & { error?: string; parseNotice?: string; usage?: UserUsageSnapshot }
-      >(paperRaw, paperRes.status);
+      >(paperRaw, paperRes.status, "question-paper-generate");
       if (!paperParsed.ok) {
         throw new Error(paperParsed.message);
       }
@@ -377,14 +380,18 @@ export function QuestionPaperGenerator() {
           setLimitModalOpen(true);
           return;
         }
-        throw new Error(paperParsed.data.error ?? `Question paper failed (${paperRes.status})`);
+        console.error("[question-paper-generate]", paperParsed.data.error);
+        throw new Error(sanitizeUserMessage(paperParsed.data.error, "question-paper-generate"));
       }
 
+      const safeParseNotices = filterUserFacingNotices(
+        paperParsed.data.parseNotice?.trim() ? [paperParsed.data.parseNotice.trim()] : [],
+      );
       const paperResult: QuestionPaperResult = {
         questionPaper: paperParsed.data.questionPaper ?? "",
         answerKey: paperParsed.data.answerKey,
         markingScheme: paperParsed.data.markingScheme,
-        parseNotice: paperParsed.data.parseNotice,
+        parseNotice: safeParseNotices.length ? safeParseNotices.join(" ") : undefined,
       };
 
       setResult(paperResult);
@@ -415,18 +422,20 @@ export function QuestionPaperGenerator() {
         }),
       });
       const bpRaw = await bpRes.text();
-      console.log("[question-paper-call-2-blueprint] API response:", bpRaw);
+      console.log("[question-paper-call-2-blueprint]", { status: bpRes.status, bodyLength: bpRaw.length });
       const bpParsed = tryParseApiJson<{ blueprintText?: string; error?: string; blueprintError?: string }>(
         bpRaw,
         bpRes.status,
+        "question-paper-blueprint",
       );
 
       if (!bpParsed.ok) {
+        console.error("[question-paper-blueprint] parse failed");
         setResult((prev) =>
           prev
             ? {
                 ...prev,
-                blueprintError: bpParsed.message,
+                blueprintError: "failed",
               }
             : prev,
         );
@@ -438,11 +447,12 @@ export function QuestionPaperGenerator() {
       }
 
       if (!bpRes.ok || !bpParsed.data.blueprintText) {
-        const msg =
-          bpParsed.data.blueprintError ??
-          bpParsed.data.error ??
-          `Blueprint generation failed (${bpRes.status})`;
-        setResult((prev) => (prev ? { ...prev, blueprintError: msg } : prev));
+        console.error("[question-paper-blueprint] failed", {
+          status: bpRes.status,
+          error: bpParsed.data.error,
+          blueprintError: bpParsed.data.blueprintError,
+        });
+        setResult((prev) => (prev ? { ...prev, blueprintError: "failed" } : prev));
         setGenerationProgress("Preparing downloads...");
         await new Promise<void>((r) => setTimeout(r, 500));
         setGenerationProgress("Finalizing...");
@@ -463,7 +473,7 @@ export function QuestionPaperGenerator() {
       setGenerationProgress("Finalizing...");
       await new Promise<void>((r) => setTimeout(r, 3000));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed.");
+      setError(toUserFacingError(err, "question-paper-generate"));
     } finally {
       setLoading(false);
       setGenerationProgress(null);
@@ -902,8 +912,8 @@ export function QuestionPaperGenerator() {
                 ) : null}
                 {result.blueprintError ? (
                   <p className="mb-3 text-xs text-amber-800">
-                    Blueprint could not be generated: {result.blueprintError}. Your question paper and
-                    downloads are still available.
+                    Blueprint could not be generated. Your question paper and downloads are still
+                    available.
                   </p>
                 ) : null}
                 <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-800">

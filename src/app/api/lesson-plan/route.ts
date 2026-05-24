@@ -15,7 +15,9 @@ import {
   buildSinglePptSlideDeepseekSystemPrompt,
 } from "@/lib/deepseek-lesson-system-prompt";
 import { generateFluxSectionImages, formatFalError } from "@/lib/fal-flux-section-images";
+import { apiErrorResponse } from "@/lib/api-client-error";
 import { filterUserFacingNotices } from "@/lib/image-notices";
+import { SECTION_GENERATION_FAILED, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import {
   normalizeGenerationSections,
   SOURCE_MATERIAL_MAX_CHARS,
@@ -510,16 +512,19 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
           }),
         });
       } catch (err) {
-        mergedPlan[section] = `_(AFL Activity Sheets could not be generated: network error.)_\n\n${String(err instanceof Error ? err.message : err)}`.slice(0, 12_000);
-        parseNotices.push(`AFL Activity Sheets: request failed — ${String(err instanceof Error ? err.message : err)}`);
+        console.error("[lesson-plan] AFL Activity Sheets fetch error:", err);
+        mergedPlan[section] = SECTION_GENERATION_FAILED;
         continue;
       }
       const rawAflBody = await aflSheetResponse.text();
       logDeepSeekRawResponse("lesson-plan:AFL-Activity-Sheets", aflSheetResponse, rawAflBody);
       if (!aflSheetResponse.ok) {
-        const friendly = deepSeekHttpErrorMessage(aflSheetResponse.status, rawAflBody);
-        mergedPlan[section] = `_(DeepSeek failed for AFL Activity Sheets.)_\n\n${friendly}`;
-        parseNotices.push(`AFL Activity Sheets: ${friendly}`);
+        console.warn(
+          "[lesson-plan] AFL Activity Sheets HTTP error:",
+          aflSheetResponse.status,
+          deepSeekHttpErrorMessage(aflSheetResponse.status, rawAflBody),
+        );
+        mergedPlan[section] = SECTION_GENERATION_FAILED;
         continue;
       }
       const { content: aflContent } = parseDeepSeekCompletionBody(rawAflBody);
@@ -550,10 +555,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
       });
     } catch (err) {
       console.error("[lesson-plan] DeepSeek fetch error:", section, err);
-      mergedPlan[section] = `_(This section could not be generated: network or server error.)_\n\n${String(
-        err instanceof Error ? err.message : err,
-      )}`.slice(0, 12_000);
-      parseNotices.push(`${section}: request failed before a response was received.`);
+      mergedPlan[section] = SECTION_GENERATION_FAILED;
       continue;
     }
 
@@ -566,22 +568,25 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
         deepseekResponse.status,
         rawBody.slice(0, 400),
       );
-      const friendly = deepSeekHttpErrorMessage(deepseekResponse.status, rawBody);
-      mergedPlan[section] = `_(DeepSeek failed for this section.)_\n\n${friendly}`;
-      parseNotices.push(`${section}: ${friendly}`);
+      console.warn(
+        "[lesson-plan] section HTTP error:",
+        section,
+        deepSeekHttpErrorMessage(deepseekResponse.status, rawBody),
+      );
+      mergedPlan[section] = SECTION_GENERATION_FAILED;
       continue;
     }
 
     const { content, errorMessage } = parseDeepSeekCompletionBody(rawBody);
     if (errorMessage) {
-      parseNotices.push(`${section}: ${errorMessage}`);
+      console.warn(`[lesson-plan] parse notice for ${section}:`, errorMessage);
     }
     if (!content?.trim()) {
-      mergedPlan[section] = `(No usable text was returned for **${section}**.)${errorMessage ? `\n\n${errorMessage}` : ""}`;
+      mergedPlan[section] = SECTION_GENERATION_FAILED;
       continue;
     }
 
-    console.log(`[lesson-plan] DeepSeek raw response (${section}):\n`, content);
+    console.log(`[lesson-plan] section generated: ${section} (${content.length} chars)`);
 
     const { plan: slicePlan, parseNotice: sliceNotice, mode } = parseTeacherPackageResponse(content, [
       section,
@@ -680,16 +685,10 @@ async function runFluxAndBuildResponsePayload(
 export async function POST(req: Request) {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
   if (!apiKey) {
-    return NextResponse.json(
-      { error: "Missing DEEPSEEK_API_KEY in environment variables." },
-      { status: 500 },
-    );
+    return apiErrorResponse("Missing DEEPSEEK_API_KEY", 500, "lesson-plan");
   }
   if (apiKey.length < 12) {
-    return NextResponse.json(
-      { error: "DEEPSEEK_API_KEY appears invalid (too short). Please check your environment variable." },
-      { status: 500 },
-    );
+    return apiErrorResponse("DEEPSEEK_API_KEY too short", 500, "lesson-plan");
   }
 
   let body: LessonPlanGenerateBody;
@@ -795,9 +794,8 @@ export async function POST(req: Request) {
           );
           send({ type: "complete", ...payload, ...(usage ? { usage } : {}) });
         } catch (e) {
-          const message = e instanceof Error ? e.message : String(e);
           console.error("[lesson-plan] stream generation failed:", e);
-          send({ type: "error", message });
+          send({ type: "error", message: USER_FACING_ERROR });
         } finally {
           controller.close();
         }
@@ -824,8 +822,7 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ ...payload, ...(usage ? { usage } : {}) });
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
     console.error("[lesson-plan] generation failed:", e);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: USER_FACING_ERROR }, { status: 500 });
   }
 }

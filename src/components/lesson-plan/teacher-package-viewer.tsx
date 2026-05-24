@@ -16,6 +16,7 @@ import { AFL_PHASE_IDS, type AflSelectionsPayload } from "@/lib/afl-tools";
 import { DEFAULT_PPT_THEME_ID, type PptThemeId } from "@/lib/ppt-themes";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
+import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 
 function hasAflSelections(s: AflSelectionsPayload | undefined): boolean {
   if (!s) return false;
@@ -292,14 +293,8 @@ export function TeacherPackageViewer({
 
       if (!res.ok) {
         const raw = await res.text();
-        let msg = `Download failed (HTTP ${res.status}).`;
-        try {
-          const j = JSON.parse(raw) as { error?: string };
-          if (typeof j.error === "string" && j.error.trim()) msg = j.error.trim();
-        } catch {
-          if (raw.trim()) msg = raw.trim().slice(0, 600);
-        }
-        throw new Error(msg);
+        console.error(`[teacher-package export ${key}] HTTP ${res.status}`, raw.slice(0, 500));
+        throw new Error(USER_FACING_ERROR);
       }
 
       const looksLikeBinary =
@@ -325,7 +320,7 @@ export function TeacherPackageViewer({
       }
       triggerFileDownload(blob, filename);
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : "Download failed.");
+      setExportError(toUserFacingError(e, `export-${key}`));
     } finally {
       setBusy(null);
     }

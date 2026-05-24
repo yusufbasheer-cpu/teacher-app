@@ -189,7 +189,7 @@ export async function generateFalPptImageFromPrompt(
     );
 
     if (callOptions?.verboseLog) {
-      console.log(`[fal-ppt][${label}] full API response body:\n${safeJsonForLog(result)}`);
+      console.log(`[fal-ppt][${label}] image generated (response logged server-side only)`);
     }
 
     if (result === null) {

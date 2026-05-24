@@ -130,7 +130,6 @@ async function fetchPexelsSearchPage(
       nextPage: data.next_page,
     };
     console.log(`[pexels][${label}] parsed response summary:`, JSON.stringify(summary));
-    console.log(`[pexels][${label}] full response JSON:\n${safeJsonForLog(parsed)}`);
 
     return {
       ok: true,

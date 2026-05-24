@@ -30,11 +30,6 @@ export default function LessonPlanPage() {
             content, worksheet, assessments, homework, and teacher notes—aligned to your
             subject and grade.
           </p>
-          <p className="mt-3 max-w-2xl text-xs text-slate-500">
-            If you see a JSON or network error, open{" "}
-            <code className="rounded bg-slate-100 px-1">/api/deepseek-ping</code> in a new tab to check
-            your DeepSeek API key. The server logs the raw DeepSeek response before parsing.
-          </p>
         </div>
         <Suspense fallback={<LessonPlanFallback />}>
           <LessonPlanGenerator />

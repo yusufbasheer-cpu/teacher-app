@@ -15,6 +15,7 @@ import {
   validateQuestionPaperBody,
   type QuestionPaperGenerateBody,
 } from "@/lib/question-paper";
+import { USER_FACING_ERROR } from "@/lib/user-facing-errors";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -81,16 +82,15 @@ export async function POST(req: Request) {
   });
 
   if ("error" in ds) {
-    return NextResponse.json({ error: ds.error }, { status: 502 });
+    console.error("[question-paper]", ds.error);
+    return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const parsed = parseQuestionPaperResponse(ds.content);
 
   if (!parsed.questionPaper?.trim()) {
-    return NextResponse.json(
-      { error: "The model returned an empty question paper. No generation was counted." },
-      { status: 502 },
-    );
+    console.error("[question-paper] empty question paper from model");
+    return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const usage = await recordSuccessfulGeneration(

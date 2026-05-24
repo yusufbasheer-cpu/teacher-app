@@ -11,7 +11,9 @@ import {
 } from "@/lib/differentiated-pack-session";
 import { dispatchLayahGenerationComplete } from "@/lib/layah-sounds";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
+import { filterUserFacingNotices } from "@/lib/image-notices";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
+import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 
 function safeFilePart(topic: string) {
   return topic
@@ -163,25 +165,25 @@ export function DifferentiatedWorksheetPack() {
           httpStatus?: number;
         };
 
-        const parsed = tryParseApiJson<DiffPackApi>(raw, res.status);
+        const parsed = tryParseApiJson<DiffPackApi>(raw, res.status, `diff-pack-${level}`);
         if (!parsed.ok) {
           setLevelProgress((prev) => ({ ...prev, [level]: "error" }));
-          failures.push(
-            `${level}: ${parsed.message}${parsed.rawPreview ? `\n\n--- Raw ---\n${parsed.rawPreview}` : ""}`,
-          );
+          if (parsed.rawPreview) {
+            console.error(`[diff-pack-${level}] parse error, preview length:`, parsed.rawPreview.length);
+          }
+          failures.push(level);
           continue;
         }
         const data = parsed.data;
 
         if (!res.ok || !data.pack) {
           setLevelProgress((prev) => ({ ...prev, [level]: "error" }));
-          const rawFromApi =
-            typeof data.rawResponse === "string" && data.rawResponse.trim()
-              ? data.rawResponse
-              : raw.slice(0, 12_000);
-          failures.push(
-            `${level}: ${data.error ?? "generation failed"}${rawFromApi ? `\n\n--- Raw from DeepSeek (via API) ---\n${rawFromApi}` : ""}`,
-          );
+          console.error(`[diff-pack-${level}] generation failed`, {
+            status: res.status,
+            error: data.error,
+            rawLength: data.rawResponse?.length ?? raw.length,
+          });
+          failures.push(level);
           continue;
         }
 
@@ -193,17 +195,20 @@ export function DifferentiatedWorksheetPack() {
       }
 
       if (succeeded === 0) {
-        throw new Error(failures.join(" | ") || "All three generation steps failed.");
+        console.error("[differentiated-pack] all levels failed", failures);
+        throw new Error(USER_FACING_ERROR);
       }
 
       setPack(combined);
       dispatchLayahGenerationComplete();
-      setParseNotice(notices.length ? notices.join(" ") : null);
+      const safeNotices = filterUserFacingNotices(notices);
+      setParseNotice(safeNotices.length ? safeNotices.join(" ") : null);
       if (failures.length) {
-        setError(`Some levels failed, but successful levels are shown. ${failures.join(" | ")}`);
+        console.warn("[differentiated-pack] partial level failures:", failures);
+        setError("Some levels could not be generated. Successful levels are shown below.");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Generation failed.");
+      setError(toUserFacingError(e, "differentiated-pack-generate"));
     } finally {
       setLoading(false);
     }
@@ -220,18 +225,19 @@ export function DifferentiatedWorksheetPack() {
       fd.append("file", file);
       const res = await fetch("/api/differentiated-pack/extract", { method: "POST", body: fd });
       const raw = await res.text();
-      console.log("[differentiated-pack extract client] HTTP", res.status, raw.slice(0, 500));
+      console.log("[differentiated-pack extract client] HTTP", res.status, "len", raw.length);
       type ExtractApi = { error?: string; extractedText?: string };
-      const parsed = tryParseApiJson<ExtractApi>(raw, res.status);
-      if (!parsed.ok) {
-        throw new Error(`${parsed.message}\n\n${parsed.rawPreview}`);
-      }
+      const parsed = tryParseApiJson<ExtractApi>(raw, res.status, "diff-pack-extract");
+      if (!parsed.ok) throw new Error(parsed.message);
       const data = parsed.data;
-      if (!res.ok) throw new Error(data.error ?? "Extract failed.");
-      if (!data.extractedText?.trim()) throw new Error("No text extracted.");
+      if (!res.ok) {
+        console.error("[diff-pack-extract]", data.error);
+        throw new Error(USER_FACING_ERROR);
+      }
+      if (!data.extractedText?.trim()) throw new Error(USER_FACING_ERROR);
       setLessonSourceText(data.extractedText);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Extract failed.");
+      setError(toUserFacingError(e, "diff-pack-extract"));
     } finally {
       setExtracting(false);
     }
@@ -252,7 +258,7 @@ export function DifferentiatedWorksheetPack() {
         body: JSON.stringify({ rawText: lessonSourceText.trim() }),
       });
       const raw = await res.text();
-      console.log("[infer-meta client] HTTP", res.status, "len", raw.length, "\npreview:\n", raw.slice(0, 800));
+      console.log("[infer-meta client] HTTP", res.status, "len", raw.length);
 
       type InferMetaApi = {
         error?: string;
@@ -264,32 +270,27 @@ export function DifferentiatedWorksheetPack() {
         rawResponse?: string;
       };
 
-      const parsed = tryParseApiJson<InferMetaApi>(raw, res.status);
-      if (!parsed.ok) {
-        throw new Error(`${parsed.message}\n\n${parsed.rawPreview || ""}`);
-      }
+      const parsed = tryParseApiJson<InferMetaApi>(raw, res.status, "diff-pack-infer-meta");
+      if (!parsed.ok) throw new Error(parsed.message);
       const data = parsed.data;
 
       if (!res.ok) {
-        throw new Error(
-          (data.error ?? "Could not infer fields.") +
-            (typeof data.rawResponse === "string" && data.rawResponse.trim()
-              ? `\n\n--- Raw from DeepSeek (via API) ---\n${data.rawResponse}`
-              : ""),
-        );
+        console.error("[diff-pack-infer-meta]", data.error, {
+          rawLength: data.rawResponse?.length ?? 0,
+        });
+        throw new Error(USER_FACING_ERROR);
       }
 
-      if (data.parseNotice?.trim()) {
-        setParseNotice(data.parseNotice.trim());
-      } else {
-        setParseNotice(null);
-      }
+      const safeInferNotices = filterUserFacingNotices(
+        data.parseNotice?.trim() ? [data.parseNotice.trim()] : [],
+      );
+      setParseNotice(safeInferNotices.length ? safeInferNotices.join(" ") : null);
       if (data.topic) setTopic(data.topic);
       if (data.subject) setSubject(data.subject);
       if (data.grade) setGrade(data.grade);
       if (data.learningObjectives) setLearningObjectives(data.learningObjectives);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Infer failed.");
+      setError(toUserFacingError(e, "diff-pack-infer-meta"));
     } finally {
       setInferring(false);
     }
@@ -324,7 +325,7 @@ export function DifferentiatedWorksheetPack() {
       if (blob.size === 0) throw new Error("Empty file.");
       triggerFileDownload(blob, `${safeFilePart(topic)}-${fileBaseName}.docx`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Download failed.");
+      setError(toUserFacingError(e, "diff-pack-download"));
     } finally {
       setBusyDownload(null);
     }
@@ -352,7 +353,7 @@ export function DifferentiatedWorksheetPack() {
       const blob = await res.blob();
       triggerFileDownload(blob, `${safeFilePart(topic)}-differentiated-pack.zip`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "ZIP failed.");
+      setError(toUserFacingError(e, "diff-pack-zip"));
     } finally {
       setBusyDownload(null);
     }
@@ -373,12 +374,6 @@ export function DifferentiatedWorksheetPack() {
           <li>
             <strong className="text-[#0A1628]">Way 2:</strong> Upload a PDF or Word (.docx) lesson plan,
             extract text, optionally <strong>Auto-fill form</strong>, edit fields, then generate.
-          </li>
-          <li className="text-xs text-slate-500">
-            If generation fails with an API error, open{" "}
-            <code className="rounded bg-slate-100 px-1">/api/deepseek-ping</code> in a new tab to verify
-            your <code className="rounded bg-slate-100 px-1">DEEPSEEK_API_KEY</code> (server logs also print
-            the raw DeepSeek response).
           </li>
         </ul>
       </div>

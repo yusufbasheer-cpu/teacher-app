@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { apiErrorResponse } from "@/lib/api-client-error";
 import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
+import { USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import { looksLikeJsonObject, parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 
 export const runtime = "nodejs";
@@ -28,13 +30,10 @@ Infer sensible values from headings and body if labels are missing. Use English.
 export async function POST(req: Request) {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
   if (!apiKey) {
-    return NextResponse.json({ error: "Missing DEEPSEEK_API_KEY." }, { status: 500 });
+    return apiErrorResponse("Missing DEEPSEEK_API_KEY", 500, "infer-meta");
   }
   if (apiKey.length < 12) {
-    return NextResponse.json(
-      { error: "DEEPSEEK_API_KEY appears invalid (too short). Please check your environment variable." },
-      { status: 500 },
-    );
+    return apiErrorResponse("DEEPSEEK_API_KEY too short", 500, "infer-meta");
   }
 
   let rawText = "";
@@ -73,35 +72,21 @@ export async function POST(req: Request) {
       }),
     });
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "DeepSeek request failed." },
-      { status: 502 },
-    );
+    console.error("[infer-meta] DeepSeek fetch error:", e);
+    return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const rawBody = await res.text();
   logDeepSeekRawResponse("infer-meta", res, rawBody);
   if (!res.ok) {
-    return NextResponse.json(
-      {
-        error: deepSeekHttpErrorMessage(res.status, rawBody),
-        rawResponse: rawBody.slice(0, 12_000),
-        httpStatus: res.status,
-      },
-      { status: 502 },
-    );
+    console.error("[infer-meta] DeepSeek HTTP error:", deepSeekHttpErrorMessage(res.status, rawBody));
+    return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const { content, errorMessage } = parseDeepSeekCompletionBody(rawBody);
   if (!content?.trim()) {
-    return NextResponse.json(
-      {
-        error: errorMessage ?? "Empty inference response.",
-        rawResponse: rawBody.slice(0, 12_000),
-        httpStatus: res.status,
-      },
-      { status: 502 },
-    );
+    console.error("[infer-meta] empty response:", errorMessage);
+    return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const cleaned = content

@@ -4,7 +4,9 @@ import {
   buildDiffPackUserMessage,
   type DifferentiatedLevel,
 } from "@/lib/differentiated-pack-prompts";
+import { apiErrorResponse } from "@/lib/api-client-error";
 import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
+import { USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 import { countFilledPackSections, parseDifferentiatedPack } from "@/lib/parse-differentiated-pack";
 
@@ -42,16 +44,10 @@ type GenerateBody = {
 export async function POST(req: Request) {
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
   if (!apiKey) {
-    return NextResponse.json(
-      { error: "Missing DEEPSEEK_API_KEY in environment variables." },
-      { status: 500 },
-    );
+    return apiErrorResponse("Missing DEEPSEEK_API_KEY", 500, "differentiated-pack");
   }
   if (apiKey.length < 12) {
-    return NextResponse.json(
-      { error: "DEEPSEEK_API_KEY appears invalid (too short). Please check your environment variable." },
-      { status: 500 },
-    );
+    return apiErrorResponse("DEEPSEEK_API_KEY too short", 500, "differentiated-pack");
   }
 
   let body: GenerateBody;
@@ -118,36 +114,24 @@ export async function POST(req: Request) {
       }),
     });
   } catch (e) {
-    return NextResponse.json(
-      { error: `DeepSeek request failed: ${e instanceof Error ? e.message : String(e)}` },
-      { status: 502 },
-    );
+    console.error("[differentiated-pack] DeepSeek fetch error:", e);
+    return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const rawBody = await deepseekResponse.text();
   logDeepSeekRawResponse(`differentiated-pack:${level}`, deepseekResponse, rawBody);
   if (!deepseekResponse.ok) {
-    const friendly = deepSeekHttpErrorMessage(deepseekResponse.status, rawBody);
-    return NextResponse.json(
-      {
-        error: friendly,
-        rawResponse: rawBody.slice(0, 12_000),
-        httpStatus: deepseekResponse.status,
-      },
-      { status: 502 },
+    console.error(
+      "[differentiated-pack] DeepSeek HTTP error:",
+      deepSeekHttpErrorMessage(deepseekResponse.status, rawBody),
     );
+    return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const { content, errorMessage } = parseDeepSeekCompletionBody(rawBody);
   if (!content?.trim()) {
-    return NextResponse.json(
-      {
-        error: errorMessage ?? "Empty model response.",
-        rawResponse: rawBody.slice(0, 12_000),
-        httpStatus: deepseekResponse.status,
-      },
-      { status: 502 },
-    );
+    console.error("[differentiated-pack] empty model response:", errorMessage);
+    return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const pack = parseDifferentiatedPack(content);

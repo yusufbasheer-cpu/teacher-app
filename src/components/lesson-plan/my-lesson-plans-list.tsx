@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { toUserFacingError } from "@/lib/user-facing-errors";
 import type { SavedLessonPlan } from "@/lib/lesson-plan";
 import { getCurriculumFrameworkLabel, isValidCurriculumFramework } from "@/lib/curriculum-framework";
 
@@ -22,7 +23,7 @@ export function MyLessonPlansList() {
       .order("created_at", { ascending: false });
 
     if (fetchError) {
-      setError(fetchError.message);
+      setError(toUserFacingError(fetchError, "my-lesson-plans"));
       setPlans([]);
     } else {
       setPlans((data ?? []) as SavedLessonPlan[]);

@@ -57,6 +57,7 @@ import { filterUserFacingNotices } from "@/lib/image-notices";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
+import { sanitizeUserMessage, toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import {
   AFL_PHASE_GROUPS,
   AFL_PHASE_IDS,
@@ -85,22 +86,13 @@ type ExtractPayload = {
 };
 
 function formatExtractUploadFailure(status: number, data: ExtractPayload, raw: string): string {
-  const lines: string[] = [];
-  const headline = data.error?.trim() || "The extract-upload request failed.";
-  lines.push(`[HTTP ${status}] ${headline}`);
-  if (data.partialErrors && data.partialErrors.length > 0) {
-    lines.push(
-      "Per-file details:",
-      ...data.partialErrors.map((pe) => `  • ${pe.sourceLabel}: ${pe.message}`),
-    );
-  }
-  if (!data.error && (!data.partialErrors || data.partialErrors.length === 0)) {
-    const trimmed = raw.trim();
-    if (trimmed) {
-      lines.push(`Raw response (truncated):\n${trimmed.slice(0, 800)}`);
-    }
-  }
-  return lines.join("\n");
+  console.error("[lesson-plan upload] extract failed", {
+    status,
+    error: data.error,
+    partialErrors: data.partialErrors,
+    rawLength: raw.length,
+  });
+  return USER_FACING_ERROR;
 }
 
 const initialForm: LessonPlanInput = {
@@ -346,7 +338,7 @@ export function LessonPlanGenerator() {
           try {
             await loadPlanById(sessionUser.id, planId);
           } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed loading plan.");
+            setError(toUserFacingError(err, "lesson-plan-load"));
           }
         }
       }
@@ -461,19 +453,18 @@ export function LessonPlanGenerator() {
       console.log("[lesson-plan upload] response", {
         ok: res.ok,
         status: res.status,
-        contentType: res.headers.get("content-type"),
         rawLength: raw.length,
-        rawPreview: raw.slice(0, 300),
       });
 
       let data: ExtractPayload;
       try {
         data = JSON.parse(raw) as ExtractPayload;
       } catch (parseErr) {
-        console.error("[lesson-plan upload] JSON parse failed", parseErr, { rawPreview: raw.slice(0, 500) });
-        setUploadExtractionError(
-          `Could not parse server response as JSON (HTTP ${res.status}). First bytes:\n${raw.trim().slice(0, 600)}`,
-        );
+        console.error("[lesson-plan upload] JSON parse failed", parseErr, {
+          status: res.status,
+          rawLength: raw.length,
+        });
+        setUploadExtractionError(USER_FACING_ERROR);
         return;
       }
 
@@ -486,11 +477,8 @@ export function LessonPlanGenerator() {
 
       const parts = data.parts ?? [];
       if (parts.length === 0) {
-        const msg =
-          formatExtractUploadFailure(res.status, data, raw) +
-          "\n\n(Unexpected: HTTP 200 but no parts[] in JSON.)";
-        console.error("[lesson-plan upload] empty parts", data);
-        setUploadExtractionError(msg);
+        console.error("[lesson-plan upload] empty parts", { status: res.status });
+        setUploadExtractionError(USER_FACING_ERROR);
         return;
       }
 
@@ -512,16 +500,14 @@ export function LessonPlanGenerator() {
         `Content extracted successfully. Added ${newChunks.length} file(s) from this batch (${addedChars.toLocaleString()} characters). Review the preview below before generating.`,
       );
       if (data.partialErrors?.length) {
+        console.warn("[lesson-plan upload] partialErrors", data.partialErrors);
         setUploadWarnings(
-          data.partialErrors.map((pe) => `${pe.sourceLabel}: ${pe.message}`),
+          data.partialErrors.map((pe) => `${pe.sourceLabel}: could not be read. Please try another file.`),
         );
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
       console.error("[lesson-plan upload] thrown error", err);
-      setUploadExtractionError(
-        `${msg}${err instanceof Error && err.stack ? `\n\n${err.stack}` : ""}`.slice(0, 4000),
-      );
+      setUploadExtractionError(toUserFacingError(err, "lesson-plan-upload"));
     } finally {
       setUploadExtracting(false);
       window.setTimeout(() => {
@@ -601,12 +587,13 @@ export function LessonPlanGenerator() {
 
       const applySuccessPayload = async (data: LessonPlanApiResponse) => {
         if (!data.lessonPlan) {
-          throw new Error(
-            (data.error ?? "No lesson plan returned.") +
-              (typeof data.rawResponse === "string" && data.rawResponse.trim()
-                ? `\n\n--- Raw response ---\n${data.rawResponse}`
-                : ""),
-          );
+          if (data.error || data.rawResponse) {
+            console.error("[lesson-plan client] missing lessonPlan in payload", {
+              error: data.error,
+              rawLength: data.rawResponse?.length ?? 0,
+            });
+          }
+          throw new Error(USER_FACING_ERROR);
         }
         const stripped = parseSectionImagesMeta(data.lessonPlan);
         setLessonPlan(stripped.planTextOnly);
@@ -674,9 +661,8 @@ export function LessonPlanGenerator() {
           }
         }
         if (!completePayload?.lessonPlan) {
-          throw new Error(
-            "Stream ended without a complete lesson package. Please try again or deselect PPT to use the non-streaming path.",
-          );
+          console.error("[lesson-plan client] stream ended without complete lesson package");
+          throw new Error(USER_FACING_ERROR);
         }
         setGenerationProgress("Finalizing...");
         await applySuccessPayload(completePayload);
@@ -684,14 +670,21 @@ export function LessonPlanGenerator() {
         await new Promise<void>((r) => setTimeout(r, 3000));
       } else {
         const raw = await response.text();
-        console.log("[lesson-plan client] /api/lesson-plan HTTP", response.status, "body length", raw.length);
-        console.log("[lesson-plan client] raw preview:\n", raw.slice(0, 2500));
+        console.log("[lesson-plan client] /api/lesson-plan", {
+          status: response.status,
+          bodyLength: raw.length,
+        });
 
-        const parsed = tryParseApiJson<LessonPlanApiResponse>(raw, response.status);
+        const parsed = tryParseApiJson<LessonPlanApiResponse>(
+          raw,
+          response.status,
+          "lesson-plan-generate",
+        );
         if (!parsed.ok) {
-          throw new Error(
-            `${parsed.message}\n\n--- Raw response (truncated) ---\n${parsed.rawPreview || "(empty)"}`,
-          );
+          if (parsed.rawPreview) {
+            console.error("[lesson-plan client] non-JSON or parse error preview length:", parsed.rawPreview.length);
+          }
+          throw new Error(parsed.message);
         }
         const data = parsed.data;
 
@@ -703,13 +696,10 @@ export function LessonPlanGenerator() {
             setLimitModalOpen(true);
             return;
           }
-          const extra =
-            typeof data.rawResponse === "string" && data.rawResponse.trim()
-              ? `\n\n--- Raw response from server ---\n${data.rawResponse}`
-              : "";
-          throw new Error(
-            (data.error ?? `Failed to generate lesson plan (HTTP ${response.status}).`) + extra,
-          );
+          if (data.rawResponse) {
+            console.error("[lesson-plan client] server rawResponse length:", data.rawResponse.length);
+          }
+          throw new Error(sanitizeUserMessage(data.error, "lesson-plan-generate"));
         }
 
         setGenerationProgress("Finalizing...");
@@ -718,9 +708,7 @@ export function LessonPlanGenerator() {
         await new Promise<void>((r) => setTimeout(r, 3000));
       }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Unexpected error occurred.";
-      setError(message);
+      setError(toUserFacingError(err, "lesson-plan-generate"));
       setParseNotice(null);
     } finally {
       setLoading(false);
@@ -783,7 +771,7 @@ export function LessonPlanGenerator() {
         setSuccessMessage("Lesson plan saved successfully.");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save lesson plan.");
+      setError(toUserFacingError(err, "lesson-plan-save"));
     } finally {
       setSaving(false);
     }

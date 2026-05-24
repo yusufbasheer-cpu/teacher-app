@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { callDeepSeekChat } from "@/lib/question-paper-deepseek";
 import { parseBlueprintPlainTextResponse } from "@/lib/parse-question-paper-blueprint";
+import { USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import {
   buildBlueprintSystemPrompt,
   buildBlueprintUserMessage,
@@ -78,18 +79,14 @@ export async function POST(req: Request) {
   });
 
   if ("error" in ds) {
-    return NextResponse.json({ error: ds.error, blueprintError: ds.error }, { status: 502 });
+    console.error("[question-paper-blueprint]", ds.error);
+    return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const parsed = parseBlueprintPlainTextResponse(ds.content);
   if (!parsed.blueprintText) {
-    return NextResponse.json(
-      {
-        error: parsed.error ?? "Blueprint could not be parsed.",
-        blueprintError: parsed.error,
-      },
-      { status: 502 },
-    );
+    console.error("[question-paper-blueprint] parse failed", parsed.error);
+    return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   return NextResponse.json({
