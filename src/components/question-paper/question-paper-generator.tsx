@@ -15,7 +15,7 @@ import { GenerationLimitModal } from "@/components/usage/generation-limit-modal"
 import { GenerationUsageIndicator } from "@/components/usage/generation-usage-indicator";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { getAuthHeaders } from "@/lib/auth-headers";
-import { GENERATION_LIMIT_ERROR_CODE } from "@/lib/user-usage";
+import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
 import {
   CORE_SUBJECT_OPTIONS,
@@ -74,6 +74,7 @@ export function QuestionPaperGenerator() {
     usage,
     loading: usageLoading,
     refresh: refreshUsage,
+    applyUsage,
     headline: limitHeadline,
     subline: limitSubline,
   } = useUserUsage(Boolean(user));
@@ -349,6 +350,11 @@ export function QuestionPaperGenerator() {
       ...(extractedMaterial ? { sourceMaterial: extractedMaterial } : {}),
     };
 
+    const syncUsageAfterGeneration = async (nextUsage?: UserUsageSnapshot) => {
+      if (nextUsage) applyUsage(nextUsage);
+      await refreshUsage();
+    };
+
     try {
       const paperRes = await fetch("/api/question-paper", {
         method: "POST",
@@ -358,7 +364,7 @@ export function QuestionPaperGenerator() {
       const paperRaw = await paperRes.text();
       console.log("[question-paper-call-1] API response:", paperRaw);
       const paperParsed = tryParseApiJson<
-        QuestionPaperResult & { error?: string; parseNotice?: string }
+        QuestionPaperResult & { error?: string; parseNotice?: string; usage?: UserUsageSnapshot }
       >(paperRaw, paperRes.status);
       if (!paperParsed.ok) {
         throw new Error(paperParsed.message);
@@ -456,7 +462,6 @@ export function QuestionPaperGenerator() {
       await new Promise<void>((r) => setTimeout(r, 500));
       setGenerationProgress("Finalizing...");
       await new Promise<void>((r) => setTimeout(r, 3000));
-      void refreshUsage();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Generation failed.");
     } finally {

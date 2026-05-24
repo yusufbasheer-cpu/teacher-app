@@ -19,6 +19,16 @@ export function useUserUsage(enabled: boolean) {
     subline: "",
   });
 
+  const applyUsage = useCallback((usage: UserUsageSnapshot) => {
+    const pitch = getUpgradePitch(usage.planType);
+    setState({
+      usage,
+      loading: false,
+      headline: pitch.headline,
+      subline: pitch.subline,
+    });
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!enabled) return;
     setState((s) => ({ ...s, loading: true }));
@@ -57,5 +67,5 @@ export function useUserUsage(enabled: boolean) {
     void refresh();
   }, [refresh]);
 
-  return { ...state, refresh };
+  return { ...state, refresh, applyUsage };
 }

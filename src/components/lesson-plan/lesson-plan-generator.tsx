@@ -53,7 +53,7 @@ import { GenerationLimitModal } from "@/components/usage/generation-limit-modal"
 import { GenerationUsageIndicator } from "@/components/usage/generation-usage-indicator";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { getAuthHeaders } from "@/lib/auth-headers";
-import { GENERATION_LIMIT_ERROR_CODE } from "@/lib/user-usage";
+import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import {
@@ -222,6 +222,7 @@ export function LessonPlanGenerator() {
     usage,
     loading: usageLoading,
     refresh: refreshUsage,
+    applyUsage,
     headline: limitHeadline,
     subline: limitSubline,
   } = useUserUsage(Boolean(user));
@@ -596,9 +597,15 @@ export function LessonPlanGenerator() {
         sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
         pptSlideImageUrls?: (string | null)[];
         rawResponse?: string;
+        usage?: UserUsageSnapshot;
       };
 
-      const applySuccessPayload = (data: LessonPlanApiResponse) => {
+      const syncUsageAfterGeneration = async (nextUsage?: UserUsageSnapshot) => {
+        if (nextUsage) applyUsage(nextUsage);
+        await refreshUsage();
+      };
+
+      const applySuccessPayload = async (data: LessonPlanApiResponse) => {
         if (!data.lessonPlan) {
           throw new Error(
             (data.error ?? "No lesson plan returned.") +
@@ -640,7 +647,7 @@ export function LessonPlanGenerator() {
               ? stripped.pptSlideImageUrls
               : null;
         setPptSlideImageUrls(ppt);
-        void refreshUsage();
+        await syncUsageAfterGeneration(data.usage);
       };
 
       if (response.ok && pptSelected && contentType.includes("application/x-ndjson")) {
@@ -683,7 +690,7 @@ export function LessonPlanGenerator() {
           );
         }
         setGenerationProgress("Finalizing...");
-        applySuccessPayload(completePayload);
+        await applySuccessPayload(completePayload);
         // Hold the loading screen open so the celebration animation plays
         await new Promise<void>((r) => setTimeout(r, 3000));
       } else {
@@ -717,7 +724,7 @@ export function LessonPlanGenerator() {
         }
 
         setGenerationProgress("Finalizing...");
-        applySuccessPayload(data);
+        await applySuccessPayload(data);
         // Hold the loading screen open so the celebration animation plays
         await new Promise<void>((r) => setTimeout(r, 3000));
       }

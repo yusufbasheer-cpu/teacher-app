@@ -6,6 +6,7 @@ import {
   GENERATION_LIMIT_ERROR_CODE,
   getGenerationsLimitForPlan,
   isPlanType,
+  logGenerationCounted,
   logUsageSnapshot,
   needsMonthlyReset,
   normalizeUsageRow,
@@ -236,34 +237,62 @@ export async function assertCanGenerate(
   }
 }
 
+/**
+ * Increment generations_used by 1 after a successful generation. Returns updated usage snapshot.
+ */
 export async function incrementGenerationsUsed(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserUsageSnapshot | null> {
   try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc("increment_user_generations");
+    const rpcRow = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+
+    if (!rpcError && rpcRow) {
+      const row = normalizeUsageRow(rpcRow as UserUsageRow);
+      const snapshot = toUsageSnapshot(row);
+      logGenerationCounted(snapshot);
+      logUsageSnapshot("incrementGenerationsUsed (rpc)", snapshot);
+      return snapshot;
+    }
+
+    if (rpcError) {
+      logSupabaseError("rpc increment_user_generations", rpcError, { userId });
+    }
+
     const row = await ensureUserUsageRecord(supabase, userId);
     if (!row) {
       console.warn("[user-usage] incrementGenerationsUsed: skipped (no row)", { userId });
       return null;
     }
 
-    const snapshot = toUsageSnapshot(row);
-    if (snapshot.unlimited) return snapshot;
-
-    const { error } = await supabase
-      .from(USER_USAGE_TABLE)
-      .update({ generations_used: row.generations_used + 1 })
-      .eq("user_id", userId);
-
-    if (error) {
-      logSupabaseError("increment generations_used", error, {
-        userId,
-        generations_used: row.generations_used,
-      });
-      return snapshot;
+    const before = toUsageSnapshot(row);
+    if (before.unlimited) {
+      logGenerationCounted(before);
+      return before;
     }
 
-    return getOrCreateUserUsage(supabase, userId);
+    const nextUsed = Math.max(0, Number(row.generations_used) || 0) + 1;
+    const { data: updated, error: updateError } = await supabase
+      .from(USER_USAGE_TABLE)
+      .update({ generations_used: nextUsed })
+      .eq("user_id", userId)
+      .select("id, user_id, plan_type, generations_used, generations_limit, reset_date, created_at")
+      .maybeSingle();
+
+    if (updateError || !updated) {
+      logSupabaseError("increment generations_used (fallback update)", updateError, {
+        userId,
+        nextUsed,
+        hadRow: Boolean(updated),
+      });
+      return before;
+    }
+
+    const snapshot = toUsageSnapshot(normalizeUsageRow(updated as UserUsageRow));
+    logGenerationCounted(snapshot);
+    logUsageSnapshot("incrementGenerationsUsed (update)", snapshot);
+    return snapshot;
   } catch (err) {
     console.error("[user-usage] incrementGenerationsUsed unexpected error", {
       userId,
@@ -271,6 +300,14 @@ export async function incrementGenerationsUsed(
     });
     return null;
   }
+}
+
+/** Call only after generation succeeded; attaches usage to API payload when increment succeeds. */
+export async function recordSuccessfulGeneration(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<UserUsageSnapshot | null> {
+  return incrementGenerationsUsed(supabase, userId);
 }
 
 export async function authenticateRequest(

@@ -3,7 +3,7 @@ import { callDeepSeekChat } from "@/lib/question-paper-deepseek";
 import {
   assertCanGenerate,
   authenticateRequest,
-  incrementGenerationsUsed,
+  recordSuccessfulGeneration,
 } from "@/lib/user-usage-server";
 import { parseQuestionPaperResponse } from "@/lib/parse-question-paper";
 import {
@@ -86,12 +86,20 @@ export async function POST(req: Request) {
 
   const parsed = parseQuestionPaperResponse(ds.content);
 
-  await incrementGenerationsUsed(auth.supabase, auth.userId);
+  if (!parsed.questionPaper?.trim()) {
+    return NextResponse.json(
+      { error: "The model returned an empty question paper. No generation was counted." },
+      { status: 502 },
+    );
+  }
+
+  const usage = await recordSuccessfulGeneration(auth.supabase, auth.userId);
 
   return NextResponse.json({
     questionPaper: parsed.questionPaper,
     ...(parsed.answerKey ? { answerKey: parsed.answerKey } : {}),
     ...(parsed.markingScheme ? { markingScheme: parsed.markingScheme } : {}),
     ...(parsed.parseNotice ? { parseNotice: parsed.parseNotice } : {}),
+    ...(usage ? { usage } : {}),
   });
 }

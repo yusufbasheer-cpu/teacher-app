@@ -151,6 +151,12 @@ export function logUsageSnapshot(context: string, usage: UserUsageSnapshot): voi
   });
 }
 
+/** Log after a successful generation is counted against the monthly limit. */
+export function logGenerationCounted(usage: UserUsageSnapshot): void {
+  const limitLabel = usage.unlimited ? "unlimited" : String(usage.generationsLimit ?? "?");
+  console.log(`Generation counted - used ${usage.generationsUsed} of ${limitLabel}`);
+}
+
 export function getUpgradePitch(plan: PlanType): { headline: string; subline: string } {
   if (plan === "free") {
     return {

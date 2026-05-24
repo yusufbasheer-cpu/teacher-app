@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   assertCanGenerate,
   authenticateRequest,
-  incrementGenerationsUsed,
+  recordSuccessfulGeneration,
 } from "@/lib/user-usage-server";
 import {
   buildCurriculumFrameworkSystemAddendum,
@@ -791,8 +791,8 @@ export async function POST(req: Request) {
             onProgress: (message) => send({ type: "progress", message }),
           });
           const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
-          await incrementGenerationsUsed(auth.supabase, auth.userId);
-          send({ type: "complete", ...payload });
+          const usage = await recordSuccessfulGeneration(auth.supabase, auth.userId);
+          send({ type: "complete", ...payload, ...(usage ? { usage } : {}) });
         } catch (e) {
           const message = e instanceof Error ? e.message : String(e);
           console.error("[lesson-plan] stream generation failed:", e);
@@ -816,8 +816,8 @@ export async function POST(req: Request) {
       aflPromptBlock,
     });
     const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
-    await incrementGenerationsUsed(auth.supabase, auth.userId);
-    return NextResponse.json(payload);
+    const usage = await recordSuccessfulGeneration(auth.supabase, auth.userId);
+    return NextResponse.json({ ...payload, ...(usage ? { usage } : {}) });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("[lesson-plan] generation failed:", e);
