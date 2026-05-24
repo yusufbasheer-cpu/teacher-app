@@ -53,6 +53,7 @@ import { GenerationLimitModal } from "@/components/usage/generation-limit-modal"
 import { GenerationUsageIndicator } from "@/components/usage/generation-usage-indicator";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { getAuthHeaders } from "@/lib/auth-headers";
+import { filterUserFacingNotices } from "@/lib/image-notices";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
@@ -229,9 +230,6 @@ export function LessonPlanGenerator() {
   const [form, setForm] = useState<LessonPlanInput>(initialForm);
   const [lessonPlan, setLessonPlan] = useState<LessonPlanResult | null>(null);
   const [sectionImages, setSectionImages] = useState<SectionImageMap | null>(null);
-  const [sectionImageErrors, setSectionImageErrors] = useState<Partial<
-    Record<TeacherPackageSectionKey, string>
-  > | null>(null);
   /** Pre-built PPT slide images (13 URLs); generated with lesson when PPT section is selected. */
   const [pptSlideImageUrls, setPptSlideImageUrls] = useState<(string | null)[] | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
@@ -325,7 +323,6 @@ export function LessonPlanGenerator() {
     setPptSlideImageUrls(
       loadedPpt && loadedPpt.length >= STRUCTURED_LESSON_DECK_SLIDE_COUNT ? loadedPpt : null,
     );
-    setSectionImageErrors(null);
     setActivePlanId(plan.id);
     setUploadedChunks([]);
     setUploadInfo(null);
@@ -368,7 +365,6 @@ export function LessonPlanGenerator() {
         setLessonPlan(null);
         setSectionImages(null);
         setPptSlideImageUrls(null);
-        setSectionImageErrors(null);
       }
     });
 
@@ -543,7 +539,6 @@ export function LessonPlanGenerator() {
     setGenerationProgress(null);
     setLessonPlan(null);
     setSectionImages(null);
-    setSectionImageErrors(null);
     setPptSlideImageUrls(null);
     setActivePlanId(null);
 
@@ -594,7 +589,6 @@ export function LessonPlanGenerator() {
         lessonPlan?: LessonPlanResult;
         parseNotice?: string;
         sectionImages?: SectionImageMap;
-        sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
         pptSlideImageUrls?: (string | null)[];
         rawResponse?: string;
         usage?: UserUsageSnapshot;
@@ -623,20 +617,15 @@ export function LessonPlanGenerator() {
             : stripped.sectionImages;
         setSectionImages(Object.keys(sec).length > 0 ? sec : null);
 
-        setParseNotice(
+        const noticeRaw =
           typeof data.parseNotice === "string" && data.parseNotice.trim()
             ? data.parseNotice.trim()
-            : null,
+            : "";
+        const safeNotices = filterUserFacingNotices(
+          noticeRaw ? noticeRaw.split(/\n\n+/).map((p) => p.trim()) : [],
         );
+        setParseNotice(safeNotices.length > 0 ? safeNotices.join("\n\n") : null);
 
-        setSectionImageErrors(
-          data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0
-            ? data.sectionImageErrors
-            : null,
-        );
-        if (data.sectionImageErrors && Object.keys(data.sectionImageErrors).length > 0) {
-          console.warn("[lesson-plan] section image errors from API:", data.sectionImageErrors);
-        }
 
         const fromApi = data.pptSlideImageUrls;
         const ppt =
@@ -1574,7 +1563,6 @@ export function LessonPlanGenerator() {
             <TeacherPackageViewer
               lessonPlan={lessonPlan}
               sectionImages={sectionImages ?? undefined}
-              sectionImageErrors={sectionImageErrors ?? undefined}
               subject={form.subject}
               grade={form.grade}
               topic={form.topic}

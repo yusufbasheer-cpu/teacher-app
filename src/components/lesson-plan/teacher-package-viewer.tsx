@@ -24,10 +24,8 @@ function hasAflSelections(s: AflSelectionsPayload | undefined): boolean {
 
 type TeacherPackageViewerProps = {
   lessonPlan: LessonPlanResult;
-  /** FLUX.1 image URLs from fal.ai, keyed by teacher-package section title. */
+  /** Optional section illustration URLs, keyed by teacher-package section title. */
   sectionImages?: SectionImageMap;
-  /** Per-section fal.ai failures (exact messages). */
-  sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
   subject: string;
   grade: string;
   topic: string;
@@ -64,11 +62,11 @@ const IMAGE_MILESTONES_FULL: { at: number; count: number; label: string }[] = [
   { at: 12, count: 3, label: "UAE link image (Pexels)" },
   { at: 16, count: 4, label: "Plenary image (Pexels)" },
   { at: 20, count: 5, label: "Extended task image (Pexels)" },
-  { at: 35, count: 6, label: "SDG / chapter illustration (fal.ai)" },
-  { at: 50, count: 7, label: "Main phase diagram (fal.ai)" },
-  { at: 65, count: 8, label: "Differentiated activity art (fal.ai)" },
-  { at: 80, count: 9, label: "Exit ticket graphic (fal.ai)" },
-  { at: 95, count: 10, label: "Success criteria graphic (fal.ai)" },
+  { at: 35, count: 6, label: "SDG / chapter illustration" },
+  { at: 50, count: 7, label: "Main phase diagram" },
+  { at: 65, count: 8, label: "Differentiated activity art" },
+  { at: 80, count: 9, label: "Exit ticket graphic" },
+  { at: 95, count: 10, label: "Success criteria graphic" },
 ];
 
 const TOTAL_ESTIMATE_FULL_S = 95;
@@ -238,7 +236,6 @@ function safeFilenamePart(value: string, fallback: string) {
 export function TeacherPackageViewer({
   lessonPlan,
   sectionImages,
-  sectionImageErrors,
   subject,
   grade,
   topic,
@@ -272,8 +269,6 @@ export function TeacherPackageViewer({
   const activeIllustrationUrls =
     activeKey && sectionImages?.[activeKey as keyof SectionImageMap];
   const activeImageList = Array.isArray(activeIllustrationUrls) ? activeIllustrationUrls : [];
-  const activeImageError =
-    activeKey && sectionImageErrors?.[activeKey as keyof typeof sectionImageErrors];
 
   const baseName = safeFilenamePart(topic, "lesson");
 
@@ -585,24 +580,6 @@ export function TeacherPackageViewer({
 
       {exportError ? <p className="animate-shake text-sm text-red-600">{exportError}</p> : null}
 
-      {sectionImageErrors && Object.keys(sectionImageErrors).length > 0 ? (
-        <div
-          role="alert"
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950"
-        >
-          <p className="font-semibold">Some section images failed (fal.ai)</p>
-          <ul className="mt-2 list-inside list-disc space-y-1 whitespace-pre-wrap">
-            {(Object.entries(sectionImageErrors) as [TeacherPackageSectionKey, string][]).map(
-              ([key, msg]) => (
-                <li key={key}>
-                  <span className="font-medium">{getSectionTabLabel(key)}:</span> {msg}
-                </li>
-              ),
-            )}
-          </ul>
-        </div>
-      ) : null}
-
       <div className="overflow-x-auto pb-1">
         <div
           className="flex min-w-0 gap-2 border-b border-[#00C6A7]/20 pb-3"
@@ -657,7 +634,7 @@ export function TeacherPackageViewer({
           {activeImageList.length > 0 ? (
             <aside className="flex min-h-0 flex-col gap-3 border-t border-slate-100 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Section illustration (FLUX.1)
+                Section illustration
               </p>
               <div className="space-y-3 overflow-y-auto">
                 {activeImageList.map((src) => (
@@ -677,11 +654,6 @@ export function TeacherPackageViewer({
                   </a>
                 ))}
               </div>
-            </aside>
-          ) : activeImageError ? (
-            <aside className="border-t border-red-100 pt-4 text-xs text-red-800 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-              <p className="font-semibold">Image for this section failed</p>
-              <p className="mt-1 whitespace-pre-wrap">{activeImageError}</p>
             </aside>
           ) : null}
         </div>

@@ -170,11 +170,10 @@ async function runFalPhase(
   console.log(`[ppt-deck-images] fal credentials: ${falOk ? "present" : "missing"}, circuitOpen=${falCircuit ? "YES" : "NO"}`);
 
   if (!falOk) {
-    notices.push("fal.ai images skipped: set FAL_API_KEY or FAL_KEY in .env.local.");
+    console.warn("[ppt-deck-images] fal skipped: FAL_API_KEY or FAL_KEY not set");
     return;
   }
   if (falCircuit) {
-    if (!notices.includes(falCircuit)) notices.push(falCircuit);
     console.warn(`[ppt-deck-images] fal phase skipped — ${falCircuit}`);
     return;
   }

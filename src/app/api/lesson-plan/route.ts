@@ -15,6 +15,7 @@ import {
   buildSinglePptSlideDeepseekSystemPrompt,
 } from "@/lib/deepseek-lesson-system-prompt";
 import { generateFluxSectionImages, formatFalError } from "@/lib/fal-flux-section-images";
+import { filterUserFacingNotices } from "@/lib/image-notices";
 import {
   normalizeGenerationSections,
   SOURCE_MATERIAL_MAX_CHARS,
@@ -608,7 +609,6 @@ async function runFluxAndBuildResponsePayload(
   lessonPlan: LessonPlanResult;
   parseNotice?: string;
   sectionImages?: SectionImageMap;
-  sectionImageErrors?: Partial<Record<TeacherPackageSectionKey, string>>;
   pptSlideImageUrls?: (string | null)[];
 }> {
   let workingPlan = mergedPlan;
@@ -652,7 +652,6 @@ async function runFluxAndBuildResponsePayload(
   }
 
   let sectionImages: SectionImageMap = {};
-  let sectionImageErrors: Partial<Record<TeacherPackageSectionKey, string>> = {};
   try {
     const fluxResult = await generateFluxSectionImages({
       input,
@@ -660,22 +659,20 @@ async function runFluxAndBuildResponsePayload(
       sections,
     });
     sectionImages = fluxResult.sectionImages;
-    sectionImageErrors = fluxResult.errors;
-    if (Object.keys(sectionImageErrors).length > 0) {
-      console.warn("[lesson-plan] section image errors:", sectionImageErrors);
+    if (Object.keys(fluxResult.errors).length > 0) {
+      console.warn("[lesson-plan] section image errors (not shown to user):", fluxResult.errors);
     }
   } catch (e) {
     console.error("[lesson-plan] FLUX section images failed:", formatFalError(e), e);
   }
 
-  const parseNoticeParts = [...parseNotices, ...imageNotices].filter(Boolean);
+  const parseNoticeParts = filterUserFacingNotices([...parseNotices, ...imageNotices]);
   const parseNotice = parseNoticeParts.length > 0 ? parseNoticeParts.join("\n\n") : undefined;
 
   return {
     lessonPlan: workingPlan,
     ...(parseNotice ? { parseNotice } : {}),
     ...(Object.keys(sectionImages).length > 0 ? { sectionImages } : {}),
-    ...(Object.keys(sectionImageErrors).length > 0 ? { sectionImageErrors } : {}),
     ...(pptSlideImageUrls ? { pptSlideImageUrls } : {}),
   };
 }

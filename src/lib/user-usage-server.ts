@@ -1,4 +1,5 @@
 import { createClient, type PostgrestError, type SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import {
   DEFAULT_FREE_USAGE_INSERT,
   defaultFreeUsageSnapshot,
@@ -237,6 +238,63 @@ export async function assertCanGenerate(
   }
 }
 
+async function verifyAuthenticatedUserId(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<{ ok: true; authUserId: string } | { ok: false; reason: string }> {
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return {
+      ok: false,
+      reason: error?.message ?? "No authenticated user on Supabase client",
+    };
+  }
+
+  if (user.id !== userId) {
+    return {
+      ok: false,
+      reason: `user_id mismatch: JWT user ${user.id} !== requested ${userId}`,
+    };
+  }
+
+  return { ok: true, authUserId: user.id };
+}
+
+async function runUsageIncrementUpdate(
+  client: SupabaseClient,
+  authUserId: string,
+  nextUsed: number,
+  label: string,
+): Promise<{ row: UserUsageRow | null; error: PostgrestError | null }> {
+  console.log(`[user-usage] BEFORE Supabase update (${label})`, {
+    table: USER_USAGE_TABLE,
+    user_id: authUserId,
+    generations_used: nextUsed,
+  });
+
+  const { data, error } = await client
+    .from(USER_USAGE_TABLE)
+    .update({ generations_used: nextUsed })
+    .eq("user_id", authUserId)
+    .select("id, user_id, plan_type, generations_used, generations_limit, reset_date, created_at")
+    .maybeSingle();
+
+  console.log(`[user-usage] AFTER Supabase update (${label})`, {
+    user_id: authUserId,
+    success: !error && Boolean(data),
+    generations_used: data?.generations_used ?? null,
+    error: error
+      ? { message: error.message, code: error.code, details: error.details, hint: error.hint }
+      : null,
+  });
+
+  return { row: data ? normalizeUsageRow(data as UserUsageRow) : null, error };
+}
+
 /**
  * Increment generations_used by 1 after a successful generation. Returns updated usage snapshot.
  */
@@ -245,24 +303,48 @@ export async function incrementGenerationsUsed(
   userId: string,
 ): Promise<UserUsageSnapshot | null> {
   try {
+    const authCheck = await verifyAuthenticatedUserId(supabase, userId);
+    if (!authCheck.ok) {
+      console.error("[user-usage] incrementGenerationsUsed: auth check failed", {
+        userId,
+        reason: authCheck.reason,
+      });
+      return null;
+    }
+
+    const authUserId = authCheck.authUserId;
+    console.log("[user-usage] incrementGenerationsUsed: auth ok", {
+      user_id: authUserId,
+      idsMatch: authUserId === userId,
+    });
+
     const { data: rpcData, error: rpcError } = await supabase.rpc("increment_user_generations");
     const rpcRow = Array.isArray(rpcData) ? rpcData[0] : rpcData;
 
     if (!rpcError && rpcRow) {
       const row = normalizeUsageRow(rpcRow as UserUsageRow);
-      const snapshot = toUsageSnapshot(row);
-      logGenerationCounted(snapshot);
-      logUsageSnapshot("incrementGenerationsUsed (rpc)", snapshot);
-      return snapshot;
+      if (row.user_id !== authUserId) {
+        console.error("[user-usage] RPC returned wrong user_id", {
+          expected: authUserId,
+          got: row.user_id,
+        });
+      } else {
+        const snapshot = toUsageSnapshot(row);
+        logGenerationCounted(snapshot);
+        logUsageSnapshot("incrementGenerationsUsed (rpc)", snapshot);
+        return snapshot;
+      }
     }
 
     if (rpcError) {
-      logSupabaseError("rpc increment_user_generations", rpcError, { userId });
+      logSupabaseError("rpc increment_user_generations", rpcError, { userId: authUserId });
     }
 
-    const row = await ensureUserUsageRecord(supabase, userId);
+    const row = await ensureUserUsageRecord(supabase, authUserId);
     if (!row) {
-      console.warn("[user-usage] incrementGenerationsUsed: skipped (no row)", { userId });
+      console.warn("[user-usage] incrementGenerationsUsed: skipped (no row)", {
+        userId: authUserId,
+      });
       return null;
     }
 
@@ -272,24 +354,42 @@ export async function incrementGenerationsUsed(
       return before;
     }
 
-    const nextUsed = Math.max(0, Number(row.generations_used) || 0) + 1;
-    const { data: updated, error: updateError } = await supabase
-      .from(USER_USAGE_TABLE)
-      .update({ generations_used: nextUsed })
-      .eq("user_id", userId)
-      .select("id, user_id, plan_type, generations_used, generations_limit, reset_date, created_at")
-      .maybeSingle();
+    const currentUsed = Math.max(0, Number(row.generations_used) || 0);
+    const nextUsed = currentUsed + 1;
 
-    if (updateError || !updated) {
-      logSupabaseError("increment generations_used (fallback update)", updateError, {
-        userId,
-        nextUsed,
-        hadRow: Boolean(updated),
-      });
+    let { row: updatedRow, error: updateError } = await runUsageIncrementUpdate(
+      supabase,
+      authUserId,
+      nextUsed,
+      "user-jwt",
+    );
+
+    if (updateError || !updatedRow) {
+      const admin = getSupabaseServiceRole();
+      if (admin) {
+        console.warn("[user-usage] retrying increment with service role after user JWT update failed");
+        const adminResult = await runUsageIncrementUpdate(admin, authUserId, nextUsed, "service-role");
+        updatedRow = adminResult.row;
+        updateError = adminResult.error;
+      } else {
+        console.warn(
+          "[user-usage] SUPABASE_SERVICE_ROLE_KEY not set — cannot retry increment with service role",
+        );
+      }
+    }
+
+    if (updateError || !updatedRow) {
+      if (updateError) {
+        console.error("[user-usage] increment update failed — exact error:", updateError.message, {
+          code: updateError.code,
+          details: updateError.details,
+          hint: updateError.hint,
+        });
+      }
       return before;
     }
 
-    const snapshot = toUsageSnapshot(normalizeUsageRow(updated as UserUsageRow));
+    const snapshot = toUsageSnapshot(updatedRow);
     logGenerationCounted(snapshot);
     logUsageSnapshot("incrementGenerationsUsed (update)", snapshot);
     return snapshot;
