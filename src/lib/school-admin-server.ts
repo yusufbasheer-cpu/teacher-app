@@ -46,58 +46,90 @@ function adminLookupSqlForLog(email: string): string {
   return `SELECT * FROM school_accounts WHERE LOWER(admin_email) = LOWER('${escaped}')`;
 }
 
-/** Service role only — bypasses RLS for reliable admin_email lookup. */
-export async function findSchoolForAdmin(adminEmail: string): Promise<SchoolAccountRow | null> {
+export type SchoolAdminAccessDebug = {
+  loggedInEmail: string;
+  lookupEmail: string;
+  sqlQuery: string;
+  serviceRoleConfigured: boolean;
+  result: Record<string, unknown> | null;
+  error: string | null;
+  planTypeValid: boolean | null;
+};
+
+/** Temporary: run admin lookup and return everything for on-screen / server logging. */
+export async function debugSchoolAdminAccess(
+  loggedInEmail: string,
+): Promise<SchoolAdminAccessDebug> {
+  const lookupEmail = normalizeAdminEmail(loggedInEmail);
+  const sqlQuery = adminLookupSqlForLog(lookupEmail);
   const admin = getSupabaseServiceRole();
+
   if (!admin) {
-    console.error("[school-admin] SUPABASE_SERVICE_ROLE_KEY is not configured");
-    return null;
+    const payload: SchoolAdminAccessDebug = {
+      loggedInEmail,
+      lookupEmail,
+      sqlQuery,
+      serviceRoleConfigured: false,
+      result: null,
+      error: "SUPABASE_SERVICE_ROLE_KEY is not configured",
+      planTypeValid: null,
+    };
+    console.log("[school-admin debug] logged-in email:", loggedInEmail);
+    console.log("[school-admin debug] SQL:", sqlQuery);
+    console.log("[school-admin debug] result:", null);
+    console.log("[school-admin debug] error:", payload.error);
+    return payload;
   }
 
-  const rawEmail = adminEmail;
-  const normalized = normalizeAdminEmail(adminEmail);
-  const ilikePattern = escapeIlikePattern(normalized);
-
-  console.log("[school-admin] logged-in / lookup email (raw):", JSON.stringify(rawEmail));
-  console.log("[school-admin] email queried against school_accounts:", JSON.stringify(normalized));
-  console.log("[school-admin] equivalent SQL:", adminLookupSqlForLog(normalized));
-
-  // Case-insensitive match: LOWER(admin_email) = LOWER(user email)
+  const ilikePattern = escapeIlikePattern(lookupEmail);
   const { data, error } = await admin
     .from("school_accounts")
     .select("*")
     .ilike("admin_email", ilikePattern)
     .maybeSingle();
 
-  console.log("[school-admin] school_accounts query result:", {
+  const planTypeValid =
+    data && typeof data.plan_type === "string" ? isSchoolPlanType(data.plan_type) : null;
+
+  const payload: SchoolAdminAccessDebug = {
+    loggedInEmail,
+    lookupEmail,
+    sqlQuery,
+    serviceRoleConfigured: true,
+    result: data ? (data as Record<string, unknown>) : null,
     error: error?.message ?? null,
-    rowCount: data ? 1 : 0,
-    row: data
-      ? {
-          id: data.id,
-          admin_email: data.admin_email,
-          plan_type: data.plan_type,
-          school_name: data.school_name,
-        }
-      : null,
-  });
+    planTypeValid,
+  };
 
-  if (error) {
-    console.error("[school-admin] school_accounts lookup failed:", error.message);
+  console.log("[school-admin debug] logged-in email:", loggedInEmail);
+  console.log("[school-admin debug] SQL:", sqlQuery);
+  console.log("[school-admin debug] result:", JSON.stringify(data, null, 2));
+  console.log("[school-admin debug] error:", error?.message ?? null);
+
+  return payload;
+}
+
+/** Service role only — bypasses RLS for reliable admin_email lookup. */
+export async function findSchoolForAdmin(adminEmail: string): Promise<SchoolAccountRow | null> {
+  const debug = await debugSchoolAdminAccess(adminEmail);
+
+  if (!debug.serviceRoleConfigured || debug.error) {
     return null;
   }
 
-  if (!data) {
-    console.log("[school-admin] no school_accounts row matched admin email");
+  if (!debug.result) {
     return null;
   }
 
-  if (!isSchoolPlanType(data.plan_type)) {
-    console.log("[school-admin] row found but plan_type is not a school plan:", data.plan_type);
+  if (!debug.planTypeValid) {
+    console.log(
+      "[school-admin] row found but plan_type is not a school plan:",
+      debug.result.plan_type,
+    );
     return null;
   }
 
-  return data as SchoolAccountRow;
+  return debug.result as unknown as SchoolAccountRow;
 }
 
 export async function isUserSchoolAdmin(adminEmail: string): Promise<boolean> {
