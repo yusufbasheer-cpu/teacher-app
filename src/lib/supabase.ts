@@ -9,7 +9,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    detectSessionInUrl: true,
+    /** Exchange PKCE only on /auth/callback — avoids consuming ?code= on /dashboard first. */
+    detectSessionInUrl: false,
     flowType: "pkce",
   },
 });

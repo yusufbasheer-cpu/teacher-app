@@ -1,23 +1,25 @@
 import { NextResponse } from "next/server";
-import { getSupabaseServiceRole } from "@/lib/supabase-admin";
-import { buildSchoolWelcomeMessage, normalizeEmailDomain } from "@/lib/school-accounts";
+import { applySchoolPlanForEmail } from "@/lib/auth-callback-school";
 import { createSupabaseRouteClient } from "@/lib/supabase/server";
-import { firstDayOfNextMonthUtc } from "@/lib/user-usage";
 
 export const runtime = "nodejs";
 
 /**
- * Google OAuth callback — exchange code, then match school email domain and assign plan.
- * Logs appear in the server terminal (Vercel/local `npm run dev` output).
+ * Google OAuth callback — exchange code, assign school plan, redirect to dashboard.
+ * Server logs: terminal / Vercel logs. Browser logs: /dashboard?school_check=1
  */
 export async function GET(request: Request) {
+  console.log("=== AUTH CALLBACK ROUTE HIT ===");
+
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const origin = requestUrl.origin;
-  const next = requestUrl.searchParams.get("next") ?? "/lesson-plan";
+
+  console.log("[auth/callback] URL:", requestUrl.toString());
+  console.log("[auth/callback] code present:", Boolean(code));
 
   if (!code) {
-    console.log("[auth/callback] No code in URL — redirecting to login");
+    console.log("[auth/callback] No code — redirecting to login");
     return NextResponse.redirect(`${origin}/auth`);
   }
 
@@ -33,78 +35,30 @@ export async function GET(request: Request) {
 
   const user = await supabase.auth.getUser();
   const email = user.data.user?.email;
-  const domain = email?.split("@")[1]?.trim().toLowerCase();
-
-  console.log("Checking school domain for:", domain);
-
-  const admin = getSupabaseServiceRole();
-  let school: Record<string, unknown> | null = null;
-
-  if (domain && admin) {
-    const normalizedDomain = normalizeEmailDomain(domain);
-    const { data, error: schoolError } = await admin
-      .from("school_accounts")
-      .select("*")
-      .eq("email_domain", normalizedDomain)
-      .maybeSingle();
-
-    if (schoolError) {
-      console.log("School query error:", schoolError.message);
-    }
-
-    school = data;
-  } else if (!admin) {
-    console.warn("[auth/callback] SUPABASE_SERVICE_ROLE_KEY missing — cannot query school_accounts");
-  }
-
-  console.log("School found:", school);
-
   const userId = user.data.user?.id;
-  if (school && userId && admin) {
-    const planType = String(school.plan_type);
-    const resetDate = firstDayOfNextMonthUtc();
 
-    const { error: usageError } = await admin.from("user_usage").upsert(
-      {
-        user_id: userId,
-        plan_type: planType,
-        generations_limit: -1,
-        generations_used: 0,
-        reset_date: resetDate,
-      },
-      { onConflict: "user_id" },
-    );
+  console.log("[auth/callback] User after exchange:", { email, userId });
 
-    if (usageError) {
-      console.error("[auth/callback] user_usage upsert error:", usageError.message);
-    } else {
-      console.log("User assigned to school plan");
+  let schoolMatched = "0";
+  if (email && userId) {
+    const result = await applySchoolPlanForEmail(userId, email);
+    schoolMatched = result.matched ? "1" : "0";
+    if (result.welcomeMessage) {
+      const redirectUrl = new URL("/dashboard", origin);
+      redirectUrl.searchParams.set("school_check", "1");
+      redirectUrl.searchParams.set("school_matched", schoolMatched);
+      redirectUrl.searchParams.set(
+        "school_welcome",
+        encodeURIComponent(result.welcomeMessage),
+      );
+      console.log("[auth/callback] Redirecting to /dashboard (school matched)");
+      return NextResponse.redirect(redirectUrl.toString());
     }
-
-    const schoolId = String(school.id);
-    const schoolName = String(school.school_name);
-
-    await admin.from("school_teachers").upsert(
-      {
-        school_account_id: schoolId,
-        user_id: userId,
-        email: email!.trim().toLowerCase(),
-      },
-      { onConflict: "user_id" },
-    );
-
-    await admin.auth.admin.updateUserById(userId, {
-      user_metadata: {
-        school_id: schoolId,
-        school_name: schoolName,
-      },
-    });
-
-    const welcomeMessage = buildSchoolWelcomeMessage(schoolName);
-    const completeUrl = new URL("/auth/callback/complete", origin);
-    completeUrl.searchParams.set("school_welcome", encodeURIComponent(welcomeMessage));
-    return NextResponse.redirect(completeUrl.toString());
   }
 
-  return NextResponse.redirect(`${origin}/auth/callback/complete`);
+  console.log("[auth/callback] Redirecting to /dashboard");
+  const redirectUrl = new URL("/dashboard", origin);
+  redirectUrl.searchParams.set("school_check", "1");
+  redirectUrl.searchParams.set("school_matched", schoolMatched);
+  return NextResponse.redirect(redirectUrl.toString());
 }
