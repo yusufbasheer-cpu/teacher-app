@@ -61,16 +61,64 @@ export async function findSchoolForAdmin(adminEmail: string): Promise<SchoolAcco
     return null;
   }
 
-  if (!data || !isSchoolPlanType(data.plan_type)) {
+  if (!data) {
+    return null;
+  }
+
+  if (!isSchoolPlanType(data.plan_type)) {
+    console.error(
+      "[school-admin] school found but plan_type is invalid:",
+      data.plan_type,
+    );
     return null;
   }
 
   return data as SchoolAccountRow;
 }
 
+/** Admin access only — use this for redirects, not full dashboard load success. */
 export async function isUserSchoolAdmin(adminEmail: string): Promise<boolean> {
   const school = await findSchoolForAdmin(adminEmail);
   return Boolean(school);
+}
+
+function buildDashboardData(
+  school: SchoolAccountRow,
+  teachers: SchoolAdminTeacher[],
+): SchoolAdminDashboardData {
+  let totalGenerationsUsedThisMonth = 0;
+  let mostActive: SchoolAdminDashboardData["usage"]["mostActiveTeacher"] = null;
+
+  for (const teacher of teachers) {
+    totalGenerationsUsedThisMonth += teacher.generationsUsedThisMonth;
+    if (
+      !mostActive ||
+      teacher.generationsUsedThisMonth > mostActive.generationsUsed
+    ) {
+      mostActive = {
+        name: teacher.name,
+        email: teacher.email,
+        generationsUsed: teacher.generationsUsedThisMonth,
+      };
+    }
+  }
+
+  return {
+    school: {
+      id: school.id,
+      name: school.school_name,
+      planType: school.plan_type,
+      emailDomain: school.email_domain,
+      maxTeachers: school.max_teachers,
+      activeTeachers: school.active_teachers,
+      adminEmail: school.admin_email,
+    },
+    teachers,
+    usage: {
+      totalGenerationsUsedThisMonth,
+      mostActiveTeacher: mostActive,
+    },
+  };
 }
 
 function teacherDisplayName(
@@ -101,41 +149,46 @@ async function resolveTeacherName(
   return teacherDisplayName(email, undefined);
 }
 
-export async function getSchoolAdminDashboard(
-  adminEmail: string,
-): Promise<SchoolAdminDashboardData | null> {
-  const school = await findSchoolForAdmin(adminEmail);
-  if (!school) return null;
-
-  const admin = getSupabaseServiceRole();
-  if (!admin) return null;
-
+async function loadTeachersForSchool(
+  admin: SupabaseClient,
+  schoolId: string,
+): Promise<SchoolAdminTeacher[]> {
   const { data: teachers, error: teachersError } = await admin
     .from("school_teachers")
     .select("user_id, email, joined_at")
-    .eq("school_account_id", school.id)
+    .eq("school_account_id", schoolId)
     .order("joined_at", { ascending: true });
 
   if (teachersError) {
-    console.error("[school-admin] list teachers failed:", teachersError.message);
-    return null;
+    console.error(
+      "[school-admin] list teachers failed (showing overview anyway):",
+      teachersError.message,
+    );
+    return [];
   }
 
   const userIds = (teachers ?? []).map((t) => t.user_id as string);
   const usageByUser = new Map<string, number>();
 
   if (userIds.length > 0) {
-    const { data: usageRows } = await admin
+    const { data: usageRows, error: usageError } = await admin
       .from("user_usage")
       .select("user_id, generations_used")
       .in("user_id", userIds);
+
+    if (usageError) {
+      console.error(
+        "[school-admin] usage lookup failed (generations will show as 0):",
+        usageError.message,
+      );
+    }
 
     for (const row of usageRows ?? []) {
       usageByUser.set(row.user_id as string, Math.max(0, Number(row.generations_used) || 0));
     }
   }
 
-  const teacherList: SchoolAdminTeacher[] = await Promise.all(
+  return Promise.all(
     (teachers ?? []).map(async (t) => {
       const uid = t.user_id as string;
       const email = t.email as string;
@@ -148,40 +201,29 @@ export async function getSchoolAdminDashboard(
       };
     }),
   );
+}
 
-  let totalGenerationsUsedThisMonth = 0;
-  let mostActive: SchoolAdminDashboardData["usage"]["mostActiveTeacher"] = null;
+/**
+ * Loads dashboard data. Returns null only when the user is not a school admin.
+ * Teacher/usage query failures do not deny access.
+ */
+export async function getSchoolAdminDashboard(
+  adminEmail: string,
+  existingSchool?: SchoolAccountRow | null,
+): Promise<SchoolAdminDashboardData | null> {
+  const school = existingSchool ?? (await findSchoolForAdmin(adminEmail));
+  if (!school) return null;
 
-  for (const teacher of teacherList) {
-    totalGenerationsUsedThisMonth += teacher.generationsUsedThisMonth;
-    if (
-      !mostActive ||
-      teacher.generationsUsedThisMonth > mostActive.generationsUsed
-    ) {
-      mostActive = {
-        name: teacher.name,
-        email: teacher.email,
-        generationsUsed: teacher.generationsUsedThisMonth,
-      };
-    }
+  const admin = getSupabaseServiceRole();
+  if (!admin) {
+    console.error(
+      "[school-admin] service role missing when loading teachers; returning overview only",
+    );
+    return buildDashboardData(school, []);
   }
 
-  return {
-    school: {
-      id: school.id,
-      name: school.school_name,
-      planType: school.plan_type,
-      emailDomain: school.email_domain,
-      maxTeachers: school.max_teachers,
-      activeTeachers: school.active_teachers,
-      adminEmail: school.admin_email,
-    },
-    teachers: teacherList,
-    usage: {
-      totalGenerationsUsedThisMonth,
-      mostActiveTeacher: mostActive,
-    },
-  };
+  const teacherList = await loadTeachersForSchool(admin, school.id);
+  return buildDashboardData(school, teacherList);
 }
 
 export async function removeTeacherFromSchool(
