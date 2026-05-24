@@ -112,7 +112,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
   }
 
   const { school, teachers, usage } = data;
-  const seatsLabel = `${school.activeTeachers} of ${school.maxTeachers}`;
+  const seatsLabel = `${school.activeTeachers} of ${school.maxTeachers} teachers`;
 
   return (
     <div className="space-y-8 pb-8">
@@ -166,7 +166,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Active teachers
+                Active teachers (of max)
               </dt>
               <dd className="mt-1 text-base font-semibold" style={{ color: NAVY }}>
                 {seatsLabel}
@@ -181,53 +181,6 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
               </dd>
             </div>
           </dl>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>
-          Usage statistics
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div
-            className="rounded-2xl border bg-white p-5 shadow-sm"
-            style={{ borderColor: "rgba(0,198,167,0.25)" }}
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Total generations this month
-            </p>
-            <p className="mt-2 text-3xl font-bold" style={{ color: NAVY }}>
-              {usage.totalGenerationsUsedThisMonth}
-            </p>
-            <p className="mt-1 text-xs" style={{ color: MUTED }}>
-              Used by all teachers in your school
-            </p>
-          </div>
-          <div
-            className="rounded-2xl border bg-white p-5 shadow-sm"
-            style={{ borderColor: "rgba(0,198,167,0.25)" }}
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Most active teacher
-            </p>
-            {usage.mostActiveTeacher ? (
-              <>
-                <p className="mt-2 text-lg font-bold" style={{ color: NAVY }}>
-                  {usage.mostActiveTeacher.name}
-                </p>
-                <p className="text-sm" style={{ color: MUTED }}>
-                  {usage.mostActiveTeacher.email}
-                </p>
-                <p className="mt-2 text-sm font-medium" style={{ color: TEAL }}>
-                  {usage.mostActiveTeacher.generationsUsed} generations this month
-                </p>
-              </>
-            ) : (
-              <p className="mt-2 text-sm" style={{ color: MUTED }}>
-                No usage yet
-              </p>
-            )}
-          </div>
         </div>
       </section>
 
@@ -333,6 +286,53 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
             </div>
           </>
         )}
+      </section>
+
+      <section>
+        <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>
+          Usage statistics
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div
+            className="rounded-2xl border bg-white p-5 shadow-sm"
+            style={{ borderColor: "rgba(0,198,167,0.25)" }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Total generations used this month
+            </p>
+            <p className="mt-2 text-3xl font-bold" style={{ color: NAVY }}>
+              {usage.totalGenerationsUsedThisMonth}
+            </p>
+            <p className="mt-1 text-xs" style={{ color: MUTED }}>
+              Across all teachers in your school
+            </p>
+          </div>
+          <div
+            className="rounded-2xl border bg-white p-5 shadow-sm"
+            style={{ borderColor: "rgba(0,198,167,0.25)" }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Most active teacher
+            </p>
+            {usage.mostActiveTeacher ? (
+              <>
+                <p className="mt-2 text-lg font-bold" style={{ color: NAVY }}>
+                  {usage.mostActiveTeacher.name}
+                </p>
+                <p className="text-sm" style={{ color: MUTED }}>
+                  {usage.mostActiveTeacher.email}
+                </p>
+                <p className="mt-2 text-sm font-medium" style={{ color: TEAL }}>
+                  {usage.mostActiveTeacher.generationsUsed} generations this month
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm" style={{ color: MUTED }}>
+                No usage yet
+              </p>
+            )}
+          </div>
+        </div>
       </section>
     </div>
   );
