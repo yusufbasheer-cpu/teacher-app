@@ -18,10 +18,12 @@ export type SchoolAccountRow = {
 
 export type SchoolTeacherRow = {
   id: string;
+  /** References school_accounts.id */
   school_account_id: string;
   user_id: string;
   email: string;
   joined_at: string;
+  generations_used_this_month: number;
 };
 
 export const SCHOOL_WELCOME_SESSION_KEY = "layah_school_welcome";

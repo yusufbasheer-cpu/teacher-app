@@ -155,7 +155,7 @@ async function loadTeachersForSchool(
 ): Promise<SchoolAdminTeacher[]> {
   const { data: teachers, error: teachersError } = await admin
     .from("school_teachers")
-    .select("user_id, email, joined_at")
+    .select("user_id, email, joined_at, generations_used_this_month")
     .eq("school_account_id", schoolId)
     .order("joined_at", { ascending: true });
 
@@ -170,11 +170,20 @@ async function loadTeachersForSchool(
   const userIds = (teachers ?? []).map((t) => t.user_id as string);
   const usageByUser = new Map<string, number>();
 
-  if (userIds.length > 0) {
+  for (const row of teachers ?? []) {
+    const uid = row.user_id as string;
+    const fromTeacherRow = Number(row.generations_used_this_month);
+    if (Number.isFinite(fromTeacherRow)) {
+      usageByUser.set(uid, Math.max(0, fromTeacherRow));
+    }
+  }
+
+  const missingUsageIds = userIds.filter((id) => !usageByUser.has(id));
+  if (missingUsageIds.length > 0) {
     const { data: usageRows, error: usageError } = await admin
       .from("user_usage")
       .select("user_id, generations_used")
-      .in("user_id", userIds);
+      .in("user_id", missingUsageIds);
 
     if (usageError) {
       console.error(
@@ -261,6 +270,16 @@ export async function removeTeacherFromSchool(
     console.error("[school-admin] remove teacher failed:", deleteError.message);
     return { ok: false, message: "Could not remove teacher. Please try again." };
   }
+
+  const { count } = await admin
+    .from("school_teachers")
+    .select("id", { count: "exact", head: true })
+    .eq("school_account_id", school.id);
+
+  await admin
+    .from("school_accounts")
+    .update({ active_teachers: count ?? 0 })
+    .eq("id", school.id);
 
   const resetDate = firstDayOfNextMonthUtc();
   const { error: usageError } = await admin

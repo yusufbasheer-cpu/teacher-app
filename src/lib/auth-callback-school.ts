@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseServiceRole } from "@/lib/supabase-admin";
-import { buildSchoolWelcomeMessage, normalizeEmailDomain } from "@/lib/school-accounts";
+import { processSchoolEnrollment } from "@/lib/school-enrollment-server";
+import { normalizeEmailDomain } from "@/lib/school-accounts";
 import { schoolPlanResetDate } from "@/lib/school-plan-reset-date";
 
 export type ApplySchoolPlanResult = {
@@ -78,63 +78,26 @@ export async function upsertSchoolUserUsage(
 }
 
 /**
- * Server-only: lookup school by email domain and assign plan on user_usage.
+ * Server-only: domain match, school_teachers row (first login only), plan sync.
  */
 export async function applySchoolPlanForEmail(
   userId: string,
   email: string,
-  sessionSupabase?: SupabaseClient,
+  _sessionSupabase?: SupabaseClient,
 ): Promise<ApplySchoolPlanResult> {
-  const admin = getSupabaseServiceRole();
-  if (!admin) {
-    console.warn("[auth/callback] SUPABASE_SERVICE_ROLE_KEY missing — trying session client only");
-  }
+  const result = await processSchoolEnrollment(userId, email);
 
-  const school = admin
-    ? await findSchoolByEmailDomain(admin, email)
-    : null;
-
-  if (!school) {
+  if (!result.ok) {
     return { matched: false };
   }
 
-  let applied = false;
-
-  if (sessionSupabase) {
-    applied = await upsertSchoolUserUsage(sessionSupabase, userId, school);
-  }
-
-  if (!applied && admin) {
-    applied = await upsertSchoolUserUsage(admin, userId, school);
-  }
-
-  if (!applied) {
-    console.error("[auth/callback] School plan could not be applied for user", userId);
+  if (result.individual || !result.schoolName) {
     return { matched: false };
   }
 
-  if (admin) {
-    await admin.from("school_teachers").upsert(
-      {
-        school_account_id: school.id,
-        user_id: userId,
-        email: email.trim().toLowerCase(),
-      },
-      { onConflict: "user_id" },
-    );
-
-    await admin.auth.admin.updateUserById(userId, {
-      user_metadata: {
-        school_id: school.id,
-        school_name: school.school_name,
-      },
-    });
-  }
-
-  const schoolName = String(school.school_name);
   return {
     matched: true,
-    schoolName,
-    welcomeMessage: buildSchoolWelcomeMessage(schoolName),
+    schoolName: result.schoolName,
+    welcomeMessage: result.newlyJoined ? result.welcomeMessage : undefined,
   };
 }

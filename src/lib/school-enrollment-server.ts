@@ -84,6 +84,45 @@ async function getTeacherMembership(
   return data;
 }
 
+/** True if this user_id already has a school_teachers row (any school). */
+async function hasExistingTeacherRow(admin: SupabaseClient, userId: string): Promise<boolean> {
+  const membership = await getTeacherMembership(admin, userId);
+  return Boolean(membership);
+}
+
+async function syncActiveTeachersCount(admin: SupabaseClient, schoolId: string): Promise<void> {
+  const count = await countTeachersInSchool(admin, schoolId);
+  const { error } = await admin
+    .from("school_accounts")
+    .update({ active_teachers: count })
+    .eq("id", schoolId);
+
+  if (error) {
+    console.error("[school-enrollment] sync active_teachers failed:", error.message);
+  }
+}
+
+async function syncTeacherGenerationsFromUsage(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  const { data: usage } = await admin
+    .from("user_usage")
+    .select("generations_used")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const used = Math.max(0, Number(usage?.generations_used) || 0);
+  const { error } = await admin
+    .from("school_teachers")
+    .update({ generations_used_this_month: used })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("[school-enrollment] sync generations_used_this_month failed:", error.message);
+  }
+}
+
 async function countTeachersInSchool(admin: SupabaseClient, schoolId: string): Promise<number> {
   const { count, error } = await admin
     .from("school_teachers")
@@ -165,7 +204,22 @@ async function ensureSchoolTeacherRow(
   email: string,
 ): Promise<{ newlyJoined: boolean }> {
   const existing = await getTeacherMembership(admin, userId);
-  if (existing?.school_account_id === school.id) {
+
+  if (existing) {
+    if (existing.school_account_id === school.id) {
+      await syncTeacherGenerationsFromUsage(admin, userId);
+      console.log("[school-enrollment] Teacher already in school_teachers — not incrementing", {
+        userId,
+        schoolId: school.id,
+      });
+      return { newlyJoined: false };
+    }
+
+    console.warn("[school-enrollment] User already belongs to another school", {
+      userId,
+      existingSchoolId: existing.school_account_id,
+      requestedSchoolId: school.id,
+    });
     return { newlyJoined: false };
   }
 
@@ -178,18 +232,28 @@ async function ensureSchoolTeacherRow(
     school_account_id: school.id,
     user_id: userId,
     email: email.trim().toLowerCase(),
+    generations_used_this_month: 0,
   });
 
   if (insertError) {
     if (insertError.code === "23505") {
-      const membership = await getTeacherMembership(admin, userId);
-      if (membership) {
+      const alreadyJoined = await hasExistingTeacherRow(admin, userId);
+      if (alreadyJoined) {
+        await syncTeacherGenerationsFromUsage(admin, userId);
         return { newlyJoined: false };
       }
     }
     console.error("[school-enrollment] insert school_teachers failed:", insertError.message);
     throw insertError;
   }
+
+  await syncActiveTeachersCount(admin, school.id);
+
+  console.log("[school-enrollment] First login — added to school_teachers", {
+    userId,
+    schoolId: school.id,
+    activeTeachers: await countTeachersInSchool(admin, school.id),
+  });
 
   return { newlyJoined: true };
 }
@@ -284,14 +348,22 @@ export async function processSchoolEnrollment(
     await upsertSchoolUsage(admin, userId, school.plan_type);
     await storeSchoolOnUserProfile(admin, userId, school);
 
+    const { data: refreshedSchool } = await admin
+      .from("school_accounts")
+      .select("*")
+      .eq("id", school.id)
+      .maybeSingle();
+
+    const schoolRow = (refreshedSchool ?? school) as SchoolAccountRow;
+
     console.log("[school-enrollment] School teacher synced on login", {
       userId,
       schoolId: school.id,
       newlyJoined,
-      activeTeachers: school.active_teachers,
+      activeTeachers: schoolRow.active_teachers,
     });
 
-    return schoolSuccess(school, newlyJoined);
+    return schoolSuccess(schoolRow, newlyJoined);
   } catch (err) {
     if (err instanceof Error && err.message === "SCHOOL_FULL") {
       return {
