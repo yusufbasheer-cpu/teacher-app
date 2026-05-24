@@ -18,11 +18,23 @@ import {
 
 const USER_USAGE_TABLE = "user_usage";
 
+/** Server client scoped to the caller's JWT so RLS sees auth.uid() = user_id. */
 export function getSupabaseForUser(accessToken: string) {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: `Bearer ${accessToken}` } } },
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    },
   );
 }
 
@@ -36,7 +48,17 @@ function logSupabaseError(
   extra?: Record<string, unknown>,
 ): void {
   if (!error) return;
-  console.error(`[user-usage] ${operation} failed`, {
+  logExactSupabaseError(operation, error, extra);
+}
+
+/** Log the exact PostgREST/Supabase error when an update or RPC fails. */
+export function logExactSupabaseError(
+  operation: string,
+  error: PostgrestError,
+  extra?: Record<string, unknown>,
+): void {
+  console.error(`[user-usage] Supabase error (${operation}): ${error.message}`);
+  console.error("[user-usage] Exact Supabase error payload:", {
     table: USER_USAGE_TABLE,
     message: error.message,
     code: error.code,
@@ -241,18 +263,29 @@ export async function assertCanGenerate(
 async function verifyAuthenticatedUserId(
   supabase: SupabaseClient,
   userId: string,
+  accessToken?: string,
 ): Promise<{ ok: true; authUserId: string } | { ok: false; reason: string }> {
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = accessToken
+    ? await supabase.auth.getUser(accessToken)
+    : await supabase.auth.getUser();
 
   if (error || !user) {
+    console.error("[user-usage] verifyAuthenticatedUserId failed:", error?.message ?? "no user");
     return {
       ok: false,
       reason: error?.message ?? "No authenticated user on Supabase client",
     };
   }
+
+  console.log("[user-usage] authenticated session for increment", {
+    auth_uid: user.id,
+    requested_user_id: userId,
+    match: user.id === userId,
+    hasAccessToken: Boolean(accessToken),
+  });
 
   if (user.id !== userId) {
     return {
@@ -292,6 +325,17 @@ async function runUsageIncrementUpdate(
       : null,
   });
 
+  if (error) {
+    logExactSupabaseError(`update generations_used (${label})`, error, {
+      user_id: authUserId,
+      generations_used: nextUsed,
+    });
+  } else if (!data) {
+    console.error(
+      `[user-usage] Supabase update (${label}) returned no row — likely RLS blocked update. user_id=${authUserId}`,
+    );
+  }
+
   return { row: data ? normalizeUsageRow(data as UserUsageRow) : null, error };
 }
 
@@ -301,9 +345,10 @@ async function runUsageIncrementUpdate(
 export async function incrementGenerationsUsed(
   supabase: SupabaseClient,
   userId: string,
+  accessToken?: string,
 ): Promise<UserUsageSnapshot | null> {
   try {
-    const authCheck = await verifyAuthenticatedUserId(supabase, userId);
+    const authCheck = await verifyAuthenticatedUserId(supabase, userId, accessToken);
     if (!authCheck.ok) {
       console.error("[user-usage] incrementGenerationsUsed: auth check failed", {
         userId,
@@ -406,14 +451,15 @@ export async function incrementGenerationsUsed(
 export async function recordSuccessfulGeneration(
   supabase: SupabaseClient,
   userId: string,
+  accessToken: string,
 ): Promise<UserUsageSnapshot | null> {
-  return incrementGenerationsUsed(supabase, userId);
+  return incrementGenerationsUsed(supabase, userId, accessToken);
 }
 
 export async function authenticateRequest(
   req: Request,
 ): Promise<
-  | { ok: true; supabase: SupabaseClient; userId: string }
+  | { ok: true; supabase: SupabaseClient; userId: string; accessToken: string }
   | { ok: false; status: number; message: string }
 > {
   const token = getBearerToken(req);
@@ -426,7 +472,7 @@ export async function authenticateRequest(
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser(token);
 
   if (error || !user) {
     console.warn("[user-usage] authenticateRequest: invalid or expired session", {
@@ -436,6 +482,9 @@ export async function authenticateRequest(
     return { ok: false, status: 401, message: "Invalid session. Please log in again." };
   }
 
-  console.log("[user-usage] authenticateRequest: ok", { userId: user.id });
-  return { ok: true, supabase, userId: user.id };
+  console.log("[user-usage] authenticateRequest: ok", {
+    userId: user.id,
+    auth_uid_matches: user.id,
+  });
+  return { ok: true, supabase, userId: user.id, accessToken: token };
 }

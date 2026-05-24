@@ -71,14 +71,14 @@ create table if not exists public.user_usage (
 
 alter table public.user_usage enable row level security;
 
-drop policy if exists "Users can view own usage" on public.user_usage;
-create policy "Users can view own usage"
-  on public.user_usage for select using (auth.uid() = user_id);
+drop policy if exists select_own_usage on public.user_usage;
+create policy select_own_usage on public.user_usage
+  for select using (user_id = auth.uid());
 
-drop policy if exists "Users can insert own usage" on public.user_usage;
-create policy "Users can insert own usage"
-  on public.user_usage for insert with check (auth.uid() = user_id);
+drop policy if exists insert_own_usage on public.user_usage;
+create policy insert_own_usage on public.user_usage
+  for insert with check (user_id = auth.uid());
 
-drop policy if exists "Users can update own usage" on public.user_usage;
-create policy "Users can update own usage"
-  on public.user_usage for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists update_own_usage on public.user_usage;
+create policy update_own_usage on public.user_usage
+  for update using (user_id = auth.uid());

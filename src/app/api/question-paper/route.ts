@@ -93,7 +93,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const usage = await recordSuccessfulGeneration(auth.supabase, auth.userId);
+  const usage = await recordSuccessfulGeneration(
+    auth.supabase,
+    auth.userId,
+    auth.accessToken,
+  );
 
   return NextResponse.json({
     questionPaper: parsed.questionPaper,

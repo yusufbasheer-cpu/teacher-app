@@ -788,7 +788,11 @@ export async function POST(req: Request) {
             onProgress: (message) => send({ type: "progress", message }),
           });
           const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
-          const usage = await recordSuccessfulGeneration(auth.supabase, auth.userId);
+          const usage = await recordSuccessfulGeneration(
+            auth.supabase,
+            auth.userId,
+            auth.accessToken,
+          );
           send({ type: "complete", ...payload, ...(usage ? { usage } : {}) });
         } catch (e) {
           const message = e instanceof Error ? e.message : String(e);
@@ -813,7 +817,11 @@ export async function POST(req: Request) {
       aflPromptBlock,
     });
     const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
-    const usage = await recordSuccessfulGeneration(auth.supabase, auth.userId);
+    const usage = await recordSuccessfulGeneration(
+      auth.supabase,
+      auth.userId,
+      auth.accessToken,
+    );
     return NextResponse.json({ ...payload, ...(usage ? { usage } : {}) });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
