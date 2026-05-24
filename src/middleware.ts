@@ -1,8 +1,9 @@
-import { createServerClient } from "@supabase/ssr";
+import { createMiddlewareSupabaseClient } from "@/lib/supabase-ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * If Supabase redirects to Site URL (/dashboard, /, etc.) with ?code=, send to /auth/callback.
+ * Refresh auth session (cookies) and forward OAuth ?code= to /auth/callback.
+ * @see https://supabase.com/docs/guides/auth/server-side/nextjs
  */
 export async function middleware(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -11,31 +12,29 @@ export async function middleware(request: NextRequest) {
   if (code && pathname !== "/auth/callback") {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/auth/callback";
-    console.log("[middleware] OAuth code on", pathname, "→ redirecting to /auth/callback");
-    return NextResponse.redirect(redirectUrl);
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    request.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value);
+    });
+    console.log("[middleware] OAuth code on", pathname, "→ /auth/callback");
+    return redirectResponse;
   }
 
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    },
-  );
+  const supabase = createMiddlewareSupabaseClient(request, response);
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user && pathname.startsWith("/auth") && pathname !== "/auth/callback") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    response = NextResponse.redirect(url);
+    const redirectSupabase = createMiddlewareSupabaseClient(request, response);
+    await redirectSupabase.auth.getUser();
+  }
 
   return response;
 }

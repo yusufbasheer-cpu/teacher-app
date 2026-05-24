@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { applySchoolPlanForEmail } from "@/lib/auth-callback-school";
-import { createSupabaseRouteClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 
 export const runtime = "nodejs";
 
 /**
- * Google OAuth callback — exchange code, assign school plan, redirect to dashboard.
- * Server logs: terminal / Vercel logs. Browser logs: /dashboard?school_check=1
+ * Google OAuth callback — exchange PKCE code (verifier in cookies), assign school plan.
+ * @see https://supabase.com/docs/guides/auth/server-side/nextjs
  */
 export async function GET(request: Request) {
   console.log("=== AUTH CALLBACK ROUTE HIT ===");
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/auth`);
   }
 
-  const supabase = await createSupabaseRouteClient();
+  const supabase = await createServerSupabaseClient();
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
   if (exchangeError) {
@@ -39,26 +39,20 @@ export async function GET(request: Request) {
 
   console.log("[auth/callback] User after exchange:", { email, userId });
 
+  const redirectUrl = new URL("/dashboard", origin);
+  redirectUrl.searchParams.set("school_check", "1");
+
   let schoolMatched = "0";
   if (email && userId) {
     const result = await applySchoolPlanForEmail(userId, email);
     schoolMatched = result.matched ? "1" : "0";
     if (result.welcomeMessage) {
-      const redirectUrl = new URL("/dashboard", origin);
-      redirectUrl.searchParams.set("school_check", "1");
-      redirectUrl.searchParams.set("school_matched", schoolMatched);
-      redirectUrl.searchParams.set(
-        "school_welcome",
-        encodeURIComponent(result.welcomeMessage),
-      );
-      console.log("[auth/callback] Redirecting to /dashboard (school matched)");
-      return NextResponse.redirect(redirectUrl.toString());
+      redirectUrl.searchParams.set("school_welcome", encodeURIComponent(result.welcomeMessage));
     }
   }
 
-  console.log("[auth/callback] Redirecting to /dashboard");
-  const redirectUrl = new URL("/dashboard", origin);
-  redirectUrl.searchParams.set("school_check", "1");
   redirectUrl.searchParams.set("school_matched", schoolMatched);
+
+  console.log("[auth/callback] Redirecting to /dashboard");
   return NextResponse.redirect(redirectUrl.toString());
 }
