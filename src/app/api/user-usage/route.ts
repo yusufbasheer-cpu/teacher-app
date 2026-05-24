@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUpgradePitch } from "@/lib/user-usage";
+import { defaultFreeUsageSnapshot, getUpgradePitch } from "@/lib/user-usage";
 import { authenticateRequest, getOrCreateUserUsage } from "@/lib/user-usage-server";
 
 export const runtime = "nodejs";
@@ -11,14 +11,18 @@ export async function GET(req: Request) {
   }
 
   const usage = await getOrCreateUserUsage(auth.supabase, auth.userId);
+  const resolved = usage ?? defaultFreeUsageSnapshot();
+
   if (!usage) {
-    return NextResponse.json({ error: "Failed to load usage." }, { status: 500 });
+    console.warn("[user-usage] GET /api/user-usage: using fallback snapshot (fail-open)", {
+      userId: auth.userId,
+    });
   }
 
-  const pitch = getUpgradePitch(usage.planType);
+  const pitch = getUpgradePitch(resolved.planType);
 
   return NextResponse.json({
-    usage,
+    usage: resolved,
     upgradePitch: pitch,
   });
 }

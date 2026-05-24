@@ -1,19 +1,20 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type PostgrestError, type SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_FREE_USAGE_INSERT,
+  defaultFreeUsageSnapshot,
   firstDayOfNextMonthUtc,
   GENERATION_LIMIT_ERROR_CODE,
   getGenerationsLimitForPlan,
-  getUpgradePitch,
   isPlanType,
   logUsageSnapshot,
   needsMonthlyReset,
   normalizeUsageRow,
   toUsageSnapshot,
-  type PlanType,
   type UserUsageRow,
   type UserUsageSnapshot,
 } from "@/lib/user-usage";
+
+const USER_USAGE_TABLE = "user_usage";
 
 export function getSupabaseForUser(accessToken: string) {
   return createClient(
@@ -27,13 +28,29 @@ export function getBearerToken(req: Request): string | null {
   return req.headers.get("Authorization")?.replace("Bearer ", "").trim() ?? null;
 }
 
+function logSupabaseError(
+  operation: string,
+  error: PostgrestError | null,
+  extra?: Record<string, unknown>,
+): void {
+  if (!error) return;
+  console.error(`[user-usage] ${operation} failed`, {
+    table: USER_USAGE_TABLE,
+    message: error.message,
+    code: error.code,
+    details: error.details,
+    hint: error.hint,
+    ...extra,
+  });
+}
+
 async function insertDefaultUsage(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserUsageRow | null> {
   const resetDate = firstDayOfNextMonthUtc();
   const { data, error } = await supabase
-    .from("user_usage")
+    .from(USER_USAGE_TABLE)
     .insert({
       user_id: userId,
       plan_type: DEFAULT_FREE_USAGE_INSERT.plan_type,
@@ -45,7 +62,21 @@ async function insertDefaultUsage(
     .single();
 
   if (error) {
-    console.error("[user-usage] insert default failed:", error.message, error.code);
+    logSupabaseError("insert default user_usage", error, { userId });
+
+    if (error.code === "23505") {
+      const { data: existing, error: retryError } = await supabase
+        .from(USER_USAGE_TABLE)
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (retryError) {
+        logSupabaseError("select after insert conflict", retryError, { userId });
+        return null;
+      }
+      if (existing) return normalizeUsageRow(existing as UserUsageRow);
+    }
+
     return null;
   }
 
@@ -71,7 +102,7 @@ async function applyMonthlyResetIfNeeded(
   const nextReset = firstDayOfNextMonthUtc();
 
   const { data, error } = await supabase
-    .from("user_usage")
+    .from(USER_USAGE_TABLE)
     .update({
       generations_used: 0,
       reset_date: nextReset,
@@ -82,7 +113,7 @@ async function applyMonthlyResetIfNeeded(
     .single();
 
   if (error || !data) {
-    console.error("[user-usage] monthly reset failed:", error?.message);
+    logSupabaseError("monthly reset update", error, { userId: row.user_id });
     return normalizeUsageRow({
       ...row,
       generations_used: 0,
@@ -101,25 +132,33 @@ export async function ensureUserUsageRecord(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserUsageRow | null> {
-  const { data, error } = await supabase
-    .from("user_usage")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from(USER_USAGE_TABLE)
+      .select("id, user_id, plan_type, generations_used, generations_limit, reset_date, created_at")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-  if (error) {
-    console.error("[user-usage] select failed:", error.message);
+    if (error) {
+      logSupabaseError("select user_usage by user_id", error, { userId });
+      return null;
+    }
+
+    let row = data as UserUsageRow | null;
+    if (!row) {
+      row = await insertDefaultUsage(supabase, userId);
+      if (!row) return null;
+    }
+
+    row = await applyMonthlyResetIfNeeded(supabase, row);
+    return row;
+  } catch (err) {
+    console.error("[user-usage] ensureUserUsageRecord unexpected error", {
+      userId,
+      error: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
+    });
     return null;
   }
-
-  let row = data as UserUsageRow | null;
-  if (!row) {
-    row = await insertDefaultUsage(supabase, userId);
-    if (!row) return null;
-  }
-
-  row = await applyMonthlyResetIfNeeded(supabase, row);
-  return row;
 }
 
 /** Fetch usage row, create if missing, reset on new month. */
@@ -128,7 +167,10 @@ export async function getOrCreateUserUsage(
   userId: string,
 ): Promise<UserUsageSnapshot | null> {
   const row = await ensureUserUsageRecord(supabase, userId);
-  if (!row) return null;
+  if (!row) {
+    console.warn("[user-usage] getOrCreateUserUsage: no row available", { userId });
+    return null;
+  }
 
   const snapshot = toUsageSnapshot(row);
   logUsageSnapshot("getOrCreateUserUsage", snapshot);
@@ -136,66 +178,99 @@ export async function getOrCreateUserUsage(
 }
 
 export type GenerationGateResult =
-  | { ok: true; usage: UserUsageSnapshot }
-  | { ok: false; status: number; code: string; message: string; usage: UserUsageSnapshot };
+  | { ok: true; usage: UserUsageSnapshot; checkSkipped?: boolean }
+  | {
+      ok: false;
+      status: number;
+      code: typeof GENERATION_LIMIT_ERROR_CODE;
+      message: string;
+      usage: UserUsageSnapshot;
+    };
 
+/**
+ * Verify generation allowance after auth. On any DB/check failure, fail-open (allow generation).
+ * Only blocks when generations_used >= generations_limit.
+ */
 export async function assertCanGenerate(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<GenerationGateResult> {
-  const usage = await getOrCreateUserUsage(supabase, userId);
-  if (!usage) {
-    return {
-      ok: false,
-      status: 500,
-      code: "USAGE_CHECK_FAILED",
-      message: "Could not verify your generation allowance.",
-      usage: {
-        planType: "free",
-        generationsUsed: 0,
-        generationsLimit: 3,
-        unlimited: false,
-        canGenerate: true,
-        resetDate: firstDayOfNextMonthUtc(),
+  try {
+    const usage = await getOrCreateUserUsage(supabase, userId);
+
+    if (!usage) {
+      console.warn(
+        "[user-usage] assertCanGenerate: allowance check failed — allowing generation (fail-open)",
+        { userId },
+      );
+      return { ok: true, usage: defaultFreeUsageSnapshot(), checkSkipped: true };
+    }
+
+    if (!usage.canGenerate) {
+      const limit = usage.generationsLimit ?? 0;
+      console.log("[user-usage] assertCanGenerate: limit reached", {
+        userId,
+        generations_used: usage.generationsUsed,
+        generations_limit: limit,
+      });
+      return {
+        ok: false,
+        status: 403,
+        code: GENERATION_LIMIT_ERROR_CODE,
+        message: `You have used all ${limit} generations for this month.`,
+        usage,
+      };
+    }
+
+    return { ok: true, usage };
+  } catch (err) {
+    console.error(
+      "[user-usage] assertCanGenerate: unexpected error — allowing generation (fail-open)",
+      {
+        userId,
+        error:
+          err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
       },
-    };
+    );
+    return { ok: true, usage: defaultFreeUsageSnapshot(), checkSkipped: true };
   }
-
-  if (!usage.canGenerate) {
-    const limit = usage.generationsLimit ?? 0;
-    return {
-      ok: false,
-      status: 403,
-      code: GENERATION_LIMIT_ERROR_CODE,
-      message: `You have used all ${limit} generations for this month.`,
-      usage,
-    };
-  }
-
-  return { ok: true, usage };
 }
 
 export async function incrementGenerationsUsed(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserUsageSnapshot | null> {
-  const row = await ensureUserUsageRecord(supabase, userId);
-  if (!row) return null;
+  try {
+    const row = await ensureUserUsageRecord(supabase, userId);
+    if (!row) {
+      console.warn("[user-usage] incrementGenerationsUsed: skipped (no row)", { userId });
+      return null;
+    }
 
-  const snapshot = toUsageSnapshot(row);
-  if (snapshot.unlimited) return snapshot;
+    const snapshot = toUsageSnapshot(row);
+    if (snapshot.unlimited) return snapshot;
 
-  const { error } = await supabase
-    .from("user_usage")
-    .update({ generations_used: row.generations_used + 1 })
-    .eq("user_id", userId);
+    const { error } = await supabase
+      .from(USER_USAGE_TABLE)
+      .update({ generations_used: row.generations_used + 1 })
+      .eq("user_id", userId);
 
-  if (error) {
-    console.error("[user-usage] increment failed:", error.message);
-    return snapshot;
+    if (error) {
+      logSupabaseError("increment generations_used", error, {
+        userId,
+        generations_used: row.generations_used,
+      });
+      return snapshot;
+    }
+
+    return getOrCreateUserUsage(supabase, userId);
+  } catch (err) {
+    console.error("[user-usage] incrementGenerationsUsed unexpected error", {
+      userId,
+      error: err instanceof Error ? { name: err.name, message: err.message } : err,
+    });
+    return null;
   }
-
-  return getOrCreateUserUsage(supabase, userId);
 }
 
 export async function authenticateRequest(
@@ -206,6 +281,7 @@ export async function authenticateRequest(
 > {
   const token = getBearerToken(req);
   if (!token) {
+    console.warn("[user-usage] authenticateRequest: missing Authorization bearer token");
     return { ok: false, status: 401, message: "Unauthorized. Please log in." };
   }
 
@@ -216,8 +292,13 @@ export async function authenticateRequest(
   } = await supabase.auth.getUser();
 
   if (error || !user) {
+    console.warn("[user-usage] authenticateRequest: invalid or expired session", {
+      authError: error?.message ?? null,
+      hasUser: Boolean(user),
+    });
     return { ok: false, status: 401, message: "Invalid session. Please log in again." };
   }
 
+  console.log("[user-usage] authenticateRequest: ok", { userId: user.id });
   return { ok: true, supabase, userId: user.id };
 }

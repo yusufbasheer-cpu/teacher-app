@@ -10,12 +10,17 @@ import {
 export async function ensureUserUsageOnClient(userId: string): Promise<void> {
   const { data: existing, error: readError } = await supabase
     .from("user_usage")
-    .select("generations_used, generations_limit, plan_type, reset_date")
+    .select("id, user_id, generations_used, generations_limit, plan_type, reset_date")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (readError) {
-    console.warn("[user-usage] client read failed:", readError.message);
+    console.warn("[user-usage] client read failed:", {
+      message: readError.message,
+      code: readError.code,
+      details: readError.details,
+      hint: readError.hint,
+    });
     return;
   }
 
@@ -46,7 +51,12 @@ export async function ensureUserUsageOnClient(userId: string): Promise<void> {
     .single();
 
   if (insertError) {
-    console.warn("[user-usage] client insert failed:", insertError.message);
+    console.warn("[user-usage] client insert failed:", {
+      message: insertError.message,
+      code: insertError.code,
+      details: insertError.details,
+      hint: insertError.hint,
+    });
     return;
   }
 

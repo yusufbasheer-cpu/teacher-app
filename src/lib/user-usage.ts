@@ -7,6 +7,7 @@ export type PlanType =
   | "school_enterprise";
 
 export type UserUsageRow = {
+  id?: string;
   user_id: string;
   plan_type: PlanType;
   generations_used: number;
@@ -14,6 +15,18 @@ export type UserUsageRow = {
   reset_date: string;
   created_at: string;
 };
+
+/** Safe defaults when the usage row cannot be loaded (fail-open for generation). */
+export function defaultFreeUsageSnapshot(): UserUsageSnapshot {
+  return {
+    planType: "free",
+    generationsUsed: 0,
+    generationsLimit: 3,
+    unlimited: false,
+    canGenerate: true,
+    resetDate: firstDayOfNextMonthUtc(),
+  };
+}
 
 export type UserUsageSnapshot = {
   planType: PlanType;

@@ -60,11 +60,12 @@ create policy "Users can delete own active session"
   on public.active_sessions for delete using (auth.uid() = user_id);
 
 create table if not exists public.user_usage (
-  user_id uuid primary key references auth.users(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references auth.users(id) on delete cascade,
   plan_type text not null default 'free',
   generations_used integer not null default 0,
   generations_limit integer not null default 3,
-  reset_date date not null default (date_trunc('month', now())::date),
+  reset_date date not null default ((date_trunc('month', now()) + interval '1 month')::date),
   created_at timestamptz not null default now()
 );
 
