@@ -106,7 +106,7 @@ export function SchoolAdminDashboard() {
   }
 
   const { school, teachers, usage } = data;
-  const seatsLabel = `${school.activeTeachers} of ${school.maxTeachers} teachers`;
+  const seatsLabel = `${school.activeTeachers} of ${school.maxTeachers}`;
 
   return (
     <div className="space-y-8">
@@ -121,31 +121,23 @@ export function SchoolAdminDashboard() {
           {school.name}
         </h1>
         <p className="mt-2 text-sm" style={{ color: "#4A5568" }}>
-          Plan: {formatPlanLabel(school.planType)} · Domain: @{school.emailDomain}
+          Plan: {formatPlanLabel(school.planType)}
         </p>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2">
         <div
           className="rounded-2xl border bg-white p-5 shadow-sm"
           style={{ borderColor: "rgba(0,198,167,0.2)" }}
         >
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#94a3b8" }}>
-            Teachers joined
+            Active teachers
           </p>
           <p className="mt-2 text-2xl font-bold" style={{ color: "#0A1628" }}>
             {seatsLabel}
           </p>
-        </div>
-        <div
-          className="rounded-2xl border bg-white p-5 shadow-sm"
-          style={{ borderColor: "rgba(0,198,167,0.2)" }}
-        >
-          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#94a3b8" }}>
-            Total generations
-          </p>
-          <p className="mt-2 text-2xl font-bold" style={{ color: "#0A1628" }}>
-            {usage.totalGenerationsUsed}
+          <p className="mt-1 text-xs" style={{ color: "#64748b" }}>
+            Teachers joined out of maximum allowed
           </p>
         </div>
         <div
@@ -153,10 +145,13 @@ export function SchoolAdminDashboard() {
           style={{ borderColor: "rgba(0,198,167,0.2)" }}
         >
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#94a3b8" }}>
-            Lesson plans saved
+            School generations this month
           </p>
           <p className="mt-2 text-2xl font-bold" style={{ color: "#0A1628" }}>
-            {usage.totalLessonPlans}
+            {usage.totalGenerationsUsedThisMonth}
+          </p>
+          <p className="mt-1 text-xs" style={{ color: "#64748b" }}>
+            Total generations used by all teachers this month
           </p>
         </div>
       </section>
@@ -169,11 +164,14 @@ export function SchoolAdminDashboard() {
         </h2>
         {teachers.length === 0 ? (
           <p className="text-sm" style={{ color: "#4A5568" }}>
-            No teachers have joined yet. Teachers with an @{school.emailDomain} email will be added
-            automatically when they sign in.
+            No teachers have joined yet. School teachers must sign in with Google using an @
+            {school.emailDomain} account.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border bg-white shadow-sm" style={{ borderColor: "rgba(0,198,167,0.2)" }}>
+          <div
+            className="overflow-x-auto rounded-2xl border bg-white shadow-sm"
+            style={{ borderColor: "rgba(0,198,167,0.2)" }}
+          >
             <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="border-b" style={{ borderColor: "#E2E8F0" }}>
@@ -181,13 +179,7 @@ export function SchoolAdminDashboard() {
                     Email
                   </th>
                   <th className="px-4 py-3 font-semibold" style={{ color: "#0A1628" }}>
-                    Joined
-                  </th>
-                  <th className="px-4 py-3 font-semibold" style={{ color: "#0A1628" }}>
-                    Generations
-                  </th>
-                  <th className="px-4 py-3 font-semibold" style={{ color: "#0A1628" }}>
-                    Lesson plans
+                    Join date
                   </th>
                   <th className="px-4 py-3 font-semibold" style={{ color: "#0A1628" }}>
                     Actions
@@ -196,20 +188,16 @@ export function SchoolAdminDashboard() {
               </thead>
               <tbody>
                 {teachers.map((teacher) => (
-                  <tr key={teacher.userId} className="border-b last:border-b-0" style={{ borderColor: "#E2E8F0" }}>
+                  <tr
+                    key={teacher.userId}
+                    className="border-b last:border-b-0"
+                    style={{ borderColor: "#E2E8F0" }}
+                  >
                     <td className="px-4 py-3" style={{ color: "#4A5568" }}>
                       {teacher.email}
                     </td>
                     <td className="px-4 py-3" style={{ color: "#4A5568" }}>
                       {new Date(teacher.joinedAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3" style={{ color: "#4A5568" }}>
-                      {teacher.generationsLimit < 0
-                        ? `${teacher.generationsUsed} (unlimited)`
-                        : `${teacher.generationsUsed} / ${teacher.generationsLimit}`}
-                    </td>
-                    <td className="px-4 py-3" style={{ color: "#4A5568" }}>
-                      {teacher.lessonPlansCount}
                     </td>
                     <td className="px-4 py-3">
                       <button
@@ -218,7 +206,7 @@ export function SchoolAdminDashboard() {
                         onClick={() => void onRemoveTeacher(teacher.userId, teacher.email)}
                         className="text-sm font-medium text-red-600 hover:underline disabled:opacity-50"
                       >
-                        {removingId === teacher.userId ? "Removing…" : "Remove"}
+                        {removingId === teacher.userId ? "Removing…" : "Remove teacher"}
                       </button>
                     </td>
                   </tr>

@@ -69,6 +69,11 @@ export function isUnlimitedPlan(plan: PlanType): boolean {
   return SCHOOL_PLANS.includes(plan) || getGenerationsLimitForPlan(plan) === null;
 }
 
+/** Pro Plus and all school plans (unlimited generations + full product tier). */
+export function hasProPlusAccess(plan: PlanType): boolean {
+  return plan === "pro_plus" || SCHOOL_PLANS.includes(plan);
+}
+
 function formatYmd(date: Date): string {
   const y = date.getUTCFullYear();
   const m = String(date.getUTCMonth() + 1).padStart(2, "0");

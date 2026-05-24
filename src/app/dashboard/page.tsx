@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { completePostAuthLogin } from "@/lib/auth-post-login";
+import { completeGooglePostAuthLogin } from "@/lib/auth-post-login";
 import { supabase } from "@/lib/supabase";
 
 /** OAuth redirect target — registers session then sends teachers to the app. */
@@ -22,7 +22,7 @@ export default function DashboardPage() {
         return;
       }
 
-      const postAuth = await completePostAuthLogin(session.user.id);
+      const postAuth = await completeGooglePostAuthLogin(session.user.id);
       if (!postAuth.ok) {
         setStatus(postAuth.message);
         router.replace(`/auth?error=${encodeURIComponent(postAuth.message)}`);

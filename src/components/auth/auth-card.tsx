@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
-import { completePostAuthLogin } from "@/lib/auth-post-login";
+import { completeEmailPostAuthLogin } from "@/lib/auth-post-login";
 import { supabase } from "@/lib/supabase";
 
 type AuthMode = "login" | "signup";
@@ -113,7 +113,7 @@ export function AuthCard() {
         if (signUpError) throw signUpError;
 
         if (data.session?.user) {
-          const postAuth = await completePostAuthLogin(data.session.user.id);
+          const postAuth = await completeEmailPostAuthLogin(data.session.user.id);
           if (!postAuth.ok) {
             setError(postAuth.message);
             return;
@@ -137,7 +137,7 @@ export function AuthCard() {
           data: { session },
         } = await supabase.auth.getSession();
         if (session?.user) {
-          const postAuth = await completePostAuthLogin(session.user.id);
+          const postAuth = await completeEmailPostAuthLogin(session.user.id);
           if (!postAuth.ok) {
             setError(postAuth.message);
             return;
@@ -188,6 +188,10 @@ export function AuthCard() {
         )}
         <span>{googleLoading ? "Connecting…" : "Continue with Google"}</span>
       </button>
+
+      <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: "#64748b" }}>
+        School teachers: Sign in with your school Google account to access your school plan
+      </p>
 
       <div className="relative my-6">
         <div

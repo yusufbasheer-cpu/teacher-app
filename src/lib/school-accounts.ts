@@ -24,13 +24,15 @@ export type SchoolTeacherRow = {
   joined_at: string;
 };
 
-export const SCHOOL_MAX_TEACHERS_MESSAGE =
-  "Your school has reached the maximum number of teachers. Please contact your school administrator.";
-
-export const SCHOOL_WELCOME_MESSAGE =
-  "Welcome! You have been added to your school account.";
-
 export const SCHOOL_WELCOME_SESSION_KEY = "layah_school_welcome";
+
+export function buildSchoolMaxTeachersMessage(adminEmail: string): string {
+  return `Your school has reached the maximum number of teacher accounts. Please contact your school administrator at ${adminEmail}`;
+}
+
+export function buildSchoolWelcomeMessage(schoolName: string): string {
+  return `Welcome to Layah! You have been added to your school account - ${schoolName}`;
+}
 
 export function extractEmailDomain(email: string): string | null {
   const trimmed = email.trim().toLowerCase();
@@ -48,6 +50,12 @@ export function isSchoolPlanType(value: string): value is SchoolPlanType {
   return value === "school_starter" || value === "school_pro" || value === "school_enterprise";
 }
 
-export function schoolPlanGenerationsLimit(plan: SchoolPlanType): number {
+/** Unlimited generations for all school plans. */
+export function schoolPlanGenerationsLimit(_plan: SchoolPlanType): number {
   return -1;
+}
+
+/** School teachers receive the same product access as Pro Plus subscribers. */
+export function schoolPlanHasProPlusFeatures(_plan: SchoolPlanType): boolean {
+  return true;
 }

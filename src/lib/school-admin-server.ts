@@ -1,16 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
-import { isSchoolAdminEmail } from "@/lib/school-enrollment-server";
 import { isSchoolPlanType, type SchoolAccountRow } from "@/lib/school-accounts";
+import { isSchoolAdminEmail } from "@/lib/school-enrollment-server";
 import { firstDayOfNextMonthUtc } from "@/lib/user-usage";
 
 export type SchoolAdminTeacher = {
   userId: string;
   email: string;
   joinedAt: string;
-  generationsUsed: number;
-  generationsLimit: number;
-  lessonPlansCount: number;
 };
 
 export type SchoolAdminDashboard = {
@@ -25,8 +22,7 @@ export type SchoolAdminDashboard = {
   };
   teachers: SchoolAdminTeacher[];
   usage: {
-    totalGenerationsUsed: number;
-    totalLessonPlans: number;
+    totalGenerationsUsedThisMonth: number;
     teacherCount: number;
   };
 };
@@ -60,48 +56,24 @@ export async function getSchoolAdminDashboard(
   }
 
   const userIds = (teachers ?? []).map((t) => t.user_id as string);
-  const usageByUser = new Map<string, { generations_used: number; generations_limit: number }>();
-  const lessonCountByUser = new Map<string, number>();
+  let totalGenerationsUsedThisMonth = 0;
 
   if (userIds.length > 0) {
     const { data: usageRows } = await admin
       .from("user_usage")
-      .select("user_id, generations_used, generations_limit")
+      .select("user_id, generations_used")
       .in("user_id", userIds);
 
     for (const row of usageRows ?? []) {
-      usageByUser.set(row.user_id as string, {
-        generations_used: row.generations_used as number,
-        generations_limit: row.generations_limit as number,
-      });
-    }
-
-    const { data: lessonRows } = await admin
-      .from("lesson_plans")
-      .select("user_id")
-      .in("user_id", userIds);
-
-    for (const row of lessonRows ?? []) {
-      const uid = row.user_id as string;
-      lessonCountByUser.set(uid, (lessonCountByUser.get(uid) ?? 0) + 1);
+      totalGenerationsUsedThisMonth += Math.max(0, Number(row.generations_used) || 0);
     }
   }
 
-  const teacherList: SchoolAdminTeacher[] = (teachers ?? []).map((t) => {
-    const uid = t.user_id as string;
-    const usage = usageByUser.get(uid);
-    return {
-      userId: uid,
-      email: t.email as string,
-      joinedAt: t.joined_at as string,
-      generationsUsed: usage?.generations_used ?? 0,
-      generationsLimit: usage?.generations_limit ?? 0,
-      lessonPlansCount: lessonCountByUser.get(uid) ?? 0,
-    };
-  });
-
-  const totalGenerationsUsed = teacherList.reduce((sum, t) => sum + t.generationsUsed, 0);
-  const totalLessonPlans = teacherList.reduce((sum, t) => sum + t.lessonPlansCount, 0);
+  const teacherList: SchoolAdminTeacher[] = (teachers ?? []).map((t) => ({
+    userId: t.user_id as string,
+    email: t.email as string,
+    joinedAt: t.joined_at as string,
+  }));
 
   return {
     school: {
@@ -115,8 +87,7 @@ export async function getSchoolAdminDashboard(
     },
     teachers: teacherList,
     usage: {
-      totalGenerationsUsed,
-      totalLessonPlans,
+      totalGenerationsUsedThisMonth,
       teacherCount: teacherList.length,
     },
   };
@@ -170,9 +141,4 @@ export async function removeTeacherFromSchool(
   }
 
   return { ok: true };
-}
-
-export async function adminManagesAnySchool(adminEmail: string): Promise<boolean> {
-  const school = await isSchoolAdminEmail(adminEmail);
-  return Boolean(school && isSchoolPlanType(school.plan_type));
 }

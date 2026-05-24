@@ -7,13 +7,17 @@ export type PostAuthLoginResult =
   | { ok: true }
   | { ok: false; message: string };
 
-/** Session registration, school domain enrollment, then usage row if still missing. */
-export async function completePostAuthLogin(userId: string): Promise<PostAuthLoginResult> {
+async function registerSession(userId: string): Promise<void> {
   try {
     await registerActiveSession(userId);
   } catch {
     /* session row optional */
   }
+}
+
+/** Google OAuth: school domain enrollment, then usage row if missing. */
+export async function completeGooglePostAuthLogin(userId: string): Promise<PostAuthLoginResult> {
+  await registerSession(userId);
 
   const enrollment = await runSchoolEnrollment();
   if (!enrollment.ok) {
@@ -21,6 +25,13 @@ export async function completePostAuthLogin(userId: string): Promise<PostAuthLog
     return { ok: false, message: enrollment.message };
   }
 
+  await ensureUserUsageOnClient(userId);
+  return { ok: true };
+}
+
+/** Email/password: no school enrollment — individual accounts only. */
+export async function completeEmailPostAuthLogin(userId: string): Promise<PostAuthLoginResult> {
+  await registerSession(userId);
   await ensureUserUsageOnClient(userId);
   return { ok: true };
 }

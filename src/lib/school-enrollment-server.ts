@@ -1,10 +1,10 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import {
+  buildSchoolMaxTeachersMessage,
   extractEmailDomain,
   isSchoolPlanType,
   normalizeEmailDomain,
-  SCHOOL_MAX_TEACHERS_MESSAGE,
   schoolPlanGenerationsLimit,
   type SchoolAccountRow,
   type SchoolPlanType,
@@ -25,6 +25,17 @@ export type SchoolEnrollmentResult =
       blocked: true;
       message: string;
     };
+
+export function isGoogleAuthUser(user: User): boolean {
+  const providers = user.app_metadata?.providers;
+  if (Array.isArray(providers) && providers.includes("google")) {
+    return true;
+  }
+  if (user.app_metadata?.provider === "google") {
+    return true;
+  }
+  return user.identities?.some((identity) => identity.provider === "google") ?? false;
+}
 
 async function findSchoolByDomain(
   admin: SupabaseClient,
@@ -126,7 +137,7 @@ async function ensureIndividualUsage(admin: SupabaseClient, userId: string): Pro
 
   const { data: existing } = await admin
     .from("user_usage")
-    .select("user_id, plan_type")
+    .select("user_id")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -147,15 +158,22 @@ async function ensureIndividualUsage(admin: SupabaseClient, userId: string): Pro
 }
 
 /**
- * Match email domain to a school, enforce max_teachers, assign school plan on user_usage.
+ * Google sign-in only: match email domain, enforce max_teachers, assign school plan (-1 limit).
+ * active_teachers is updated via DB trigger on school_teachers insert/delete.
  */
 export async function processSchoolEnrollment(
   userId: string,
   email: string,
+  options: { googleOnly: boolean },
 ): Promise<SchoolEnrollmentResult> {
   const admin = getSupabaseServiceRole();
   if (!admin) {
     console.warn("[school-enrollment] SUPABASE_SERVICE_ROLE_KEY missing — skipping school assignment");
+    return { ok: true, blocked: false, individual: true, newlyJoined: false };
+  }
+
+  if (!options.googleOnly) {
+    await ensureIndividualUsage(admin, userId);
     return { ok: true, blocked: false, individual: true, newlyJoined: false };
   }
 
@@ -197,7 +215,7 @@ export async function processSchoolEnrollment(
     return {
       ok: false,
       blocked: true,
-      message: SCHOOL_MAX_TEACHERS_MESSAGE,
+      message: buildSchoolMaxTeachersMessage(school.admin_email),
     };
   }
 
@@ -226,11 +244,12 @@ export async function processSchoolEnrollment(
 
   await upsertSchoolUsage(admin, userId, school.plan_type);
 
-  console.log("[school-enrollment] teacher joined school", {
+  console.log("[school-enrollment] teacher joined school via Google", {
     userId,
     schoolId: school.id,
     schoolName: school.school_name,
     planType: school.plan_type,
+    activeTeachers: school.active_teachers + 1,
   });
 
   return {

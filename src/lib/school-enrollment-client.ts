@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase";
 import { SCHOOL_WELCOME_SESSION_KEY } from "@/lib/school-accounts";
+import { supabase } from "@/lib/supabase";
 
 export type SchoolEnrollmentClientResult =
   | {
@@ -59,7 +59,7 @@ export async function runSchoolEnrollment(): Promise<SchoolEnrollmentClientResul
     return { ok: false, message: body.error ?? "Could not verify school account. Please try again." };
   }
 
-  if (body.newlyJoined && body.welcomeMessage) {
+  if (body.welcomeMessage) {
     try {
       sessionStorage.setItem(SCHOOL_WELCOME_SESSION_KEY, body.welcomeMessage);
     } catch {
