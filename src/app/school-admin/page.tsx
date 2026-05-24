@@ -17,9 +17,16 @@ export default async function SchoolAdminPage() {
     redirect("/auth");
   }
 
+  console.log("[school-admin page] logged-in user email:", user.email);
+  console.log("[school-admin page] user id:", user.id);
+
   const dashboard = await getSchoolAdminDashboard(user.email);
 
   if (!dashboard) {
+    console.log(
+      "[school-admin page] access denied — no dashboard for",
+      JSON.stringify(user.email),
+    );
     redirect("/dashboard?admin_denied=1");
   }
 

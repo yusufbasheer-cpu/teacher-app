@@ -36,6 +36,16 @@ function normalizeAdminEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/** Escape `%` / `_` so ILIKE matches the full email literally (case-insensitive). */
+function escapeIlikePattern(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+function adminLookupSqlForLog(email: string): string {
+  const escaped = email.replace(/'/g, "''");
+  return `SELECT * FROM school_accounts WHERE LOWER(admin_email) = LOWER('${escaped}')`;
+}
+
 /** Service role only — bypasses RLS for reliable admin_email lookup. */
 export async function findSchoolForAdmin(adminEmail: string): Promise<SchoolAccountRow | null> {
   const admin = getSupabaseServiceRole();
@@ -44,19 +54,46 @@ export async function findSchoolForAdmin(adminEmail: string): Promise<SchoolAcco
     return null;
   }
 
+  const rawEmail = adminEmail;
   const normalized = normalizeAdminEmail(adminEmail);
+  const ilikePattern = escapeIlikePattern(normalized);
+
+  console.log("[school-admin] logged-in / lookup email (raw):", JSON.stringify(rawEmail));
+  console.log("[school-admin] email queried against school_accounts:", JSON.stringify(normalized));
+  console.log("[school-admin] equivalent SQL:", adminLookupSqlForLog(normalized));
+
+  // Case-insensitive match: LOWER(admin_email) = LOWER(user email)
   const { data, error } = await admin
     .from("school_accounts")
     .select("*")
-    .eq("admin_email", normalized)
+    .ilike("admin_email", ilikePattern)
     .maybeSingle();
+
+  console.log("[school-admin] school_accounts query result:", {
+    error: error?.message ?? null,
+    rowCount: data ? 1 : 0,
+    row: data
+      ? {
+          id: data.id,
+          admin_email: data.admin_email,
+          plan_type: data.plan_type,
+          school_name: data.school_name,
+        }
+      : null,
+  });
 
   if (error) {
     console.error("[school-admin] school_accounts lookup failed:", error.message);
     return null;
   }
 
-  if (!data || !isSchoolPlanType(data.plan_type)) {
+  if (!data) {
+    console.log("[school-admin] no school_accounts row matched admin email");
+    return null;
+  }
+
+  if (!isSchoolPlanType(data.plan_type)) {
+    console.log("[school-admin] row found but plan_type is not a school plan:", data.plan_type);
     return null;
   }
 
