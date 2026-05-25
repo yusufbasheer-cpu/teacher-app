@@ -9,12 +9,25 @@ export async function middleware(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const pathname = request.nextUrl.pathname;
 
-  // /school-admin is a server page — do not intercept OAuth or auth redirects here.
+  // Server pages — session refresh only, no route interception.
   if (pathname === "/school-admin") {
     let response = NextResponse.next({ request });
     const supabase = createMiddlewareSupabaseClient(request, response);
     await supabase.auth.getUser();
     return response;
+  }
+
+  // /school-register with ?code= should exchange via /auth/callback then return to the register page.
+  if (code && pathname === "/school-register") {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/auth/callback";
+    redirectUrl.searchParams.set("redirect_to", "/school-register?step=2");
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    request.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value);
+    });
+    console.log("[middleware] OAuth code on /school-register → /auth/callback → /school-register?step=2");
+    return redirectResponse;
   }
 
   if (code && pathname !== "/auth/callback") {

@@ -486,6 +486,30 @@ export function PricingPage() {
               <PricingCard key={plan.id} plan={plan} region={region} billing={billing} />
             ))}
           </div>
+          <div className="mt-10 text-center">
+            <Link
+              href="/school-register"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold transition hover:opacity-90"
+              style={{ background: TEAL, color: NAVY }}
+            >
+              <svg
+                className="size-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+              </svg>
+              Get School Plan
+            </Link>
+            <p className="mt-3 text-sm text-white/50">
+              Register your school and our team will set you up within 24 hours
+            </p>
+          </div>
         </section>
 
         <section className="mt-20">

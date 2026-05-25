@@ -41,6 +41,16 @@ export async function GET(request: Request) {
 
   console.log("[auth/callback] User after exchange:", { email, userId });
 
+  const customRedirect = requestUrl.searchParams.get("redirect_to");
+
+  if (customRedirect) {
+    console.log("[auth/callback] custom redirect_to:", customRedirect);
+    if (email && userId) {
+      await applySchoolPlanForEmail(userId, email, supabase);
+    }
+    return NextResponse.redirect(new URL(customRedirect, origin).toString());
+  }
+
   const redirectUrl = new URL("/dashboard", origin);
   redirectUrl.searchParams.set("school_check", "1");
 
