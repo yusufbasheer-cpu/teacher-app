@@ -261,7 +261,7 @@ function PricingCard({
 
   return (
     <article
-      className={`layah-tilt-card relative flex flex-col rounded-3xl p-7 shadow-sm transition sm:p-8 ${
+      className={`relative flex flex-col rounded-3xl p-7 shadow-sm transition hover:shadow-lg sm:p-8 ${
         isFeatured ? "lg:scale-[1.02] lg:shadow-xl" : ""
       }`}
       style={
@@ -520,7 +520,7 @@ export function PricingPage() {
             {FAQ.map((item) => (
               <details
                 key={item.q}
-                className="group layah-tilt-card rounded-2xl border bg-white p-5 shadow-sm open:shadow-md"
+                className="group rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md open:shadow-md"
                 style={{ borderColor: "rgba(0,198,167,0.25)" }}
               >
                 <summary

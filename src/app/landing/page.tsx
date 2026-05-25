@@ -482,7 +482,7 @@ function FeatureCard({
 }) {
   return (
     <div
-      className="layah-tilt-card rounded-2xl bg-white p-8 shadow-sm transition hover:shadow-md"
+      className="rounded-2xl bg-white p-8 shadow-sm transition hover:shadow-md"
       style={{ border: "1px solid #E2E8F0" }}
     >
       <div
@@ -512,7 +512,7 @@ function StepCard({
 }) {
   return (
     <div
-      className="layah-tilt-card relative rounded-2xl p-8"
+      className="relative rounded-2xl p-8 transition hover:shadow-md"
       style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
     >
       {/* Number */}

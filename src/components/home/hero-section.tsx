@@ -55,7 +55,7 @@ export function HeroSection() {
         </div>
 
         <div
-          className="layah-tilt-card rounded-3xl border bg-white p-6 shadow-sm md:p-7"
+          className="rounded-3xl border bg-white p-6 shadow-sm transition hover:shadow-md md:p-7"
           style={{ borderColor: "rgba(0,198,167,0.2)" }}
         >
           <h2 className="text-lg font-semibold" style={{ color: "#0A1628" }}>
