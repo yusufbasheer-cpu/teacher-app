@@ -16,11 +16,19 @@ create table if not exists public.school_registration_requests (
   created_at timestamptz not null default now()
 );
 
+-- Add status column to school_accounts if missing (for approved registrations).
+alter table public.school_accounts
+  add column if not exists status text not null default 'active';
+
+-- RLS: users can read their own registration requests.
 alter table public.school_registration_requests enable row level security;
 
+drop policy if exists "Users read own registration" on public.school_registration_requests;
 create policy "Users read own registration"
   on public.school_registration_requests for select
   to authenticated
   using (admin_user_id = auth.uid());
 
-grant select on table public.school_registration_requests to authenticated;
+-- Service role bypasses RLS, but grant for safety.
+grant select, insert on table public.school_registration_requests to authenticated;
+grant all on table public.school_registration_requests to service_role;

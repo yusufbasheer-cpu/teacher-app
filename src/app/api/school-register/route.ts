@@ -44,29 +44,52 @@ export async function POST(req: Request) {
   const admin = getSupabaseServiceRole();
   if (!admin) {
     console.error("[school-register] SUPABASE_SERVICE_ROLE_KEY not configured");
-    return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Server configuration error: service role key missing." },
+      { status: 500 },
+    );
   }
 
-  const { error: insertError } = await admin
+  const insertPayload = {
+    admin_email: adminEmail.trim().toLowerCase(),
+    admin_user_id: adminUserId || null,
+    school_name: schoolName.trim(),
+    email_domain: emailDomain.trim().toLowerCase(),
+    country: country.trim(),
+    num_teachers: numTeachers,
+    phone: (phone ?? "").trim(),
+    how_heard: (howHeard ?? "").trim(),
+    plan_selected: planSelected,
+    plan_price: (planPrice ?? "").trim(),
+    status: "pending",
+  };
+
+  console.log("[school-register] insert payload:", JSON.stringify(insertPayload, null, 2));
+
+  const { data: insertData, error: insertError } = await admin
     .from("school_registration_requests")
-    .insert({
-      admin_email: adminEmail.trim().toLowerCase(),
-      admin_user_id: adminUserId || null,
-      school_name: schoolName.trim(),
-      email_domain: emailDomain.trim().toLowerCase(),
-      country: country.trim(),
-      num_teachers: numTeachers,
-      phone: phone.trim(),
-      how_heard: howHeard.trim(),
-      plan_selected: planSelected,
-      plan_price: planPrice,
-      status: "pending",
-    });
+    .insert(insertPayload)
+    .select("id")
+    .maybeSingle();
 
   if (insertError) {
-    console.error("[school-register] insert failed:", insertError.message);
-    return NextResponse.json({ error: "Could not save registration." }, { status: 500 });
+    console.error("[school-register] insert failed:", {
+      message: insertError.message,
+      code: insertError.code,
+      details: insertError.details,
+      hint: insertError.hint,
+    });
+    return NextResponse.json(
+      {
+        error: `Could not save registration: ${insertError.message}`,
+        code: insertError.code,
+        hint: insertError.hint ?? null,
+      },
+      { status: 500 },
+    );
   }
+
+  console.log("[school-register] saved successfully, id:", insertData?.id);
 
   try {
     await sendNotificationEmail({
