@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sendEmail } from "@/lib/send-email";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
@@ -111,35 +112,85 @@ export async function POST(req: Request) {
 }
 
 async function sendNotificationEmail(data: Omit<RegistrationBody, "adminUserId">) {
-  const admin = getSupabaseServiceRole();
-  if (!admin) return;
+  const subject = `New School Registration - ${data.schoolName}`;
 
-  const subject = `New School Registration: ${data.schoolName}`;
-  const body = [
-    `School Name: ${data.schoolName}`,
-    `Admin Email: ${data.adminEmail}`,
-    `Email Domain: ${data.emailDomain}`,
-    `Country: ${data.country}`,
-    `Number of Teachers: ${data.numTeachers}`,
-    `Phone: ${data.phone || "Not provided"}`,
-    `How They Heard: ${data.howHeard || "Not provided"}`,
-    `Plan Selected: ${data.planSelected}`,
-    `Price: ${data.planPrice || "N/A"}`,
+  const text = [
+    "New School Registration Request",
+    "================================",
     "",
-    `Submitted at: ${new Date().toISOString()}`,
+    `School Name:        ${data.schoolName}`,
+    `Email Domain:       @${data.emailDomain}`,
+    `Plan Selected:      ${data.planSelected}`,
+    `Price:              ${data.planPrice || "N/A"}`,
+    `Number of Teachers: ${data.numTeachers}`,
+    `Country:            ${data.country}`,
+    `Phone:              ${data.phone || "Not provided"}`,
+    `Admin Email:        ${data.adminEmail}`,
+    `How They Heard:     ${data.howHeard || "Not provided"}`,
+    "",
+    `Submitted at:       ${new Date().toISOString()}`,
   ].join("\n");
 
-  const { error } = await admin.functions.invoke("send-email", {
-    body: {
-      to: "yusuf.basheer@gmail.com",
-      subject,
-      text: body,
-    },
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: #0A1628; padding: 24px; border-radius: 12px 12px 0 0;">
+        <h1 style="color: #00C6A7; margin: 0; font-size: 20px;">New School Registration</h1>
+        <p style="color: rgba(255,255,255,0.7); margin: 8px 0 0; font-size: 14px;">A new school has registered on Layah.ai</p>
+      </div>
+      <div style="background: #ffffff; border: 1px solid #E2E8F0; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr style="border-bottom: 1px solid #F1F5F9;">
+            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">School Name</td>
+            <td style="padding: 12px 8px; color: #0A1628; font-weight: 700;">${data.schoolName}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #F1F5F9;">
+            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Email Domain</td>
+            <td style="padding: 12px 8px; color: #0A1628;">@${data.emailDomain}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #F1F5F9;">
+            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Plan Selected</td>
+            <td style="padding: 12px 8px; color: #00C6A7; font-weight: 700;">${data.planSelected}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #F1F5F9;">
+            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Price</td>
+            <td style="padding: 12px 8px; color: #0A1628;">${data.planPrice || "N/A"}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #F1F5F9;">
+            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Number of Teachers</td>
+            <td style="padding: 12px 8px; color: #0A1628;">${data.numTeachers}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #F1F5F9;">
+            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Country</td>
+            <td style="padding: 12px 8px; color: #0A1628;">${data.country}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #F1F5F9;">
+            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Phone</td>
+            <td style="padding: 12px 8px; color: #0A1628;">${data.phone || "Not provided"}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #F1F5F9;">
+            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Admin Email</td>
+            <td style="padding: 12px 8px; color: #0A1628;">${data.adminEmail}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">How They Heard</td>
+            <td style="padding: 12px 8px; color: #0A1628;">${data.howHeard || "Not provided"}</td>
+          </tr>
+        </table>
+        <p style="margin: 20px 0 0; font-size: 12px; color: #94a3b8;">
+          Submitted at ${new Date().toISOString()}
+        </p>
+      </div>
+    </div>
+  `.trim();
+
+  const result = await sendEmail({
+    to: "info@layah.in",
+    subject,
+    text,
+    html,
   });
 
-  if (error) {
-    console.warn("[school-register] Edge function send-email failed:", error.message);
-    console.log("[school-register] Would have sent email to yusuf.basheer@gmail.com:");
-    console.log(body);
+  if (!result.ok) {
+    console.warn("[school-register] notification email not sent:", result.error);
   }
 }

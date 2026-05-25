@@ -19,6 +19,7 @@
     "jszip": "latest",
     "mammoth": "^1.12.0",
     "next": "latest",
+    "nodemailer": "^8.0.8",
     "pdf-parse": "^1.1.1",
     "pexels": "^1.4.0",
     "pptxgenjs": "latest",
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "latest",
     "@types/node": "latest",
+    "@types/nodemailer": "^8.0.0",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "latest",
     "@types/react-dom": "latest",
