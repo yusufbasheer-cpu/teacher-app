@@ -66,7 +66,7 @@ const SECTIONS: SectionDef[] = [
   {
     key: "afl",
     sectionKey: "AFL Activity Sheets",
-    label: "AFL Activity Sheets",
+    label: "Activity Sheet AFL",
     keywords: ["afl activity", "afl", "activity sheet", "printable"],
   },
 ];

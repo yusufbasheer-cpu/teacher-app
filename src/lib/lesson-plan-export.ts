@@ -1311,7 +1311,7 @@ export async function buildTeacherPackageZipBuffer(params: {
     { file: `${base}-assessment.docx`, title: "Assessment Questions", key: "Assessment Questions" },
     { file: `${base}-homework.docx`, title: "Homework", key: "Homework Task" },
     { file: `${base}-teacher-notes.docx`, title: "Teacher Notes", key: "Teacher Notes" },
-    { file: `${base}-afl-activity-sheets.docx`, title: "AFL Activity Sheets", key: "AFL Activity Sheets" },
+    { file: `${base}-afl-activity-sheets.docx`, title: "Activity Sheet AFL", key: "AFL Activity Sheets" },
   ];
 
   for (const part of docxParts) {

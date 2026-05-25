@@ -199,7 +199,7 @@ const ALL_AFL_SPOTLIGHT: SpotlightEntry[] = AFL_PHASE_GROUPS.flatMap((g) =>
 
 const QUICK_TIPS = [
   "Be specific with your topic for better, more accurate content.",
-  "Select AFL tools to get classroom-ready activities in your PPT.",
+  "Select Activity Sheet AFL tools to get classroom-ready activities in your PPT.",
   "Use the UAE Framework toggle for inspection-ready lesson plans.",
   "Upload your own content so the AI uses it as the primary source.",
   "Select only the sections you need to generate faster.",
@@ -1016,7 +1016,7 @@ export function LessonPlanGenerator() {
               onClick={() => setAflPanelOpen(true)}
               className="w-full rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left text-sm font-semibold text-violet-950 shadow-sm transition hover:bg-violet-100"
             >
-              Add AFL Tools to Your Lesson
+              Add Activity Sheet AFL Tools to Your Lesson
               <span className="mt-1 block text-xs font-normal text-violet-800/90">
                 Optional: pick Assessment for Learning tools by lesson phase. They are sent to the AI
                 and appear in your lesson plan and PowerPoint.
@@ -1028,7 +1028,7 @@ export function LessonPlanGenerator() {
             <div className="flex flex-col gap-3 border-b border-violet-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-slate-900">
-                  Select AFL Tools for Your Lesson
+                  Select Activity Sheet AFL Tools for Your Lesson
                 </h3>
                 <p className="mt-1 text-xs text-slate-600">
                   Tick the tools you want in each phase. They are woven into the written plan and

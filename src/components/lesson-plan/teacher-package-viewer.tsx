@@ -439,7 +439,7 @@ export function TeacherPackageViewer({
       "/api/lesson-plan/export/docx",
       {
         ...baseMeta,
-        documentTitle: "AFL Activity Sheets",
+        documentTitle: "Activity Sheet AFL",
         fileBaseName: "afl-activity-sheets",
         content: lessonPlan["AFL Activity Sheets"] ?? "",
       },
@@ -541,7 +541,7 @@ export function TeacherPackageViewer({
                 onClick={onDownloadAflSheets}
                 className="animate-slide-up stagger-7 flex min-h-[3rem] flex-col justify-center rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-violet-900 shadow-sm transition hover:bg-violet-50 hover:shadow-md disabled:opacity-50"
               >
-                {busy === "afl-sheets" ? "Preparing…" : "Download AFL Activity Sheets"}
+                {busy === "afl-sheets" ? "Preparing…" : "Download Activity Sheet AFL"}
                 <span className="mt-0.5 block text-xs font-normal text-slate-500">
                   Printable student handouts · Word (.docx)
                 </span>

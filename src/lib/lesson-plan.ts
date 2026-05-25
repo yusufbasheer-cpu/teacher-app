@@ -19,7 +19,7 @@ export const SECTION_TAB_LABELS: Record<string, string> = {
   "Assessment Questions": "Assessment Questions",
   "Homework Task": "Homework",
   "Teacher Notes": "Teacher Notes",
-  "AFL Activity Sheets": "AFL Activity Sheets",
+  "AFL Activity Sheets": "Activity Sheet AFL",
 };
 
 export function getSectionTabLabel(sectionKey: string): string {
@@ -211,7 +211,7 @@ export const GENERATION_CHECKBOX_LABELS: Record<TeacherPackageSectionKey, string
   "Assessment Questions": "Assessment Questions",
   "Homework Task": "Homework Task",
   "Teacher Notes": "Teacher Notes",
-  "AFL Activity Sheets": "AFL Activity Sheets (Printable)",
+  "AFL Activity Sheets": "Activity Sheet AFL (Printable)",
 };
 
 export type LessonPlanInput = {

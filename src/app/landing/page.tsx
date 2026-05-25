@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { LandingNavSound } from "@/components/landing/landing-nav-sound";
+import { StatsSection } from "@/components/home/stats-section";
+import { Footer } from "@/components/layout/footer";
 
 export const metadata: Metadata = {
   title: "Layah.ai — AI Lesson Planning for Teachers",
@@ -205,7 +207,7 @@ export default function LandingPage() {
                 </svg>
               }
               title="Professional PPT Slides"
-              description="Beautiful PowerPoint presentations with proper lesson structure, AFL tools, and differentiated activities — ready to download and present."
+              description="Beautiful PowerPoint presentations with proper lesson structure, Activity Sheet AFL tools, and differentiated activities — ready to download and present."
             />
             {/* Card 3 */}
             <FeatureCard
@@ -221,11 +223,14 @@ export default function LandingPage() {
                 </svg>
               }
               title="Full Resource Pack"
-              description="Worksheets, assessments, homework, teacher notes and AFL activity sheets — all generated together in one complete downloadable package."
+              description="Worksheets, assessments, homework, teacher notes and Activity Sheet AFL — all generated together in one complete downloadable package."
             />
           </div>
         </div>
       </section>
+
+      {/* ── STATS / NUMBERS ── */}
+      <StatsSection />
 
       {/* ── HOW IT WORKS ── */}
       <section
@@ -266,7 +271,7 @@ export default function LandingPage() {
             <StepCard
               number="03"
               title="Download your complete lesson pack"
-              description="Get your lesson plan, PowerPoint, worksheets, assessments, and AFL activity sheets — all ready to use."
+              description="Get your lesson plan, PowerPoint, worksheets, assessments, and Activity Sheet AFL — all ready to use."
             />
           </div>
 
@@ -363,7 +368,7 @@ export default function LandingPage() {
                   "Unlimited lesson plans",
                   "Professional PPT slides",
                   "Full resource packs",
-                  "AFL activity sheets",
+                  "Activity Sheet AFL",
                   "All curricula supported",
                   "Priority generation",
                 ].map((item) => (
@@ -415,56 +420,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ background: "#0A1628" }}>
-        <div className="mx-auto max-w-7xl px-6 py-14">
-          <div className="flex flex-col items-start gap-10 md:flex-row md:items-center md:justify-between">
-            {/* Brand */}
-            <div>
-              <div className="flex items-center gap-2.5">
-                <span
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white"
-                  style={{ background: "#00C6A7" }}
-                >
-                  L
-                </span>
-                <span className="font-layah-logo text-xl font-bold text-white">Layah</span>
-              </div>
-              <p className="mt-3 max-w-xs text-sm text-white/50">
-                AI-powered lesson planning built specifically for teachers.
-              </p>
-            </div>
-
-            {/* Links */}
-            <nav className="flex flex-wrap gap-x-8 gap-y-3">
-              <a href="#features" className="text-sm text-white/50 transition hover:text-white">
-                Features
-              </a>
-              <a href="/pricing" className="text-sm text-white/50 transition hover:text-white">
-                Pricing
-              </a>
-              <a
-                href="mailto:support@layah.in"
-                className="text-sm text-white/50 transition hover:text-white"
-              >
-                Contact
-              </a>
-              <a href="/privacy" className="text-sm text-white/50 transition hover:text-white">
-                Privacy Policy
-              </a>
-              <a href="/terms" className="text-sm text-white/50 transition hover:text-white">
-                Terms of Service
-              </a>
-            </nav>
-          </div>
-
-          <div
-            className="mt-10 border-t pt-8 text-center text-xs text-white/30"
-            style={{ borderColor: "rgba(255,255,255,0.08)" }}
-          >
-            © 2025 Layah. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

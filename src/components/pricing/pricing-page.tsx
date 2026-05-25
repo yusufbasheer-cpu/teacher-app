@@ -39,7 +39,7 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
       "3 Lesson Plans",
       "3 PPT Downloads",
       "3 Worksheets",
-      "Basic AFL Tools",
+      "Basic Activity Sheet AFL",
       "Standard Themes",
       "Email Support",
     ],
@@ -55,7 +55,7 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
     features: [
       "Everything in Free",
       "Unlimited within 30 generations",
-      "All AFL Tools",
+      "All Activity Sheet AFL Tools",
       "All 5 Themes",
       "Question Paper Generator",
       "Blueprint Generator",
