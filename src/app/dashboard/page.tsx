@@ -21,7 +21,7 @@ function DashboardContent() {
       const params =
         typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
 
-      const denied = params?.get("admin_denied") === "1";
+      const denied = params?.get("admin_denied") === "1" || params?.get("access_denied") === "1";
 
       const code = params?.get("code");
       if (code) {

@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Server pages — session refresh only, no route interception.
-  if (pathname === "/school-admin") {
+  if (pathname === "/school-admin" || pathname === "/super-admin") {
     let response = NextResponse.next({ request });
     const supabase = createMiddlewareSupabaseClient(request, response);
     await supabase.auth.getUser();

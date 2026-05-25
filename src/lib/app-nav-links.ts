@@ -13,6 +13,11 @@ export const SCHOOL_ADMIN_NAV_LINK = {
   label: "School Admin",
 } as const;
 
+export const SUPER_ADMIN_NAV_LINK = {
+  href: "/super-admin",
+  label: "Super Admin",
+} as const;
+
 export type AppNavLink = (typeof APP_NAV_LINKS)[number];
 
 export function isNavLinkActive(pathname: string, href: string): boolean {
