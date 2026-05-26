@@ -33,8 +33,8 @@ function XIcon() {
 }
 
 const COMPANY_LINKS = [
-  { label: "About Layah", href: "/" },
-  { label: "Contact Us", href: "mailto:info@layah.in" },
+  { label: "About Layah", href: "/about" },
+  { label: "Contact Us", href: "/contact" },
   { label: "Privacy Policy", href: "/privacy" },
   { label: "Terms of Service", href: "/terms" },
 ];
@@ -48,7 +48,6 @@ const FEATURE_LINKS = [
 
 const SUPPORT_LINKS = [
   { label: "FAQs", href: "/pricing#faq" },
-  { label: "Contact Support", href: "mailto:info@layah.in" },
   { label: "School Plans", href: "/pricing" },
 ];
 

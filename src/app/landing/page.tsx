@@ -43,7 +43,7 @@ export default function LandingPage() {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-8 md:flex">
-            {["Features", "How It Works", "Pricing"].map((item) => (
+            {["Features", "How It Works"].map((item) => (
               <a
                 key={item}
                 href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
@@ -52,6 +52,12 @@ export default function LandingPage() {
                 {item}
               </a>
             ))}
+            <Link
+              href="/pricing"
+              className="text-sm font-medium text-white/75 transition hover:text-white"
+            >
+              Pricing
+            </Link>
             <Link
               href="/auth"
               className="text-sm font-medium text-white/75 transition hover:text-white"
