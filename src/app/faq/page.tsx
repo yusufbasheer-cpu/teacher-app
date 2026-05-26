@@ -154,7 +154,7 @@ export default function FaqPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search questions..."
                 className="w-full rounded-xl border py-3 pl-12 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:ring-2"
-                style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.12)", focusRingColor: TEAL }}
+                style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.12)" }}
               />
             </div>
           </div>
