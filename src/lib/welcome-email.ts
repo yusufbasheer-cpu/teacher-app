@@ -98,26 +98,56 @@ function buildWelcomeHtml(name: string): string {
  * Send the welcome email if this user has never received one.
  * Uses a `welcome_email_sent` flag on the `user_usage` row.
  * Safe to call multiple times — only sends once.
+ * If user_usage row doesn't exist yet, it creates one first.
  */
 export async function sendWelcomeEmailIfNew(
   userId: string,
   email: string,
   displayName?: string,
 ): Promise<void> {
+  console.log(`[welcome-email] Checking welcome email for: ${email} (userId: ${userId})`);
+
   try {
     const admin = getSupabaseServiceRole();
 
-    const { data: row } = await admin
+    const { data: row, error: readErr } = await admin
       .from("user_usage")
       .select("welcome_email_sent")
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (row?.welcome_email_sent) return;
+    if (readErr) {
+      console.error("[welcome-email] Failed to read user_usage:", readErr.message);
+    }
+
+    if (row?.welcome_email_sent) {
+      console.log(`[welcome-email] Already sent to ${email}, skipping`);
+      return;
+    }
+
+    if (!row) {
+      console.log(`[welcome-email] No user_usage row yet for ${email} — creating one`);
+      const { error: insertErr } = await admin.from("user_usage").upsert(
+        {
+          user_id: userId,
+          plan_type: "free",
+          generations_used: 0,
+          generations_limit: 3,
+          reset_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
+          welcome_email_sent: false,
+        },
+        { onConflict: "user_id" },
+      );
+      if (insertErr) {
+        console.error("[welcome-email] Failed to upsert user_usage:", insertErr.message);
+      }
+    }
 
     const firstName = displayName?.split(" ")[0] ?? "";
 
-    await sendEmail({
+    console.log(`[welcome-email] Sending welcome email to: ${email}`);
+
+    const result = await sendEmail({
       to: email,
       subject: "Welcome to Layah! Your AI Teaching Assistant is Ready 🎓",
       text: [
@@ -144,13 +174,19 @@ export async function sendWelcomeEmailIfNew(
       html: buildWelcomeHtml(firstName),
     });
 
-    await admin
-      .from("user_usage")
-      .update({ welcome_email_sent: true })
-      .eq("user_id", userId);
-
-    console.log(`[welcome-email] sent to ${email}`);
+    if (result.ok) {
+      console.log(`[welcome-email] Welcome email sent successfully to ${email}`);
+      const { error: updateErr } = await admin
+        .from("user_usage")
+        .update({ welcome_email_sent: true })
+        .eq("user_id", userId);
+      if (updateErr) {
+        console.error("[welcome-email] Failed to update welcome_email_sent flag:", updateErr.message);
+      }
+    } else {
+      console.error(`[welcome-email] Welcome email failed for ${email}: ${result.error}`);
+    }
   } catch (err) {
-    console.error("[welcome-email] failed:", err);
+    console.error("[welcome-email] Unexpected error:", err);
   }
 }

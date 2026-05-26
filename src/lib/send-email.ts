@@ -25,10 +25,18 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ ok: boolea
   const config = getSmtpConfig();
 
   if (!config) {
-    console.warn("[send-email] SMTP not configured (missing SMTP_HOST, SMTP_USER, SMTP_PASSWORD, or SMTP_FROM)");
+    console.warn("[send-email] SMTP not configured. Env check:", {
+      SMTP_HOST: process.env.SMTP_HOST ? "SET" : "MISSING",
+      SMTP_PORT: process.env.SMTP_PORT ? "SET" : "MISSING",
+      SMTP_USER: process.env.SMTP_USER ? "SET" : "MISSING",
+      SMTP_PASSWORD: process.env.SMTP_PASSWORD ? "SET" : "MISSING",
+      SMTP_FROM: process.env.SMTP_FROM ? "SET" : "MISSING",
+    });
     console.log("[send-email] Would have sent:", { to: options.to, subject: options.subject });
     return { ok: false, error: "SMTP not configured" };
   }
+
+  console.log("[send-email] SMTP configured:", { host: config.host, port: config.port, from: config.from });
 
   const transporter = nodemailer.createTransport({
     host: config.host,

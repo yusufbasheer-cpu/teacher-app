@@ -12,14 +12,16 @@ export async function POST() {
     } = await supabase.auth.getUser();
 
     if (!user?.id || !user?.email) {
+      console.log("[welcome-email API] No authenticated user found");
       return NextResponse.json({ ok: false }, { status: 401 });
     }
 
-    void sendWelcomeEmailIfNew(user.id, user.email, user.user_metadata?.full_name);
+    console.log("[welcome-email API] Triggering welcome email for:", user.email);
+    await sendWelcomeEmailIfNew(user.id, user.email, user.user_metadata?.full_name);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("[welcome-email] API error:", err);
+    console.error("[welcome-email API] error:", err);
     return NextResponse.json({ ok: false }, { status: 500 });
   }
 }
