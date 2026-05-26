@@ -109,6 +109,10 @@ export async function sendWelcomeEmailIfNew(
 
   try {
     const admin = getSupabaseServiceRole();
+    if (!admin) {
+      console.error("[welcome-email] Supabase service role not configured");
+      return;
+    }
 
     const { data: row, error: readErr } = await admin
       .from("user_usage")
