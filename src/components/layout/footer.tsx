@@ -47,7 +47,7 @@ const FEATURE_LINKS = [
 ];
 
 const SUPPORT_LINKS = [
-  { label: "FAQs", href: "/pricing#faq" },
+  { label: "FAQs", href: "/faq" },
   { label: "School Plans", href: "/pricing" },
 ];
 

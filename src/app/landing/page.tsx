@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { LandingNavSound } from "@/components/landing/landing-nav-sound";
 import { StatsSection } from "@/components/home/stats-section";
+import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { Footer } from "@/components/layout/footer";
 
 export const metadata: Metadata = {
@@ -234,6 +235,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── TESTIMONIALS ── */}
+      <TestimonialsSection />
 
       {/* ── STATS / NUMBERS ── */}
       <StatsSection />
