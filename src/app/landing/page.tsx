@@ -314,92 +314,108 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
+          <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {/* Free */}
-            <div
-              className="rounded-2xl border bg-white p-8 shadow-sm"
-              style={{ borderColor: "#E2E8F0" }}
-            >
-              <p className="text-sm font-semibold uppercase tracking-widest" style={{ color: "#4A5568" }}>
+            <div className="rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-md" style={{ borderColor: "#E2E8F0" }}>
+              <p className="text-sm font-semibold uppercase tracking-widest" style={{ color: "#4A5568" }}>Free</p>
+              <p className="mt-3 text-3xl font-bold" style={{ color: "#0A1628" }}>
                 Free
               </p>
-              <p className="mt-3 text-4xl font-bold" style={{ color: "#0A1628" }}>
-                $0
-                <span className="text-base font-normal text-slate-400"> / month</span>
-              </p>
-              <ul className="mt-8 space-y-4">
-                {["5 lesson plans per month", "PowerPoint generation", "Basic worksheets", "PDF & Word export"].map(
-                  (item) => (
-                    <li key={item} className="flex items-center gap-3 text-sm" style={{ color: "#4A5568" }}>
-                      <span
-                        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full"
-                        style={{ background: "rgba(0,198,167,0.15)" }}
-                      >
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                          <path d="M2 5l2 2 4-4" stroke="#00C6A7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </span>
-                      {item}
-                    </li>
-                  ),
-                )}
-              </ul>
-              <Link
-                href="/auth"
-                className="mt-8 flex min-h-11 items-center justify-center rounded-lg border text-sm font-semibold transition hover:bg-slate-50"
-                style={{ borderColor: "#00C6A7", color: "#00C6A7" }}
-              >
-                Get Started Free
-              </Link>
-            </div>
-
-            {/* Pro */}
-            <div
-              className="relative rounded-2xl p-8 text-white shadow-xl"
-              style={{ background: "linear-gradient(135deg, #0A1628 0%, #0e2647 100%)" }}
-            >
-              <span
-                className="absolute right-6 top-6 rounded-full px-3 py-1 text-xs font-semibold text-white"
-                style={{ background: "#00C6A7" }}
-              >
-                Most Popular
-              </span>
-              <p className="text-sm font-semibold uppercase tracking-widest text-white/60">Pro</p>
-              <p className="mt-3 text-4xl font-bold text-white">
-                $12
-                <span className="text-base font-normal text-white/50"> / month</span>
-              </p>
-              <ul className="mt-8 space-y-4">
-                {[
-                  "Unlimited lesson plans",
-                  "Professional PPT slides",
-                  "Full resource packs",
-                  "Activity Sheet AFL",
-                  "All curricula supported",
-                  "Priority generation",
-                ].map((item) => (
-                  <li key={item} className="flex items-center gap-3 text-sm text-white/80">
-                    <span
-                      className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full"
-                      style={{ background: "rgba(0,198,167,0.25)" }}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5l2 2 4-4" stroke="#00C6A7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+              <p className="mt-1 text-xs" style={{ color: "#94A3B8" }}>Forever</p>
+              <p className="mt-4 text-sm font-medium" style={{ color: "#00C6A7" }}>3 generations / month</p>
+              <ul className="mt-6 space-y-3">
+                {["3 Lesson Plans", "3 PPT Downloads", "3 Worksheets", "Basic Activity Sheet AFL", "Standard Themes"].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm" style={{ color: "#4A5568" }}>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full" style={{ background: "rgba(0,198,167,0.15)" }}>
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="#00C6A7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </span>
                     {item}
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/auth"
-                className="mt-8 flex min-h-11 items-center justify-center rounded-lg text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
-                style={{ background: "#00C6A7" }}
-              >
+              <Link href="/auth" className="mt-6 flex min-h-11 items-center justify-center rounded-lg border text-sm font-semibold transition hover:bg-slate-50" style={{ borderColor: "#00C6A7", color: "#00C6A7" }}>
+                Get Started Free
+              </Link>
+            </div>
+
+            {/* Pro */}
+            <div className="relative rounded-2xl p-6 text-white shadow-xl" style={{ background: "linear-gradient(135deg, #0A1628 0%, #0e2647 100%)" }}>
+              <span className="absolute right-4 top-4 rounded-full px-2.5 py-1 text-xs font-semibold text-white" style={{ background: "#00C6A7" }}>Most Popular</span>
+              <p className="text-sm font-semibold uppercase tracking-widest text-white/60">Pro</p>
+              <p className="mt-3 text-3xl font-bold text-white">
+                15 AED
+                <span className="text-sm font-normal text-white/50"> / month</span>
+              </p>
+              <p className="mt-1 text-xs text-white/40">Billed monthly</p>
+              <p className="mt-4 text-sm font-medium" style={{ color: "#00C6A7" }}>30 generations / month</p>
+              <ul className="mt-6 space-y-3">
+                {["Everything in Free", "All Activity Sheet AFL Tools", "All 5 Themes", "Question Paper Generator", "Differentiated Worksheet Pack", "Priority Support"].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-white/80">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full" style={{ background: "rgba(0,198,167,0.25)" }}>
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="#00C6A7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/auth" className="mt-6 flex min-h-11 items-center justify-center rounded-lg text-sm font-semibold text-white shadow-lg transition hover:opacity-90" style={{ background: "#00C6A7" }}>
                 Start Pro Plan
               </Link>
             </div>
+
+            {/* Pro Plus */}
+            <div className="rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-md" style={{ borderColor: "rgba(0,198,167,0.3)" }}>
+              <span className="mb-2 inline-block rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(0,198,167,0.12)", color: "#00C6A7" }}>Best Value</span>
+              <p className="text-sm font-semibold uppercase tracking-widest" style={{ color: "#4A5568" }}>Pro Plus</p>
+              <p className="mt-3 text-3xl font-bold" style={{ color: "#0A1628" }}>
+                25 AED
+                <span className="text-sm font-normal text-slate-400"> / month</span>
+              </p>
+              <p className="mt-1 text-xs" style={{ color: "#94A3B8" }}>Billed monthly</p>
+              <p className="mt-4 text-sm font-medium" style={{ color: "#00C6A7" }}>60 generations / month</p>
+              <ul className="mt-6 space-y-3">
+                {["Everything in Pro", "60 generations per month", "Advanced Analytics", "Early Access to New Features"].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm" style={{ color: "#4A5568" }}>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full" style={{ background: "rgba(0,198,167,0.15)" }}>
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="#00C6A7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/auth" className="mt-6 flex min-h-11 items-center justify-center rounded-lg text-sm font-semibold text-white shadow-lg transition hover:opacity-90" style={{ background: "#00C6A7" }}>
+                Start Pro Plus
+              </Link>
+            </div>
+
+            {/* School Plans */}
+            <div className="rounded-2xl p-6 shadow-sm transition hover:shadow-md" style={{ background: "linear-gradient(135deg, rgba(0,198,167,0.08), rgba(10,22,40,0.04))", border: "1px solid rgba(0,198,167,0.2)" }}>
+              <p className="text-sm font-semibold uppercase tracking-widest" style={{ color: "#00C6A7" }}>School Plans</p>
+              <p className="mt-3 text-3xl font-bold" style={{ color: "#0A1628" }}>
+                149 AED
+                <span className="text-sm font-normal text-slate-400"> / month</span>
+              </p>
+              <p className="mt-1 text-xs" style={{ color: "#94A3B8" }}>Starting from</p>
+              <p className="mt-4 text-sm font-medium" style={{ color: "#00C6A7" }}>Unlimited for all teachers</p>
+              <ul className="mt-6 space-y-3">
+                {["Everything in Pro Plus", "HOD Dashboard", "School Branding on PPTs", "Usage Analytics", "Dedicated Support"].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm" style={{ color: "#4A5568" }}>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full" style={{ background: "rgba(0,198,167,0.15)" }}>
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="#00C6A7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/pricing" className="mt-6 flex min-h-11 items-center justify-center rounded-lg border text-sm font-semibold transition hover:bg-slate-50" style={{ borderColor: "#00C6A7", color: "#00C6A7" }}>
+                View School Plans
+              </Link>
+            </div>
           </div>
+
+          <p className="mx-auto mt-8 text-center text-sm" style={{ color: "#94A3B8" }}>
+            All plans include PDF &amp; Word export. <Link href="/pricing" className="font-medium underline transition hover:opacity-80" style={{ color: "#00C6A7" }}>See full plan comparison →</Link>
+          </p>
         </div>
       </section>
 
