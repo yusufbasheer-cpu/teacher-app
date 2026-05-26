@@ -42,5 +42,6 @@ export async function completeGooglePostAuthLogin(
 export async function completeEmailPostAuthLogin(userId: string): Promise<PostAuthLoginResult> {
   await registerSession(userId);
   await ensureUserUsageOnClient(userId);
+  fetch("/api/welcome-email", { method: "POST" }).catch(() => {});
   return { ok: true };
 }

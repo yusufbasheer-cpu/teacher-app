@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { applySchoolPlanForEmail } from "@/lib/auth-callback-school";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { sendWelcomeEmailIfNew } from "@/lib/welcome-email";
 
 export const runtime = "nodejs";
 
@@ -47,6 +48,7 @@ export async function GET(request: Request) {
     console.log("[auth/callback] custom redirect_to:", customRedirect);
     if (email && userId) {
       await applySchoolPlanForEmail(userId, email, supabase);
+      void sendWelcomeEmailIfNew(userId, email, user?.user_metadata?.full_name);
     }
     return NextResponse.redirect(new URL(customRedirect, origin).toString());
   }
@@ -62,6 +64,7 @@ export async function GET(request: Request) {
     if (result.welcomeMessage) {
       redirectUrl.searchParams.set("school_welcome", encodeURIComponent(result.welcomeMessage));
     }
+    void sendWelcomeEmailIfNew(userId, email, user?.user_metadata?.full_name);
   }
 
   redirectUrl.searchParams.set("school_matched", schoolMatched);
