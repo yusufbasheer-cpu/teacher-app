@@ -203,18 +203,14 @@ function fireConfetti() {
 // ── Logo ──────────────────────────────────────────────────────────────────────
 function LayahLogo() {
   return (
-    <div className="flex items-center gap-2.5">
-      <div
-        className="flex h-9 w-9 items-center justify-center rounded-xl"
-        style={{ background: "#00C6A7" }}
-      >
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-          <path d="M11 3L4 8v10h5v-5h4v5h5V8L11 3z" fill="white" opacity="0.95" />
-        </svg>
-      </div>
-      <span className="font-layah-logo text-xl font-bold tracking-tight text-white">
-        Layah<span style={{ color: "#00C6A7" }}>.ai</span>
-      </span>
+    <div className="flex items-center justify-center">
+      <img
+        src="/Logo.png"
+        alt="Layah"
+        height={40}
+        className="h-10 w-auto"
+        style={{ height: 40, width: "auto" }}
+      />
     </div>
   );
 }

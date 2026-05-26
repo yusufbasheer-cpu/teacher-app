@@ -31,14 +31,14 @@ export default function LandingPage() {
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           {/* Logo */}
-          <Link href="/landing" className="flex items-center gap-2.5">
-            <span
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white"
-              style={{ background: "#00C6A7" }}
-            >
-              L
-            </span>
-            <span className="font-layah-logo text-xl font-bold text-white tracking-tight">Layah</span>
+          <Link href="/landing" className="inline-flex shrink-0 items-center">
+            <img
+              src="/Logo.png"
+              alt="Layah"
+              height={40}
+              className="h-10 w-auto"
+              style={{ height: 40, width: "auto" }}
+            />
           </Link>
 
           {/* Desktop nav */}
