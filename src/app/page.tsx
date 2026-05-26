@@ -1,11 +1,5 @@
-import { FeaturesSection } from "@/components/home/features-section";
-import { HeroSection } from "@/components/home/hero-section";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <main className="min-h-screen pb-16">
-      <HeroSection />
-      <FeaturesSection />
-    </main>
-  );
+  redirect("/landing");
 }
