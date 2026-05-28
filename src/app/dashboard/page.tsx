@@ -75,6 +75,8 @@ function DashboardContent() {
 
       await registerActiveSession(session.user.id);
 
+      fetch("/api/welcome-email", { method: "POST" }).catch(() => {});
+
       if (denied) {
         setAdminDenied(true);
         window.history.replaceState(null, "", "/dashboard");
