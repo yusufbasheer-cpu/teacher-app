@@ -5,7 +5,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { registerActiveSession } from "@/lib/active-session";
 import { schoolPlanResetDate } from "@/lib/school-plan-reset-date";
-import { SCHOOL_WELCOME_SESSION_KEY } from "@/lib/school-accounts";
+import { isPersonalEmailDomain, SCHOOL_WELCOME_SESSION_KEY } from "@/lib/school-accounts";
 import { supabase } from "@/lib/supabase";
 
 function DashboardContent() {
@@ -44,23 +44,24 @@ function DashboardContent() {
         const email = user.data.user?.email;
         const domain = email?.split("@")[1];
 
-        const { data: school } = await supabase
-          .from("school_accounts")
-          .select("*")
-          .eq("email_domain", domain ?? "")
-          .maybeSingle();
+        if (domain && !isPersonalEmailDomain(domain)) {
+          const { data: school } = await supabase
+            .from("school_accounts")
+            .select("*")
+            .eq("email_domain", domain)
+            .maybeSingle();
 
-        if (school && user.data.user?.id) {
-          await supabase.from("user_usage").upsert(
-            {
-              user_id: user.data.user.id,
-              plan_type: school.plan_type,
-              generations_limit: -1,
-              generations_used: 0,
-              reset_date: schoolPlanResetDate(),
-            },
-            { onConflict: "user_id" },
-          );
+          if (school && user.data.user?.id) {
+            await supabase.from("user_usage").upsert(
+              {
+                user_id: user.data.user.id,
+                plan_type: school.plan_type,
+                generations_limit: -1,
+                reset_date: schoolPlanResetDate(),
+              },
+              { onConflict: "user_id" },
+            );
+          }
         }
 
         const welcome = params?.get("school_welcome");

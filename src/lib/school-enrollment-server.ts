@@ -4,6 +4,7 @@ import {
   buildSchoolMaxTeachersMessage,
   buildSchoolWelcomeMessage,
   extractEmailDomain,
+  isAdminEmail,
   isPersonalEmailDomain,
   isSchoolPlanType,
   normalizeEmailDomain,
@@ -322,6 +323,12 @@ export async function processSchoolEnrollment(
     email: trimmedEmail,
     domain,
   });
+
+  if (isAdminEmail(trimmedEmail)) {
+    console.log(`[school-enrollment] Admin email — granting unlimited plan: ${trimmedEmail}`);
+    await upsertSchoolUsage(admin, userId, "school_enterprise");
+    return { ok: true, blocked: false, individual: false, newlyJoined: false };
+  }
 
   if (!domain) {
     console.log(`No school found for domain (invalid email): ${trimmedEmail}`);

@@ -51,6 +51,12 @@ export function isPersonalEmailDomain(domain: string): boolean {
   return PERSONAL_EMAIL_DOMAINS.has(normalizeEmailDomain(domain));
 }
 
+const ADMIN_EMAILS = new Set(["yusuf.basheer@gmail.com"]);
+
+export function isAdminEmail(email: string): boolean {
+  return ADMIN_EMAILS.has(email.trim().toLowerCase());
+}
+
 export function extractEmailDomain(email: string): string | null {
   const trimmed = email.trim().toLowerCase();
   const parts = trimmed.split("@");
