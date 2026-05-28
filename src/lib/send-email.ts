@@ -2,7 +2,6 @@ import nodemailer from "nodemailer";
 
 function getSmtpConfig() {
   const host = process.env.SMTP_HOST?.trim();
-  const port = Number(process.env.SMTP_PORT?.trim()) || 587;
   const user = process.env.SMTP_USER?.trim();
   const pass = process.env.SMTP_PASSWORD?.trim();
   const from = process.env.SMTP_FROM?.trim();
@@ -11,7 +10,7 @@ function getSmtpConfig() {
     return null;
   }
 
-  return { host, port, user, pass, from };
+  return { host, user, pass, from };
 }
 
 type SendEmailOptions = {
@@ -27,7 +26,6 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ ok: boolea
   if (!config) {
     console.warn("[send-email] SMTP not configured. Env check:", {
       SMTP_HOST: process.env.SMTP_HOST ? "SET" : "MISSING",
-      SMTP_PORT: process.env.SMTP_PORT ? "SET" : "MISSING",
       SMTP_USER: process.env.SMTP_USER ? "SET" : "MISSING",
       SMTP_PASSWORD: process.env.SMTP_PASSWORD ? "SET" : "MISSING",
       SMTP_FROM: process.env.SMTP_FROM ? "SET" : "MISSING",
@@ -36,25 +34,32 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ ok: boolea
     return { ok: false, error: "SMTP not configured" };
   }
 
-  console.log("[send-email] SMTP configured:", { host: config.host, port: config.port, from: config.from });
+  console.log("[send-email] SMTP configured:", { host: config.host, port: 587, from: config.from });
 
   const transporter = nodemailer.createTransport({
     host: config.host,
-    port: config.port,
-    secure: config.port === 465,
+    port: 587,
+    secure: false,
     auth: {
       user: config.user,
       pass: config.pass,
+    },
+    tls: {
+      rejectUnauthorized: false,
     },
   });
 
   try {
     const info = await transporter.sendMail({
-      from: config.from,
+      from: `Layah <${config.from}>`,
+      replyTo: config.from,
       to: options.to,
       subject: options.subject,
       text: options.text,
       html: options.html,
+      headers: {
+        "X-Mailer": "Layah App",
+      },
     });
 
     console.log("[send-email] sent successfully, messageId:", info.messageId);
