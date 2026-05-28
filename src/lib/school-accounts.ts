@@ -36,6 +36,21 @@ export function buildSchoolWelcomeMessage(schoolName: string): string {
   return `Welcome! You have been added to ${schoolName} account`;
 }
 
+const PERSONAL_EMAIL_DOMAINS = new Set([
+  "gmail.com",
+  "yahoo.com",
+  "hotmail.com",
+  "outlook.com",
+  "icloud.com",
+  "live.com",
+  "me.com",
+  "protonmail.com",
+]);
+
+export function isPersonalEmailDomain(domain: string): boolean {
+  return PERSONAL_EMAIL_DOMAINS.has(normalizeEmailDomain(domain));
+}
+
 export function extractEmailDomain(email: string): string | null {
   const trimmed = email.trim().toLowerCase();
   const parts = trimmed.split("@");

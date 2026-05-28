@@ -4,6 +4,7 @@ import {
   buildSchoolMaxTeachersMessage,
   buildSchoolWelcomeMessage,
   extractEmailDomain,
+  isPersonalEmailDomain,
   isSchoolPlanType,
   normalizeEmailDomain,
   schoolPlanGenerationsLimit,
@@ -324,6 +325,12 @@ export async function processSchoolEnrollment(
 
   if (!domain) {
     console.log(`No school found for domain (invalid email): ${trimmedEmail}`);
+    await ensureIndividualUsage(admin, userId);
+    return { ok: true, blocked: false, individual: true, newlyJoined: false };
+  }
+
+  if (isPersonalEmailDomain(domain)) {
+    console.log(`[school-enrollment] Personal email domain — skipping school check: ${domain}`);
     await ensureIndividualUsage(admin, userId);
     return { ok: true, blocked: false, individual: true, newlyJoined: false };
   }
