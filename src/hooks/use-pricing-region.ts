@@ -17,7 +17,7 @@ type GeoResponse = {
 };
 
 export function usePricingRegion() {
-  const [regionId, setRegionId] = useState<PricingRegionId>("usd");
+  const [regionId, setRegionId] = useState<PricingRegionId>("gcc");
   const [countryCode, setCountryCode] = useState<string | null>(null);
   const [countryName, setCountryName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,9 +68,9 @@ export function usePricingRegion() {
         }
       } catch {
         if (!cancelled) {
-          applyRegion("usd", true);
-          setCountryCode("US");
-          setCountryName("United States");
+          applyRegion("gcc", true);
+          setCountryCode("AE");
+          setCountryName("UAE");
         }
       } finally {
         if (!cancelled) setLoading(false);
