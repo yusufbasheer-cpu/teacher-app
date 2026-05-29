@@ -7,8 +7,6 @@ import { PaymentModal, type UpgradePlanKey } from "@/components/payment/payment-
 import { usePricingRegion } from "@/hooks/use-pricing-region";
 import {
   formatRegionalPrice,
-  getCountryFlag,
-  PRICING_REGION_LIST,
   type PaidPlanKey,
   type PricingRegion,
 } from "@/lib/pricing-regions";
@@ -352,19 +350,13 @@ export function PricingPage() {
     open: false,
     planKey: "pro",
   });
-  const { region, regionId, countryCode, countryName, loading, setRegionManually } =
-    usePricingRegion();
+  const { region } = usePricingRegion();
   const isAnnual = billing === "annual";
 
   const openPayment = (planKey: UpgradePlanKey) =>
     setPaymentModal({ open: true, planKey });
   const closePayment = () =>
     setPaymentModal((s) => ({ ...s, open: false }));
-
-  const locationLabel =
-    countryName ??
-    region.selectorLabel.replace(/\s*\([^)]*\)\s*$/, "").trim();
-  const displayFlag = getCountryFlag(countryCode, region);
 
   return (
     <main
@@ -390,48 +382,14 @@ export function PricingPage() {
           </p>
         </header>
 
-        <div className="mx-auto mt-8 flex max-w-xl flex-col items-center gap-3 sm:max-w-none">
-          {loading ? (
-            <p className="text-sm font-medium" style={{ color: "#64748b" }}>
-              Detecting your region…
-            </p>
-          ) : (
-            <p
-              className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm"
-              style={{ background: "#fff", border: `1px solid rgba(0,198,167,0.3)`, color: NAVY }}
-            >
-              <span className="text-lg leading-none" aria-hidden>
-                {displayFlag}
-              </span>
-              <span>
-                Showing prices in <strong>{region.currency}</strong> ({region.currencyName}) for{" "}
-                <strong>{locationLabel}</strong>
-              </span>
-            </p>
-          )}
-
-          <label className="flex w-full max-w-sm flex-col gap-1.5 text-left sm:max-w-xs">
-            <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#64748b" }}>
-              Change currency
-            </span>
-            <select
-              value={regionId}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v) setRegionManually(v as typeof regionId);
-              }}
-              disabled={loading}
-              className="w-full rounded-xl border bg-white px-4 py-2.5 text-sm font-medium outline-none transition"
-              style={{ borderColor: "rgba(10,22,40,0.15)", color: NAVY }}
-              aria-label="Select pricing currency"
-            >
-              {PRICING_REGION_LIST.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.flag} {r.selectorLabel}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="mx-auto mt-6 flex justify-center">
+          <p
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm"
+            style={{ background: "#fff", border: `1px solid rgba(0,198,167,0.3)`, color: NAVY }}
+          >
+            <span className="text-lg leading-none" aria-hidden>🇦🇪</span>
+            <span>Prices shown in <strong>AED</strong> (UAE Dirham)</span>
+          </p>
         </div>
 
         <div className="mx-auto mt-10 flex flex-col items-center gap-3">
