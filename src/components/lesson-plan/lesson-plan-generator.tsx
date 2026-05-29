@@ -50,7 +50,7 @@ import {
 } from "@/lib/ppt-themes";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
-import { GenerationUsageIndicator } from "@/components/usage/generation-usage-indicator";
+import { UpgradeUsageIndicator } from "@/components/usage/upgrade-usage-indicator";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { getAuthHeaders } from "@/lib/auth-headers";
 import { filterUserFacingNotices } from "@/lib/image-notices";
@@ -833,7 +833,7 @@ export function LessonPlanGenerator() {
         <div className="rounded-2xl border border-[#00C6A7]/20 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
           Signed in as <span className="font-semibold">{user.email}</span>
         </div>
-        <GenerationUsageIndicator usage={usage} loading={usageLoading} />
+        <UpgradeUsageIndicator usage={usage} loading={usageLoading} />
       </div>
 
       <div className="grid min-w-0 gap-8 lg:grid-cols-[0.95fr_1.05fr]">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Container } from "@/components/ui/container";
+import { PaymentModal, type UpgradePlanKey } from "@/components/payment/payment-modal";
 import { usePricingRegion } from "@/hooks/use-pricing-region";
 import {
   formatRegionalPrice,
@@ -22,6 +23,7 @@ type PlanDef = {
   name: string;
   badge?: "Most Popular" | "Best Value";
   priceKey: PaidPlanKey | null;
+  upgradeKey?: UpgradePlanKey;
   generations: string;
   teachers?: string;
   features: readonly string[];
@@ -51,6 +53,7 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
     name: "Pro",
     badge: "Most Popular",
     priceKey: "pro",
+    upgradeKey: "pro",
     generations: "30 per month",
     features: [
       "Everything in Free",
@@ -71,6 +74,7 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
     name: "Pro Plus",
     badge: "Best Value",
     priceKey: "proPlus",
+    upgradeKey: "proPlus",
     generations: "60 per month",
     features: [
       "Everything in Pro",
@@ -242,10 +246,12 @@ function PricingCard({
   plan,
   region,
   billing,
+  onUpgrade,
 }: {
   plan: PlanDef;
   region: PricingRegion;
   billing: Billing;
+  onUpgrade?: (key: UpgradePlanKey) => void;
 }) {
   const isFeatured = plan.variant === "featured";
   const isSchool = plan.variant === "school";
@@ -318,7 +324,16 @@ function PricingCard({
         ))}
       </ul>
 
-      {isMailto ? (
+      {plan.upgradeKey && onUpgrade ? (
+        <button
+          type="button"
+          onClick={() => onUpgrade(plan.upgradeKey!)}
+          className={ctaClassName}
+          style={ctaStyle}
+        >
+          {plan.cta.label}
+        </button>
+      ) : isMailto ? (
         <a href={plan.cta.href} className={ctaClassName} style={ctaStyle}>
           {plan.cta.label}
         </a>
@@ -333,9 +348,18 @@ function PricingCard({
 
 export function PricingPage() {
   const [billing, setBilling] = useState<Billing>("monthly");
+  const [paymentModal, setPaymentModal] = useState<{ open: boolean; planKey: UpgradePlanKey }>({
+    open: false,
+    planKey: "pro",
+  });
   const { region, regionId, countryCode, countryName, loading, setRegionManually } =
     usePricingRegion();
   const isAnnual = billing === "annual";
+
+  const openPayment = (planKey: UpgradePlanKey) =>
+    setPaymentModal({ open: true, planKey });
+  const closePayment = () =>
+    setPaymentModal((s) => ({ ...s, open: false }));
 
   const locationLabel =
     countryName ??
@@ -460,7 +484,7 @@ export function PricingPage() {
           </p>
           <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3 xl:items-stretch">
             {TEACHER_PLAN_DEFS.map((plan) => (
-              <PricingCard key={plan.id} plan={plan} region={region} billing={billing} />
+              <PricingCard key={plan.id} plan={plan} region={region} billing={billing} onUpgrade={openPayment} />
             ))}
           </div>
         </section>
@@ -546,6 +570,13 @@ export function PricingPage() {
           </div>
         </section>
       </Container>
+
+      <PaymentModal
+        open={paymentModal.open}
+        planKey={paymentModal.planKey}
+        initialBilling={billing}
+        onClose={closePayment}
+      />
     </main>
   );
 }

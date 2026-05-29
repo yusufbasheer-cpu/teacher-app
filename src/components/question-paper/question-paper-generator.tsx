@@ -12,7 +12,7 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
-import { GenerationUsageIndicator } from "@/components/usage/generation-usage-indicator";
+import { UpgradeUsageIndicator } from "@/components/usage/upgrade-usage-indicator";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { getAuthHeaders } from "@/lib/auth-headers";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
@@ -511,7 +511,7 @@ export function QuestionPaperGenerator() {
         <div className="rounded-2xl border border-[#00C6A7]/20 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
           Signed in as <span className="font-semibold">{user.email}</span>
         </div>
-        <GenerationUsageIndicator usage={usage} loading={usageLoading} />
+        <UpgradeUsageIndicator usage={usage} loading={usageLoading} />
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
