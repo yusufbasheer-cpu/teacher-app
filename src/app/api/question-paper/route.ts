@@ -5,6 +5,15 @@ import {
   authenticateRequest,
   recordSuccessfulGeneration,
 } from "@/lib/user-usage-server";
+import {
+  checkRateLimit,
+  checkSpendingProtection,
+  getClientIp,
+  rateLimitResponse,
+  HOUR_MS,
+  DAY_MS,
+} from "@/lib/rate-limit";
+import { sendEmail } from "@/lib/send-email";
 import { parseQuestionPaperResponse } from "@/lib/parse-question-paper";
 import {
   buildQuestionPaperSystemPrompt,
@@ -23,6 +32,10 @@ export const maxDuration = 120;
 const DEEPSEEK_MAX_TOKENS_PAPER = 8000;
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const ipLimit = checkRateLimit(`question-paper:ip:${ip}`, 10, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
   let body: QuestionPaperGenerateBody;
   try {
     body = (await req.json()) as QuestionPaperGenerateBody;
@@ -38,6 +51,21 @@ export async function POST(req: Request) {
   const auth = await authenticateRequest(req);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
+  const userDayLimit = checkRateLimit(`question-paper:user:${auth.userId}`, 30, DAY_MS);
+  if (!userDayLimit.ok) return rateLimitResponse(userDayLimit.resetInSeconds);
+
+  const spending = checkSpendingProtection(auth.userId);
+  if (spending.blocked) {
+    if (spending.shouldAlert) {
+      void sendEmail({
+        to: "info@layah.in",
+        subject: "Layah Spending Alert — User Blocked",
+        text: `User ${auth.userId} exceeded 50 API calls in one hour and has been automatically blocked.\n\nEndpoint: /api/question-paper\nTime: ${new Date().toISOString()}`,
+      });
+    }
+    return rateLimitResponse(spending.resetInSeconds);
   }
 
   const gate = await assertCanGenerate(auth.supabase, auth.userId);

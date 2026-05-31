@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 import { sendWelcomeEmailIfNew } from "@/lib/welcome-email";
+import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const ipLimit = checkRateLimit(`email:ip:${ip}`, 3, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
   try {
     const supabase = await createServerSupabaseClient();
     const {

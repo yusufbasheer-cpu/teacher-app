@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/send-email";
+import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  const ip = getClientIp(request);
+  const ipLimit = checkRateLimit(`email:ip:${ip}`, 3, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
   const url = new URL(request.url);
   const email = url.searchParams.get("email");
 
