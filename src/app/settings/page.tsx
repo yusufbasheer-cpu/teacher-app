@@ -92,6 +92,8 @@ export default function SettingsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
   const didInit = useRef(false);
 
   useEffect(() => {
@@ -126,6 +128,31 @@ export default function SettingsPage() {
 
     void init();
   }, [router]);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDownloadSuccess(false);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/account/export", { headers, cache: "no-store" });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "layah-my-data.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 5000);
+    } catch {
+      /* silent — browser already shows network errors */
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const handleDeleteConfirm = async () => {
     setDeleting(true);
@@ -201,6 +228,58 @@ export default function SettingsPage() {
                 <dd className="text-sm font-semibold" style={{ color: NAVY }}>{generationsText}</dd>
               </div>
             </dl>
+          </section>
+
+          {/* Download my data */}
+          <section
+            className="mt-6 rounded-3xl border bg-white p-6 shadow-sm"
+            style={{ borderColor: "rgba(0,198,167,0.2)" }}
+          >
+            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
+              My Data
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+              Download a copy of all your Layah data including your account info, usage stats, and all saved lesson plans as a JSON file.
+            </p>
+
+            {downloadSuccess && (
+              <div
+                className="mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold"
+                style={{ background: "rgba(0,198,167,0.1)", color: "#0A8F7A" }}
+              >
+                <svg className="size-4 shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden>
+                  <path d="M5 10l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Your data has been downloaded successfully.
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl px-5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
+              style={{ background: TEAL }}
+            >
+              {downloading ? (
+                <>
+                  <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Preparing…
+                </>
+              ) : (
+                <>
+                  <svg className="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Download My Data
+                </>
+              )}
+            </button>
           </section>
 
           {/* Cookie preferences */}
