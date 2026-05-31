@@ -1,10 +1,13 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
 import { completeEmailPostAuthLogin } from "@/lib/auth-post-login";
 import { supabase } from "@/lib/supabase";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+
+const MIN_SIGNUP_MS = 3000;
 
 type AuthMode = "login" | "signup";
 
@@ -67,6 +70,14 @@ export function AuthCard() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Bot protection
+  const [honeypot, setHoneypot] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const formLoadTime = useRef(Date.now());
+
+  const onTurnstileVerify = useCallback((token: string) => setTurnstileToken(token), []);
+  const onTurnstileExpire = useCallback(() => setTurnstileToken(null), []);
+
   useEffect(() => {
     if (searchParams.get("revoked") === "1") {
       setError(SESSION_REVOKED_MESSAGE);
@@ -105,6 +116,39 @@ export function AuthCard() {
 
     try {
       if (mode === "signup") {
+        // 1. Honeypot — bots fill hidden fields, humans never see it
+        if (honeypot) {
+          setLoading(false);
+          return;
+        }
+
+        // 2. Time check — < 3 s means automated submission
+        if (Date.now() - formLoadTime.current < MIN_SIGNUP_MS) {
+          setLoading(false);
+          return;
+        }
+
+        // 3. Turnstile — only if the site key is configured
+        if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+          if (!turnstileToken) {
+            setError("Please complete the verification before signing up.");
+            setLoading(false);
+            return;
+          }
+          const captchaRes = await fetch("/api/auth/verify-captcha", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: turnstileToken }),
+          });
+          const captchaData = (await captchaRes.json()) as { ok: boolean; error?: string };
+          if (!captchaData.ok) {
+            setError(captchaData.error ?? "Verification failed. Please try again.");
+            setTurnstileToken(null);
+            setLoading(false);
+            return;
+          }
+        }
+
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
@@ -208,6 +252,18 @@ export function AuthCard() {
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
+        {/* Honeypot — invisible to humans, bots fill it. Must use CSS positioning, NOT display:none */}
+        <div style={{ position: "absolute", left: "-9999px", opacity: 0, pointerEvents: "none" }} aria-hidden="true">
+          <input
+            type="text"
+            name="website"
+            tabIndex={-1}
+            autoComplete="off"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+          />
+        </div>
+
         <div>
           <label htmlFor="email" className="mb-1 block text-sm font-medium" style={{ color: "#0A1628" }}>
             Email
@@ -245,6 +301,13 @@ export function AuthCard() {
           />
         </div>
 
+        {mode === "signup" && (
+          <TurnstileWidget
+            onVerify={onTurnstileVerify}
+            onExpire={onTurnstileExpire}
+          />
+        )}
+
         <button
           type="submit"
           disabled={loading || googleLoading}
@@ -265,7 +328,13 @@ export function AuthCard() {
       <button
         type="button"
         onClick={() => {
-          setMode((prev) => (prev === "login" ? "signup" : "login"));
+          setMode((prev) => {
+            if (prev === "login") {
+              formLoadTime.current = Date.now();
+              setTurnstileToken(null);
+            }
+            return prev === "login" ? "signup" : "login";
+          });
           setError(null);
           setMessage(null);
         }}
