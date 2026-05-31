@@ -66,27 +66,34 @@ export function SuperAdminPinGate({ children }: Props) {
           Admin Verification
         </h1>
         <p className="mt-2 text-center text-sm" style={{ color: "#64748b" }}>
-          Enter your admin PIN to access the super-admin dashboard.
+          Enter your 6-digit admin PIN to access the dashboard.
         </p>
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <input
             type="password"
-            placeholder="Enter PIN"
+            inputMode="numeric"
+            pattern="\d{6}"
+            minLength={6}
+            maxLength={6}
+            placeholder="● ● ● ● ● ●"
             value={pin}
-            onChange={(e) => setPin(e.target.value)}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
             autoComplete="current-password"
-            className="w-full rounded-xl border px-4 py-3 text-center text-xl tracking-widest outline-none transition"
+            className="w-full rounded-xl border px-4 py-3 text-center text-2xl tracking-[0.5em] outline-none transition"
             style={{ borderColor: "#CBD5E0", color: NAVY }}
             onFocus={(e) => (e.target.style.borderColor = TEAL)}
             onBlur={(e) => (e.target.style.borderColor = "#CBD5E0")}
             required
             disabled={loading}
           />
+          <p className="text-center text-xs" style={{ color: "#94a3b8" }}>
+            {pin.length}/6 digits entered
+          </p>
           {error && <p className="text-center text-sm text-red-600">{error}</p>}
           <button
             type="submit"
-            disabled={loading || !pin}
+            disabled={loading || pin.length !== 6}
             className="inline-flex min-h-11 w-full items-center justify-center rounded-xl text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
             style={{ background: NAVY }}
           >
