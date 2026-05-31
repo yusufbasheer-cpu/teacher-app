@@ -65,29 +65,30 @@ function Stars({ count }: { count: number }) {
 function TestimonialCard({ testimonial, visible }: { testimonial: Testimonial; visible: boolean }) {
   return (
     <div
-      className="rounded-2xl border bg-white p-6 shadow-sm transition-all duration-700 hover:shadow-md"
+      className="flex flex-col rounded-2xl border bg-white p-6 shadow-sm transition-all duration-700 hover:shadow-lg hover:-translate-y-0.5"
       style={{
-        borderColor: "rgba(0,198,167,0.12)",
+        borderColor: "#E5E7EB",
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(24px)",
+        boxShadow: visible ? "0 2px 16px rgba(0,0,0,0.06)" : "none",
       }}
     >
       <Stars count={testimonial.rating} />
-      <p className="mt-4 text-sm leading-relaxed" style={{ color: "#374151" }}>
+      <p className="mt-4 flex-1 text-sm leading-relaxed" style={{ color: "#374151" }}>
         &ldquo;{testimonial.review}&rdquo;
       </p>
       <div className="mt-5 flex items-center gap-3">
         <div
-          className="flex size-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+          className="flex size-11 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white"
           style={{ background: `linear-gradient(135deg, ${NAVY}, ${TEAL})` }}
         >
           {testimonial.initials}
         </div>
         <div>
-          <p className="text-sm font-semibold" style={{ color: NAVY }}>
+          <p className="text-sm font-bold" style={{ color: NAVY }}>
             {testimonial.name}
           </p>
-          <p className="text-xs" style={{ color: "#94A3B8" }}>
+          <p className="text-xs font-medium" style={{ color: "#9CA3AF" }}>
             {testimonial.title}
           </p>
         </div>
@@ -119,20 +120,20 @@ export function TestimonialsSection() {
   }, []);
 
   return (
-    <section ref={ref} className="py-16 sm:py-20" style={{ background: "white" }}>
+    <section ref={ref} className="py-16 sm:py-20" style={{ background: "#F9FAFB" }}>
       <Container>
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <p
-            className="mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider"
+            className="mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider"
             style={{ background: "rgba(0,198,167,0.12)", color: TEAL }}
           >
             Testimonials
           </p>
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl" style={{ color: NAVY }}>
-            What Teachers Are Saying
+          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl" style={{ color: NAVY }}>
+            Teachers love Layah ❤️
           </h2>
-          <p className="mt-3 text-sm sm:text-base" style={{ color: "#4A5568" }}>
-            Join thousands of teachers saving time with Layah
+          <p className="mt-3 text-sm sm:text-base leading-relaxed" style={{ color: "#374151" }}>
+            Join thousands of teachers saving hours every week
           </p>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

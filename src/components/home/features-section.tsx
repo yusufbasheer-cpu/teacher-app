@@ -3,41 +3,65 @@ import { Container } from "@/components/ui/container";
 
 const features = [
   {
+    emoji: "📝",
     title: "Lesson Plan Generator",
     href: "/lesson-plan",
     description:
-      "Create complete lesson structures with objectives, activities, assessments, and timing suggestions.",
+      "Create complete lesson structures with objectives, activities, assessments, and timing suggestions — ready in seconds.",
   },
   {
+    emoji: "📋",
     title: "Question Paper Generator",
     href: "/question-paper",
     description:
       "Build exam papers with multiple question types, blueprints, and Word downloads for your classroom.",
   },
   {
+    emoji: "🖥️",
     title: "PowerPoint Outline Builder",
     href: "/lesson-plan",
     description:
-      "Turn lesson content into clear slide-by-slide outlines ready to paste into PowerPoint.",
+      "Turn lesson content into clear slide-by-slide outlines ready to paste into PowerPoint or download directly.",
   },
   {
+    emoji: "🎯",
     title: "Curriculum Alignment",
     href: "/lesson-plan",
     description:
-      "Keep plans aligned to grade level outcomes and learning standards for consistent quality.",
+      "Keep plans aligned to grade level outcomes and learning standards for consistent quality across every lesson.",
+  },
+  {
+    emoji: "🎨",
+    title: "Differentiated Worksheets",
+    href: "/differentiated-worksheets",
+    description:
+      "Generate tiered worksheet packs for different ability levels — supporting every learner in your classroom.",
+  },
+  {
+    emoji: "✅",
+    title: "AFL Activity Tools",
+    href: "/lesson-plan",
+    description:
+      "31 built-in Assessment for Learning tools to make your lessons more engaging and evidence-based.",
   },
 ];
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="pb-20 md:pb-24" style={{ background: "#F7F9FC" }}>
+    <section id="features" className="py-20 md:py-24" style={{ background: "#F0FDFB" }}>
       <Container>
-        <div className="mb-10 max-w-2xl">
-          <h2 className="text-3xl font-bold tracking-tight" style={{ color: "#0A1628" }}>
-            Everything teachers need to plan faster
+        <div className="mb-12 text-center">
+          <p
+            className="mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider"
+            style={{ background: "rgba(0,198,167,0.12)", color: "#00C6A7" }}
+          >
+            Features
+          </p>
+          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl" style={{ color: "#0A1628" }}>
+            Everything teachers need 🧑‍🏫
           </h2>
-          <p className="mt-3" style={{ color: "#4A5568" }}>
-            A clean workflow focused on planning, preparing, and presenting effective lessons.
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed" style={{ color: "#374151" }}>
+            A clean workflow focused on planning, preparing, and presenting effective lessons — so you can spend more time with your students.
           </p>
         </div>
 
@@ -45,30 +69,28 @@ export function FeaturesSection() {
           {features.map((feature) => (
             <article
               key={feature.title}
-              className="rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-md"
-              style={{ borderColor: "rgba(0,198,167,0.2)" }}
+              className="group rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-lg hover:-translate-y-0.5"
+              style={{ borderColor: "rgba(0,198,167,0.15)" }}
             >
               <div
-                className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl"
+                className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl text-2xl"
                 style={{ background: "rgba(0,198,167,0.1)" }}
               >
-                <div className="h-2.5 w-2.5 rounded-full" style={{ background: "#00C6A7" }} />
+                {feature.emoji}
               </div>
-              <h3 className="text-lg font-semibold" style={{ color: "#0A1628" }}>
+              <h3 className="text-base font-bold" style={{ color: "#0A1628" }}>
                 {feature.title}
               </h3>
-              <p className="mt-2 text-sm leading-6" style={{ color: "#4A5568" }}>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: "#374151" }}>
                 {feature.description}
               </p>
-              {"href" in feature && feature.href ? (
-                <Link
-                  href={feature.href}
-                  className="mt-4 inline-flex text-sm font-semibold transition hover:opacity-80"
-                  style={{ color: "#00C6A7" }}
-                >
-                  Open tool →
-                </Link>
-              ) : null}
+              <Link
+                href={feature.href}
+                className="mt-4 inline-flex items-center gap-1 text-sm font-semibold transition hover:gap-2"
+                style={{ color: "#00C6A7" }}
+              >
+                Open tool →
+              </Link>
             </article>
           ))}
         </div>

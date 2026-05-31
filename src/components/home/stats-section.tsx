@@ -56,12 +56,14 @@ function StatCard({ stat, inView }: { stat: Stat; inView: boolean }) {
   const count = useCountUp(stat.value, 1500, inView);
 
   return (
-    <div className="flex flex-col items-center rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-md" style={{ borderColor: "rgba(0,198,167,0.2)" }}>
+    <div
+      className="flex flex-col items-center rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-md hover:-translate-y-0.5"
+      style={{ borderColor: "rgba(0,198,167,0.2)" }}
+    >
       <p className="text-4xl font-extrabold tracking-tight sm:text-5xl" style={{ color: TEAL }}>
-        {count}
-        {stat.suffix}
+        {count}{stat.suffix}
       </p>
-      <p className="mt-2 text-center text-sm font-semibold" style={{ color: NAVY }}>
+      <p className="mt-2 text-center text-sm font-semibold leading-snug" style={{ color: NAVY }}>
         {stat.label}
       </p>
     </div>
@@ -91,19 +93,19 @@ export function StatsSection() {
   }, []);
 
   return (
-    <section ref={ref} className="py-16 sm:py-20">
+    <section ref={ref} className="py-16 sm:py-20" style={{ background: "#FFFFFF" }}>
       <Container>
         <div className="mx-auto mb-10 max-w-2xl text-center">
           <p
-            className="mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider"
+            className="mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider"
             style={{ background: "rgba(0,198,167,0.12)", color: TEAL }}
           >
             Layah in Numbers
           </p>
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl" style={{ color: NAVY }}>
-            Built for Every Classroom
+          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl" style={{ color: NAVY }}>
+            Built for every classroom 🌍
           </h2>
-          <p className="mt-3 text-sm sm:text-base" style={{ color: "#4A5568" }}>
+          <p className="mt-3 text-sm sm:text-base leading-relaxed" style={{ color: "#374151" }}>
             Trusted by teachers across the globe with comprehensive curriculum coverage and powerful tools.
           </p>
         </div>

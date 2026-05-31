@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Poppins } from "next/font/google";
+import { Plus_Jakarta_Sans, Poppins } from "next/font/google";
 import { MarkerCursor } from "@/components/cursor/marker-cursor";
 import { AppEffects } from "@/components/effects/app-effects";
 import { SoundProvider } from "@/components/effects/sound-provider";
@@ -9,9 +9,10 @@ import { NavbarWrapper } from "@/components/layout/navbar-wrapper";
 import { PageTransitionWrapper } from "@/components/layout/page-transition-wrapper";
 import "./globals.css";
 
-const inter = Inter({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-jakarta",
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 const poppins = Poppins({
@@ -40,7 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="overflow-x-hidden">
       <body
-        className={`${inter.variable} ${poppins.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
+        className={`${plusJakartaSans.variable} ${poppins.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
         style={{ color: "#0A1628" }}
       >
         <SoundProvider>

@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 :root {
-  --background: #F7F9FC;
+  --background: #FFFFFF;
   --foreground: #0A1628;
   --accent: #00C6A7;
   --navy: #0A1628;
@@ -25,9 +25,9 @@ html {
 
 body {
   min-height: 100vh;
-  background: #F7F9FC;
-  color: var(--foreground);
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  background: #FFFFFF;
+  color: #374151;
+  font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   overscroll-behavior: none;
   /* GPU-composite the body layer so scroll is handled off the main thread */
   -webkit-overflow-scrolling: touch;
