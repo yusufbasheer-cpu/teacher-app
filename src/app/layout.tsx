@@ -4,6 +4,7 @@ import { MarkerCursor } from "@/components/cursor/marker-cursor";
 import { AppEffects } from "@/components/effects/app-effects";
 import { SoundProvider } from "@/components/effects/sound-provider";
 import { ActiveSessionGuard } from "@/components/auth/active-session-guard";
+import { CookieBanner } from "@/components/layout/cookie-banner";
 import { NavbarWrapper } from "@/components/layout/navbar-wrapper";
 import { PageTransitionWrapper } from "@/components/layout/page-transition-wrapper";
 import "./globals.css";
@@ -49,6 +50,7 @@ export default function RootLayout({
           <ActiveSessionGuard>
             <PageTransitionWrapper>{children}</PageTransitionWrapper>
           </ActiveSessionGuard>
+          <CookieBanner />
         </SoundProvider>
       </body>
     </html>

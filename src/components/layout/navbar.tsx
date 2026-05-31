@@ -159,14 +159,26 @@ export function Navbar() {
             ) : null}
             <SoundToggleButton />
             {user ? (
-              <button
-                type="button"
-                onClick={onLogout}
-                className="ml-1 inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-                style={{ background: "#00C6A7" }}
-              >
-                Logout
-              </button>
+              <>
+                <Link
+                  href="/settings"
+                  className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition"
+                  style={{
+                    color: isNavLinkActive(pathname, "/settings") ? "#00C6A7" : "rgba(255,255,255,0.7)",
+                    background: isNavLinkActive(pathname, "/settings") ? "rgba(0,198,167,0.1)" : "transparent",
+                  }}
+                >
+                  Settings
+                </Link>
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="ml-1 inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                  style={{ background: "#00C6A7" }}
+                >
+                  Logout
+                </button>
+              </>
             ) : (
               <Link
                 href="/auth"
@@ -248,14 +260,26 @@ export function Navbar() {
               <SoundToggleButton />
             </div>
             {user ? (
-              <button
-                type="button"
-                onClick={onLogout}
-                className="mt-1 flex min-h-11 w-full items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white"
-                style={{ background: "#00C6A7" }}
-              >
-                Logout
-              </button>
+              <>
+                <Link
+                  href="/settings"
+                  className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-medium"
+                  style={{
+                    color: isNavLinkActive(pathname, "/settings") ? "#00C6A7" : "rgba(255,255,255,0.75)",
+                    background: isNavLinkActive(pathname, "/settings") ? "rgba(0,198,167,0.1)" : "transparent",
+                  }}
+                >
+                  Settings
+                </Link>
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="mt-1 flex min-h-11 w-full items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white"
+                  style={{ background: "#00C6A7" }}
+                >
+                  Logout
+                </button>
+              </>
             ) : (
               <Link
                 href="/auth"
