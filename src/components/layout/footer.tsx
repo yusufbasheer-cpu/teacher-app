@@ -52,7 +52,7 @@ const SUPPORT_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-  { label: "Instagram", href: "https://instagram.com/layah.ai", icon: InstagramIcon },
+  { label: "Instagram", href: "https://www.instagram.com/layah.teachers?igsh=NHAwOGFoaXNkc2hh&utm_source=qr", icon: InstagramIcon },
   { label: "LinkedIn", href: "https://linkedin.com/company/layah-ai", icon: LinkedInIcon },
   { label: "X (Twitter)", href: "https://x.com/layah_ai", icon: XIcon },
 ];

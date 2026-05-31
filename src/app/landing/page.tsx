@@ -116,7 +116,7 @@ export default function LandingPage() {
         <div className="relative mx-auto max-w-4xl px-6 text-center">
           {/* Caveat accent */}
           <p className="font-caveat mb-3 text-xl font-semibold" style={{ color: TEAL }}>
-            ✨ designed for teachers, by teachers
+            ✨ designed for teachers, by a teacher
           </p>
 
           {/* Badge */}

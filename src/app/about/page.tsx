@@ -176,10 +176,10 @@ export default function AboutPage() {
           </div>
           <div className="mx-auto max-w-xs">
             <div className="rounded-2xl border bg-white p-8 text-center shadow-sm" style={{ borderColor: "rgba(0,198,167,0.15)" }}>
-              <div className="mx-auto flex size-20 items-center justify-center rounded-full text-2xl font-bold text-white" style={{ background: `linear-gradient(135deg, ${NAVY}, ${TEAL})` }}>
-                Y
+              <div className="mx-auto flex size-20 items-center justify-center rounded-full text-lg font-bold text-white" style={{ background: `linear-gradient(135deg, ${NAVY}, ${TEAL})` }}>
+                MY
               </div>
-              <h3 className="mt-5 text-lg font-semibold" style={{ color: NAVY }}>Yusuf</h3>
+              <h3 className="mt-5 text-lg font-semibold" style={{ color: NAVY }}>Mohammed Yusuf</h3>
               <p className="mt-1 text-sm" style={{ color: TEAL }}>Founder &amp; Teacher</p>
               <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
                 A passionate educator who built Layah to solve the planning challenges he faced every day in the classroom.

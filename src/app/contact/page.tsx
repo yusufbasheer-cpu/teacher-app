@@ -41,7 +41,7 @@ const CONTACT_INFO = [
 ];
 
 const SOCIAL_LINKS = [
-  { label: "Instagram", href: "https://instagram.com/layah.ai" },
+  { label: "Instagram", href: "https://www.instagram.com/layah.teachers?igsh=NHAwOGFoaXNkc2hh&utm_source=qr" },
   { label: "LinkedIn", href: "https://linkedin.com/company/layah-ai" },
   { label: "X (Twitter)", href: "https://x.com/layah_ai" },
 ];
