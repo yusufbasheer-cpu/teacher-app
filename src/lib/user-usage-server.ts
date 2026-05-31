@@ -42,6 +42,8 @@ export function getBearerToken(req: Request): string | null {
   return req.headers.get("Authorization")?.replace("Bearer ", "").trim() ?? null;
 }
 
+const DEBUG = process.env.DEBUG === "true";
+
 function logSupabaseError(
   operation: string,
   error: PostgrestError | null,
@@ -104,7 +106,7 @@ async function insertDefaultUsage(
     return null;
   }
 
-  console.log("[user-usage] created new user_usage row", {
+  DEBUG && console.log("[user-usage] created new user_usage row", {
     user_id: userId,
     generations_used: 0,
     generations_limit: 3,
@@ -232,7 +234,7 @@ export async function assertCanGenerate(
 
     if (!usage.canGenerate) {
       const limit = usage.generationsLimit ?? 0;
-      console.log("[user-usage] assertCanGenerate: limit reached", {
+      DEBUG && console.log("[user-usage] assertCanGenerate: limit reached", {
         userId,
         generations_used: usage.generationsUsed,
         generations_limit: limit,
@@ -280,7 +282,7 @@ async function verifyAuthenticatedUserId(
     };
   }
 
-  console.log("[user-usage] authenticated session for increment", {
+  DEBUG && console.log("[user-usage] authenticated session for increment", {
     auth_uid: user.id,
     requested_user_id: userId,
     match: user.id === userId,
@@ -358,7 +360,7 @@ export async function incrementGenerationsUsed(
     }
 
     const authUserId = authCheck.authUserId;
-    console.log("[user-usage] incrementGenerationsUsed: auth ok", {
+    DEBUG && console.log("[user-usage] incrementGenerationsUsed: auth ok", {
       user_id: authUserId,
       idsMatch: authUserId === userId,
     });
@@ -482,7 +484,7 @@ export async function authenticateRequest(
     return { ok: false, status: 401, message: "Invalid session. Please log in again." };
   }
 
-  console.log("[user-usage] authenticateRequest: ok", {
+  DEBUG && console.log("[user-usage] authenticateRequest: ok", {
     userId: user.id,
     auth_uid_matches: user.id,
   });

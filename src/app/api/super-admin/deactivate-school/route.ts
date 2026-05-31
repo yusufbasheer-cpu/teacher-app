@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { isSuperAdmin } from "@/lib/super-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { logAdminAction } from "@/lib/audit-log";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!isSuperAdmin(user?.email)) {
+  if (!await isSuperAdmin(user?.id, user?.email)) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
 
   const admin = getSupabaseServiceRole();
   if (!admin) {
-    return NextResponse.json({ error: "Service role not configured" }, { status: 500 });
+    return NextResponse.json({ error: "Service unavailable." }, { status: 500 });
   }
 
   const { error } = await admin
@@ -28,8 +29,11 @@ export async function POST(req: Request) {
     .eq("id", schoolId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[super-admin/deactivate-school] DB error:", error.message);
+    return NextResponse.json({ error: "Could not deactivate school. Please try again." }, { status: 500 });
   }
+
+  await logAdminAction(user!.id, "school.deactivate", schoolId);
 
   return NextResponse.json({ ok: true });
 }

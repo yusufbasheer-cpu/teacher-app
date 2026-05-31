@@ -8,13 +8,13 @@ export const runtime = "nodejs";
 export async function GET() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!isSuperAdmin(user?.email)) {
+  if (!await isSuperAdmin(user?.id, user?.email)) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
   const admin = getSupabaseServiceRole();
   if (!admin) {
-    return NextResponse.json({ error: "Service role not configured" }, { status: 500 });
+    return NextResponse.json({ error: "Service unavailable." }, { status: 500 });
   }
 
   const { data, error } = await admin
@@ -24,7 +24,8 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[super-admin/pending] DB error:", error.message);
+    return NextResponse.json({ error: "Could not load registrations. Please try again." }, { status: 500 });
   }
 
   return NextResponse.json({ registrations: data ?? [] });

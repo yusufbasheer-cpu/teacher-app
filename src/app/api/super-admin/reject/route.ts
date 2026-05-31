@@ -3,13 +3,14 @@ import { sendEmail } from "@/lib/send-email";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { isSuperAdmin } from "@/lib/super-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { logAdminAction } from "@/lib/audit-log";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!isSuperAdmin(user?.email)) {
+  if (!await isSuperAdmin(user?.id, user?.email)) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
 
   const admin = getSupabaseServiceRole();
   if (!admin) {
-    return NextResponse.json({ error: "Service role not configured" }, { status: 500 });
+    return NextResponse.json({ error: "Service unavailable." }, { status: 500 });
   }
 
   const { data: reg, error: fetchError } = await admin
@@ -37,6 +38,10 @@ export async function POST(req: Request) {
     .from("school_registration_requests")
     .update({ status: "rejected" })
     .eq("id", registrationId);
+
+  await logAdminAction(user!.id, "school.reject", registrationId, {
+    school_name: reg.school_name,
+  });
 
   try {
     await sendEmail({

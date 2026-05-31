@@ -3,6 +3,7 @@ import { sendEmail } from "@/lib/send-email";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { isSuperAdmin } from "@/lib/super-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { logAdminAction } from "@/lib/audit-log";
 
 export const runtime = "nodejs";
 
@@ -21,7 +22,7 @@ const TEACHER_MAP: Record<string, number> = {
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!isSuperAdmin(user?.email)) {
+  if (!await isSuperAdmin(user?.id, user?.email)) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
 
   const admin = getSupabaseServiceRole();
   if (!admin) {
-    return NextResponse.json({ error: "Service role not configured" }, { status: 500 });
+    return NextResponse.json({ error: "Service unavailable." }, { status: 500 });
   }
 
   const { data: reg, error: fetchError } = await admin
@@ -59,14 +60,19 @@ export async function POST(req: Request) {
   });
 
   if (insertError) {
-    console.error("[super-admin] approve insert failed:", insertError.message);
-    return NextResponse.json({ error: `Failed to create school: ${insertError.message}` }, { status: 500 });
+    console.error("[super-admin/approve] insert failed:", insertError.message);
+    return NextResponse.json({ error: "Could not activate school. Please try again." }, { status: 500 });
   }
 
   await admin
     .from("school_registration_requests")
     .update({ status: "approved" })
     .eq("id", registrationId);
+
+  await logAdminAction(user!.id, "school.approve", registrationId, {
+    school_name: reg.school_name,
+    plan_type: planType,
+  });
 
   try {
     await sendEmail({
@@ -85,7 +91,7 @@ export async function POST(req: Request) {
         ``,
         `Teachers with @${reg.email_domain} email addresses can now sign in with Google to automatically join your school plan.`,
         ``,
-        `You can manage your school at: https://layah.ai/school-admin`,
+        `You can manage your school at: https://layah.in/school-admin`,
         ``,
         `Best regards,`,
         `The Layah.ai Team`,
@@ -117,7 +123,7 @@ export async function POST(req: Request) {
               </tr>
             </table>
             <p>Teachers with <strong>@${reg.email_domain}</strong> email addresses can now sign in with Google to automatically join your school plan.</p>
-            <p><a href="https://layah.ai/school-admin" style="color: #00C6A7;">Manage your school →</a></p>
+            <p><a href="https://layah.in/school-admin" style="color: #00C6A7;">Manage your school →</a></p>
           </div>
         </div>
       `.trim(),

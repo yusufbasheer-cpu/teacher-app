@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { isSuperAdmin } from "@/lib/super-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { logAdminAction } from "@/lib/audit-log";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,7 @@ const PLAN_LIMITS: Record<string, number> = {
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!isSuperAdmin(user?.email)) {
+  if (!await isSuperAdmin(user?.id, user?.email)) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
 
   const admin = getSupabaseServiceRole();
   if (!admin) {
-    return NextResponse.json({ error: "Service role not configured" }, { status: 500 });
+    return NextResponse.json({ error: "Service unavailable." }, { status: 500 });
   }
 
   const limit = PLAN_LIMITS[planType] ?? 3;
@@ -41,8 +42,11 @@ export async function POST(req: Request) {
     );
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[super-admin/change-plan] DB error:", error.message);
+    return NextResponse.json({ error: "Could not update plan. Please try again." }, { status: 500 });
   }
+
+  await logAdminAction(user!.id, "user.change_plan", userId, { planType, limit });
 
   return NextResponse.json({ ok: true });
 }

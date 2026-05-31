@@ -1,0 +1,99 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+
+const NAVY = "#0A1628";
+const TEAL = "#00C6A7";
+const SESSION_KEY = "layah_super_admin_verified";
+
+type Props = { children: React.ReactNode };
+
+export function SuperAdminPinGate({ children }: Props) {
+  const [verified, setVerified] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(SESSION_KEY) === "1";
+  });
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  if (verified) return <>{children}</>;
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/super-admin/verify-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string };
+
+      if (!data.ok) {
+        setError(data.error ?? "Incorrect PIN. Please try again.");
+        setPin("");
+        return;
+      }
+
+      sessionStorage.setItem(SESSION_KEY, "1");
+      setVerified(true);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div
+        className="w-full max-w-sm rounded-3xl border bg-white p-8 shadow-xl"
+        style={{ borderColor: "rgba(0,198,167,0.3)" }}
+      >
+        <div
+          className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
+          style={{ background: "rgba(0,198,167,0.12)" }}
+        >
+          <svg className="size-7" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <rect x="3" y="11" width="18" height="11" rx="2" stroke={TEAL} strokeWidth="2" />
+            <path d="M7 11V7a5 5 0 0110 0v4" stroke={TEAL} strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </div>
+        <h1 className="text-center text-xl font-bold" style={{ color: NAVY }}>
+          Admin Verification
+        </h1>
+        <p className="mt-2 text-center text-sm" style={{ color: "#64748b" }}>
+          Enter your admin PIN to access the super-admin dashboard.
+        </p>
+
+        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <input
+            type="password"
+            placeholder="Enter PIN"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            autoComplete="current-password"
+            className="w-full rounded-xl border px-4 py-3 text-center text-xl tracking-widest outline-none transition"
+            style={{ borderColor: "#CBD5E0", color: NAVY }}
+            onFocus={(e) => (e.target.style.borderColor = TEAL)}
+            onBlur={(e) => (e.target.style.borderColor = "#CBD5E0")}
+            required
+            disabled={loading}
+          />
+          {error && <p className="text-center text-sm text-red-600">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading || !pin}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
+            style={{ background: NAVY }}
+          >
+            {loading ? "Verifying…" : "Confirm"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

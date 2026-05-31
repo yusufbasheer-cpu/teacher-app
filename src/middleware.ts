@@ -1,11 +1,38 @@
 import { createMiddlewareSupabaseClient } from "@/lib/supabase-ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const ALLOWED_ORIGINS = new Set([
+  "https://layah.in",
+  "https://www.layah.in",
+  "http://localhost:3000",
+  "http://localhost:3001",
+]);
+
+function csrfGuard(request: NextRequest): NextResponse | null {
+  if (!MUTATION_METHODS.has(request.method)) return null;
+  if (!request.nextUrl.pathname.startsWith("/api/")) return null;
+
+  const origin = request.headers.get("origin");
+  if (!origin) return null; // no origin = same-origin server request
+
+  if (ALLOWED_ORIGINS.has(origin)) return null;
+
+  console.warn("[csrf] Blocked mutation from origin:", origin, request.nextUrl.pathname);
+  return new NextResponse(JSON.stringify({ error: "Forbidden" }), {
+    status: 403,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 /**
  * Refresh auth session (cookies) and forward OAuth ?code= to /auth/callback.
  * @see https://supabase.com/docs/guides/auth/server-side/nextjs
  */
 export async function middleware(request: NextRequest) {
+  const csrfBlock = csrfGuard(request);
+  if (csrfBlock) return csrfBlock;
+
   const code = request.nextUrl.searchParams.get("code");
   const pathname = request.nextUrl.pathname;
 
