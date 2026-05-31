@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, Poppins } from "next/font/google";
-import { MarkerCursor } from "@/components/cursor/marker-cursor";
+import { Caveat, Plus_Jakarta_Sans, Poppins } from "next/font/google";
 import { AppEffects } from "@/components/effects/app-effects";
 import { SoundProvider } from "@/components/effects/sound-provider";
 import { ActiveSessionGuard } from "@/components/auth/active-session-guard";
@@ -13,6 +12,12 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-jakarta",
   weight: ["400", "500", "600", "700", "800"],
+});
+
+const caveat = Caveat({
+  subsets: ["latin"],
+  variable: "--font-caveat",
+  weight: ["400", "600", "700"],
 });
 
 const poppins = Poppins({
@@ -41,11 +46,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="overflow-x-hidden">
       <body
-        className={`${plusJakartaSans.variable} ${poppins.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
+        className={`${plusJakartaSans.variable} ${caveat.variable} ${poppins.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
         style={{ color: "#0A1628" }}
       >
         <SoundProvider>
-          <MarkerCursor />
           <AppEffects />
           <NavbarWrapper />
           <ActiveSessionGuard>

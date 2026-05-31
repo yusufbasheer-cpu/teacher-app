@@ -100,7 +100,7 @@ export function Navbar() {
   return (
     <header
       className="sticky top-0 z-50"
-      style={{ background: "#FFFFFF", borderBottom: "1px solid #E5E7EB" }}
+      style={{ background: "#FFFFFF", borderBottom: "2px solid rgba(0,198,167,0.25)" }}
     >
       <Container className="py-3">
         <div className="flex items-center justify-between gap-3">

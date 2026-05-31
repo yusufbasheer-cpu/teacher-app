@@ -172,17 +172,17 @@ input[type="checkbox"]:checked {
 .stagger-7 { animation-delay: 0.35s; }
 .stagger-8 { animation-delay: 0.40s; }
 
-/* Custom marker cursor — desktop pointer devices only (see MarkerCursor) */
-@media (hover: hover) and (pointer: fine) {
-  html.layah-custom-cursor,
-  html.layah-custom-cursor * {
-    cursor: none !important;
-  }
+/* Handwritten accent font */
+.font-caveat {
+  font-family: var(--font-caveat), cursive;
+}
 
-  html.layah-custom-cursor input,
-  html.layah-custom-cursor textarea,
-  html.layah-custom-cursor select,
-  html.layah-custom-cursor [contenteditable="true"] {
-    cursor: text !important;
-  }
+/* CTA pulse glow */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,198,167,0.45); }
+  50%       { box-shadow: 0 0 0 14px rgba(0,198,167,0); }
+}
+
+.btn-pulse {
+  animation: pulse-glow 2.2s ease-in-out infinite;
 }

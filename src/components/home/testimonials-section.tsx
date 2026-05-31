@@ -15,6 +15,8 @@ type Testimonial = {
   initials: string;
 };
 
+const ACCENT_COLORS = ["#00C6A7", "#F59E0B", "#8B5CF6", "#EC4899"];
+
 const TESTIMONIALS: Testimonial[] = [
   {
     name: "Sarah Ahmed",
@@ -62,12 +64,15 @@ function Stars({ count }: { count: number }) {
   );
 }
 
-function TestimonialCard({ testimonial, visible }: { testimonial: Testimonial; visible: boolean }) {
+function TestimonialCard({ testimonial, visible, accentColor }: { testimonial: Testimonial; visible: boolean; accentColor: string }) {
   return (
     <div
-      className="flex flex-col rounded-2xl border bg-white p-6 shadow-sm transition-all duration-700 hover:shadow-lg hover:-translate-y-0.5"
+      className="flex flex-col rounded-2xl bg-white p-6 shadow-sm transition-all duration-700 hover:shadow-lg hover:-translate-y-0.5"
       style={{
-        borderColor: "#E5E7EB",
+        borderLeft: `4px solid ${accentColor}`,
+        border: `1px solid #E5E7EB`,
+        borderLeftWidth: "4px",
+        borderLeftColor: accentColor,
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(24px)",
         boxShadow: visible ? "0 2px 16px rgba(0,0,0,0.06)" : "none",
@@ -139,7 +144,7 @@ export function TestimonialsSection() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {TESTIMONIALS.map((t, i) => (
             <div key={t.name} style={{ transitionDelay: `${i * 120}ms` }}>
-              <TestimonialCard testimonial={t} visible={visible} />
+              <TestimonialCard testimonial={t} visible={visible} accentColor={ACCENT_COLORS[i % ACCENT_COLORS.length]} />
             </div>
           ))}
         </div>
