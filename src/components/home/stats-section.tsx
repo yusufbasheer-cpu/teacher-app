@@ -17,7 +17,7 @@ const STATS: Stat[] = [
   { value: 25, suffix: "+", label: "Subjects Available" },
   { value: 13, suffix: "", label: "Structured PPT Elements" },
   { value: 6, suffix: "", label: "Global Frameworks" },
-  { value: 31, suffix: "", label: "Activity Sheet AFL Tools" },
+  { value: 87, suffix: "", label: "Activity Sheet AFL Tools" },
 ];
 
 function useCountUp(target: number, duration: number, trigger: boolean) {
