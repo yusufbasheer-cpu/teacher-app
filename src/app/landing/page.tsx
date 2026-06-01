@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { LandingNavSound } from "@/components/landing/landing-nav-sound";
+import { Navbar } from "@/components/layout/navbar";
 import { StatsSection } from "@/components/home/stats-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { Footer } from "@/components/layout/footer";
@@ -46,53 +46,7 @@ export default function LandingPage() {
     <div className="min-h-screen" style={{ background: "#FFFFFF", color: NAVY }}>
 
       {/* ── NAVBAR ─────────────────────────────────────────────────────────── */}
-      <header
-        className="sticky top-0 z-50 bg-white"
-        style={{ borderBottom: "2px solid rgba(0,198,167,0.2)" }}
-      >
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/landing" className="inline-flex shrink-0 items-center">
-            <div className="rounded-xl px-2 py-1" style={{ background: NAVY }}>
-              <img src="/Logo.png" alt="Layah" height={32} className="h-8 w-auto" style={{ height: 32 }} />
-            </div>
-          </Link>
-
-          <nav className="hidden items-center gap-6 md:flex">
-            {["Features", "How It Works"].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase().replace(/\s+/g, "-")}`}
-                className="text-sm font-medium transition hover:text-teal-600"
-                style={{ color: "#374151" }}
-              >
-                {item}
-              </a>
-            ))}
-            <Link href="/pricing" className="text-sm font-medium transition hover:text-teal-600" style={{ color: "#374151" }}>
-              Pricing
-            </Link>
-            <Link href="/auth" className="text-sm font-medium transition hover:text-teal-600" style={{ color: "#374151" }}>
-              Login
-            </Link>
-            <LandingNavSound />
-            <Link
-              href="/lesson-plan"
-              className="btn-pulse rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:opacity-90"
-              style={{ background: TEAL }}
-            >
-              Get Started Free ✨
-            </Link>
-          </nav>
-
-          <Link
-            href="/lesson-plan"
-            className="rounded-xl px-4 py-2 text-sm font-bold text-white md:hidden"
-            style={{ background: TEAL }}
-          >
-            Get Started
-          </Link>
-        </div>
-      </header>
+      <Navbar />
 
       {/* ── HERO ───────────────────────────────────────────────────────────── */}
       <section

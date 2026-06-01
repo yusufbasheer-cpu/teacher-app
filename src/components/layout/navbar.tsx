@@ -152,11 +152,11 @@ export function Navbar() {
             {user ? (
               <>
                 <Link
-                  href="/settings"
+                  href="/lesson-plan"
                   className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-xl px-3 py-2 text-sm transition"
-                  style={navLinkStyle("/settings")}
+                  style={navLinkStyle("/lesson-plan")}
                 >
-                  Settings
+                  Dashboard
                 </Link>
                 <button
                   type="button"
@@ -168,13 +168,22 @@ export function Navbar() {
                 </button>
               </>
             ) : (
-              <Link
-                href="/auth"
-                className="ml-1 inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-                style={{ background: "#00C6A7" }}
-              >
-                Login
-              </Link>
+              <>
+                <Link
+                  href="/auth"
+                  className="ml-1 inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition hover:opacity-70"
+                  style={{ color: "#374151" }}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/auth?tab=signup"
+                  className="ml-1 inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                  style={{ background: "#00C6A7" }}
+                >
+                  Sign Up
+                </Link>
+              </>
             )}
           </nav>
 
@@ -230,11 +239,11 @@ export function Navbar() {
             {user ? (
               <>
                 <Link
-                  href="/settings"
+                  href="/lesson-plan"
                   className="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm transition"
-                  style={navLinkStyle("/settings")}
+                  style={navLinkStyle("/lesson-plan")}
                 >
-                  Settings
+                  Dashboard
                 </Link>
                 <button
                   type="button"
@@ -246,13 +255,22 @@ export function Navbar() {
                 </button>
               </>
             ) : (
-              <Link
-                href="/auth"
-                className="mt-1 flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-center text-sm font-semibold text-white"
-                style={{ background: "#00C6A7" }}
-              >
-                Login
-              </Link>
+              <>
+                <Link
+                  href="/auth"
+                  className="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-medium transition"
+                  style={{ color: "#374151" }}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/auth?tab=signup"
+                  className="mt-1 flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-center text-sm font-semibold text-white"
+                  style={{ background: "#00C6A7" }}
+                >
+                  Sign Up
+                </Link>
+              </>
             )}
           </nav>
         ) : null}
