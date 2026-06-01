@@ -376,7 +376,7 @@ export const SINGLE_SLIDE_USER_FOCUS_EN: readonly string[] = [
   "(Slide 4 is filled from the teacher form automatically — not generated in this call.)",
   "Learning Outcomes ONLY: write exactly ONE measurable outcome per teacher objective — if the teacher entered 2 objectives write exactly 2 outcomes; if 3 objectives write exactly 3. Keep the SAME ORDER (outcome 1 aligns to objective 1, etc.). Use Bloom verbs; paraphrase into observable outcomes but do not add or remove items. No 'Learning Outcomes' heading in the body. Do not copy objectives verbatim.",
   "Main phase: FULL core teaching content FIRST, then AFL-based activities (fully implemented classroom process). No plenary, differentiation, or exit ticket.",
-  "Differentiated Activity ONLY: exactly three labeled sections and nothing else — (1) Higher Achievers task, (2) Middle Achievers task, (3) Lower Achievers task. Each section must have a full task. Do NOT add Quick Check, Mini Plenary, plenary, homework, success criteria, or exit ticket. No UAE link (slide 8), homework, or core re-teach.",
+  "Differentiated Activity and Mini Plenary — write FOUR sections in this exact order: (1) Higher Achievers task — a challenging activity that extends thinking beyond the lesson objectives, (2) Middle Achievers task — a standard activity that directly matches the learning objective, (3) Lower Achievers task — a supported activity with scaffolding, word banks, sentence starters, or guided prompts. Then at the bottom: (4) Mini Plenary — one quick question or checkpoint for the teacher to check whole-class understanding. All four tasks must be specific to the actual topic. Do NOT add homework, success criteria, exit ticket, or a full plenary. No UAE link on this slide.",
   "SLIDE_8_PLACEHOLDER",
   "Plenary: real classroom activity using teacher-selected or AI-selected Plenary AFL tool — full implementation. No homework, future references, or new teaching.",
   "Extended task or homework only — one clear task. Do NOT repeat the slide title in the body. Do NOT include success criteria, self-evaluation, I can statements, exit ticket, or plenary. Success criteria belong on slide 12 only.",
@@ -405,7 +405,7 @@ const SLIDE7_MINI_PLENARY_HEADING_RE =
 const SLIDE7_FULL_PLENARY_HEADING_RE = /^#*\s*plenary\s*:?\s*$/i;
 const SLIDE7_QUICK_CHECK_RE = /^(quick\s+check|checkpoint)\b/i;
 const SLIDE7_DISCARD_LINE_RE =
-  /^(quick\s+check|checkpoint|mini\s+plenary|differentiated\s+activity|success\s+criteria|exit\s+ticket|extended\s+task|homework)\b/i;
+  /^(quick\s+check|checkpoint|differentiated\s+activity|success\s+criteria|exit\s+ticket|extended\s+task|homework)\b/i;
 const SLIDE7_TITLE_ECHO_RE = /^#*\s*differentiated\s+activity(\s+and\s+mini\s+plenary)?\s*:?\s*$/i;
 
 const SLIDE7_HIGHER_HEADING_RE =
@@ -429,6 +429,11 @@ function classifySlide7TierLine(line: string): Slide7Tier | null {
   return null;
 }
 
+function defaultSlide7MiniPlenary(topic: string): string {
+  const t = topic.trim() || "the lesson topic";
+  return `Quick check: In one sentence, explain the most important thing you learned about "${t}" today.`;
+}
+
 function defaultSlide7TierTask(tier: Slide7Tier, topic: string): string {
   const t = topic.trim() || "the lesson topic";
   switch (tier) {
@@ -441,13 +446,24 @@ function defaultSlide7TierTask(tier: Slide7Tier, topic: string): string {
   }
 }
 
-function parseSlide7TierBlocks(body: string): Record<Slide7Tier, string[]> {
+function parseSlide7TierBlocks(body: string): { tiers: Record<Slide7Tier, string[]>; miniPlenary: string[] } {
   const tiers: Record<Slide7Tier, string[]> = { higher: [], middle: [], lower: [] };
-  let current: Slide7Tier | null = null;
+  const miniPlenary: string[] = [];
+  let current: Slide7Tier | "miniPlenary" | null = null;
 
   for (const raw of body.replace(/\r\n/g, "\n").split("\n")) {
     const t = raw.trim();
     if (!t) continue;
+
+    if (SLIDE7_MINI_PLENARY_HEADING_RE.test(t)) {
+      current = "miniPlenary";
+      continue;
+    }
+
+    if (SLIDE7_FULL_PLENARY_HEADING_RE.test(t)) {
+      current = null;
+      continue;
+    }
 
     const inline = t.match(SLIDE7_INLINE_TIER_RE);
     if (inline) {
@@ -475,45 +491,56 @@ function parseSlide7TierBlocks(body: string): Record<Slide7Tier, string[]> {
       continue;
     }
 
-    if (SLIDE7_DISCARD_LINE_RE.test(t) || SLIDE7_QUICK_CHECK_RE.test(t) || SLIDE7_TITLE_ECHO_RE.test(t)) {
-      current = null;
-      continue;
-    }
-    if (/\b(?<!mini\s)plenary\b/i.test(t) && t.length > 24) {
-      current = null;
-      continue;
-    }
-    if (/\b(success\s+criteria|exit\s+ticket|homework|extended\s+task)\b/i.test(t)) {
-      current = null;
-      continue;
+    if (current !== "miniPlenary") {
+      if (SLIDE7_DISCARD_LINE_RE.test(t) || SLIDE7_QUICK_CHECK_RE.test(t) || SLIDE7_TITLE_ECHO_RE.test(t)) {
+        current = null;
+        continue;
+      }
+      if (/\b(success\s+criteria|exit\s+ticket|homework|extended\s+task)\b/i.test(t)) {
+        current = null;
+        continue;
+      }
+      if (/\bplenary\b/i.test(t) && !/\bmini\s+plenary\b/i.test(t) && t.length > 24) {
+        current = null;
+        continue;
+      }
     }
 
-    if (current) tiers[current].push(t);
+    if (current === "miniPlenary") {
+      miniPlenary.push(t);
+    } else if (current !== null) {
+      tiers[current].push(t);
+    }
   }
 
-  return tiers;
+  return { tiers, miniPlenary };
 }
 
-function formatSlide7CanonicalBody(tiers: Record<Slide7Tier, string[]>, topic: string): string {
+function formatSlide7CanonicalBody(
+  tiers: Record<Slide7Tier, string[]>,
+  topic: string,
+  miniPlenary: string[],
+): string {
   const labels: Record<Slide7Tier, string> = {
     higher: SLIDE7_HIGHER_LABEL,
     middle: SLIDE7_MIDDLE_LABEL,
     lower: SLIDE7_LOWER_LABEL,
   };
   const order: Slide7Tier[] = ["higher", "middle", "lower"];
-  return order
+  const tierBody = order
     .map((tier) => {
       const content = tiers[tier].join("\n").trim() || defaultSlide7TierTask(tier, topic);
       return `${labels[tier]}\n${content}`;
     })
-    .join("\n\n")
-    .trim();
+    .join("\n\n");
+  const plenaryContent = miniPlenary.join("\n").trim() || defaultSlide7MiniPlenary(topic);
+  return `${tierBody}\n\nMini Plenary\n${plenaryContent}`.trim();
 }
 
-/** Keep only three tier sections with canonical labels; strip plenary, quick check, and other slide types. */
+/** Keep three tier sections with canonical labels and append a Mini Plenary checkpoint at the bottom. */
 export function sanitizeSlide7DifferentiatedBody(body: string, topic = ""): string {
-  const tiers = parseSlide7TierBlocks(body);
-  return formatSlide7CanonicalBody(tiers, topic);
+  const { tiers, miniPlenary } = parseSlide7TierBlocks(body);
+  return formatSlide7CanonicalBody(tiers, topic, miniPlenary);
 }
 
 export function validateSlide7DifferentiatedBody(body: string): { ok: boolean; reasons: string[] } {
@@ -536,9 +563,13 @@ export function validateSlide7DifferentiatedBody(body: string): { ok: boolean; r
     reasons.push("must contain exactly three tier section labels and no duplicates");
   }
 
+  if (!lines.some((l) => /^mini\s+plenary\s*$/i.test(l))) {
+    reasons.push('must include "Mini Plenary" checkpoint at the bottom of slide 7');
+  }
+
   for (const line of lines) {
-    if (SLIDE7_MINI_PLENARY_HEADING_RE.test(line) || SLIDE7_FULL_PLENARY_HEADING_RE.test(line)) {
-      reasons.push('forbidden "Mini Plenary" or plenary section on slide 7');
+    if (SLIDE7_FULL_PLENARY_HEADING_RE.test(line)) {
+      reasons.push('forbidden standalone "Plenary" section on slide 7 — use Mini Plenary instead');
       break;
     }
     if (SLIDE7_QUICK_CHECK_RE.test(line) || /^quick\s+check\b/i.test(line)) {

@@ -316,7 +316,20 @@ const deckExtractors = {
   differentiated: (plan: string) =>
     extractByHints(
       plan,
-      ["differentiation", "differentiated", "support challenge", "sen", "eal", "التمايز", "التنويع"],
+      [
+        "differentiation",
+        "differentiated",
+        "support challenge",
+        "sen",
+        "eal",
+        "differentiated activities",
+        "differentiated tasks",
+        "tiered tasks",
+        "scaffolded",
+        "extension task",
+        "التمايز",
+        "التنويع",
+      ],
       DECK_STOP_DIFF,
     ),
   uaeOnly: (plan: string) =>
@@ -328,19 +341,40 @@ const deckExtractors = {
   realLifeOnly: (plan: string) =>
     extractByHints(
       plan,
-      ["real life", "real world", "real-life", "authentic context", "everyday application", "الحياة الواقعية"],
+      [
+        "real life",
+        "real world",
+        "real-life",
+        "real-world",
+        "authentic context",
+        "everyday application",
+        "real world application",
+        "real-world connection",
+        "beyond the classroom",
+        "الحياة الواقعية",
+      ],
       DECK_STOP_UAE,
     ),
   crossOnly: (plan: string) =>
     extractByHints(
       plan,
-      ["cross curricular", "cross-curricular", "cross curricular link", "another subject", "الربط بين المواد"],
+      [
+        "cross curricular",
+        "cross-curricular",
+        "cross curricular link",
+        "another subject",
+        "subject links",
+        "subject connections",
+        "interdisciplinary",
+        "related subjects",
+        "الربط بين المواد",
+      ],
       DECK_STOP_UAE,
     ),
   careerOnly: (plan: string) =>
     extractByHints(
       plan,
-      ["career", "profession", "job role", "occupation", "مهنة", "وظيفة"],
+      ["career", "profession", "job role", "occupation", "careers", "vocational", "professional connection", "مهنة", "وظيفة"],
       DECK_STOP_UAE,
     ),
   globalOnly: (plan: string) =>
@@ -365,7 +399,20 @@ const deckExtractors = {
   plenary: (plan: string) =>
     extractByHints(
       plan,
-      ["plenary", "lesson closure", "reflection", "summary activity", "الختام", "التأمل", "التلخيص"],
+      [
+        "plenary",
+        "lesson closure",
+        "reflection",
+        "summary activity",
+        "wrap up",
+        "wrap-up",
+        "closing activity",
+        "consolidation",
+        "round up",
+        "الختام",
+        "التأمل",
+        "التلخيص",
+      ],
       DECK_STOP_PLENARY,
     ),
   extendedTask: (plan: string) =>
@@ -761,8 +808,8 @@ function pickUaeFrameworkSlide8(
   if (body.replace(/\s+/g, "").length < MIN_SINGLE_LINK_CHARS) {
     body = stripMarkdownSymbolsForStudents(
       isAr
-        ? `ربط إماراتي لموضوع «${topic}» في ${subj} (${gr}): معلم أو قيمة وطنية، مواءمة وزارة التربية، معايير خدة/سپيا، هوية وطنية، وهدف تنمية مستدامة في سياق الإمارات.`
-        : `UAE connection for "${topic}" (${subj}, ${gr}): name a UAE landmark or national value; align to UAE MOE expectations; note KHDA/SPEA inspection-quality teaching; link UAE National Identity; connect one SDG to UAE context.`,
+        ? `ربط إماراتي: موضوع «${topic}» في ${subj}\n\nالهوية الوطنية: يرتبط موضوع «${topic}» بقيم الإمارات وأهدافها نحو الابتكار والمعرفة.\n\nمواءمة المنهج الإماراتي: يدعم تدريس «${topic}» أهداف وزارة التربية والتعليم ومعايير الجودة الوطنية.\n\nمعايير خدة وسبيا: التعلم الفعّال في هذا الموضوع يعكس مؤشرات التقييم والتفتيش المدرسي.\n\nأهداف التنمية المستدامة: فهم «${topic}» يسهم في تحقيق أهداف التنمية المستدامة ضمن رؤية الإمارات 2071.`
+        : `UAE Real-Life Connection: "${topic}" (${subj}, ${gr})\n\nUAE National Identity: This topic connects to UAE values of knowledge, innovation, and sustainable development — central to Vision 2071.\n\nUAE MOE Curriculum Alignment: Teaching "${topic}" directly supports UAE Ministry of Education learning standards and curriculum goals.\n\nKHDA and SPEA Inspection Standards: Effective delivery of "${topic}" demonstrates the high-quality, evidence-based teaching that inspectors look for.\n\nSDG in UAE Context: Understanding "${topic}" contributes to the UAE's commitment to Sustainable Development Goals and its role as a global knowledge hub.`,
     );
   }
   const notes = buildTeacherSlideNotes(
@@ -818,8 +865,8 @@ function pickNonUaeSlide8(
   if (body.replace(/\s+/g, "").length < MIN_SINGLE_LINK_CHARS) {
     body = stripMarkdownSymbolsForStudents(
       isAr
-        ? `ربط واحد فقط لموضوع «${topic}»: اختر تطبيقاً واقعياً أو ربطاً بمادة أخرى أو مهنة أو قضية عالمية — دون أي إشارة للإمارات.`
-        : `Single connection for "${topic}" (${subj}, ${gr}): choose one of cross-curricular link, real-life application, career link, global/SDG link, or subject integration — no UAE references.`,
+        ? `ربط الحياة الواقعية والمواد الأخرى: موضوع «${topic}»\n\nتطبيق واقعي: تظهر مفاهيم «${topic}» في الحياة اليومية وفي حلّ المشكلات الفعلية.\n\nربط بمادة أخرى: يرتبط موضوع «${topic}» بمواد أخرى كالعلوم والرياضيات واللغة — مما يعمّق الفهم.\n\nالمسارات المهنية: يوظّف المتخصصون في مجالات العلوم والتكنولوجيا والهندسة والرياضيات والتعليم معرفة «${topic}» في عملهم اليومي.`
+        : `Real-Life and Cross-Curricular Connection: "${topic}" (${subj}, ${gr})\n\nReal-Life Application: The concepts in "${topic}" appear in everyday problem-solving, communication, and decision-making that students will encounter beyond the classroom.\n\nCross-Curricular Link: "${topic}" connects to other subjects — students can apply this knowledge across Science, Mathematics, and Language Arts, strengthening understanding in multiple areas.\n\nCareer Connection: Professionals in STEM, education, healthcare, and creative industries use understanding of "${topic}" as a core part of their daily work.`,
     );
   }
   const label: Record<Key, string> = {
@@ -1125,8 +1172,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "differentiated",
     ["differentiation", "mini plenary", "support", "extension", "التمايز", "تلخيص"],
     isAr
-      ? `فقط: مهام متمايزة لذوي التحصيل الأعلى والأوسط والأدنى لموضوع «${topic}»، ثم فقرة واحدة كتلخيص مصغر للتحقق السريع. لا محتوى الشرح الرئيسي ولا واجب ولا نواتج.`
-      : `Exactly three sections only on "${topic}": Higher Achievers task, Middle Achievers task, Lower Achievers task — each with a full differentiated task. No Quick Check, Mini Plenary, plenary, homework, success criteria, or exit ticket.`,
+      ? `مهام متمايزة لموضوع «${topic}»: (1) ذوو التحصيل الأعلى — تحدٍّ يمتد إلى ما وراء الهدف، (2) ذوو التحصيل الأوسط — نشاط قياسي يحقق الهدف، (3) ذوو التحصيل الأدنى — نشاط مدعوم بالتسقيل والإرشاد. ثم في الأسفل: تلخيص مصغر — سؤال سريع للتحقق من الفهم.`
+      : `Differentiated tasks for "${topic}": (1) Higher Achievers — a challenging task extending beyond the objective, (2) Middle Achievers — a standard task matching the objective, (3) Lower Achievers — a scaffolded task with sentence starters or guided prompts. At the bottom: Mini Plenary — one quick question to check understanding.`,
     "10–12 minutes",
     isAr,
     plan,
@@ -1143,8 +1190,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "plenary",
     ["plenary", "reflection", "recap", "الختام", "تلخيص"],
     isAr
-      ? `فقط نشاط ختامي واحد لموضوع «${topic}» للتأمل أو التلخيص أو النقاش. يمكن العمل الجماعي. لا تعليم جديد ولا واجب ولا أهداف.`
-      : `Plenary activity only for "${topic}": reflection, recap, or discussion task; group formats allowed. No new teaching, homework, or objectives on this slide.`,
+      ? `نشاط الختام: فكّر، شارك، ناقش — موضوع «${topic}»\n\nالنشاط: يراجع الطلاب تعلّمهم ويوحّدون فهمهم لموضوع «${topic}».\n\n1. فكّر (دقيقتان): اكتب النقاط الثلاث الأهم التي تعلمتها عن «${topic}» اليوم.\n2. شارك (دقيقتان): ناقش مع زميلك — ما أبرز ما تعلمته؟ ماذا أضاف كلٌّ منكما للآخر؟\n3. تبادل الأفكار (دقيقتان): يشارك 2-3 طلاب أهم ما تعلموه مع الصف بأكمله.\n\nالربط بأهداف الدرس: يُظهر الطلاب فهمهم لـ«${topic}» ويصوغون أفكارهم الرئيسية بكلماتهم الخاصة.`
+      : `Plenary: Think-Pair-Share — "${topic}"\n\nActivity: Students review and consolidate their learning about "${topic}".\n\n1. Think (2 min): Individually write down the 3 most important things you learned about "${topic}" today.\n2. Pair (2 min): Compare your key points with a partner. What did you both include? What was different?\n3. Share (2 min): 2-3 pairs share their most important insight with the class.\n\nConnection to learning objectives: Students articulate their understanding of "${topic}" in their own words, demonstrating they have met today's lesson objectives.`,
     "8–10 minutes",
     isAr,
     plan,
