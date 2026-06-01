@@ -1,5 +1,5 @@
 /**
- * AFL (Assessment for Learning) tool catalog — 31 tools across six lesson phases.
+ * AFL (Assessment for Learning) tool catalog — 87 tools across six lesson phases.
  * Each tool includes how it works, classroom use, and purpose for full AI implementation.
  */
 
@@ -115,6 +115,76 @@ export const AFL_PHASE_GROUPS: readonly AflPhaseGroup[] = [
         "Students answer 1–2 quick questions on paper or digitally; teacher reviews responses before teaching.",
         "Checks readiness for learning.",
       ),
+      tool(
+        "st-four-corners",
+        "Four Corners",
+        "Teacher presents a statement and labels four corners of the room with different opinions or answers.",
+        "Students move to the corner that matches their view and explain their reasoning to others in that corner before sharing with the class.",
+        "Activates thinking, encourages movement, and reveals different perspectives.",
+      ),
+      tool(
+        "st-silent-debate",
+        "Silent Debate",
+        "Students respond to a discussion question entirely in writing rather than speaking.",
+        "Post the question on paper or whiteboards; students circulate writing comments, agreements, or challenges to each other's ideas in silence.",
+        "Encourages deep thinking and allows all students to participate without social pressure.",
+      ),
+      tool(
+        "st-speed-recall",
+        "Speed Recall",
+        "Students write everything they remember from previous lessons within a strict time limit.",
+        "Set a timer (2–3 minutes); students write freely without stopping. Debrief by comparing lists with a partner.",
+        "Strengthens retrieval practice and surfaces prior knowledge quickly.",
+      ),
+      tool(
+        "st-vocabulary-splash",
+        "Vocabulary Splash",
+        "Key vocabulary terms are displayed; students group or connect them before the lesson begins.",
+        "Students organise terms into categories, draw connections, or predict meanings. Discuss as a class.",
+        "Activates subject-specific language and previews lesson content.",
+      ),
+      tool(
+        "st-prediction-line",
+        "Prediction Line",
+        "Students make personal predictions about lesson outcomes before learning begins.",
+        "Students write or state predictions on a sticky note or card; revisit and compare at the end of the lesson.",
+        "Builds curiosity, sets a learning purpose, and encourages metacognition.",
+      ),
+      tool(
+        "st-human-continuum",
+        "Human Continuum",
+        "Students physically position themselves along a line in the room according to confidence level or opinion.",
+        "Label each end of the room (e.g. Strongly Agree / Strongly Disagree); students stand where they feel they belong and explain their position.",
+        "Reveals prior understanding, builds confidence, and promotes discussion.",
+      ),
+      tool(
+        "st-find-someone-who",
+        "Find Someone Who",
+        "Students move around the room finding classmates who can answer different questions or match specific criteria.",
+        "Give each student a grid of questions; they must find a different person for each answer. Class reconvenes to discuss findings.",
+        "Encourages interaction, activates prior knowledge, and builds class community.",
+      ),
+      tool(
+        "st-question-generator",
+        "Question Generator",
+        "Students create their own questions they hope to answer during the lesson.",
+        "Students write 2–3 questions before teaching begins; display or collect them and revisit at the end of the lesson.",
+        "Increases curiosity, ownership, and engagement with the topic.",
+      ),
+      tool(
+        "st-connect-three",
+        "Connect Three",
+        "Students are given three concepts, images, or words and must explain how all three are connected.",
+        "Display three items; students write or share a sentence explaining the link. Pairs compare their reasoning.",
+        "Develops analytical thinking and helps teachers gauge existing understanding.",
+      ),
+      tool(
+        "st-this-or-that",
+        "This or That",
+        "Students choose between two contrasting options and justify their choice.",
+        "Present two options on the board; students vote with hands, cards, or movement and explain their reasoning.",
+        "Engages students immediately and surfaces prior knowledge through personal opinion.",
+      ),
     ],
   },
   {
@@ -163,6 +233,90 @@ export const AFL_PHASE_GROUPS: readonly AflPhaseGroup[] = [
         "Use open-ended questioning; students justify reasoning and build on each other's answers.",
         "Develops critical thinking.",
       ),
+      tool(
+        "mn-carousel",
+        "Carousel Activity",
+        "Groups rotate between stations completing different tasks or answering questions at each station.",
+        "Set up 4–6 stations around the room; groups move on a signal every 5–8 minutes completing a different task at each.",
+        "Active learning, varied tasks, and collaborative engagement.",
+      ),
+      tool(
+        "mn-learning-detective",
+        "Learning Detective",
+        "Students investigate clues, evidence, or sources to solve a problem or answer a question.",
+        "Provide clue cards, images, or text extracts; students gather evidence and present their findings to the class.",
+        "Builds enquiry skills, critical thinking, and deep engagement with content.",
+      ),
+      tool(
+        "mn-fishbowl",
+        "Fishbowl Discussion",
+        "A small inner group discusses a topic while the outer group observes and evaluates.",
+        "4–6 students sit in the centre and discuss; the rest observe, take notes, and may swap in. Debrief together at the end.",
+        "Models high-quality academic discussion and develops listening and analytical skills.",
+      ),
+      tool(
+        "mn-socratic-circle",
+        "Socratic Circle",
+        "Students engage in a structured collaborative inquiry using evidence and questioning to deepen understanding.",
+        "Inner circle discusses the text or topic using evidence; outer circle evaluates arguments. Rotate roles.",
+        "Develops critical thinking, evidence-based reasoning, and academic discussion skills.",
+      ),
+      tool(
+        "mn-expert-groups",
+        "Expert Groups",
+        "Students specialise in one area of learning and then teach their expertise to others.",
+        "Assign different content sections to groups; students master their section and then share knowledge with peers from other groups.",
+        "Encourages deep learning, peer teaching, and accountability.",
+      ),
+      tool(
+        "mn-escape-room",
+        "Escape Room Challenge",
+        "Students solve subject-related puzzles and challenges to unlock the next stage of learning.",
+        "Create a sequence of tasks where completing one correctly reveals the next clue. Work in teams with a time limit.",
+        "Builds engagement, teamwork, and application of knowledge under pressure.",
+      ),
+      tool(
+        "mn-error-analysis",
+        "Error Analysis",
+        "Students identify mistakes in worked examples, explain why they are incorrect, and correct them.",
+        "Provide examples with deliberate errors; students annotate mistakes and rewrite the correct version.",
+        "Deepens understanding by examining misconceptions and reinforcing correct reasoning.",
+      ),
+      tool(
+        "mn-role-on-wall",
+        "Role on the Wall",
+        "Students add information, thoughts, feelings, or characteristics around a character or concept outline.",
+        "Draw a character silhouette or concept shape; students write internal thoughts inside and external behaviour outside.",
+        "Develops empathy, character analysis, and multi-perspective thinking.",
+      ),
+      tool(
+        "mn-living-timeline",
+        "Living Timeline",
+        "Students arrange themselves or event cards in chronological order and justify their placements.",
+        "Give students event cards; they physically position themselves in the correct sequence and explain the reasoning.",
+        "Develops sequencing, chronological understanding, and collaborative reasoning.",
+      ),
+      tool(
+        "mn-case-study",
+        "Case Study Investigation",
+        "Students analyse a real-life situation and apply subject knowledge to solve problems or answer questions.",
+        "Provide a real or realistic scenario; students investigate, discuss, and present their analysis or recommendations.",
+        "Applies knowledge to authentic contexts and develops critical and analytical skills.",
+      ),
+      tool(
+        "mn-reverse-teaching",
+        "Reverse Teaching",
+        "Students teach a concept to classmates to consolidate their own understanding.",
+        "Assign a concept or section to individuals or pairs; they prepare and deliver a short explanation or mini-lesson.",
+        "Strengthens understanding through the act of teaching and builds student confidence.",
+      ),
+      tool(
+        "mn-diamond-ranking",
+        "Diamond Ranking",
+        "Students prioritise nine statements or ideas into a diamond shape based on importance.",
+        "Provide nine cards; students place the most important at the top, least important at the bottom, and discuss their reasoning.",
+        "Encourages prioritisation, discussion, and justification of opinions.",
+      ),
     ],
   },
   {
@@ -197,6 +351,62 @@ export const AFL_PHASE_GROUPS: readonly AflPhaseGroup[] = [
         "Starter, main, and dessert tasks; student selects their path through the menu.",
         "Engagement and choice-based learning.",
       ),
+      tool(
+        "df-traffic-light-tasks",
+        "Traffic Light Tasks",
+        "Activities are organised into green, amber, and red challenge levels.",
+        "Green = accessible foundation tasks; Amber = expected level; Red = challenging extension. Students select or are guided to their level.",
+        "Differentiates by challenge and helps students work at an appropriate difficulty level.",
+      ),
+      tool(
+        "df-scaffold-ladder",
+        "Scaffold Ladder",
+        "Learning support is gradually removed as students become more confident and independent.",
+        "Begin with full scaffolds (sentence starters, frames, hints); reduce support step by step as students demonstrate readiness.",
+        "Builds independence and confidence progressively.",
+      ),
+      tool(
+        "df-support-station",
+        "Support Station",
+        "A teacher-led small group receives targeted support while others work independently.",
+        "Pull a small group to work directly with the teacher on a specific skill or concept while the rest of the class works on independent tasks.",
+        "Provides targeted intervention and closes learning gaps efficiently.",
+      ),
+      tool(
+        "df-challenge-zone",
+        "Challenge Zone",
+        "Extension activities are available for students who complete work early or need greater challenge.",
+        "Prepare a set of open-ended, high-order tasks accessible at a designated area; students move to the challenge zone when ready.",
+        "Keeps high-achieving students engaged and stretched.",
+      ),
+      tool(
+        "df-learning-pathways",
+        "Learning Pathways",
+        "Different routes are provided to reach the same learning objective, allowing flexibility.",
+        "Design two or three distinct pathways with different approaches, styles, or levels of support; students select or are assigned a pathway.",
+        "Accommodates different learning preferences and starting points.",
+      ),
+      tool(
+        "df-flexible-grouping",
+        "Flexible Grouping",
+        "Students are grouped dynamically according to needs, ability, interests, or learning goals.",
+        "Regroup students based on formative assessment data, interest, or task type; groups should change regularly.",
+        "Ensures all learners are appropriately challenged and supported.",
+      ),
+      tool(
+        "df-tiered-questions",
+        "Tiered Questions",
+        "Questions are designed at varying difficulty levels to address different learner needs.",
+        "Prepare three tiers of questions: recall-level, application-level, and evaluation-level. Assign or allow student choice.",
+        "Ensures every student is challenged at an appropriate level during questioning.",
+      ),
+      tool(
+        "df-support-cards",
+        "Support Cards",
+        "Students can access hint cards, sentence starters, or guided prompts when needed.",
+        "Prepare physical or digital support cards with vocabulary, steps, or clues; make them available on request or at desks.",
+        "Provides just-in-time scaffolding without reducing challenge for those who don't need it.",
+      ),
     ],
   },
   {
@@ -230,6 +440,132 @@ export const AFL_PHASE_GROUPS: readonly AflPhaseGroup[] = [
         "Students write answers, crumple paper, throw, and discuss.",
         "Write response, crumple, toss to another student, unfold, read, and discuss in pairs.",
         "Fun reflection and participation.",
+      ),
+      tool(
+        "pl-hinge-question",
+        "Hinge Question",
+        "A carefully designed question checks understanding at a critical decision point in the lesson.",
+        "Pose the hinge question mid-lesson; student responses reveal whether the class is ready to progress or needs re-teaching.",
+        "Enables real-time teaching decisions and prevents moving on with unresolved misconceptions.",
+      ),
+      tool(
+        "pl-thumbs-up-down",
+        "Thumbs Up Side Down",
+        "Students use hand signals to indicate their level of understanding instantly.",
+        "Teacher poses a question or statement; students show thumbs up (understand), sideways (partially), or down (not yet).",
+        "Fast, low-stakes formative check that gives the teacher an immediate class overview.",
+      ),
+      tool(
+        "pl-whiteboard-check",
+        "Whiteboard Check",
+        "Students write answers on mini whiteboards and display them simultaneously.",
+        "Students write their answer and hold up boards on the teacher's signal; teacher scans for correct and incorrect responses.",
+        "Provides simultaneous whole-class assessment with immediate feedback.",
+      ),
+      tool(
+        "pl-traffic-light-cards",
+        "Traffic Light Cards",
+        "Students use coloured cards to signal confidence or understanding levels.",
+        "Students display green (confident), amber (partially understand), or red (need support) in response to a question or task.",
+        "Allows the teacher to quickly identify who needs support without students feeling singled out.",
+      ),
+      tool(
+        "pl-one-minute-summary",
+        "One Minute Summary",
+        "Students summarise what they have learned so far in exactly one minute.",
+        "Set a timer; students write or say a summary of key learning. Compare with a partner.",
+        "Reinforces understanding and surfaces gaps in knowledge.",
+      ),
+      tool(
+        "pl-confidence-scale",
+        "Confidence Scale",
+        "Students rate their confidence level on a numbered scale and explain their reasoning.",
+        "Display a 1–5 scale; students select their number and write one sentence explaining their choice.",
+        "Encourages metacognition and helps teachers identify students needing support.",
+      ),
+      tool(
+        "pl-quick-poll",
+        "Quick Poll",
+        "Students vote on a question, enabling the teacher to instantly assess class understanding.",
+        "Ask a multiple-choice question; students vote using hands, cards, or a digital tool. Discuss the spread of answers.",
+        "Provides rapid assessment data and opens discussion around different responses.",
+      ),
+      tool(
+        "pl-spot-mistake",
+        "Spot the Mistake",
+        "Students identify and correct a deliberate mistake presented by the teacher.",
+        "Show a worked example, statement, or piece of text with an intentional error; students find and explain the mistake.",
+        "Deepens understanding by analysing errors and reinforcing correct knowledge.",
+      ),
+      tool(
+        "pl-explain-partner",
+        "Explain to Your Partner",
+        "Students briefly teach a concept to a partner to consolidate and reinforce learning.",
+        "Students take turns explaining a key idea in their own words; partners listen and add or correct.",
+        "Strengthens understanding through peer explanation and active retrieval.",
+      ),
+      tool(
+        "pl-micro-quiz",
+        "Micro Quiz",
+        "A short 3–5 question quiz provides a quick check of understanding before the lesson continues.",
+        "Give students a short written or verbal quiz; mark together immediately and use results to guide next steps.",
+        "Identifies gaps before moving on and promotes low-stakes retrieval practice.",
+      ),
+      tool(
+        "pl-tweet-lesson",
+        "Tweet the Lesson",
+        "Students summarise the lesson in a very limited number of words, as if writing a tweet.",
+        "Students write a 20–30 word summary of the key learning; share with a partner or display.",
+        "Encourages concise communication and consolidation of learning.",
+      ),
+      tool(
+        "pl-headline-summary",
+        "Headline Summary",
+        "Students create a newspaper-style headline that captures the main learning of the lesson.",
+        "Students write a bold, informative headline summarising the lesson; compare with a partner and discuss.",
+        "Promotes synthesis, concise thinking, and reflection on key ideas.",
+      ),
+      tool(
+        "pl-sentence-challenge",
+        "Sentence Challenge",
+        "Students summarise the entire lesson using a single carefully constructed sentence.",
+        "Students write one sentence that captures the main idea; share sentences and identify the most accurate.",
+        "Challenges students to distil and communicate complex learning concisely.",
+      ),
+      tool(
+        "pl-learning-journey",
+        "Learning Journey Map",
+        "Students reflect on the learning process by mapping what they learned and how they learned it.",
+        "Students draw or write a brief journey showing starting knowledge, discoveries, challenges, and current understanding.",
+        "Builds metacognitive awareness and helps students see their own progress.",
+      ),
+      tool(
+        "pl-teach-teacher",
+        "Teach the Teacher",
+        "Students explain lesson content back to the teacher as a demonstration of understanding.",
+        "Select a student or small group to teach back a key concept; teacher plays the role of learner and asks questions.",
+        "Deepens understanding by requiring students to articulate and organise their knowledge.",
+      ),
+      tool(
+        "pl-reflection-wheel",
+        "Reflection Wheel",
+        "Students evaluate different aspects of their learning using a segmented rating wheel.",
+        "Provide a wheel divided into sections (e.g. understanding, effort, participation, questions); students shade each segment and annotate.",
+        "Encourages holistic self-evaluation across multiple dimensions of learning.",
+      ),
+      tool(
+        "pl-question-parking-lot",
+        "Question Parking Lot",
+        "Students leave unanswered questions on a display so the teacher can address them later.",
+        "Students write remaining questions on sticky notes and post them on a designated parking lot board; teacher reviews and addresses next lesson.",
+        "Ensures student questions are captured and not lost, and informs future planning.",
+      ),
+      tool(
+        "pl-final-challenge",
+        "Final Challenge Question",
+        "Students independently apply their learning to a final problem or scenario.",
+        "Present a challenge question requiring application of the lesson content; students respond individually in silence.",
+        "Assesses deeper understanding and the ability to apply learning independently.",
       ),
     ],
   },
@@ -299,6 +635,62 @@ export const AFL_PHASE_GROUPS: readonly AflPhaseGroup[] = [
         "Share rubric descriptors; students place their work or understanding on the scale with brief evidence.",
         "Clear success measurement.",
       ),
+      tool(
+        "sc-co-creation",
+        "Success Criteria Co-Creation",
+        "Students help generate the criteria that define successful completion of a task.",
+        "Before the task, discuss with students what success looks like; collaboratively build a checklist or set of criteria.",
+        "Increases ownership, clarity of expectations, and student commitment to quality.",
+      ),
+      tool(
+        "sc-peer-success-check",
+        "Peer Success Check",
+        "Students review a partner's work against the agreed success criteria.",
+        "In pairs, students read each other's work and mark which criteria have been met, then give verbal or written feedback.",
+        "Develops evaluative thinking and provides actionable peer feedback.",
+      ),
+      tool(
+        "sc-criteria-highlighting",
+        "Success Criteria Highlighting",
+        "Students highlight evidence in their own work showing where each criterion has been met.",
+        "Using a colour code, students highlight different sections of their work corresponding to different criteria.",
+        "Makes self-assessment concrete and visible, helping students see strengths and gaps.",
+      ),
+      tool(
+        "sc-self-assessment-rubric",
+        "Self-Assessment Rubric",
+        "Students score their own work using a detailed rubric and identify areas for improvement.",
+        "Provide a rubric with clear descriptors; students read their work, select their level for each criterion, and write one target.",
+        "Builds honest self-evaluation skills and helps students set focused improvement goals.",
+      ),
+      tool(
+        "sc-www-ebi",
+        "WWW and EBI",
+        "Students identify what went well and what even better if could improve their work.",
+        "Students write WWW (What Went Well) and EBI (Even Better If) against their work or lesson performance.",
+        "Structures reflective feedback and encourages positive and constructive self-evaluation.",
+      ),
+      tool(
+        "sc-green-pen",
+        "Green Pen Reflection",
+        "Students use written feedback to make targeted improvements and show visible evidence of progress.",
+        "After receiving teacher or peer feedback, students use a green pen to annotate, correct, or extend their work.",
+        "Creates a clear record of growth and embeds a culture of responding to feedback.",
+      ),
+      tool(
+        "sc-success-ladder",
+        "Success Ladder",
+        "Students identify which rung of the success ladder they have reached and plan their next step.",
+        "Display a ladder with labelled rungs representing stages of mastery; students self-place and write one action to climb higher.",
+        "Visualises progress and motivates students to set clear next-step targets.",
+      ),
+      tool(
+        "sc-model-comparison",
+        "Model Comparison",
+        "Students compare their own work with a high-quality example and identify improvements they can make.",
+        "Share an annotated model answer; students read it alongside their own work and write two specific improvements.",
+        "Builds understanding of quality through exemplar analysis and targeted self-correction.",
+      ),
     ],
   },
 ] as const;
@@ -333,7 +725,7 @@ export const AFL_RECOMMENDED_IDS: Record<AflPhaseId, readonly string[]> = {
  */
 export const PPT_AFL_DRIVEN_SYSTEM_RULES = `
 ### CORE SYSTEM RULE — PPT generation is AFL-driven
-The PPT generation system is **driven by AFL tools** from the **31-tool catalog** (six phases). Each lesson stage — **Starter**, **Main Phase**, **Differentiation**, **Plenary**, **Exit Ticket**, **Success Criteria** — must be **powered by AFL activities** on the matching slide. Understand every tool deeply: **how it works**, **classroom use**, and **purpose**.
+The PPT generation system is **driven by AFL tools** from the **AFL tool catalog** (six phases). Each lesson stage — **Starter**, **Main Phase**, **Differentiation**, **Plenary**, **Exit Ticket**, **Success Criteria** — must be **powered by AFL activities** on the matching slide. Understand every tool deeply: **how it works**, **classroom use**, and **purpose**.
 
 ### TEACHER CONTROL RULE (mandatory)
 - If the teacher **selected** an AFL tool for a phase, you **MUST** use **exactly** that tool — **do NOT** replace it.
@@ -365,7 +757,7 @@ The PPT generation system is **driven by AFL tools** from the **31-tool catalog*
 6. Each slide must remain **strictly self-contained**.
 
 ### FINAL OUTPUT REQUIREMENT
-Generate structured PPT slides with **pedagogically correct AFL integration** from the **31-tool catalog only**. Teacher selections override AI picks. Every AFL-powered slide must be **classroom-ready**, not meta-instructions.
+Generate structured PPT slides with **pedagogically correct AFL integration** from the **AFL tool catalog only**. Teacher selections override AI picks. Every AFL-powered slide must be **classroom-ready**, not meta-instructions.
 `.trim();
 
 export type PptSlideAflContext = {
