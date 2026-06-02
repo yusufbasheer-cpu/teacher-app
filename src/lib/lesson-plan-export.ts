@@ -769,6 +769,86 @@ function addLogoToSlide(
   });
 }
 
+/**
+ * Expected keyword that must appear in each deck slide's title (0-indexed).
+ * Used for canonical-order validation and to log any mismatches before rendering.
+ * Slide 7 (Real Life) matches both UAE and non-UAE title variants via "real life" OR "uae".
+ */
+const CANONICAL_TITLE_KEYWORDS: readonly [index: number, keyword: string, label: string][] = [
+  [0,  "grade",         "Title / Subject Grade Date"],
+  [1,  "starter",       "Starter Activity"],
+  [2,  "chapter",       "Chapter Topic SDG Goal"],
+  [3,  "objectives",    "Learning Objectives"],
+  [4,  "outcomes",      "Learning Outcomes"],
+  [5,  "main phase",    "Main Phase Core Teaching"],
+  [6,  "differentiated","Differentiated Activity and Mini Plenary"],
+  [7,  "real life",     "Real Life / UAE Connection"],
+  [8,  "plenary",       "Plenary"],
+  [9,  "extended",      "Extended Task"],
+  [10, "exit",          "Exit Ticket"],
+  [11, "success",       "Success Criteria and Self Evaluation"],
+  [12, "thank",         "Thank You"],
+];
+
+/** Slide 7 may have either UAE or non-UAE title — both are valid. */
+const SLIDE7_ALT_KEYWORD = "uae";
+
+/**
+ * Build a map from lowercase slide title → image URL.
+ * Using the title (name) rather than the array position means content is correctly
+ * identified even if the deck order were ever to shift.
+ */
+function buildSlideUrlByTitle(
+  deck: StructuredLessonSlideModel[],
+  imageUrls: (string | null)[] | null | undefined,
+): Map<string, string | null> {
+  const map = new Map<string, string | null>();
+  for (let i = 0; i < deck.length; i++) {
+    const title = (deck[i]?.slideTitle ?? "").trim().toLowerCase();
+    if (title) {
+      map.set(title, imageUrls?.[i] ?? null);
+    }
+  }
+  return map;
+}
+
+/**
+ * Validate that each deck slide's title contains the expected canonical keyword.
+ * Logs a warning for any mismatch — does not throw.
+ */
+function validateDeckCanonicalOrder(deck: StructuredLessonSlideModel[]): void {
+  for (const [idx, keyword, label] of CANONICAL_TITLE_KEYWORDS) {
+    const title = (deck[idx]?.slideTitle ?? "").toLowerCase();
+    const alt = idx === 7 ? SLIDE7_ALT_KEYWORD : null;
+    if (!title.includes(keyword) && !(alt && title.includes(alt))) {
+      console.warn(
+        `[pptx] Deck position ${idx} title mismatch — expected keyword "${keyword}" for "${label}", got "${deck[idx]?.slideTitle ?? "(missing)"}"`,
+      );
+    }
+  }
+}
+
+/**
+ * Log the full content-assignment table showing which named content maps to which
+ * physical slides (including overflow continuation slides).
+ */
+function logContentAssignmentTable(
+  deck: StructuredLessonSlideModel[],
+  slideUrlByTitle: Map<string, string | null>,
+  totalSlides: number,
+): void {
+  console.log(`[pptx] Content assignment by name (${deck.length} model slides → ${totalSlides} physical slides):`);
+  for (let i = 0; i < deck.length; i++) {
+    const model = deck[i]!;
+    const L = layoutContentMetrics(model.includeImageSlot);
+    const bulletLines = normalizeBodyToBulletLines(model.body);
+    const chunks = chunkBulletLines(bulletLines, L.textW, maxBodyRows(L.contentMaxH));
+    const hasUrl = Boolean(slideUrlByTitle.get(model.slideTitle.trim().toLowerCase()));
+    const overflow = chunks.length > 1 ? ` → ${chunks.length} physical slides (overflow)` : "";
+    console.log(`  [${i}] "${model.slideTitle}" | imageUrl:${hasUrl}${overflow}`);
+  }
+}
+
 export async function buildPptxFromPptContent(params: {
   subject: string;
   grade: string;
@@ -835,18 +915,14 @@ export async function buildPptxFromPptContent(params: {
     ...(Object.keys(afl).length > 0 ? { aflSelections: afl } : {}),
   };
   const deck = params.structuredSlides ?? buildStructuredLessonSlides(ctx);
-  const slideUrls = normalizeDeckImageUrls(deck.length, params.slideImageUrls);
-  const pexelsDeckIndices = [0, 1, 7, 8, 9] as const;
-  console.log(
-    "[pptx] slideImageUrls for Pexels slides:",
-    JSON.stringify(
-      pexelsDeckIndices.map((i) => ({
-        slide: i + 1,
-        hasUrl: Boolean(slideUrls[i]),
-        includeImageSlot: deck[i]?.includeImageSlot ?? false,
-      })),
-    ),
-  );
+
+  // Validate deck is in canonical order; warn on any mismatch but continue rendering.
+  validateDeckCanonicalOrder(deck);
+
+  // Build name → URL map so every image lookup is by slide title, not array position.
+  // This ensures correct images even if deck order ever shifts.
+  const slideUrlByTitle = buildSlideUrlByTitle(deck, params.slideImageUrls);
+
   // Use the structured 13-slide title design when a pre-built structured deck is supplied.
   // Content overflow (continuation slides) is always allowed regardless of deck size.
   const useStructuredTitleDesign =
@@ -854,11 +930,14 @@ export async function buildPptxFromPptContent(params: {
     params.structuredSlides.length === STRUCTURED_LESSON_DECK_SLIDE_COUNT;
   const totalSlides = computeTotalSlideCount(deck);
 
+  // Log the full content-assignment table before rendering begins.
+  logContentAssignmentTable(deck, slideUrlByTitle, totalSlides);
+
   let slideNumber = 1;
   const innerPadX = IN_MARGIN + 0.85;
 
   const titleModel = deck[0]!;
-  const titleRemote = slideUrls[0] ?? null;
+  const titleRemote = slideUrlByTitle.get(titleModel.slideTitle.trim().toLowerCase()) ?? null;
   let titleImgData: string | null = null;
   if (titleRemote) {
     try {
@@ -1104,25 +1183,18 @@ export async function buildPptxFromPptContent(params: {
 
   for (let slideIdx = 1; slideIdx < deck.length; slideIdx++) {
     const model = deck[slideIdx]!;
-    const remoteUrl = slideUrls[slideIdx] ?? null;
+    // Look up image URL by slide title (name-based), not by array position.
+    const remoteUrl = slideUrlByTitle.get(model.slideTitle.trim().toLowerCase()) ?? null;
     let imageDataUri: string | null = null;
     if (remoteUrl && model.includeImageSlot) {
       try {
         imageDataUri = await fetchImageUrlAsDataUri(remoteUrl);
-        if (pexelsDeckIndices.includes(slideIdx as (typeof pexelsDeckIndices)[number])) {
-          console.log(`[pptx] Pexels slide ${slideIdx + 1}: embedded image OK`);
-        }
+        console.log(`[pptx] "${model.slideTitle}": embedded image OK`);
       } catch (e) {
-        console.warn("[pptx] could not embed slide image", slideIdx + 1, remoteUrl.slice(0, 80), e);
+        console.warn(`[pptx] "${model.slideTitle}": could not embed image`, remoteUrl.slice(0, 80), e);
       }
-    } else if (
-      pexelsDeckIndices.includes(slideIdx as (typeof pexelsDeckIndices)[number]) &&
-      remoteUrl &&
-      !model.includeImageSlot
-    ) {
-      console.warn(
-        `[pptx] Pexels slide ${slideIdx + 1}: URL present but includeImageSlot=false — image skipped`,
-      );
+    } else if (remoteUrl && !model.includeImageSlot) {
+      console.warn(`[pptx] "${model.slideTitle}": URL present but includeImageSlot=false — image skipped`);
     }
 
     const wantSlot = model.includeImageSlot;
