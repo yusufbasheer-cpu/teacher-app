@@ -416,7 +416,7 @@ const SLIDE7_LOWER_HEADING_RE =
   /^#*\s*(lower\s*(achiev|attain|ability|level|tier)s?(\s+task)?|support(\s+task)?|must\s*\/\s*should|less\s+support|foundation|أدنى)\b/i;
 
 const SLIDE7_INLINE_TIER_RE =
-  /^(higher|middle|lower)\s*(achiev|attain|ability|level|tier)s?\s*[:.\-]\s*(.+)$/i;
+  /^(higher|middle|lower)\s*(achiev\w*|attain\w*|ability\w*|level\w*|tier\w*)\s*(?:task\s*)?[:.\-]\s*(.+)$/i;
 
 function classifySlide7TierLine(line: string): Slide7Tier | null {
   const t = line.trim();
@@ -477,16 +477,18 @@ function parseSlide7TierBlocks(body: string): { tiers: Record<Slide7Tier, string
     const heading = classifySlide7TierLine(t);
     if (heading) {
       current = heading;
-      const afterColon = t.replace(/^[^:]+:\s*/, "").trim();
-      const strippedLabel = afterColon
-        .replace(/^(higher|middle|lower)\s*(achiev|attain|ability|level|tier)s?\s*(task)?\s*/i, "")
-        .trim();
-      if (
-        strippedLabel &&
-        strippedLabel !== t &&
-        !/^(higher|middle|lower)\s+achievers?\s+task\s*$/i.test(strippedLabel)
-      ) {
-        tiers[heading].push(strippedLabel);
+      // Only extract inline content when there is an explicit colon separating the
+      // heading label from content on the same line (e.g. "Higher Achievers task: do X").
+      // Without a colon the line is a heading-only label — nothing to push; content
+      // will arrive on the following lines. The previous regex approach
+      // (achiev|...)s? only matched "Achiev" in "Achievers", leaving "ers task"
+      // as a fragment that was incorrectly pushed into the tier.
+      const colonIdx = t.indexOf(":");
+      if (colonIdx !== -1) {
+        const afterColon = t.slice(colonIdx + 1).trim();
+        if (afterColon.length >= 8) {
+          tiers[heading].push(afterColon);
+        }
       }
       continue;
     }
