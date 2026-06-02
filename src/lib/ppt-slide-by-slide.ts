@@ -569,13 +569,29 @@ export function validateSlide7DifferentiatedBody(body: string): { ok: boolean; r
     reasons.push('must include "Mini Plenary" checkpoint at the bottom of slide 7');
   }
 
+  let inMiniPlenary = false;
   for (const line of lines) {
+    if (/^mini\s+plenary\s*$/i.test(line)) {
+      inMiniPlenary = true;
+      continue;
+    }
+
+    if (inMiniPlenary) {
+      // Inside Mini Plenary: only block content that belongs on other slides entirely
+      if (/\b(success\s+criteria|exit\s+ticket|homework|extended\s+task)\b/i.test(line)) {
+        reasons.push("forbidden content from other slides found inside Mini Plenary section");
+        break;
+      }
+      continue;
+    }
+
+    // Before the Mini Plenary heading: enforce tier-section rules
     if (SLIDE7_FULL_PLENARY_HEADING_RE.test(line)) {
       reasons.push('forbidden standalone "Plenary" section on slide 7 — use Mini Plenary instead');
       break;
     }
     if (SLIDE7_QUICK_CHECK_RE.test(line) || /^quick\s+check\b/i.test(line)) {
-      reasons.push("forbidden Quick Check on slide 7 — only three achiever tasks allowed");
+      reasons.push("forbidden Quick Check before the Mini Plenary section — only three achiever tasks here");
       break;
     }
     if (/\b(success\s+criteria|exit\s+ticket|homework|extended\s+task)\b/i.test(line)) {
