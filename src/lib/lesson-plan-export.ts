@@ -513,6 +513,23 @@ function expandOverlongLines(lines: string[], charsPerLine: number, maxVisualRow
   return expanded;
 }
 
+/**
+ * Pre-compute how many physical slides the deck will render to (title + all overflow chunks).
+ * Used to show "Slide X of N" in footers before rendering starts.
+ */
+function computeTotalSlideCount(deck: StructuredLessonSlideModel[]): number {
+  // Slide 0 (title) always renders as exactly 1 physical slide
+  let total = 1;
+  for (let i = 1; i < deck.length; i++) {
+    const model = deck[i]!;
+    const L = layoutContentMetrics(model.includeImageSlot);
+    const bulletLines = normalizeBodyToBulletLines(model.body);
+    const chunks = chunkBulletLines(bulletLines, L.textW, maxBodyRows(L.contentMaxH));
+    total += Math.max(1, chunks.length);
+  }
+  return total;
+}
+
 function chunkBulletLines(
   lines: string[],
   textWidthInches: number,
@@ -830,9 +847,12 @@ export async function buildPptxFromPptContent(params: {
       })),
     ),
   );
-  const useStrictThirteenSlideDeck =
+  // Use the structured 13-slide title design when a pre-built structured deck is supplied.
+  // Content overflow (continuation slides) is always allowed regardless of deck size.
+  const useStructuredTitleDesign =
     Array.isArray(params.structuredSlides) &&
     params.structuredSlides.length === STRUCTURED_LESSON_DECK_SLIDE_COUNT;
+  const totalSlides = computeTotalSlideCount(deck);
 
   let slideNumber = 1;
   const innerPadX = IN_MARGIN + 0.85;
@@ -850,7 +870,7 @@ export async function buildPptxFromPptContent(params: {
 
   const titleSlide = pptx.addSlide();
 
-  if (useStrictThirteenSlideDeck) {
+  if (useStructuredTitleDesign) {
     titleSlide.background = { color: theme.slideBg };
     const titleY = IN_MARGIN + PPT_TOP_BAR_H + 0.05;
     const L = layoutContentMetrics(Boolean(titleImgData));
@@ -937,7 +957,7 @@ export async function buildPptxFromPptContent(params: {
       theme,
       params.subject,
       params.grade,
-      `Slide ${slideNumber}`,
+      `Slide ${slideNumber} of ${totalSlides}`,
       layahLogoDataUri,
     );
     if (params.schoolLogo) addLogoToSlide(pptx, titleSlide, params.schoolLogo, false);
@@ -1067,7 +1087,7 @@ export async function buildPptxFromPptContent(params: {
     });
   }
 
-  if (!useStrictThirteenSlideDeck) {
+  if (!useStructuredTitleDesign) {
     titleSlide.addNotes(titleModel.speakerNotes);
     addSlideFooter(
       pptx,
@@ -1075,7 +1095,7 @@ export async function buildPptxFromPptContent(params: {
       theme,
       params.subject,
       params.grade,
-      `Slide ${slideNumber}`,
+      `Slide ${slideNumber} of ${totalSlides}`,
       layahLogoDataUri,
     );
     if (params.schoolLogo) addLogoToSlide(pptx, titleSlide, params.schoolLogo, true);
@@ -1117,14 +1137,16 @@ export async function buildPptxFromPptContent(params: {
       layoutForChunking.textW,
       maxBodyRows(layoutForChunking.contentMaxH),
     );
-    const chunks =
-      useStrictThirteenSlideDeck && allChunks.length > 0 ? [allChunks[0]!] : allChunks;
+    // Always allow overflow: if content exceeds one slide's capacity, continuation
+    // slides are created automatically with "(Continued)" appended to the title.
+    const chunks = allChunks.length > 0 ? allChunks : [["(No content provided)"]];
+
 
     for (let chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
       const chunk = chunks[chunkIdx]!;
       const useImageColumn = reserveImageColumn && chunkIdx === 0;
       const L = layoutContentMetrics(useImageColumn);
-      const titleText = chunkIdx > 0 ? `${titleBase} — Part ${chunkIdx + 1}` : titleBase;
+      const titleText = chunkIdx > 0 ? `${titleBase} (Continued)` : titleBase;
       const titleY = IN_MARGIN + PPT_TOP_BAR_H + 0.05;
       const contentBottom = L.contentTop + L.contentMaxH;
 
@@ -1229,7 +1251,7 @@ export async function buildPptxFromPptContent(params: {
 
       const notes =
         chunkIdx > 0
-          ? `${model.speakerNotes}\n\n(Part ${chunkIdx + 1} — same section; adjust timing proportionally.)`
+          ? `${model.speakerNotes}\n\n(Continuation slide — same section; adjust timing proportionally.)`
           : model.speakerNotes;
       slide.addNotes(notes);
       addSlideFooter(
@@ -1238,7 +1260,7 @@ export async function buildPptxFromPptContent(params: {
         theme,
         params.subject,
         params.grade,
-        `Slide ${slideNumber}`,
+        `Slide ${slideNumber} of ${totalSlides}`,
         layahLogoDataUri,
       );
       if (params.schoolLogo) addLogoToSlide(pptx, slide, params.schoolLogo, false);

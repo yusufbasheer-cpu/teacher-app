@@ -1271,8 +1271,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   applyPptIsolationValidationToDeck(slides, topic);
   clampSlideBodyToDeckRules(slides);
 
-  if (slides.length !== STRUCTURED_LESSON_DECK_SLIDE_COUNT) {
-    console.error("[ppt-structured-lesson] expected 13 slides, got", slides.length);
+  if (slides.length < STRUCTURED_LESSON_DECK_SLIDE_COUNT) {
+    console.warn("[ppt-structured-lesson] expected at least 13 slides, got", slides.length);
   }
 
   return slides;
