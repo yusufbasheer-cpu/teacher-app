@@ -80,7 +80,7 @@ import {
 } from "@/lib/ppt-slide-validation";
 
 export const runtime = "nodejs";
-/** Thirteen sequential slide calls plus other sections may exceed the default 60s cap. */
+/** 13 parallel slide calls + other sections. Parallel PPT is faster but keep the cap generous. */
 export const maxDuration = 300;
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
@@ -249,7 +249,6 @@ async function generatePptSlideContentSlideBySlide(params: {
   const { apiKey, input, sourceMaterial, frameworkAddendum, aflSelections, fullLessonPlan, onProgress } =
     params;
   const notices: string[] = [];
-  const bodies: string[] = [];
   const isAr = usesArabicPptSlideTitles(input.subject.trim());
   const uaeFrameworkSelected = isUaeCurriculumFramework(input.curriculumFramework);
   const slide8ModeBlock = buildSlide8PptModeBlock(uaeFrameworkSelected);
@@ -275,19 +274,28 @@ async function generatePptSlideContentSlideBySlide(params: {
     isAr,
   };
 
-  for (let slide = 1; slide <= STRUCTURED_LESSON_DECK_SLIDE_COUNT; slide++) {
-    onProgress(`Generating Slide ${slide} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
+  // Counter shared across parallel closures — safe because JS is single-threaded at await points.
+  let completedCount = 0;
 
+  /**
+   * Generate a single slide with up to PPT_SLIDE_MAX_ATTEMPTS retries.
+   * Slides 1 and 4 are programmatic (no API call). All other slides call DeepSeek.
+   * Calls onProgress with a running completion count once the slide is done.
+   */
+  const generateOneSlide = async (slide: number): Promise<string> => {
+    // ── Programmatic slides (no AI call) ──────────────────────────────────────
     if (slide === 1) {
-      bodies.push(buildProgrammaticSlide1Body(input.grade.trim(), dateStr));
-      continue;
+      const body = buildProgrammaticSlide1Body(input.grade.trim(), dateStr);
+      onProgress(`Generating Slide ${++completedCount} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
+      return body;
     }
-
     if (slide === 4) {
-      bodies.push(buildTeacherObjectivesSlide4Body(input.learningObjectives));
-      continue;
+      const body = buildTeacherObjectivesSlide4Body(input.learningObjectives);
+      onProgress(`Generating Slide ${++completedCount} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
+      return body;
     }
 
+    // ── AI-generated slides ───────────────────────────────────────────────────
     const aflForSlide = formatAflForSinglePptSlidePrompt(slide, aflSelections, {
       subject: input.subject.trim(),
       grade: input.grade.trim(),
@@ -333,7 +341,7 @@ async function generatePptSlideContentSlideBySlide(params: {
                 ? slide === 5
                   ? `Regenerate: write exactly ${countTeacherObjectiveLines(input.learningObjectives)} outcome(s) in the same order as the teacher objectives — one outcome per objective, no extras.`
                   : slide === 7
-                    ? 'Regenerate: exactly three sections only — "Higher Achievers task", "Middle Achievers task", "Lower Achievers task" — each with a full task. No Quick Check, Mini Plenary, plenary, homework, or success criteria.'
+                    ? 'Regenerate: four sections — "Higher Achievers task", "Middle Achievers task", "Lower Achievers task" each with a full task, then "Mini Plenary" one quick check question at the bottom.'
                     : slide === 10
                       ? "Regenerate: extended task or homework only. Do not repeat the slide title. Remove all success criteria, self-evaluation, and exit ticket content."
                     : slide === 8
@@ -390,9 +398,8 @@ async function generatePptSlideContentSlideBySlide(params: {
         chosen = stripOuterMarkdownFences((content ?? "").trim());
         notices.push(`PPT Slide Content slide ${slide} attempt ${attempt}: marker fallback used.`);
       }
-      if (slide !== 1 && slide !== 4) {
-        chosen = sanitizePptSlideBody(slide, chosen, { ...earlyCtx, uaeFrameworkSelected });
-      }
+      chosen = sanitizePptSlideBody(slide, chosen, { ...earlyCtx, uaeFrameworkSelected });
+
       if (slide === 5) {
         if (
           slideBodyPassesQualityGate(slide, chosen) &&
@@ -426,12 +433,30 @@ async function generatePptSlideContentSlideBySlide(params: {
     }
 
     if (!chosen.trim()) {
-      chosen = `_(This slide could not be generated after ${PPT_SLIDE_MAX_ATTEMPTS} attempts.)_${lastHttpError ? `\n\n${lastHttpError}` : ""}`;
-    } else if (slide === 1 || slide === 4) {
-      chosen = sanitizePptSlideBody(slide, chosen, { ...earlyCtx, uaeFrameworkSelected });
+      chosen = `_(Slide ${slide} could not be generated after ${PPT_SLIDE_MAX_ATTEMPTS} attempts.)_${lastHttpError ? `\n\n${lastHttpError}` : ""}`;
     }
-    bodies.push(chosen.trim());
-  }
+
+    onProgress(`Generating Slide ${++completedCount} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
+    return chosen.trim();
+  };
+
+  // ── Run all 13 slides in parallel ─────────────────────────────────────────
+  console.log(`[ppt-deck] Starting parallel generation of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT} slides`);
+  const slidePromises = Array.from(
+    { length: STRUCTURED_LESSON_DECK_SLIDE_COUNT },
+    (_, i) => generateOneSlide(i + 1),
+  );
+  const results = await Promise.allSettled(slidePromises);
+
+  // Assemble bodies in canonical order (index = slide - 1)
+  const bodies: string[] = results.map((result, i) => {
+    if (result.status === "fulfilled") return result.value;
+    const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
+    notices.push(`PPT Slide ${i + 1}: rejected — ${reason}`);
+    return `_(Slide ${i + 1} could not be generated.)_`;
+  });
+
+  console.log(`[ppt-deck] Parallel generation complete — ${completedCount}/${STRUCTURED_LESSON_DECK_SLIDE_COUNT} slides ready`);
 
   return {
     text: assembleFullPptFromSlideBodies(bodies, isAr, uaeFrameworkSelected),
