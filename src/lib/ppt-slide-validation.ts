@@ -11,6 +11,7 @@ import {
   sanitizeSlide5OutcomesBody,
   sanitizeSlide10ExtendedBody,
   sanitizeSlide7DifferentiatedBody,
+  stripSlideTitleEchoFromBody,
   slide5OutcomesValidationMessage,
   validateSlide10ExtendedBody,
   validateSlide7DifferentiatedBody,
@@ -242,6 +243,11 @@ export function sanitizePptSlideBody(
       .join("\n")
       .trim();
   }
+
+  // Global: strip slide title if the AI wrote it as the first line of the body.
+  // Applies to every slide so the validator never sees "slide title repeated inside body".
+  const slideTitle = getStructuredLessonSlideTitle(slideNumber1Based - 1, ctx.isAr, ctx.uaeFrameworkSelected);
+  out = stripSlideTitleEchoFromBody(out, slideTitle);
 
   return out;
 }

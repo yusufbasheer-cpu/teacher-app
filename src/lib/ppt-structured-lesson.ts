@@ -5,6 +5,7 @@ import {
   sanitizeEarlyPptSlideBody,
   sanitizeSlide10ExtendedBody,
   sanitizeSlide7DifferentiatedBody,
+  stripSlideTitleEchoFromBody,
   type EarlySlideSanitizeContext,
 } from "@/lib/ppt-slide-by-slide";
 import { isUaeCurriculumFramework } from "@/lib/curriculum-framework";
@@ -732,6 +733,7 @@ function applyPptIsolationValidationToDeck(
   for (let i = 0; i < slides.length; i++) {
     const slide = slides[i]!;
     let b = slide.body;
+    b = stripSlideTitleEchoFromBody(b, slide.slideTitle);
     b = stripFutureSlideLeakageFromBody(b);
     b = dedupeRepeatedContentInSlideBody(b);
     b = stripMisplacedSectionHeadingLines(i, b);

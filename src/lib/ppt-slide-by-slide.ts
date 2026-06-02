@@ -42,6 +42,29 @@ export function parseSinglePptSlideModelResponse(raw: string): string {
   return rest.trim();
 }
 
+/**
+ * Remove every line whose text (after stripping markdown heading markers) exactly matches
+ * the slide title, or starts with the title followed by ":" / " —" / " -".
+ * Applied globally to all 13 slides in both the extraction path and the AI-generation path
+ * so the validator never sees "slide title repeated inside body".
+ */
+export function stripSlideTitleEchoFromBody(body: string, slideTitle: string): string {
+  if (!slideTitle.trim()) return body;
+  const titleLc = slideTitle.trim().toLowerCase();
+  const lines = body.replace(/\r\n/g, "\n").split("\n");
+  const filtered = lines.filter((line) => {
+    const t = line.trim().replace(/^#+\s*/, "").toLowerCase();
+    if (!t) return true;
+    return !(
+      t === titleLc ||
+      t.startsWith(`${titleLc}:`) ||
+      t.startsWith(`${titleLc} —`) ||
+      t.startsWith(`${titleLc} -`)
+    );
+  });
+  return filtered.join("\n").replace(/^\n+/, "").trim();
+}
+
 /** Minimum trimmed length to accept a slide (avoid empty / one-word failures). */
 const MIN_LEN: readonly number[] = [
   8, 40, 24, 4, 24, 140, 60, 72, 50, 40, 24, 40, 20,
@@ -381,8 +404,8 @@ export const SINGLE_SLIDE_USER_FOCUS_EN: readonly string[] = [
   "Plenary: real classroom activity using teacher-selected or AI-selected Plenary AFL tool — full implementation. No homework, future references, or new teaching.",
   "Extended task or homework only — one clear task. Do NOT repeat the slide title in the body. Do NOT include success criteria, self-evaluation, I can statements, exit ticket, or plenary. Success criteria belong on slide 12 only.",
   "Exit ticket AFL tool: short focused assessment — immediate understanding check. No success criteria or homework paragraph.",
-  "Success criteria and self-evaluation AFL tool — fully implemented. No exit ticket repeat.",
-  "Thank you plus one short positive closing line for students — no recap or new tasks.",
+  "Success criteria and self-evaluation AFL tool — fully implemented. Do NOT write 'Success Criteria and Self Evaluation' or any version of the slide title inside the body. Start directly with the criteria items (e.g. 'I can…' statements, checklist, or rating scale). No exit ticket repeat.",
+  "Thank you plus one short positive closing line for students — no recap or new tasks. Do NOT write 'Thank You' or the slide title inside the body.",
 ];
 
 export function singleSlideUserFocusForSlide8(uaeFrameworkSelected: boolean): string {
