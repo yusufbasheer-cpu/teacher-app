@@ -1192,8 +1192,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "plenary",
     ["plenary", "reflection", "recap", "الختام", "تلخيص"],
     isAr
-      ? `نشاط الختام: فكّر، شارك، ناقش — موضوع «${topic}»\n\nالنشاط: يراجع الطلاب تعلّمهم ويوحّدون فهمهم لموضوع «${topic}».\n\n1. فكّر (دقيقتان): اكتب النقاط الثلاث الأهم التي تعلمتها عن «${topic}» اليوم.\n2. شارك (دقيقتان): ناقش مع زميلك — ما أبرز ما تعلمته؟ ماذا أضاف كلٌّ منكما للآخر؟\n3. تبادل الأفكار (دقيقتان): يشارك 2-3 طلاب أهم ما تعلموه مع الصف بأكمله.\n\nالربط بأهداف الدرس: يُظهر الطلاب فهمهم لـ«${topic}» ويصوغون أفكارهم الرئيسية بكلماتهم الخاصة.`
-      : `Plenary: Think-Pair-Share — "${topic}"\n\nActivity: Students review and consolidate their learning about "${topic}".\n\n1. Think (2 min): Individually write down the 3 most important things you learned about "${topic}" today.\n2. Pair (2 min): Compare your key points with a partner. What did you both include? What was different?\n3. Share (2 min): 2-3 pairs share their most important insight with the class.\n\nConnection to learning objectives: Students articulate their understanding of "${topic}" in their own words, demonstrating they have met today's lesson objectives.`,
+      ? `فكّر، شارك، ناقش — موضوع «${topic}»\n\nيراجع الطلاب تعلّمهم ويوحّدون فهمهم.\n\n1. فكّر (دقيقتان): اكتب النقاط الثلاث الأهم التي تعلمتها عن «${topic}» اليوم.\n2. شارك (دقيقتان): ناقش مع زميلك — ما أبرز ما تعلمته؟ ماذا أضاف كلٌّ منكما للآخر؟\n3. تبادل الأفكار (دقيقتان): يشارك 2-3 طلاب أهم ما تعلموه مع الصف بأكمله.\n\nالمعلم: اسأل الطلاب كيف تربط أفكارهم بأهداف الدرس حول «${topic}».`
+      : `Think-Pair-Share Activity — "${topic}"\n\nStudents review and consolidate their learning.\n\n1. Think (2 min): Write down the 3 most important things you learned about "${topic}" today.\n2. Pair (2 min): Compare your key points with a partner — what did you both include? What was different?\n3. Share (2 min): 2-3 pairs share their most important insight with the class.\n\nTeacher: Ask students to connect their insights back to today's learning objectives about "${topic}".`,
     "8–10 minutes",
     isAr,
     plan,
@@ -1206,8 +1206,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "extendedTask",
     ["extended task", "homework", "early finisher", "الواجب", "توسعة"],
     isAr
-      ? `فقط مهمة موسعة أو واجب لموضوع «${topic}»: بحث، تطبيق إبداعي، تدريب، أو مهمة تحقيقية مع معايير نجاح مختصرة. لا شرح درس كامل ولا ختام.`
-      : `Extended task or homework only for "${topic}": research, creative application, practice, or investigative work. Do not repeat the slide title. No success criteria, self-evaluation, exit ticket, or plenary.`,
+      ? `مهمة بحثية: «${topic}»\n\n1. اختر جانباً من «${topic}» وجدته مثيراً للاهتمام اليوم.\n2. ابحث عنه باستخدام الكتب أو المواقع الموثوقة.\n3. لخّص ما توصّلت إليه بأسلوبك الخاص (صفحة أو ما يعادلها).\n4. أضف رسماً أو مثالاً يشرح الجانب الذي اخترته.\n5. كن مستعداً لمشاركة اكتشافك في الحصة القادمة.\n\nتحدٍّ إضافي: كيف يرتبط «${topic}» بحياتك اليومية أو بمهنة تهتم بها؟`
+      : `Research Task: "${topic}"\n\n1. Choose one aspect of "${topic}" that interested you most from today's lesson.\n2. Research it further using textbooks, reliable websites, or other sources.\n3. Write a one-page summary of your findings in your own words.\n4. Include one diagram, image, or real-world example that helps explain your chosen aspect.\n5. Be ready to share your most interesting discovery at the start of the next lesson.\n\nChallenge: How does "${topic}" connect to daily life or a career that interests you?`,
     "set expectations only",
     isAr,
     plan,

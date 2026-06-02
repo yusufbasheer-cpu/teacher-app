@@ -106,10 +106,10 @@ export function buildPptSlidePreflightChecklist(ctx: PptSlideValidationContext):
     6: "core teaching content first, then main-phase AFL activities only",
     7: 'four sections in order: "Higher Achievers task" (challenging extension), "Middle Achievers task" (standard objective), "Lower Achievers task" (scaffolded with sentence starters or word bank), then "Mini Plenary" — one quick question to check understanding',
     8: ctx.uaeFrameworkSelected
-      ? "UAE real life + cross-curricular + inspection-ready UAE links only"
-      : "one real-life / cross-curricular / career / global / subject-integration link only — no UAE",
-    9: "plenary activity only",
-    10: "extended task or homework only — no success criteria, no slide title in the body",
+      ? "UAE-specific real-life connection to the topic, cross-curricular link relevant to UAE schools, UAE MOE alignment, KHDA/SPEA inspection note, and SDG in UAE context — all specific to the actual topic"
+      : "one specific connection (real-life application, cross-curricular link, career connection, or global/SDG link) fully developed for the actual topic — no UAE references at all",
+    9: "complete plenary activity with activity name (not starting with 'Plenary'), step-by-step instructions, student actions, timings, and connection to today's learning objectives — specific to the actual topic",
+    10: "complete extended task or homework with task name, numbered student instructions, expected output, and a challenge extension — specific to the actual topic; no success criteria or self-evaluation content",
     11: "exit ticket only",
     12: "success criteria and self-evaluation only",
     13: "thank-you closing line only",
@@ -120,8 +120,9 @@ export function buildPptSlidePreflightChecklist(ctx: PptSlideValidationContext):
     6: "plenary, differentiation, exit ticket, UAE link",
     5: "extra outcomes, missing outcomes, or copying objectives verbatim",
     7: "standalone plenary, homework, success criteria, exit ticket, or UAE link (a Mini Plenary quick check IS required at the bottom)",
-    10: "success criteria, self-evaluation, I can statements, exit ticket, plenary, or repeating the slide title",
-    8: ctx.uaeFrameworkSelected ? "non-UAE generic-only content without UAE alignment" : "any UAE-specific references",
+    9: "homework, new teaching, future slide references, or starting the body with the word 'Plenary'",
+    10: "success criteria, self-evaluation, I can statements, checklist, rating scale, exit ticket, or repeating the slide title",
+    8: ctx.uaeFrameworkSelected ? "generic content without specific UAE or topic references" : "any UAE-specific references (UAE, Emirates, Dubai, KHDA, SPEA, MOE UAE)",
     11: "success criteria, extended homework essay",
     12: "exit ticket repeat, new teaching",
   };
