@@ -336,13 +336,25 @@ const deckExtractors = {
   uaeOnly: (plan: string) =>
     extractByHints(
       plan,
-      ["uae connection", "uae context", "uae link", "united arab emirates", "national identity", "الإمارات", "الهوية"],
+      [
+        "uae real life",
+        "uae connection",
+        "uae context",
+        "uae link",
+        "uae cross",
+        "uae and",
+        "united arab emirates",
+        "national identity",
+        "الإمارات",
+        "الهوية",
+      ],
       DECK_STOP_UAE,
     ),
   realLifeOnly: (plan: string) =>
     extractByHints(
       plan,
       [
+        "uae real life",
         "real life",
         "real world",
         "real-life",
