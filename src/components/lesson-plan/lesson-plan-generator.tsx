@@ -47,7 +47,7 @@ import {
   DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
   TEMPLATE_CARDS as PPT_THEME_CARDS,
   type TemplateId as PptThemeId,
-} from "@/lib/ppt-template-engine";
+} from "@/lib/ppt-template-config";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
 import { UpgradeUsageIndicator } from "@/components/usage/upgrade-usage-indicator";

@@ -11,7 +11,7 @@ export {
   isValidTemplateId as isValidPptThemeId,
   TEMPLATE_CARDS    as PPT_THEME_CARDS,
   type TemplateId   as PptThemeId,
-} from "@/lib/ppt-template-engine";
+} from "@/lib/ppt-template-config";
 
 // ─── PptRenderTheme ─────────────────────────────────────────────────────────
 // Kept for school-template compatibility (buildSchoolTemplatePptRenderTheme).

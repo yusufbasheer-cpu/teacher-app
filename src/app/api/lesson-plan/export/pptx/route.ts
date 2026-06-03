@@ -7,7 +7,7 @@ import { buildStructuredLessonSlides } from "@/lib/ppt-structured-lesson";
 import {
   DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
   isValidTemplateId as isValidPptThemeId,
-} from "@/lib/ppt-template-engine";
+} from "@/lib/ppt-template-config";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;

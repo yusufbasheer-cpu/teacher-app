@@ -16,7 +16,7 @@ import { AFL_PHASE_IDS, type AflSelectionsPayload } from "@/lib/afl-tools";
 import {
   DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
   type TemplateId as PptThemeId,
-} from "@/lib/ppt-template-engine";
+} from "@/lib/ppt-template-config";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
 import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";

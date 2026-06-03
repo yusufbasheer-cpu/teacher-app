@@ -8,107 +8,25 @@
  *   Footer       — bottom 0.4 in: subject · logo · slide number · progress bar
  */
 
+// Server-only: Node.js built-ins and pptxgenjs must not be imported by client components.
 import { readFile } from "fs/promises";
 import path from "path";
 import PptxGenJS from "pptxgenjs";
 import type { StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
 
-// ─── JSON template types ──────────────────────────────────────────────────────
+// Re-export everything client components need from the client-safe config module.
+export {
+  type TemplateConfig,
+  type TemplateId,
+  TEMPLATE_IDS,
+  DEFAULT_TEMPLATE_ID,
+  isValidTemplateId,
+  getTemplateConfig,
+  TEMPLATE_CARDS,
+} from "@/lib/ppt-template-config";
 
-type TemplateColors = {
-  accent: string;
-  background: string;
-  headerBar: string;
-  headerText: string;
-  titleSlideBackground: string;
-  titleSlideTitle: string;
-  titleSlideSubtitle: string;
-  contentText: string;
-  footerBackground: string;
-  footerBorder: string;
-  footerText: string;
-  progressTrack: string;
-  progressFill: string;
-  imagePanelBackground: string;
-  imagePanelBorder: string;
-};
-
-type TemplateFonts = { titleSize: number; contentSize: number; face: string };
-
-type TitleSlideLayout = {
-  accentBarW: number;
-  iconX: number; iconY: number; iconFontSize: number;
-  titleX: number; titleY: number; titleW: number; titleH: number; titleFontSize: number;
-  accentLineY: number;
-  subtitleX: number; subtitleY: number; subtitleW: number; subtitleH: number; subtitleFontSize: number;
-  imageX: number; imageY: number; imageW: number; imageH: number;
-};
-
-type TemplateLayout = {
-  slideW: number; slideH: number;
-  header: { x: number; y: number; w: number; h: number };
-  headerIconX: number;
-  headerTitleX: number;
-  contentArea: { x: number; y: number; w: number; h: number };
-  imageArea: { x: number; y: number; w: number; h: number };
-  footer: { x: number; y: number; w: number; h: number };
-  progressBar: { y: number; h: number };
-  titleSlide: TitleSlideLayout;
-};
-
-export type TemplateConfig = {
-  id: string;
-  name: string;
-  description: string;
-  colors: TemplateColors;
-  fonts: TemplateFonts;
-  layout: TemplateLayout;
-};
-
-// ─── Public API types ─────────────────────────────────────────────────────────
-
-export type TemplateId = "classic" | "modern" | "warm" | "dark" | "minimal";
-export const TEMPLATE_IDS: readonly TemplateId[] = ["classic", "modern", "warm", "dark", "minimal"];
-export const DEFAULT_TEMPLATE_ID: TemplateId = "classic";
-
-export function isValidTemplateId(v: unknown): v is TemplateId {
-  return typeof v === "string" && (TEMPLATE_IDS as readonly string[]).includes(v);
-}
-
-// ─── Static template data (bundled from JSON at build time) ───────────────────
-
-import classicJson from "./ppt-templates/classic.json";
-import modernJson  from "./ppt-templates/modern.json";
-import warmJson    from "./ppt-templates/warm.json";
-import darkJson    from "./ppt-templates/dark.json";
-import minimalJson from "./ppt-templates/minimal.json";
-
-const TEMPLATE_MAP: Record<TemplateId, TemplateConfig> = {
-  classic: classicJson as TemplateConfig,
-  modern:  modernJson  as TemplateConfig,
-  warm:    warmJson    as TemplateConfig,
-  dark:    darkJson    as TemplateConfig,
-  minimal: minimalJson as TemplateConfig,
-};
-
-export function getTemplateConfig(id: string): TemplateConfig {
-  return TEMPLATE_MAP[id as TemplateId] ?? TEMPLATE_MAP.classic;
-}
-
-/** Card metadata consumed by the UI theme selector. */
-export const TEMPLATE_CARDS: readonly {
-  id: TemplateId;
-  themeNumber: number;
-  name: string;
-  description: string;
-  preview: readonly [string, string, string];
-}[] = [
-  { id: "classic", themeNumber: 1, name: "Classic", description: "Clean professional Navy and White", preview: ["0A1628", "00C6A7", "FFFFFF"] },
-  { id: "modern",  themeNumber: 2, name: "Modern",  description: "Bold Minimal Teal and White",       preview: ["00C6A7", "0A8F7A", "FFFFFF"] },
-  { id: "warm",    themeNumber: 3, name: "Warm",    description: "Friendly Orange and Cream",          preview: ["E8622A", "F5A623", "FFF8F0"] },
-  { id: "dark",    themeNumber: 4, name: "Dark",    description: "Premium Dark Navy and Gold",         preview: ["1A1A2E", "FFD700", "16213E"] },
-  { id: "minimal", themeNumber: 5, name: "Minimal", description: "Pure Clean White",                  preview: ["111827", "6B7280", "FFFFFF"] },
-];
+// Import for use within this file.
+import { getTemplateConfig, type TemplateConfig, type TemplateId } from "@/lib/ppt-template-config";
 
 // ─── Slide icons (0-based deck index) ────────────────────────────────────────
 
