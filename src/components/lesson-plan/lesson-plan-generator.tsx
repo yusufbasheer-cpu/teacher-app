@@ -44,10 +44,10 @@ import {
 import { writeDiffPackSession } from "@/lib/differentiated-pack-session";
 import { CURRICULUM_FRAMEWORK_OPTIONS, isValidCurriculumFramework } from "@/lib/curriculum-framework";
 import {
-  DEFAULT_PPT_THEME_ID,
-  PPT_THEME_CARDS,
-  type PptThemeId,
-} from "@/lib/ppt-themes";
+  DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
+  TEMPLATE_CARDS as PPT_THEME_CARDS,
+  type TemplateId as PptThemeId,
+} from "@/lib/ppt-template-engine";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
 import { UpgradeUsageIndicator } from "@/components/usage/upgrade-usage-indicator";

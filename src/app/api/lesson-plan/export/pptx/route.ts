@@ -5,9 +5,9 @@ import { sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildPptxFromPptContent, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import { buildStructuredLessonSlides } from "@/lib/ppt-structured-lesson";
 import {
-  DEFAULT_PPT_THEME_ID,
-  isValidPptThemeId,
-} from "@/lib/ppt-themes";
+  DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
+  isValidTemplateId as isValidPptThemeId,
+} from "@/lib/ppt-template-engine";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid curriculumFramework." }, { status: 400 });
   }
 
-  console.log("[pptx export] ✦ Using default Layah theme:", pptTheme);
+  console.log("[pptx export] ✦ Using template:", pptTheme);
 
   try {
     // ── Build structured slide deck ───────────────────────────────────────
