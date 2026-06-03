@@ -1508,9 +1508,9 @@ export function LessonPlanGenerator() {
             {typeof lessonPlan["PPT Slide Content"] === "string" &&
             lessonPlan["PPT Slide Content"].trim().length > 0 ? (
               <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4 shadow-inner md:p-5">
-                <p className="text-sm font-semibold text-slate-900">Presentation theme</p>
+                <p className="text-sm font-semibold text-slate-900">Presentation template</p>
                 <p className="mt-1 text-xs text-slate-600">
-                  Pick a style for your PowerPoint, then use Download PPT. Ocean Blue is selected by default.
+                  Pick a template for your PowerPoint, then use Download PPT. Classic is selected by default.
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5" role="list">
                   {PPT_THEME_CARDS.map((t) => {
@@ -1538,7 +1538,7 @@ export function LessonPlanGenerator() {
                           ))}
                         </div>
                         <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                          Theme {t.themeNumber}
+                          Template {t.themeNumber}
                         </p>
                         <p className="text-sm font-semibold text-slate-900">{t.name}</p>
                         <p className="mt-0.5 text-xs leading-snug text-slate-600">{t.description}</p>

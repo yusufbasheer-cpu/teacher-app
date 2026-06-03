@@ -1,67 +1,25 @@
-export const PPT_THEME_IDS = [
-  "ocean-blue",
-  "emerald-professional",
-  "sunset-warm",
-  "midnight-modern",
-  "clean-minimal",
-] as const;
+/**
+ * PPT theme identity — thin wrapper that re-exports the canonical template IDs
+ * and card metadata from the template engine.  The actual rendering is done by
+ * ppt-template-engine.ts; this file exists so every import site can keep using
+ * the PptThemeId / PPT_THEME_CARDS / DEFAULT_PPT_THEME_ID names unchanged.
+ */
 
-export type PptThemeId = (typeof PPT_THEME_IDS)[number];
+export {
+  TEMPLATE_IDS      as PPT_THEME_IDS,
+  DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
+  isValidTemplateId as isValidPptThemeId,
+  TEMPLATE_CARDS    as PPT_THEME_CARDS,
+  type TemplateId   as PptThemeId,
+} from "@/lib/ppt-template-engine";
 
-export const DEFAULT_PPT_THEME_ID: PptThemeId = "ocean-blue";
+// ─── PptRenderTheme ─────────────────────────────────────────────────────────
+// Kept for school-template compatibility (buildSchoolTemplatePptRenderTheme).
+// No longer used for the main Layah rendering path.
 
-export function isValidPptThemeId(value: unknown): value is PptThemeId {
-  return typeof value === "string" && (PPT_THEME_IDS as readonly string[]).includes(value);
-}
-
-/** Card data for the lesson plan generator (preview swatches are hex without #). */
-export const PPT_THEME_CARDS: readonly {
-  id: PptThemeId;
-  themeNumber: number;
-  name: string;
-  description: string;
-  preview: readonly [string, string, string];
-}[] = [
-  {
-    id: "ocean-blue",
-    themeNumber: 1,
-    name: "Ocean Blue",
-    description: "Dark blue and gold",
-    preview: ["102746", "1B3A6B", "F5A623"],
-  },
-  {
-    id: "emerald-professional",
-    themeNumber: 2,
-    name: "Emerald Professional",
-    description: "Deep green and white",
-    preview: ["064E3B", "047857", "FFFFFF"],
-  },
-  {
-    id: "sunset-warm",
-    themeNumber: 3,
-    name: "Sunset Warm",
-    description: "Orange and cream",
-    preview: ["C2410C", "FB923C", "FFF7ED"],
-  },
-  {
-    id: "midnight-modern",
-    themeNumber: 4,
-    name: "Midnight Modern",
-    description: "Dark mode purple",
-    preview: ["1E1B4B", "4C1D95", "C4B5FD"],
-  },
-  {
-    id: "clean-minimal",
-    themeNumber: 5,
-    name: "Clean Minimal",
-    description: "Pure white corporate",
-    preview: ["111827", "E5E7EB", "FFFFFF"],
-  },
-];
-
-/** Colors and chrome for PptxGenJS (hex without #). */
+/** @deprecated Use ppt-template-engine.ts TemplateConfig for rendering. */
 export type PptRenderTheme = {
-  id: PptThemeId;
+  id: string;
   heroDeep: string;
   heroMid: string;
   heroWash: string;
@@ -89,13 +47,13 @@ export type PptRenderTheme = {
   closingTitle: string;
   closingSubtitle: string;
   closingFooter: string;
-  /** Optional font face from school template (falls back to "Calibri"). */
   fontFace?: string;
 };
 
 /**
  * Build a PptRenderTheme from colors extracted from a school's .pptx template.
- * All hex values must be 6-char without the leading #.
+ * All hex values are 6-char without the leading #.
+ * @deprecated Use buildPptxFromTemplateEngine with a custom TemplateConfig instead.
  */
 export function buildSchoolTemplatePptRenderTheme(params: {
   primaryColor: string;
@@ -105,14 +63,11 @@ export function buildSchoolTemplatePptRenderTheme(params: {
   fontFace?: string;
 }): PptRenderTheme {
   const { primaryColor, accentColor, backgroundColor, darkColor, fontFace } = params;
-
-  // Decide whether the slide text should be light or dark based on background brightness
-  const isLightBg = isLightColor(backgroundColor);
+  const isLightBg = _isLight(backgroundColor);
   const bodyText  = isLightBg ? "1A1A2E" : "F0F4FF";
   const metaText  = isLightBg ? "5B6472" : "C0CFEE";
-
   return {
-    id: "ocean-blue", // placeholder — not used for theme lookup
+    id: "custom",
     heroDeep: darkColor,
     heroMid: primaryColor,
     heroWash: primaryColor,
@@ -144,174 +99,19 @@ export function buildSchoolTemplatePptRenderTheme(params: {
   };
 }
 
-/** Returns true if the hex colour (without #) is perceptually light. */
-function isLightColor(hex: string): boolean {
+/** @deprecated kept only for buildSchoolTemplatePptRenderTheme */
+export function getPptRenderTheme(_id: string | undefined): PptRenderTheme {
+  // This function is no longer used by the main rendering path.
+  // It returns a stub so any lingering call sites don't throw.
+  return buildSchoolTemplatePptRenderTheme({
+    primaryColor: "0A1628", accentColor: "00C6A7",
+    backgroundColor: "FFFFFF", darkColor: "06101E",
+  });
+}
+
+function _isLight(hex: string): boolean {
   const r = parseInt(hex.slice(0, 2), 16);
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);
-  // Standard luminance formula
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.55;
-}
-
-export function getPptRenderTheme(id: PptThemeId | undefined): PptRenderTheme {
-  const themeId = id && isValidPptThemeId(id) ? id : DEFAULT_PPT_THEME_ID;
-  switch (themeId) {
-    case "emerald-professional":
-      return {
-        id: themeId,
-        heroDeep: "022C22",
-        heroMid: "064E3B",
-        heroWash: "047857",
-        heroAccentLine: "A7F3D0",
-        heroTitle: "FFFFFF",
-        heroSubtitle: "D1FAE5",
-        heroFooter: "ECFDF5",
-        slideBg: "FFFFFF",
-        topBar: "064E3B",
-        sideAccent: "10B981",
-        titleText: "064E3B",
-        titleUnderline: "059669",
-        metaText: "4B5563",
-        bodyText: "1F2937",
-        bodyAccent: "047857",
-        footerLine: "D1FAE5",
-        footerText: "6B7280",
-        imagePanelFill: "ECFDF5",
-        imagePanelLine: "A7F3D0",
-        placeholderFill: "F0FDF4",
-        placeholderLine: "86EFAC",
-        placeholderInner: "BBF7D0",
-        closingDeep: "022C22",
-        closingWash: "064E3B",
-        closingTitle: "FFFFFF",
-        closingSubtitle: "D1FAE5",
-        closingFooter: "ECFDF5",
-      };
-    case "sunset-warm":
-      return {
-        id: themeId,
-        heroDeep: "7C2D12",
-        heroMid: "C2410C",
-        heroWash: "EA580C",
-        heroAccentLine: "FDE68A",
-        heroTitle: "FFFFFF",
-        heroSubtitle: "FFEDD5",
-        heroFooter: "FFF7ED",
-        slideBg: "FFF7ED",
-        topBar: "C2410C",
-        sideAccent: "FB923C",
-        titleText: "9A3412",
-        titleUnderline: "F97316",
-        metaText: "7C2D12",
-        bodyText: "431407",
-        bodyAccent: "EA580C",
-        footerLine: "FED7AA",
-        footerText: "9A3412",
-        imagePanelFill: "FFEDD5",
-        imagePanelLine: "FDBA74",
-        placeholderFill: "FFF1E6",
-        placeholderLine: "FDBA74",
-        placeholderInner: "FDE68A",
-        closingDeep: "7C2D12",
-        closingWash: "C2410C",
-        closingTitle: "FFFFFF",
-        closingSubtitle: "FFEDD5",
-        closingFooter: "FFF7ED",
-      };
-    case "midnight-modern":
-      return {
-        id: themeId,
-        heroDeep: "0F0720",
-        heroMid: "1E1B4B",
-        heroWash: "312E81",
-        heroAccentLine: "C4B5FD",
-        heroTitle: "F5F3FF",
-        heroSubtitle: "DDD6FE",
-        heroFooter: "EDE9FE",
-        slideBg: "F5F3FF",
-        topBar: "312E81",
-        sideAccent: "7C3AED",
-        titleText: "312E81",
-        titleUnderline: "A855F7",
-        metaText: "5B21B6",
-        bodyText: "1E1B4B",
-        bodyAccent: "7C3AED",
-        footerLine: "DDD6FE",
-        footerText: "5B21B6",
-        imagePanelFill: "EDE9FE",
-        imagePanelLine: "C4B5FD",
-        placeholderFill: "EDE9FE",
-        placeholderLine: "A78BFA",
-        placeholderInner: "DDD6FE",
-        closingDeep: "0F0720",
-        closingWash: "312E81",
-        closingTitle: "F5F3FF",
-        closingSubtitle: "DDD6FE",
-        closingFooter: "EDE9FE",
-      };
-    case "clean-minimal":
-      return {
-        id: themeId,
-        heroDeep: "F9FAFB",
-        heroMid: "F3F4F6",
-        heroWash: "E5E7EB",
-        heroAccentLine: "111827",
-        heroTitle: "111827",
-        heroSubtitle: "4B5563",
-        heroFooter: "6B7280",
-        slideBg: "FFFFFF",
-        topBar: "111827",
-        sideAccent: "9CA3AF",
-        titleText: "111827",
-        titleUnderline: "374151",
-        metaText: "6B7280",
-        bodyText: "1F2937",
-        bodyAccent: "111827",
-        footerLine: "E5E7EB",
-        footerText: "6B7280",
-        imagePanelFill: "F9FAFB",
-        imagePanelLine: "E5E7EB",
-        placeholderFill: "F3F4F6",
-        placeholderLine: "D1D5DB",
-        placeholderInner: "E5E7EB",
-        closingDeep: "111827",
-        closingWash: "1F2937",
-        closingTitle: "FFFFFF",
-        closingSubtitle: "E5E7EB",
-        closingFooter: "D1D5DB",
-      };
-    case "ocean-blue":
-    default:
-      return {
-        id: "ocean-blue",
-        heroDeep: "102746",
-        heroMid: "1B3A6B",
-        heroWash: "234A82",
-        heroAccentLine: "F5A623",
-        heroTitle: "FFFFFF",
-        heroSubtitle: "E2ECFF",
-        heroFooter: "D7E7FF",
-        slideBg: "FFFFFF",
-        topBar: "1B3A6B",
-        sideAccent: "F5A623",
-        titleText: "1B3A6B",
-        titleUnderline: "F5A623",
-        metaText: "5B6472",
-        bodyText: "333333",
-        bodyAccent: "1B3A6B",
-        footerLine: "DDE6F5",
-        footerText: "5B6472",
-        imagePanelFill: "EAF1FB",
-        imagePanelLine: "D0DEFA",
-        placeholderFill: "F6F8FC",
-        placeholderLine: "D0DEFA",
-        placeholderInner: "E3EAF8",
-        closingDeep: "102746",
-        closingWash: "1B3A6B",
-        closingTitle: "FFFFFF",
-        closingSubtitle: "E2ECFF",
-        closingFooter: "D7E7FF",
-      };
-  }
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55;
 }

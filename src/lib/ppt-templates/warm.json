@@ -1,0 +1,60 @@
+{
+  "id": "warm",
+  "name": "Warm",
+  "description": "Friendly Orange and Cream",
+  "colors": {
+    "primary": "E8622A",
+    "accent": "F5A623",
+    "background": "FFF8F0",
+    "headerBar": "E8622A",
+    "headerText": "FFFFFF",
+    "titleSlideBackground": "E8622A",
+    "titleSlideTitle": "FFFFFF",
+    "titleSlideSubtitle": "FDDCCC",
+    "contentText": "1C1917",
+    "footerBackground": "FEF3E8",
+    "footerBorder": "FBD0A8",
+    "footerText": "92400E",
+    "progressTrack": "FDE8CC",
+    "progressFill": "F5A623",
+    "imagePanelBackground": "FFF5E9",
+    "imagePanelBorder": "FBBC70"
+  },
+  "fonts": {
+    "titleSize": 36,
+    "contentSize": 16,
+    "face": "Calibri"
+  },
+  "layout": {
+    "slideW": 13.333,
+    "slideH": 7.5,
+    "header": { "x": 0, "y": 0, "w": 13.333, "h": 1.2 },
+    "headerIconX": 0.3,
+    "headerTitleX": 1.28,
+    "contentArea": { "x": 0.3, "y": 1.35, "w": 7.73, "h": 5.65 },
+    "imageArea": { "x": 8.67, "y": 1.35, "w": 4.51, "h": 5.65 },
+    "footer": { "x": 0, "y": 7.1, "w": 13.333, "h": 0.4 },
+    "progressBar": { "y": 7.44, "h": 0.06 },
+    "titleSlide": {
+      "accentBarW": 0.22,
+      "iconX": 0.55,
+      "iconY": 1.1,
+      "iconFontSize": 52,
+      "titleX": 0.55,
+      "titleY": 2.3,
+      "titleW": 12.23,
+      "titleH": 1.8,
+      "titleFontSize": 44,
+      "accentLineY": 4.2,
+      "subtitleX": 0.55,
+      "subtitleY": 4.4,
+      "subtitleW": 9.0,
+      "subtitleH": 1.5,
+      "subtitleFontSize": 20,
+      "imageX": 9.6,
+      "imageY": 1.9,
+      "imageW": 3.4,
+      "imageH": 3.9
+    }
+  }
+}
