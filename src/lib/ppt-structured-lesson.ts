@@ -781,9 +781,11 @@ function pickDeck(
   plan: string,
   ppt: string,
   contextAnchor: string,
+  pptIsolatedBody?: string,
 ): { body: string; notes: string } {
   const fromPlan = plan ? extractFromFullPlanDeck(plan, kind) : "";
-  const fromPpt = ppt ? extractFromPptContent(ppt, pptHints) : "";
+  // Use pre-isolated body when available to prevent cross-slide content bleed.
+  const fromPpt = pptIsolatedBody?.trim() || (ppt ? extractFromPptContent(ppt, pptHints) : "");
   const bodyRaw = mergeBodies(fromPlan, fromPpt, `${contextAnchor}\n${topicFallback}`);
   const body = stripMarkdownSymbolsForStudents(bodyRaw);
   const notes = buildTeacherSlideNotes(
@@ -807,11 +809,14 @@ function pickUaeFrameworkSlide8(
   gr: string,
   isAr: boolean,
   suggestedTiming: string,
+  pptIsolatedBody?: string,
 ): { body: string; notes: string } {
+  // Use isolated body when available to prevent fetching content from adjacent slides.
+  const pptSearch = pptIsolatedBody?.trim() || ppt;
   const uaePlan = plan ? extractFromFullPlanDeck(plan, "uaeOnly") : "";
   const crossPlan = plan ? extractFromFullPlanDeck(plan, "crossOnly") : "";
-  const pptUae = ppt ? extractFromPptContent(ppt, ["uae", "emirates", "khda", "spea", "moe", "الإمارات"]) : "";
-  const pptCross = ppt ? extractFromPptContent(ppt, ["cross curricular", "cross-curricular", "الربط"]) : "";
+  const pptUae = pptSearch ? extractFromPptContent(pptSearch, ["uae", "emirates", "khda", "spea", "moe", "الإمارات"]) : "";
+  const pptCross = pptSearch ? extractFromPptContent(pptSearch, ["cross curricular", "cross-curricular", "الربط"]) : "";
   let body = stripMarkdownSymbolsForStudents(
     mergeBodies(
       mergeBodies(uaePlan, crossPlan, ""),
@@ -845,7 +850,10 @@ function pickNonUaeSlide8(
   gr: string,
   isAr: boolean,
   suggestedTiming: string,
+  pptIsolatedBody?: string,
 ): { body: string; notes: string } {
+  // Use isolated body when available to prevent fetching content from adjacent slides.
+  const pptSearch = pptIsolatedBody?.trim() || ppt;
   type Key = NonUaeLinkKey;
   const fromPlan = (k: Key) => {
     if (!plan) return "";
@@ -856,12 +864,12 @@ function pickNonUaeSlide8(
     return extractFromFullPlanDeck(plan, "subjectIntegrationOnly");
   };
   const fromPptBlocks: Record<Key, string> = {
-    cross: ppt ? extractFromPptContent(ppt, ["cross curricular", "cross-curricular", "الربط"]) : "",
-    realLife: ppt ? extractFromPptContent(ppt, ["real life", "real world", "الحياة"]) : "",
-    career: ppt ? extractFromPptContent(ppt, ["career", "profession", "مهنة"]) : "",
-    global: ppt ? extractFromPptContent(ppt, ["global", "world", "sdg", "عالمي"]) : "",
-    subjectIntegration: ppt
-      ? extractFromPptContent(ppt, ["integrate with", "subject integration", "science", "math", "english"])
+    cross: pptSearch ? extractFromPptContent(pptSearch, ["cross curricular", "cross-curricular", "الربط"]) : "",
+    realLife: pptSearch ? extractFromPptContent(pptSearch, ["real life", "real world", "الحياة"]) : "",
+    career: pptSearch ? extractFromPptContent(pptSearch, ["career", "profession", "مهنة"]) : "",
+    global: pptSearch ? extractFromPptContent(pptSearch, ["global", "world", "sdg", "عالمي"]) : "",
+    subjectIntegration: pptSearch
+      ? extractFromPptContent(pptSearch, ["integrate with", "subject integration", "science", "math", "english"])
       : "",
   };
   const merged = (k: Key) =>
@@ -909,11 +917,12 @@ function pickSlide8Connection(
   gr: string,
   isAr: boolean,
   suggestedTiming: string,
+  pptIsolatedBody?: string,
 ): { body: string; notes: string } {
   if (uaeFrameworkSelected) {
-    return pickUaeFrameworkSlide8(plan, ppt, topic, subj, gr, isAr, suggestedTiming);
+    return pickUaeFrameworkSlide8(plan, ppt, topic, subj, gr, isAr, suggestedTiming, pptIsolatedBody);
   }
-  return pickNonUaeSlide8(plan, ppt, topic, subj, gr, isAr, suggestedTiming);
+  return pickNonUaeSlide8(plan, ppt, topic, subj, gr, isAr, suggestedTiming, pptIsolatedBody);
 }
 
 function aflPayloadHasTools(afl: AflSelectionsPayload | undefined): boolean {
@@ -1179,6 +1188,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     plan,
     ppt,
     contextAnchor,
+    parsedDeckBodies?.[5],
   );
   slides.push({ slideTitle: T[5]!, body: s6.body, speakerNotes: s6.notes, includeImageSlot: true });
 
@@ -1193,11 +1203,12 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     plan,
     ppt,
     contextAnchor,
+    parsedDeckBodies?.[6],
   );
   const s7Body = sanitizeSlide7DifferentiatedBody(s7.body, topic);
   slides.push({ slideTitle: T[6]!, body: s7Body, speakerNotes: s7.notes, includeImageSlot: true });
 
-  const s8 = pickSlide8Connection(uaeFrameworkSelected, plan, ppt, topic, subj, gr, isAr, "4–6 minutes");
+  const s8 = pickSlide8Connection(uaeFrameworkSelected, plan, ppt, topic, subj, gr, isAr, "4–6 minutes", parsedDeckBodies?.[7]);
   slides.push({ slideTitle: T[7]!, body: s8.body, speakerNotes: s8.notes, includeImageSlot: true });
 
   const s9 = pickDeck(
@@ -1211,6 +1222,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     plan,
     ppt,
     contextAnchor,
+    parsedDeckBodies?.[8],
   );
   slides.push({ slideTitle: T[8]!, body: s9.body, speakerNotes: s9.notes, includeImageSlot: true });
 
@@ -1225,6 +1237,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     plan,
     ppt,
     contextAnchor,
+    parsedDeckBodies?.[9],
   );
   const s10Merged = mergeBodies(
     hw,
@@ -1247,6 +1260,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     plan,
     ppt,
     contextAnchor,
+    parsedDeckBodies?.[10],
   );
   slides.push({ slideTitle: T[10]!, body: s11.body, speakerNotes: s11.notes, includeImageSlot: true });
 
@@ -1261,6 +1275,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     plan,
     ppt,
     contextAnchor,
+    parsedDeckBodies?.[11],
   );
   slides.push({ slideTitle: T[11]!, body: s12.body, speakerNotes: s12.notes, includeImageSlot: true });
 
