@@ -441,6 +441,28 @@ function cleanSlideTitle(title: string): string {
   return stripResidualMarkdownSymbols(t || "Slide").slice(0, 120) || "Slide";
 }
 
+/** One emoji icon per 0-based deck position (13 slides). Used in slide title headers. */
+const SLIDE_ICONS_BY_INDEX: readonly string[] = [
+  "🎓", // 0 – Subject / Grade / Date
+  "🎯", // 1 – Starter Activity
+  "📚", // 2 – Chapter, Topic and SDG Goal
+  "🎯", // 3 – Learning Objectives
+  "✅", // 4 – Learning Outcomes
+  "📖", // 5 – Main Phase Core Teaching
+  "🎨", // 6 – Differentiated Activity and Mini Plenary
+  "🌍", // 7 – UAE / Real-Life Connection
+  "🏆", // 8 – Plenary
+  "🏠", // 9 – Extended Task
+  "🎫", // 10 – Exit Ticket
+  "⭐", // 11 – Success Criteria and Self Evaluation
+  "👏", // 12 – Thank You
+] as const;
+
+function slideTitleWithIcon(titleBase: string, deckIndex: number): string {
+  const icon = SLIDE_ICONS_BY_INDEX[deckIndex];
+  return icon ? `${icon}  ${titleBase}` : titleBase;
+}
+
 /**
  * Turn slide body into plain bullet lines: preserves paragraphs as separate lines,
  * strips markdown list markers (including hyphen bullets), and removes markdown symbols.
@@ -973,7 +995,7 @@ export async function buildPptxFromPptContent(params: {
       line: { color: theme.sideAccent, transparency: 100 },
     });
 
-    const titleText = cleanSlideTitle(titleModel.slideTitle);
+    const titleText = slideTitleWithIcon(cleanSlideTitle(titleModel.slideTitle), 0);
     titleSlide.addText(titleText, {
       x: L.titleX,
       y: titleY,
@@ -1218,7 +1240,10 @@ export async function buildPptxFromPptContent(params: {
       const chunk = chunks[chunkIdx]!;
       const useImageColumn = reserveImageColumn && chunkIdx === 0;
       const L = layoutContentMetrics(useImageColumn);
-      const titleText = chunkIdx > 0 ? `${titleBase} (Continued)` : titleBase;
+      const titleText =
+        chunkIdx > 0
+          ? `${titleBase} (Continued)`
+          : slideTitleWithIcon(titleBase, slideIdx);
       const titleY = IN_MARGIN + PPT_TOP_BAR_H + 0.05;
       const contentBottom = L.contentTop + L.contentMaxH;
 
