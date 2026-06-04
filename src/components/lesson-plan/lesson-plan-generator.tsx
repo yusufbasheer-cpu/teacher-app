@@ -625,62 +625,33 @@ export function LessonPlanGenerator() {
         setPptSlideImageUrls(ppt);
         await syncUsageAfterGeneration(data.usage);
 
-        // Auto-save: persist every successful generation so My Lessons stays current.
-        console.log("[auto-save] Generation complete - attempting to save lesson plan", {
-          userId: user?.id ?? "NOT LOGGED IN",
-          subject: form.subject,
-          topic: form.topic,
-          activePlanId,
-        });
-
-        if (!user) {
-          console.warn("[auto-save] Skipped — user is not logged in");
-        } else {
-          const savePayload = {
-            user_id: user.id,
-            curriculum_type: form.curriculumType,
-            curriculum_framework: form.curriculumFramework.trim() || "",
+        // ── Auto-save to saved_lessons ──────────────────────────────────────
+        console.log("Generation complete - attempting to save lesson plan");
+        const saveLessonPlan = async () => {
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+          if (!currentUser) {
+            console.warn("[auto-save] Skipped — no authenticated user");
+            return;
+          }
+          const { error: saveError } = await supabase.from("saved_lessons").insert({
+            user_id: currentUser.id,
             subject: form.subject,
             grade: form.grade,
-            chapter: form.chapter.trim(),
             topic: form.topic,
-            learning_objectives: form.learningObjectives,
-            lesson_plan: mergePptSlideImageUrlsIntoPlan(
-              mergeSectionImagesMeta(stripped.planTextOnly, Object.keys(sec).length > 0 ? sec : null),
-              ppt,
-            ),
-          };
-
-          try {
-            if (activePlanId) {
-              const { error: updateErr } = await supabase
-                .from("lesson_plans")
-                .update(savePayload)
-                .eq("id", activePlanId)
-                .eq("user_id", user.id);
-              if (updateErr) {
-                console.error("[auto-save] Lesson save failed (update):", updateErr.message, updateErr);
-              } else {
-                console.log("[auto-save] Lesson saved successfully (updated plan", activePlanId + ")");
-              }
-            } else {
-              const { data: saved, error: insertErr } = await supabase
-                .from("lesson_plans")
-                .insert(savePayload)
-                .select("id")
-                .single();
-              if (insertErr) {
-                console.error("[auto-save] Lesson save failed (insert):", insertErr.message, insertErr);
-              } else if (saved) {
-                const newId = (saved as { id: string }).id;
-                setActivePlanId(newId);
-                console.log("[auto-save] Lesson saved successfully (new plan id:", newId + ")");
-              }
-            }
-          } catch (e) {
-            console.error("[auto-save] Unexpected exception during save:", e);
+            curriculum: form.curriculumType,
+            lesson_content: JSON.stringify(stripped.planTextOnly),
+            ppt_content: stripped.planTextOnly["PPT Slide Content"] ?? "",
+            created_at: new Date().toISOString(),
+          });
+          if (saveError) {
+            console.error("Save failed:", saveError.message, saveError);
+          } else {
+            console.log("Lesson saved successfully");
+            setSuccessMessage("Lesson plan saved to My Lessons");
+            setTimeout(() => setSuccessMessage(null), 4000);
           }
-        }
+        };
+        void saveLessonPlan();
       };
 
       if (response.ok && pptSelected && contentType.includes("application/x-ndjson")) {
