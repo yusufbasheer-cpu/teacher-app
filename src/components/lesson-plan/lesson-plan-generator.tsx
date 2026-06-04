@@ -31,6 +31,7 @@ import {
   STEM_SUBJECT_OPTIONS,
   SUBJECT_OPTIONS,
   TEACHER_PACKAGE_SECTIONS,
+  TEACHING_STRATEGIES,
   buildDifferentiatedPackSourceText,
   buildGenerationSourceMaterial,
   getGenerationTimeEstimate,
@@ -255,6 +256,8 @@ export function LessonPlanGenerator() {
 
   const [parseNotice, setParseNotice] = useState<string | null>(null);
   const [pptThemeId, setPptThemeId] = useState<PptThemeId>(DEFAULT_PPT_THEME_ID);
+  const [teachingStrategy, setTeachingStrategy] = useState<string>("");
+  const [strategyPanelOpen, setStrategyPanelOpen] = useState(false);
   const [aflPanelOpen, setAflPanelOpen] = useState(false);
   const [aflSelected, setAflSelected] = useState<Record<AflPhaseId, string[]>>(() => emptyAflSelected());
 
@@ -564,6 +567,7 @@ export function LessonPlanGenerator() {
           ...(combinedSource.length > 0 ? { sourceMaterial: combinedSource } : {}),
           ...(pasted.length > 0 ? { pastedContent: pasted } : {}),
           ...(pptSelected ? { streamProgress: true } : {}),
+          ...(teachingStrategy.trim() ? { teachingStrategy: teachingStrategy.trim() } : {}),
         }),
       });
 
@@ -1301,6 +1305,94 @@ export function LessonPlanGenerator() {
             </div>
           ) : null}
         </div>
+
+        {/* ── Teaching & Learning Strategy selector ──────────────────── */}
+        {!strategyPanelOpen ? (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setStrategyPanelOpen(true)}
+              className="w-full rounded-xl border border-[#00C6A7]/30 bg-[#00C6A7]/5 px-4 py-3 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10"
+            >
+              {teachingStrategy ? (
+                <span className="flex items-center gap-2">
+                  <span className="inline-block size-2 rounded-full bg-[#00C6A7]" />
+                  Teaching Strategy: <span className="font-bold text-[#00C6A7]">{TEACHING_STRATEGIES.find((s) => s.name === teachingStrategy)?.name ?? teachingStrategy}</span>
+                </span>
+              ) : (
+                "Teaching and Learning Strategy"
+              )}
+              <span className="mt-1 block text-xs font-normal text-slate-600">
+                Optional: select a strategy to shape how activities are delivered. The lesson structure will remain unchanged.
+              </span>
+            </button>
+          </div>
+        ) : (
+          <div className="mt-6 rounded-2xl border border-[#00C6A7]/30 bg-gradient-to-b from-[#00C6A7]/5 to-white p-4 shadow-sm md:p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Teaching and Learning Strategy <span className="ml-1 text-xs font-normal text-slate-500">(Optional)</span></h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Select a strategy to shape how activities are delivered. The lesson structure will remain unchanged.
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                {teachingStrategy ? (
+                  <button
+                    type="button"
+                    onClick={() => setTeachingStrategy("")}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setStrategyPanelOpen(false)}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Collapse ↑
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {TEACHING_STRATEGIES.map((strategy) => {
+                const isSelected = teachingStrategy === strategy.name;
+                return (
+                  <button
+                    key={strategy.id}
+                    type="button"
+                    onClick={() => setTeachingStrategy(isSelected ? "" : strategy.name)}
+                    aria-pressed={isSelected}
+                    className={`group flex flex-col rounded-xl border-2 p-3.5 text-left transition ${
+                      isSelected
+                        ? "border-[#00C6A7] bg-[#00C6A7]/8 shadow-md ring-2 ring-[#00C6A7]/20"
+                        : "border-slate-200 bg-white hover:border-[#00C6A7]/50 hover:bg-[#00C6A7]/5"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-sm font-semibold leading-snug ${isSelected ? "text-[#0A8F7A]" : "text-slate-900"}`}>
+                        {strategy.name}
+                      </span>
+                      {isSelected ? (
+                        <span className="shrink-0 rounded-full bg-[#00C6A7] p-0.5">
+                          <svg className="size-3 text-white" viewBox="0 0 12 12" fill="currentColor">
+                            <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                          </svg>
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500 group-hover:text-slate-600">
+                      {strategy.description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {/* ── End Teaching Strategy ──────────────────────────────────── */}
 
         <fieldset className="mt-6 rounded-2xl border border-[#00C6A7]/20 bg-[#00C6A7]/5 p-4">
           <legend className="px-1 text-sm font-semibold text-slate-900">What to generate</legend>

@@ -214,6 +214,22 @@ export const GENERATION_CHECKBOX_LABELS: Record<TeacherPackageSectionKey, string
   "AFL Activity Sheets": "Activity Sheet AFL (Printable)",
 };
 
+/** The 10 supported Teaching and Learning Strategies. */
+export const TEACHING_STRATEGIES = [
+  { id: "project-based",       name: "Project-Based Learning",              description: "Students create a real product or solution to demonstrate understanding" },
+  { id: "problem-based",       name: "Problem-Based Learning",              description: "Students solve a real world problem using subject knowledge" },
+  { id: "inquiry-based",       name: "Inquiry-Based Learning",              description: "Students investigate questions and discover answers through exploration" },
+  { id: "design-thinking",     name: "Design Thinking",                     description: "Students empathize, define, ideate, prototype and test solutions" },
+  { id: "case-study",          name: "Case Study-Based Learning",           description: "Students analyze real situations and apply knowledge to solve them" },
+  { id: "experiential",        name: "Experiential Learning",               description: "Students learn through hands-on doing and reflecting on experience" },
+  { id: "cooperative",         name: "Cooperative and Collaborative Learning", description: "Students work together in structured groups toward shared goals" },
+  { id: "flipped-classroom",   name: "Flipped Classroom",                   description: "Students access content at home and apply knowledge in class" },
+  { id: "challenge-based",     name: "Challenge-Based Learning",            description: "Students tackle meaningful challenges that require creative solutions" },
+  { id: "discovery",           name: "Discovery Learning",                  description: "Students explore and discover concepts through guided investigation" },
+] as const;
+
+export type TeachingStrategyId = typeof TEACHING_STRATEGIES[number]["id"];
+
 export type LessonPlanInput = {
   curriculumType: string;
   /** Optional jurisdictional framework; empty string = none (see `curriculum-framework.ts`). */
@@ -223,6 +239,8 @@ export type LessonPlanInput = {
   chapter: string;
   topic: string;
   learningObjectives: string;
+  /** Optional pedagogy selector; empty string = no strategy applied. */
+  teachingStrategy?: string;
 };
 
 export function isValidCurriculumType(value: string): value is CurriculumTypeOption {

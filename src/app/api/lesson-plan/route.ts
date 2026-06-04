@@ -138,12 +138,34 @@ function validateInput(input: LessonPlanInput): string | null {
   return null;
 }
 
+function buildStrategyBlock(strategy: string | undefined): string {
+  const s = strategy?.trim();
+  if (!s) return "";
+  return `
+
+===== TEACHING AND LEARNING STRATEGY (MANDATORY — read all five rules) =====
+The teacher has selected the following pedagogical strategy: **${s}**
+
+RULE 1: The selected teaching strategy must ONLY influence the activities and examples within each lesson phase. It must NOT change the lesson plan structure, add sections, or remove sections.
+RULE 2: The lesson plan must still contain ALL standard sections: Learning Objectives, Learning Outcomes, Starter Activity, Main Phase, Differentiated Activity, UAE Real Life Connection, Plenary, Extended Task, Exit Ticket, Success Criteria.
+RULE 3: Apply the strategy as follows for each section:
+  - Starter Activity: Design the hook activity using the principles of ${s}.
+  - Main Phase: Structure the I Do / We Do / You Do activities according to ${s}.
+  - Differentiated Activity: Create differentiated tasks that reflect the ${s} approach.
+  - Plenary: Design the reflection activity using ${s} principles.
+  - Extended Task: Create homework that extends the ${s} approach.
+RULE 4: For PPT Slide Content the same rules apply. The 13-slide structure must remain identical. Only the content delivery style, activities, and examples should reflect ${s}. Do NOT add, remove, or rearrange any PPT slides.
+RULE 5: If the strategy cannot be naturally applied to a section, use default pedagogy for that section only — do not force it.
+===== END STRATEGY RULES =====`;
+}
+
 function buildMessages(
   input: LessonPlanInput,
   sections: readonly TeacherPackageSectionKey[],
   sourceMaterial: string | undefined,
   frameworkAddendum: string | null,
   aflPromptBlock: string,
+  strategyBlock: string,
 ): DeepSeekMessage[] {
   const sectionInstructions = sections
     .map((key) => {
@@ -197,6 +219,7 @@ ${aflPromptBlock}
 ${languageUserBlock}
 
 Follow every instructional design rule in the system prompt that applies to the outputs you are generating. Align examples, vocabulary, and progression to the curriculum and grade named above. Each requested section must be classroom-ready (not placeholders). **PPT Slide Content** must read as finished on-screen text for learners (no teacher coaching phrases in the slide body).
+${strategyBlock}
       `.trim(),
     },
   ];
@@ -353,6 +376,7 @@ type GeneratePackageParams = {
   frameworkAddendum: string | null;
   aflSelections: ReturnType<typeof sanitizeAflSelections>;
   aflPromptBlock: string;
+  strategyBlock: string;
   onProgress?: (message: string) => void;
 };
 
@@ -360,7 +384,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
   mergedPlan: LessonPlanResult;
   parseNotices: string[];
 }> {
-  const { apiKey, input, sections, sourceMaterial, frameworkAddendum, aflSelections, aflPromptBlock, onProgress } =
+  const { apiKey, input, sections, sourceMaterial, frameworkAddendum, aflSelections, aflPromptBlock, strategyBlock, onProgress } =
     params;
   const orderedSections = TEACHER_PACKAGE_SECTIONS.filter((k) => sections.includes(k));
   const mergedPlan = emptyLessonShell(sections);
@@ -465,7 +489,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
           model: "deepseek-chat",
           temperature: 0.55,
           max_tokens: DEEPSEEK_MAX_TOKENS,
-          messages: buildMessages(input, [section], sourceMaterial, frameworkAddendum, aflPromptBlock),
+          messages: buildMessages(input, [section], sourceMaterial, frameworkAddendum, aflPromptBlock, strategyBlock),
         }),
       });
     } catch (err) {
@@ -701,6 +725,10 @@ export async function POST(req: Request) {
   const aflFormatted = formatAflForAiPrompt(aflSelections, aflCtx);
   const aflPromptBlock = aflFormatted ? `\n\n${aflFormatted}` : "";
 
+  const strategyBlock = buildStrategyBlock(
+    typeof body.teachingStrategy === "string" ? body.teachingStrategy : undefined,
+  );
+
   const wantsNdjsonStream =
     Boolean(body.streamProgress) && sections.includes("PPT Slide Content");
 
@@ -718,6 +746,7 @@ export async function POST(req: Request) {
             frameworkAddendum,
             aflSelections,
             aflPromptBlock,
+            strategyBlock,
             onProgress: (message) => send({ type: "progress", message }),
           });
           const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
@@ -747,6 +776,7 @@ export async function POST(req: Request) {
       frameworkAddendum,
       aflSelections,
       aflPromptBlock,
+      strategyBlock,
     });
     const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
     const usage = await recordSuccessfulGeneration(
