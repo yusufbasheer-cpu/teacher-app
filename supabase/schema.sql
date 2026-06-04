@@ -33,6 +33,12 @@ create policy "Users can update their own lesson plans"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can delete their own lesson plans" on public.lesson_plans;
+create policy "Users can delete their own lesson plans"
+  on public.lesson_plans
+  for delete
+  using (auth.uid() = user_id);
+
 -- One active login per account (see supabase/migrations/20260519120000_active_sessions.sql)
 create table if not exists public.active_sessions (
   user_id uuid primary key references auth.users(id) on delete cascade,

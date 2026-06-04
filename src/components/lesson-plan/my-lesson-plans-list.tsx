@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -13,6 +13,7 @@ export function MyLessonPlansList() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [plans, setPlans] = useState<SavedLessonPlan[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadPlansForUser = async (sessionUser: User) => {
     setError(null);
@@ -27,6 +28,23 @@ export function MyLessonPlansList() {
       setPlans([]);
     } else {
       setPlans((data ?? []) as SavedLessonPlan[]);
+    }
+  };
+
+  const deletePlan = async (planId: string) => {
+    if (!user) return;
+    setDeletingId(planId);
+    setError(null);
+    const { error: deleteError } = await supabase
+      .from("lesson_plans")
+      .delete()
+      .eq("id", planId)
+      .eq("user_id", user.id);
+    setDeletingId(null);
+    if (deleteError) {
+      setError(toUserFacingError(deleteError, "my-lesson-plans-delete"));
+    } else {
+      setPlans((prev) => prev.filter((p) => p.id !== planId));
     }
   };
 
@@ -61,9 +79,7 @@ export function MyLessonPlansList() {
         setError(null);
         return;
       }
-      if (event === "INITIAL_SESSION") {
-        return;
-      }
+      if (event === "INITIAL_SESSION") return;
       await loadPlansForUser(next);
     });
 
@@ -73,7 +89,7 @@ export function MyLessonPlansList() {
   if (checkingAuth) {
     return (
       <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 text-sm text-slate-600 shadow-sm">
-        Loading your saved lesson plans...
+        Loading your saved lesson plans…
       </div>
     );
   }
@@ -102,47 +118,127 @@ export function MyLessonPlansList() {
       </div>
 
       <section className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 shadow-sm md:p-7">
-        <h2 className="text-2xl font-bold text-slate-900">My Lesson Plans</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Open any saved plan and continue editing in the generator.
-        </p>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">My Lesson Plans</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {plans.length > 0
+                ? `${plans.length} saved plan${plans.length === 1 ? "" : "s"} — click any to continue editing.`
+                : "Lesson plans are saved automatically after each generation."}
+            </p>
+          </div>
+          <Link
+            href="/lesson-plan"
+            className="shrink-0 rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
+          >
+            + New Lesson
+          </Link>
+        </div>
 
-        {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+        {error ? (
+          <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>
+        ) : null}
 
         {plans.length === 0 ? (
-          <div className="mt-5 rounded-xl border border-dashed border-[#00C6A7]/30 bg-[#00C6A7]/5 p-4 text-sm text-slate-500">
-            No saved lesson plans yet.
+          <div className="mt-6 rounded-2xl border border-dashed border-[#00C6A7]/30 bg-[#00C6A7]/5 p-6 text-center">
+            <p className="text-2xl">📚</p>
+            <p className="mt-2 text-sm font-medium text-slate-700">No saved lesson plans yet</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Generate a lesson plan and it will appear here automatically.
+            </p>
+            <Link
+              href="/lesson-plan"
+              className="mt-4 inline-flex rounded-xl bg-[#00C6A7] px-5 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
+            >
+              Generate your first lesson
+            </Link>
           </div>
         ) : (
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
             {plans.map((plan) => {
               const fw = plan.curriculum_framework?.trim();
-              const frameworkSubtitle =
-                fw && isValidCurriculumFramework(fw) && fw.length > 0
-                  ? getCurriculumFrameworkLabel(fw)
-                  : null;
+              const frameworkLabel =
+                fw && isValidCurriculumFramework(fw) ? getCurriculumFrameworkLabel(fw) : null;
+              const dateStr = new Date(plan.created_at).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              });
+              const timeStr = new Date(plan.created_at).toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+              const isDeleting = deletingId === plan.id;
+
               return (
-              <Link
-                key={plan.id}
-                href={`/lesson-plan?planId=${plan.id}`}
-                className="rounded-2xl border border-[#00C6A7]/20 bg-[#00C6A7]/5 p-4 text-left transition hover:border-[#00C6A7]/50 hover:bg-[#00C6A7]/10"
-              >
-                <p className="font-semibold text-slate-900">{plan.topic}</p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {[plan.curriculum_type, plan.subject, plan.grade]
-                    .filter(Boolean)
-                    .concat(frameworkSubtitle ? [frameworkSubtitle] : [])
-                    .join(" · ")}
-                </p>
-                <p className="mt-1 line-clamp-2 text-xs text-slate-500">
-                  {plan.learning_objectives}
-                </p>
-                <p className="mt-2 text-xs text-slate-500">
-                  {new Date(plan.created_at).toLocaleString()}
-                </p>
-                <p className="mt-2 text-sm font-medium text-[#00C6A7]">Open plan</p>
-              </Link>
-            );
+                <div
+                  key={plan.id}
+                  className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-[#00C6A7]/40 hover:shadow-md"
+                >
+                  {/* Header row: subject · grade badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center rounded-lg bg-[#00C6A7]/10 px-2.5 py-0.5 text-xs font-semibold text-[#0A8F7A]">
+                        {plan.subject}
+                      </span>
+                      <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                        {plan.grade}
+                      </span>
+                      {plan.curriculum_type ? (
+                        <span className="inline-flex items-center rounded-lg bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-600">
+                          {plan.curriculum_type}
+                        </span>
+                      ) : null}
+                      {frameworkLabel ? (
+                        <span className="inline-flex items-center rounded-lg bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                          {frameworkLabel}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Topic */}
+                  <p className="mt-3 text-base font-semibold text-slate-900 leading-snug">
+                    {plan.topic}
+                  </p>
+
+                  {/* Objectives preview */}
+                  {plan.learning_objectives ? (
+                    <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-500">
+                      {plan.learning_objectives}
+                    </p>
+                  ) : null}
+
+                  {/* Date */}
+                  <p className="mt-3 text-xs text-slate-400">
+                    {dateStr} at {timeStr}
+                  </p>
+
+                  {/* Action buttons */}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      href={`/lesson-plan?planId=${plan.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#00C6A7] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0A8F7A]"
+                    >
+                      📖 View &amp; Edit
+                    </Link>
+                    <Link
+                      href={`/lesson-plan?planId=${plan.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      📊 Regenerate PPT
+                    </Link>
+                    <button
+                      type="button"
+                      disabled={isDeleting}
+                      onClick={() => void deletePlan(plan.id)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-red-100 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
+                    >
+                      {isDeleting ? "Deleting…" : "🗑 Delete"}
+                    </button>
+                  </div>
+                </div>
+              );
             })}
           </div>
         )}

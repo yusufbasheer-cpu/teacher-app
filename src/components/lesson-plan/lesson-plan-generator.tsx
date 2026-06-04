@@ -624,6 +624,44 @@ export function LessonPlanGenerator() {
               : null;
         setPptSlideImageUrls(ppt);
         await syncUsageAfterGeneration(data.usage);
+
+        // Auto-save: silently persist every successful generation so My Lessons stays current.
+        if (user) {
+          const savePayload = {
+            user_id: user.id,
+            curriculum_type: form.curriculumType,
+            curriculum_framework: form.curriculumFramework.trim() || "",
+            subject: form.subject,
+            grade: form.grade,
+            chapter: form.chapter.trim(),
+            topic: form.topic,
+            learning_objectives: form.learningObjectives,
+            lesson_plan: mergePptSlideImageUrlsIntoPlan(
+              mergeSectionImagesMeta(stripped.planTextOnly, Object.keys(sec).length > 0 ? sec : null),
+              ppt,
+            ),
+          };
+          try {
+            if (activePlanId) {
+              await supabase
+                .from("lesson_plans")
+                .update(savePayload)
+                .eq("id", activePlanId)
+                .eq("user_id", user.id);
+            } else {
+              const { data: saved, error: saveErr } = await supabase
+                .from("lesson_plans")
+                .insert(savePayload)
+                .select("id")
+                .single();
+              if (!saveErr && saved) {
+                setActivePlanId((saved as { id: string }).id);
+              }
+            }
+          } catch {
+            // Silent — auto-save failure must not interrupt the user flow.
+          }
+        }
       };
 
       if (response.ok && pptSelected && contentType.includes("application/x-ndjson")) {
