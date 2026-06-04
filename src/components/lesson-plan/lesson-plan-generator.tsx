@@ -625,8 +625,17 @@ export function LessonPlanGenerator() {
         setPptSlideImageUrls(ppt);
         await syncUsageAfterGeneration(data.usage);
 
-        // Auto-save: silently persist every successful generation so My Lessons stays current.
-        if (user) {
+        // Auto-save: persist every successful generation so My Lessons stays current.
+        console.log("[auto-save] Generation complete - attempting to save lesson plan", {
+          userId: user?.id ?? "NOT LOGGED IN",
+          subject: form.subject,
+          topic: form.topic,
+          activePlanId,
+        });
+
+        if (!user) {
+          console.warn("[auto-save] Skipped — user is not logged in");
+        } else {
           const savePayload = {
             user_id: user.id,
             curriculum_type: form.curriculumType,
@@ -641,25 +650,35 @@ export function LessonPlanGenerator() {
               ppt,
             ),
           };
+
           try {
             if (activePlanId) {
-              await supabase
+              const { error: updateErr } = await supabase
                 .from("lesson_plans")
                 .update(savePayload)
                 .eq("id", activePlanId)
                 .eq("user_id", user.id);
+              if (updateErr) {
+                console.error("[auto-save] Lesson save failed (update):", updateErr.message, updateErr);
+              } else {
+                console.log("[auto-save] Lesson saved successfully (updated plan", activePlanId + ")");
+              }
             } else {
-              const { data: saved, error: saveErr } = await supabase
+              const { data: saved, error: insertErr } = await supabase
                 .from("lesson_plans")
                 .insert(savePayload)
                 .select("id")
                 .single();
-              if (!saveErr && saved) {
-                setActivePlanId((saved as { id: string }).id);
+              if (insertErr) {
+                console.error("[auto-save] Lesson save failed (insert):", insertErr.message, insertErr);
+              } else if (saved) {
+                const newId = (saved as { id: string }).id;
+                setActivePlanId(newId);
+                console.log("[auto-save] Lesson saved successfully (new plan id:", newId + ")");
               }
             }
-          } catch {
-            // Silent — auto-save failure must not interrupt the user flow.
+          } catch (e) {
+            console.error("[auto-save] Unexpected exception during save:", e);
           }
         }
       };
