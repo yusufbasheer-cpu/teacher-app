@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const CSP = [
   "default-src 'self'",
@@ -8,8 +9,8 @@ const CSP = [
   // Images: self, data URIs, blobs, and any HTTPS source (Pexels, fal.ai CDN, etc.)
   "img-src 'self' data: blob: https:",
   "font-src 'self'",
-  // API connections: Supabase, DeepSeek, fal.ai, ipapi
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.deepseek.com https://rest.fal.run https://fal.run https://queue.fal.run https://ipapi.co https://api.country.is https://api.pexels.com",
+  // API connections: Supabase, DeepSeek, fal.ai, ipapi, Sentry
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.deepseek.com https://rest.fal.run https://fal.run https://queue.fal.run https://ipapi.co https://api.country.is https://api.pexels.com https://*.sentry.io https://sentry.io",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -35,4 +36,27 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Sentry organisation and project (from sentry.io → Settings → Projects).
+  // Leave as empty strings if not using source-map uploads (they're optional).
+  org: process.env.SENTRY_ORG ?? "",
+  project: process.env.SENTRY_PROJECT ?? "",
+
+  // Auth token for source-map uploads — add SENTRY_AUTH_TOKEN to env if desired.
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Keep build output quiet; set to false to debug Sentry webpack plugin.
+  silent: true,
+
+  // Upload source maps only in CI / production builds, not local dev.
+  sourcemaps: {
+    disable: process.env.NODE_ENV !== "production",
+  },
+
+  // Wrap API routes with Sentry so unhandled errors are captured automatically.
+  autoInstrumentServerFunctions: true,
+
+  // Tree-shake Sentry debug logging from the client bundle.
+  disableLogger: true,
+
+});
