@@ -109,8 +109,8 @@ function scoreContent(content: string, strategy: string): {
   const lower = content.toLowerCase();
   const keywords = STRATEGY_KEYWORDS[strategy] ?? [];
 
-  const starterSection   = content.match(/Starter Activity[\s\S]*?(?=Main Phase|Main Teaching|MAIN|$)/i)?.[0] ?? content.slice(0, 600);
-  const mainSection      = content.match(/Main Phase[\s\S]*?(?=Differentiat|DIFFERENTIAT|$)/i)?.[0] ?? "";
+  const starterSection   = content.match(/Starter Activity[\s\S]*?(?=Main Phase|Main Teaching|Core Teaching|MAIN|$)/i)?.[0] ?? content.slice(0, 600);
+  const mainSection      = content.match(/(?:Main Phase|Main Teaching Phase|Core Teaching)[\s\S]*?(?=Differentiat|DIFFERENTIAT|$)/i)?.[0] ?? "";
   const diffSection      = content.match(/Differentiat[\s\S]*?(?=Plenary|PLENARY|$)/i)?.[0] ?? "";
   const plenarySection   = content.match(/Plenary[\s\S]*?(?=Extended Task|EXTENDED|$)/i)?.[0] ?? "";
   const extendedSection  = content.match(/Extended Task[\s\S]*/i)?.[0] ?? "";
