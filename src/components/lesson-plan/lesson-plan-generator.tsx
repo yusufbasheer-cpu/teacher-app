@@ -59,6 +59,7 @@ import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import { sanitizeUserMessage, toUserFacingError, USER_FACING_ERROR, GENERATION_FAILED_ERROR } from "@/lib/user-facing-errors";
+import * as Sentry from "@sentry/nextjs";
 import {
   AFL_PHASE_GROUPS,
   AFL_PHASE_IDS,
@@ -205,6 +206,33 @@ const QUICK_TIPS = [
   "Upload your own content so the AI uses it as the primary source.",
   "Select only the sections you need to generate faster.",
 ];
+
+/** Temporary — visible only for yusuf.basheer@gmail.com. Remove once Sentry is confirmed. */
+function SentryTestButton() {
+  const [state, setState] = useState<"idle" | "sent">("idle");
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5">
+      <span className="text-xs text-slate-500">🔧 Dev tools</span>
+      <button
+        type="button"
+        onClick={() => {
+          Sentry.captureException(
+            new Error("Sentry test error from Layah app"),
+            { extra: { triggeredBy: "yusuf.basheer@gmail.com", page: "lesson-plan" } },
+          );
+          setState("sent");
+          setTimeout(() => setState("idle"), 4000);
+        }}
+        className="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+      >
+        Test Sentry
+      </button>
+      {state === "sent" ? (
+        <span className="text-xs font-medium text-green-600">✅ Error sent — check Sentry dashboard</span>
+      ) : null}
+    </div>
+  );
+}
 
 export function LessonPlanGenerator() {
   const router = useRouter();
@@ -875,6 +903,9 @@ export function LessonPlanGenerator() {
           Signed in as <span className="font-semibold">{user.email}</span>
         </div>
         <UpgradeUsageIndicator usage={usage} loading={usageLoading} />
+        {user.email === "yusuf.basheer@gmail.com" ? (
+          <SentryTestButton />
+        ) : null}
       </div>
 
       <div className="grid min-w-0 gap-8 lg:grid-cols-[0.95fr_1.05fr]">
