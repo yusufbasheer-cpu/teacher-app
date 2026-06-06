@@ -58,7 +58,7 @@ import { filterUserFacingNotices } from "@/lib/image-notices";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
-import { sanitizeUserMessage, toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
+import { sanitizeUserMessage, toUserFacingError, USER_FACING_ERROR, GENERATION_FAILED_ERROR } from "@/lib/user-facing-errors";
 import {
   AFL_PHASE_GROUPS,
   AFL_PHASE_IDS,
@@ -740,7 +740,16 @@ export function LessonPlanGenerator() {
         await new Promise<void>((r) => setTimeout(r, 3000));
       }
     } catch (err) {
-      setError(toUserFacingError(err, "lesson-plan-generate"));
+      const msg = toUserFacingError(err, "lesson-plan-generate");
+      // For generation failures always show the friendly contact-email message —
+      // the technical detail has already been logged by toUserFacingError above.
+      const isGenericOrTechnical =
+        msg === USER_FACING_ERROR ||
+        msg.toLowerCase().includes("failed to fetch") ||
+        msg.toLowerCase().includes("fetch failed") ||
+        msg.toLowerCase().includes("typeerror") ||
+        msg.toLowerCase().includes("networkerror");
+      setError(isGenericOrTechnical ? GENERATION_FAILED_ERROR : msg);
       setParseNotice(null);
     } finally {
       setLoading(false);
@@ -1474,7 +1483,17 @@ export function LessonPlanGenerator() {
         </button>
 
         {error ? (
-          <p className="mt-3 whitespace-pre-wrap break-words text-sm text-red-600">{error}</p>
+          <p className="mt-3 whitespace-pre-wrap break-words text-sm text-red-600">
+            {error.replace("info@layah.in", "").trimEnd()}
+            {error.includes("info@layah.in") ? (
+              <>
+                {" "}
+                <a href="mailto:info@layah.in" className="underline hover:text-red-700">
+                  info@layah.in
+                </a>
+              </>
+            ) : null}
+          </p>
         ) : null}
         </form>
 

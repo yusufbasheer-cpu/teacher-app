@@ -2,6 +2,10 @@
 export const USER_FACING_ERROR =
   "Something went wrong. Please try again.";
 
+/** Shown specifically when lesson plan generation fails. */
+export const GENERATION_FAILED_ERROR =
+  "Generation failed. Please try again. If the problem continues, contact support at info@layah.in";
+
 /** Embedded in generated lesson text when a section fails (no technical detail). */
 export const SECTION_GENERATION_FAILED =
   "_(This section could not be generated. Please try again.)_";
@@ -40,6 +44,19 @@ const TECHNICAL_PATTERNS = [
   "unexpected token",
   "---",
   "[http",
+  // Browser/Node fetch network errors — must never be shown to teachers
+  "failed to fetch",
+  "fetch failed",
+  "load failed",
+  "networkerror",
+  "typeerror",
+  "aborterror",
+  "econnreset",
+  "econnrefused",
+  "enotfound",
+  "etimedout",
+  "certificate",
+  "ssl",
 ];
 
 /** Messages that are safe to show as-is (validation / auth UX). */
