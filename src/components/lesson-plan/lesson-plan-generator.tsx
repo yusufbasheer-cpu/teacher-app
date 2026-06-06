@@ -216,12 +216,13 @@ function SentryTestButton() {
       <button
         type="button"
         onClick={() => {
-          Sentry.captureException(
-            new Error("Sentry test error from Layah app"),
-            { extra: { triggeredBy: "yusuf.basheer@gmail.com", page: "lesson-plan" } },
-          );
+          console.log("Sentry DSN:", process.env.NEXT_PUBLIC_SENTRY_DSN);
+          console.log("Sentry initialized:", Sentry.isInitialized());
+          console.log("Sending test error to Sentry…");
+          Sentry.captureException(new Error("Test error from Layah"));
+          console.log("Test error sent to Sentry");
           setState("sent");
-          setTimeout(() => setState("idle"), 4000);
+          setTimeout(() => setState("idle"), 5000);
         }}
         className="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
       >
