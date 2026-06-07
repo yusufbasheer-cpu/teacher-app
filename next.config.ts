@@ -11,6 +11,8 @@ const CSP = [
   "font-src 'self'",
   // API connections: Supabase, DeepSeek, fal.ai, ipapi, Sentry
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.deepseek.com https://rest.fal.run https://fal.run https://queue.fal.run https://ipapi.co https://api.country.is https://api.pexels.com https://*.sentry.io https://sentry.io",
+  // Workers: blob: required by Sentry replay and other browser workers
+  "worker-src blob: 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
