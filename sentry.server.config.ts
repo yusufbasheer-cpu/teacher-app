@@ -1,17 +1,12 @@
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-
-  environment: process.env.NODE_ENV === "production" ? "production" : "development",
-
-  // Capture 10 % of transactions — API routes included automatically.
+  dsn: "https://62c1790b97dbb204d2709c0d1602a813@o4511506447794176.ingest.us.sentry.io/4511506454740992",
   tracesSampleRate: 0.1,
-
-  enabled: process.env.NODE_ENV === "production",
+  debug: false,
+  enabled: true,
 
   beforeSend(event) {
-    // Strip secrets that may appear in server-side error payloads.
     if (event.request?.data) {
       const data = event.request.data as Record<string, unknown>;
       for (const key of ["password", "token", "apiKey", "secret", "service_role"]) {
