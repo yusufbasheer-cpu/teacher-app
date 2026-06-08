@@ -23,6 +23,7 @@
     "nodemailer": "^8.0.8",
     "pdf-parse": "^1.1.1",
     "pexels": "^1.4.0",
+    "posthog-js": "^1.382.0",
     "pptxgenjs": "latest",
     "react": "latest",
     "react-dom": "latest",
