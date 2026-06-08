@@ -29,6 +29,7 @@ if (typeof window !== "undefined") {
     capture_pageview: false,
     capture_pageleave: true,
   });
+  console.log("PostHog initialized");
 }
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {

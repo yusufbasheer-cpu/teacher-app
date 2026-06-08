@@ -4,13 +4,13 @@ import { withSentryConfig } from "@sentry/nextjs";
 const CSP = [
   "default-src 'self'",
   // Next.js requires unsafe-inline for hydration scripts
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com",
   "style-src 'self' 'unsafe-inline'",
   // Images: self, data URIs, blobs, and any HTTPS source (Pexels, fal.ai CDN, etc.)
   "img-src 'self' data: blob: https:",
   "font-src 'self'",
   // API connections: Supabase, DeepSeek, fal.ai, ipapi, Sentry
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.deepseek.com https://rest.fal.run https://fal.run https://queue.fal.run https://ipapi.co https://api.country.is https://api.pexels.com https://*.sentry.io https://sentry.io",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.deepseek.com https://rest.fal.run https://fal.run https://queue.fal.run https://ipapi.co https://api.country.is https://api.pexels.com https://*.sentry.io https://sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com",
   // Workers: blob: required by Sentry replay and other browser workers
   "worker-src blob: 'self'",
   "frame-ancestors 'none'",
