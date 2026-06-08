@@ -7,6 +7,7 @@ import { CookieBanner } from "@/components/layout/cookie-banner";
 import { NavbarWrapper } from "@/components/layout/navbar-wrapper";
 import { PageTransitionWrapper } from "@/components/layout/page-transition-wrapper";
 import { SentryProvider } from "@/components/sentry-provider";
+import { PostHogProvider } from "@/providers/posthog-provider";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -51,14 +52,16 @@ export default function RootLayout({
         style={{ color: "#0A1628" }}
       >
         <SentryProvider />
-        <SoundProvider>
-          <AppEffects />
-          <NavbarWrapper />
-          <ActiveSessionGuard>
-            <PageTransitionWrapper>{children}</PageTransitionWrapper>
-          </ActiveSessionGuard>
-          <CookieBanner />
-        </SoundProvider>
+        <PostHogProvider>
+          <SoundProvider>
+            <AppEffects />
+            <NavbarWrapper />
+            <ActiveSessionGuard>
+              <PageTransitionWrapper>{children}</PageTransitionWrapper>
+            </ActiveSessionGuard>
+            <CookieBanner />
+          </SoundProvider>
+        </PostHogProvider>
       </body>
     </html>
   );
