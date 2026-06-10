@@ -372,6 +372,23 @@ export function LessonPlanGenerator() {
           } catch (err) {
             setError(toUserFacingError(err, "lesson-plan-load"));
           }
+        } else {
+          // Pre-fill form from Regenerate button URL params
+          const subjectParam = searchParams.get("subject");
+          const gradeParam = searchParams.get("grade");
+          const topicParam = searchParams.get("topic");
+          const objectivesParam = searchParams.get("learningObjectives");
+          const curriculumParam = searchParams.get("curriculumType");
+          if (subjectParam || gradeParam || topicParam || objectivesParam || curriculumParam) {
+            setForm((prev) => ({
+              ...prev,
+              ...(subjectParam && isValidSubjectOption(subjectParam) ? { subject: subjectParam } : {}),
+              ...(gradeParam && isValidGradeYear(gradeParam) ? { grade: gradeParam } : {}),
+              ...(topicParam ? { topic: topicParam } : {}),
+              ...(objectivesParam ? { learningObjectives: objectivesParam } : {}),
+              ...(curriculumParam && isValidCurriculumType(curriculumParam) ? { curriculumType: curriculumParam } : {}),
+            }));
+          }
         }
       }
       setCheckingAuth(false);
@@ -672,6 +689,7 @@ export function LessonPlanGenerator() {
             grade: form.grade,
             topic: form.topic,
             curriculum: form.curriculumType,
+            learning_objectives: form.learningObjectives,
             lesson_content: JSON.stringify(stripped.planTextOnly),
             ppt_content: stripped.planTextOnly["PPT Slide Content"] ?? "",
             created_at: new Date().toISOString(),

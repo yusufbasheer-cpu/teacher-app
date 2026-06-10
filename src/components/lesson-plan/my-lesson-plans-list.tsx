@@ -13,6 +13,7 @@ type SavedLesson = {
   grade: string;
   topic: string;
   curriculum: string;
+  learning_objectives: string;
   lesson_content: string;
   ppt_content: string;
   created_at: string;
@@ -211,14 +212,14 @@ export function MyLessonPlansList() {
                   {/* Actions */}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link
-                      href="/lesson-plan"
+                      href={`/my-lesson-plans/${plan.id}`}
                       className="inline-flex items-center gap-1.5 rounded-xl bg-[#00C6A7] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0A8F7A]"
                     >
                       📖 View Lesson
                     </Link>
                     {hasPpt ? (
                       <Link
-                        href="/lesson-plan"
+                        href={`/lesson-plan?subject=${encodeURIComponent(plan.subject)}&grade=${encodeURIComponent(plan.grade)}&topic=${encodeURIComponent(plan.topic)}&learningObjectives=${encodeURIComponent(plan.learning_objectives ?? "")}&curriculumType=${encodeURIComponent(plan.curriculum)}`}
                         className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                       >
                         📊 Regenerate PPT
