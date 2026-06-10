@@ -46,37 +46,49 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to save feedback." }, { status: 500 });
   }
 
-  try {
-    await sendEmail({
-      to: "info@layah.in",
-      subject: `New Feedback from ${name?.trim() || "Anonymous"} — ${STARS(rating)}`,
-      text: [
-        `Name: ${name || "—"}`,
-        `Email: ${email || "—"}`,
-        `Role: ${role || "—"}`,
-        `Rating: ${STARS(rating)} (${rating}/5)`,
-        "",
-        "Message:",
-        message,
-      ].join("\n"),
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px;">
-          <h2 style="color: #0A1628;">New Feedback Submission 💬</h2>
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;"><strong>Name:</strong></td><td style="padding: 8px 0; font-size: 14px;">${name || "—"}</td></tr>
-            <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;"><strong>Email:</strong></td><td style="padding: 8px 0; font-size: 14px;">${email ? `<a href="mailto:${email}">${email}</a>` : "—"}</td></tr>
-            <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;"><strong>Role:</strong></td><td style="padding: 8px 0; font-size: 14px;">${role || "—"}</td></tr>
-            <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;"><strong>Rating:</strong></td><td style="padding: 8px 0; font-size: 18px; color: #F59E0B;">${STARS(rating)} <span style="font-size: 14px; color: #374151;">(${rating}/5)</span></td></tr>
-          </table>
-          <div style="margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 8px; font-size: 14px; line-height: 1.6;">
-            ${message.replace(/\n/g, "<br>")}
-          </div>
+  const submittedAt = new Date().toLocaleString("en-GB", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: "Asia/Dubai",
+  });
+
+  const emailResult = await sendEmail({
+    to: "info@layah.in",
+    subject: "New Feedback Received - Layah",
+    text: [
+      "New feedback submission received on Layah.",
+      "",
+      `Name:    ${name || "—"}`,
+      `Email:   ${email || "—"}`,
+      `Role:    ${role || "—"}`,
+      `Rating:  ${STARS(rating)} (${rating}/5)`,
+      `Date:    ${submittedAt}`,
+      "",
+      "Message:",
+      message,
+    ].join("\n"),
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px;">
+        <h2 style="color: #0A1628;">New Feedback Received 💬</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px; width: 80px;"><strong>Name:</strong></td><td style="padding: 8px 0; font-size: 14px;">${name || "—"}</td></tr>
+          <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;"><strong>Email:</strong></td><td style="padding: 8px 0; font-size: 14px;">${email ? `<a href="mailto:${email}">${email}</a>` : "—"}</td></tr>
+          <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;"><strong>Role:</strong></td><td style="padding: 8px 0; font-size: 14px;">${role || "—"}</td></tr>
+          <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;"><strong>Rating:</strong></td><td style="padding: 8px 0; font-size: 18px; color: #F59E0B;">${STARS(rating)} <span style="font-size: 14px; color: #374151;">(${rating}/5)</span></td></tr>
+          <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;"><strong>Date:</strong></td><td style="padding: 8px 0; font-size: 14px;">${submittedAt}</td></tr>
+        </table>
+        <div style="margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 8px; font-size: 14px; line-height: 1.6;">
+          <strong style="display: block; margin-bottom: 8px; color: #0A1628;">Message:</strong>
+          ${message.replace(/\n/g, "<br>")}
         </div>
-      `,
-    });
-  } catch (err) {
-    console.error("[feedback] email send failed:", err);
-    // DB save succeeded — don't fail the request over email
+      </div>
+    `,
+  });
+
+  if (emailResult.ok) {
+    console.log("[feedback] Feedback email sent");
+  } else {
+    console.error("[feedback] Feedback email failed:", emailResult.error);
   }
 
   return NextResponse.json({ ok: true });
