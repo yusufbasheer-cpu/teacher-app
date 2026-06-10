@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/navbar";
 import { StatsSection } from "@/components/home/stats-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
+import { FeedbackSection } from "@/components/home/feedback-section";
 import { Footer } from "@/components/layout/footer";
 
 export const metadata: Metadata = {
@@ -265,6 +266,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── FEEDBACK ───────────────────────────────────────────────────────── */}
+      <FeedbackSection />
 
       {/* ── CTA BANNER ─────────────────────────────────────────────────────── */}
       <section
