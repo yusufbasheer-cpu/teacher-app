@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { GenerationUsageIndicator } from "@/components/usage/generation-usage-indicator";
-import { PaymentModal, type UpgradePlanKey } from "@/components/payment/payment-modal";
+import { WaitlistModal } from "@/components/payment/waitlist-modal";
+import type { UpgradePlanKey } from "@/components/payment/payment-modal";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 
 const TEAL = "#00C6A7";
@@ -51,19 +52,15 @@ export function UpgradeUsageIndicator({ usage, loading }: Props) {
             type="button"
             onClick={() => setModalOpen(true)}
             className="shrink-0 inline-flex min-h-9 items-center gap-1.5 rounded-xl px-4 text-sm font-bold text-white transition hover:opacity-90"
-            style={{ background: TEAL, color: NAVY }}
+            style={{ background: TEAL }}
           >
-            Upgrade
-            <svg className="size-3.5" viewBox="0 0 16 16" fill="none" aria-hidden>
-              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            Join Waitlist
           </button>
         </div>
       )}
 
-      <PaymentModal
+      <WaitlistModal
         open={modalOpen}
-        planKey={upgradePlan ?? "pro"}
         onClose={() => setModalOpen(false)}
       />
     </>

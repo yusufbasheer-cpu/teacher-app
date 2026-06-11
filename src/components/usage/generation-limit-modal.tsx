@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
+import { WaitlistModal } from "@/components/payment/waitlist-modal";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 
 const NAVY = "#0A1628";
@@ -21,6 +22,8 @@ export function GenerationLimitModal({
   subline,
   onClose,
 }: GenerationLimitModalProps) {
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+
   if (!open) return null;
 
   const limit = usage?.generationsLimit ?? 15;
@@ -70,14 +73,14 @@ export function GenerationLimitModal({
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link
-            href="/pricing"
+          <button
+            type="button"
+            onClick={() => setWaitlistOpen(true)}
             className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:opacity-95"
-            style={{ background: TEAL, color: NAVY }}
-            onClick={onClose}
+            style={{ background: TEAL }}
           >
-            Upgrade Now
-          </Link>
+            Join Waitlist
+          </button>
           <button
             type="button"
             onClick={onClose}
@@ -87,6 +90,8 @@ export function GenerationLimitModal({
             Maybe Later
           </button>
         </div>
+
+        <WaitlistModal open={waitlistOpen} onClose={() => { setWaitlistOpen(false); onClose(); }} />
       </div>
     </div>
   );

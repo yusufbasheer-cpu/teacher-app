@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Container } from "@/components/ui/container";
-import { PaymentModal, type UpgradePlanKey } from "@/components/payment/payment-modal";
+import { WaitlistModal } from "@/components/payment/waitlist-modal";
+import type { UpgradePlanKey } from "@/components/payment/payment-modal";
 import { usePricingRegion } from "@/hooks/use-pricing-region";
 import {
   formatRegionalPrice,
@@ -64,7 +65,7 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
       "Global Curriculum Framework Alignment",
       "Priority Support",
     ],
-    cta: { label: "Start Pro Plan", href: "/auth" },
+    cta: { label: "Join Waitlist", href: "/auth" },
     variant: "featured",
   },
   {
@@ -80,7 +81,7 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
       "Advanced Analytics",
       "Early Access to New Features",
     ],
-    cta: { label: "Start Pro Plus", href: "/auth" },
+    cta: { label: "Join Waitlist", href: "/auth" },
     variant: "light",
   },
 ];
@@ -346,17 +347,11 @@ function PricingCard({
 
 export function PricingPage() {
   const [billing, setBilling] = useState<Billing>("monthly");
-  const [paymentModal, setPaymentModal] = useState<{ open: boolean; planKey: UpgradePlanKey }>({
-    open: false,
-    planKey: "pro",
-  });
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
   const { region } = usePricingRegion();
   const isAnnual = billing === "annual";
 
-  const openPayment = (planKey: UpgradePlanKey) =>
-    setPaymentModal({ open: true, planKey });
-  const closePayment = () =>
-    setPaymentModal((s) => ({ ...s, open: false }));
+  const openPayment = (_planKey: UpgradePlanKey) => setWaitlistOpen(true);
 
   return (
     <main
@@ -529,11 +524,9 @@ export function PricingPage() {
         </section>
       </Container>
 
-      <PaymentModal
-        open={paymentModal.open}
-        planKey={paymentModal.planKey}
-        initialBilling={billing}
-        onClose={closePayment}
+      <WaitlistModal
+        open={waitlistOpen}
+        onClose={() => setWaitlistOpen(false)}
       />
     </main>
   );
