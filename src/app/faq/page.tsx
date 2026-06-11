@@ -34,7 +34,7 @@ const FAQ_DATA: FaqCategory[] = [
     items: [
       {
         q: "Is there a free plan?",
-        a: "Yes! Our free plan gives you 3 lesson plan generations per month forever. No credit card required.",
+        a: "Yes! Our free plan gives you 15 lesson plan generations per month forever. No credit card required.",
       },
       {
         q: "Can I cancel anytime?",

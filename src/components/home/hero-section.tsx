@@ -46,7 +46,7 @@ export function HeroSection() {
             </Link>
           </div>
           <p className="mt-5 text-xs font-medium" style={{ color: "#9CA3AF" }}>
-            No credit card needed · 3 free generations every month
+            No credit card needed · 15 free generations every month
           </p>
         </div>
 

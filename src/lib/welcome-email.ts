@@ -61,7 +61,7 @@ function buildWelcomeHtml(name: string): string {
       <div style="border:1px solid #E2E8F0;border-radius:12px;padding:20px;margin-bottom:24px;">
         <p style="color:#0A1628;font-size:14px;font-weight:700;margin:0 0 8px;">Your Free Plan</p>
         <p style="color:#4A5568;font-size:14px;line-height:1.5;margin:0;">
-          You have <strong style="color:#00C6A7;">3 free generations</strong> this month. Each generation creates a complete lesson plan with PPT, worksheets, and more.
+          You have <strong style="color:#00C6A7;">15 free generations</strong> this month. Each generation creates a complete lesson plan with PPT, worksheets, and more.
         </p>
       </div>
 
@@ -136,7 +136,7 @@ export async function sendWelcomeEmailIfNew(
           user_id: userId,
           plan_type: "free",
           generations_used: 0,
-          generations_limit: 3,
+          generations_limit: 15,
           reset_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
           welcome_email_sent: false,
         },
@@ -166,7 +166,7 @@ export async function sendWelcomeEmailIfNew(
         "",
         `Start creating now: ${LAYAH_URL}/lesson-plan`,
         "",
-        "Your free plan: 3 generations this month.",
+        "Your free plan: 15 generations this month.",
         "Want unlimited access? Upgrade to Pro for just 15 AED/month.",
         "",
         `View plans: ${LAYAH_URL}/pricing`,

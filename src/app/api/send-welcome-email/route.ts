@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       "",
       "Start creating now: https://layah.in/lesson-plan",
       "",
-      "Your free plan: 3 generations this month.",
+      "Your free plan: 15 generations this month.",
       "Want unlimited access? Upgrade to Pro for just 15 AED/month.",
       "",
       "Happy teaching!",

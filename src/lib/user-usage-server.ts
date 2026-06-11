@@ -109,7 +109,7 @@ async function insertDefaultUsage(
   DEBUG && console.log("[user-usage] created new user_usage row", {
     user_id: userId,
     generations_used: 0,
-    generations_limit: 3,
+    generations_limit: 15,
     reset_date: resetDate,
   });
 

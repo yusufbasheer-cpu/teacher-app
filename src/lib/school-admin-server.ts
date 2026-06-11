@@ -286,7 +286,7 @@ export async function removeTeacherFromSchool(
     .from("user_usage")
     .update({
       plan_type: "free",
-      generations_limit: 3,
+      generations_limit: 15,
       reset_date: resetDate,
     })
     .eq("user_id", teacherUserId);

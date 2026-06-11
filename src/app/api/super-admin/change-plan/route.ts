@@ -7,7 +7,7 @@ import { logAdminAction } from "@/lib/audit-log";
 export const runtime = "nodejs";
 
 const PLAN_LIMITS: Record<string, number> = {
-  free: 3,
+  free: 15,
   pro: 30,
   pro_plus: 60,
   school_starter: -1,
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Service unavailable." }, { status: 500 });
   }
 
-  const limit = PLAN_LIMITS[planType] ?? 3;
+  const limit = PLAN_LIMITS[planType] ?? 15;
 
   const { error } = await admin
     .from("user_usage")

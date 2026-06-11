@@ -21,7 +21,7 @@ export function defaultFreeUsageSnapshot(): UserUsageSnapshot {
   return {
     planType: "free",
     generationsUsed: 0,
-    generationsLimit: 3,
+    generationsLimit: 15,
     unlimited: false,
     canGenerate: true,
     resetDate: firstDayOfNextMonthUtc(),
@@ -55,7 +55,7 @@ export function isPlanType(value: string): value is PlanType {
 export function getGenerationsLimitForPlan(plan: PlanType): number | null {
   switch (plan) {
     case "free":
-      return 3;
+      return 15;
     case "pro":
       return 30;
     case "pro_plus":
@@ -109,7 +109,7 @@ export function normalizeUsageRow(row: UserUsageRow): UserUsageRow {
   if (unlimited) {
     generations_limit = -1;
   } else if (!Number.isFinite(generations_limit) || generations_limit < 1) {
-    generations_limit = getGenerationsLimitForPlan(plan) ?? 3;
+    generations_limit = getGenerationsLimitForPlan(plan) ?? 15;
   }
 
   return {
@@ -190,5 +190,5 @@ export function formatLimitMessage(used: number, limit: number | null, unlimited
 export const DEFAULT_FREE_USAGE_INSERT = {
   plan_type: "free" as const,
   generations_used: 0,
-  generations_limit: 3,
+  generations_limit: 15,
 };

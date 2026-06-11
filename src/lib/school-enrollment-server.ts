@@ -277,7 +277,7 @@ async function ensureIndividualUsage(admin: SupabaseClient, userId: string): Pro
     user_id: userId,
     plan_type: "free",
     generations_used: 0,
-    generations_limit: 3,
+    generations_limit: 15,
     reset_date: resetDate,
   });
 

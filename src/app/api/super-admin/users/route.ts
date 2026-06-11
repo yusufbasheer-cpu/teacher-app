@@ -33,7 +33,7 @@ export async function GET() {
       createdAt: u.created_at,
       planType: (usage?.plan_type as string) ?? "free",
       generationsUsed: Number(usage?.generations_used) || 0,
-      generationsLimit: Number(usage?.generations_limit) || 3,
+      generationsLimit: Number(usage?.generations_limit) || 15,
     };
   });
 

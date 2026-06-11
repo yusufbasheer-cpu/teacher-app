@@ -23,7 +23,7 @@ export function GenerationLimitModal({
 }: GenerationLimitModalProps) {
   if (!open) return null;
 
-  const limit = usage?.generationsLimit ?? 3;
+  const limit = usage?.generationsLimit ?? 15;
   const used = usage?.generationsUsed ?? 0;
 
   return (
