@@ -9,6 +9,8 @@ export type SchoolAdminTeacher = {
   email: string;
   joinedAt: string;
   generationsUsedThisMonth: number;
+  role: "teacher" | "hod" | "admin";
+  department: string | null;
 };
 
 export type SchoolAdminDashboardData = {
@@ -155,7 +157,7 @@ async function loadTeachersForSchool(
 ): Promise<SchoolAdminTeacher[]> {
   const { data: teachers, error: teachersError } = await admin
     .from("school_teachers")
-    .select("user_id, email, joined_at, generations_used_this_month")
+    .select("user_id, email, joined_at, generations_used_this_month, role, department")
     .eq("school_account_id", schoolId)
     .order("joined_at", { ascending: true });
 
@@ -201,12 +203,17 @@ async function loadTeachersForSchool(
     (teachers ?? []).map(async (t) => {
       const uid = t.user_id as string;
       const email = t.email as string;
+      const rawRole = t.role as string | null;
+      const role: SchoolAdminTeacher["role"] =
+        rawRole === "hod" || rawRole === "admin" ? rawRole : "teacher";
       return {
         userId: uid,
         name: await resolveTeacherName(admin, uid, email),
         email,
         joinedAt: t.joined_at as string,
         generationsUsedThisMonth: usageByUser.get(uid) ?? 0,
+        role,
+        department: (t.department as string | null) ?? null,
       };
     }),
   );
@@ -233,6 +240,48 @@ export async function getSchoolAdminDashboard(
 
   const teacherList = await loadTeachersForSchool(admin, school.id);
   return buildDashboardData(school, teacherList);
+}
+
+export async function updateTeacherRoleInSchool(
+  adminEmail: string,
+  teacherUserId: string,
+  role: "teacher" | "hod" | "admin",
+  department: string | null,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const school = await findSchoolForAdmin(adminEmail);
+  if (!school) {
+    return { ok: false, message: "You are not authorized to manage this school." };
+  }
+
+  const admin = getSupabaseServiceRole();
+  if (!admin) {
+    return { ok: false, message: "Server error. Please try again." };
+  }
+
+  const { data: membership } = await admin
+    .from("school_teachers")
+    .select("id")
+    .eq("school_account_id", school.id)
+    .eq("user_id", teacherUserId)
+    .maybeSingle();
+
+  if (!membership) {
+    return { ok: false, message: "Teacher is not in your school account." };
+  }
+
+  const { error } = await admin
+    .from("school_teachers")
+    .update({ role, department: department ?? null })
+    .eq("school_account_id", school.id)
+    .eq("user_id", teacherUserId);
+
+  if (error) {
+    console.error("[school-admin] update teacher role failed:", error.message);
+    return { ok: false, message: "Could not update teacher role. Please try again." };
+  }
+
+  console.log("[school-admin] role updated for", teacherUserId, "→", role, department ?? "");
+  return { ok: true };
 }
 
 export async function removeTeacherFromSchool(

@@ -1,12 +1,31 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { SchoolAdminDashboardData } from "@/lib/school-admin-server";
+import type { SchoolAdminDashboardData, SchoolAdminTeacher } from "@/lib/school-admin-server";
 import { supabase } from "@/lib/supabase";
 
 const NAVY = "#0A1628";
 const TEAL = "#00C6A7";
 const MUTED = "#4A5568";
+
+const ROLE_OPTIONS: { value: SchoolAdminTeacher["role"]; label: string }[] = [
+  { value: "teacher", label: "Teacher" },
+  { value: "hod", label: "HOD" },
+  { value: "admin", label: "Admin" },
+];
+
+const DEPARTMENT_OPTIONS = [
+  "Science",
+  "Mathematics",
+  "English",
+  "Arabic",
+  "Islamic Studies",
+  "Social Studies",
+  "ICT",
+  "Art",
+  "Physical Education",
+  "Moral Education",
+];
 
 function formatPlanLabel(planType: string): string {
   return planType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -20,6 +39,8 @@ function formatDate(iso: string): string {
   });
 }
 
+type RoleState = { role: SchoolAdminTeacher["role"]; department: string | null };
+
 type SchoolAdminDashboardProps = {
   initialData: SchoolAdminDashboardData;
 };
@@ -30,14 +51,32 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  // Per-teacher pending role/department edits
+  const [pendingEdits, setPendingEdits] = useState<Record<string, RoleState>>({});
+  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
+  const [roleSuccessId, setRoleSuccessId] = useState<string | null>(null);
+  const [roleError, setRoleError] = useState<string | null>(null);
+
+  const getTeacherRole = (teacher: SchoolAdminTeacher): RoleState =>
+    pendingEdits[teacher.userId] ?? { role: teacher.role, department: teacher.department };
+
+  const setTeacherPending = (userId: string, update: Partial<RoleState>) => {
+    setPendingEdits((prev) => ({
+      ...prev,
+      [userId]: { ...(prev[userId] ?? { role: "teacher", department: null }), ...update },
+    }));
+  };
+
+  const getSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session;
+  };
+
   const load = useCallback(async () => {
     setError(null);
     setLoading(true);
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
+    const session = await getSession();
     if (!session?.access_token) {
       window.location.href = "/auth";
       return;
@@ -56,8 +95,60 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
 
     const json = (await response.json()) as SchoolAdminDashboardData;
     setData(json);
+    setPendingEdits({});
     setLoading(false);
   }, []);
+
+  const onSaveRole = async (teacher: SchoolAdminTeacher) => {
+    const pending = pendingEdits[teacher.userId];
+    if (!pending) return;
+
+    setSavingRoleId(teacher.userId);
+    setRoleError(null);
+    setRoleSuccessId(null);
+
+    const session = await getSession();
+    if (!session?.access_token) {
+      setRoleError("Session expired. Please log in again.");
+      setSavingRoleId(null);
+      return;
+    }
+
+    const response = await fetch(`/api/school-admin/teachers/${teacher.userId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ role: pending.role, department: pending.department }),
+    });
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      setRoleError(body.error ?? "Could not update role.");
+      setSavingRoleId(null);
+      return;
+    }
+
+    setSavingRoleId(null);
+    setRoleSuccessId(teacher.userId);
+    // Clear success after 3s
+    setTimeout(() => setRoleSuccessId((id) => (id === teacher.userId ? null : id)), 3000);
+    // Update local data to reflect saved values without full reload
+    setData((prev) => ({
+      ...prev,
+      teachers: prev.teachers.map((t) =>
+        t.userId === teacher.userId
+          ? { ...t, role: pending.role, department: pending.department }
+          : t
+      ),
+    }));
+    setPendingEdits((prev) => {
+      const next = { ...prev };
+      delete next[teacher.userId];
+      return next;
+    });
+  };
 
   const onRemoveTeacher = async (userId: string, teacherName: string) => {
     if (
@@ -71,10 +162,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
     setRemovingId(userId);
     setError(null);
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
+    const session = await getSession();
     if (!session?.access_token) {
       setError("Session expired. Please log in again.");
       setRemovingId(null);
@@ -139,6 +227,12 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
         </div>
       ) : null}
 
+      {roleError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {roleError}
+        </div>
+      ) : null}
+
       <section>
         <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>
           School overview
@@ -199,90 +293,224 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
           </div>
         ) : (
           <>
+            {/* Desktop table */}
             <div className="hidden overflow-x-auto rounded-2xl border bg-white shadow-sm md:block" style={{ borderColor: "rgba(0,198,167,0.25)" }}>
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="border-b bg-slate-50" style={{ borderColor: "#E2E8F0" }}>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>
-                      Teacher name
-                    </th>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>
-                      Email
-                    </th>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>
-                      Join date
-                    </th>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>
-                      Generations this month
-                    </th>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>
-                      Actions
-                    </th>
+                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Teacher name</th>
+                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Email</th>
+                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Join date</th>
+                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Generations</th>
+                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Role</th>
+                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Department</th>
+                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {teachers.map((teacher) => (
-                    <tr
-                      key={teacher.userId}
-                      className="border-b last:border-b-0"
-                      style={{ borderColor: "#E2E8F0" }}
-                    >
-                      <td className="px-4 py-3 font-medium" style={{ color: NAVY }}>
-                        {teacher.name}
-                      </td>
-                      <td className="px-4 py-3" style={{ color: MUTED }}>
-                        {teacher.email}
-                      </td>
-                      <td className="px-4 py-3" style={{ color: MUTED }}>
-                        {formatDate(teacher.joinedAt)}
-                      </td>
-                      <td className="px-4 py-3" style={{ color: MUTED }}>
-                        {teacher.generationsUsedThisMonth}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          disabled={removingId === teacher.userId}
-                          onClick={() => void onRemoveTeacher(teacher.userId, teacher.name)}
-                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                        >
-                          {removingId === teacher.userId ? "Removing…" : "Remove"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {teachers.map((teacher) => {
+                    const { role, department } = getTeacherRole(teacher);
+                    const isDirty = Boolean(pendingEdits[teacher.userId]);
+                    const isSaving = savingRoleId === teacher.userId;
+                    const isSuccess = roleSuccessId === teacher.userId;
+
+                    return (
+                      <tr key={teacher.userId} className="border-b last:border-b-0" style={{ borderColor: "#E2E8F0" }}>
+                        <td className="px-4 py-3 font-medium" style={{ color: NAVY }}>
+                          {teacher.name}
+                          {teacher.role === "hod" && (
+                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "rgba(0,198,167,0.12)", color: TEAL }}>HOD</span>
+                          )}
+                          {teacher.role === "admin" && (
+                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "rgba(10,22,40,0.08)", color: NAVY }}>Admin</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3" style={{ color: MUTED }}>{teacher.email}</td>
+                        <td className="px-4 py-3" style={{ color: MUTED }}>{formatDate(teacher.joinedAt)}</td>
+                        <td className="px-4 py-3" style={{ color: MUTED }}>{teacher.generationsUsedThisMonth}</td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={role}
+                            onChange={(e) =>
+                              setTeacherPending(teacher.userId, {
+                                role: e.target.value as SchoolAdminTeacher["role"],
+                                department: pendingEdits[teacher.userId]?.department ?? teacher.department,
+                              })
+                            }
+                            className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:ring-2"
+                            style={{ color: NAVY, minWidth: 90 }}
+                          >
+                            {ROLE_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={department ?? ""}
+                            onChange={(e) =>
+                              setTeacherPending(teacher.userId, {
+                                role: pendingEdits[teacher.userId]?.role ?? teacher.role,
+                                department: e.target.value || null,
+                              })
+                            }
+                            className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:ring-2"
+                            style={{ color: NAVY, minWidth: 130 }}
+                          >
+                            <option value="">— None —</option>
+                            {DEPARTMENT_OPTIONS.map((d) => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {isSuccess ? (
+                              <span className="text-xs font-semibold" style={{ color: TEAL }}>
+                                Role updated successfully
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={!isDirty || isSaving}
+                                onClick={() => void onSaveRole(teacher)}
+                                className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-40"
+                                style={
+                                  isDirty && !isSaving
+                                    ? { borderColor: TEAL, color: TEAL, background: "rgba(0,198,167,0.07)" }
+                                    : { borderColor: "#CBD5E0", color: "#94a3b8" }
+                                }
+                              >
+                                {isSaving ? "Saving…" : "Save"}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={removingId === teacher.userId}
+                              onClick={() => void onRemoveTeacher(teacher.userId, teacher.name)}
+                              className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                            >
+                              {removingId === teacher.userId ? "Removing…" : "Remove"}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
+            {/* Mobile cards */}
             <div className="space-y-3 md:hidden">
-              {teachers.map((teacher) => (
-                <div
-                  key={teacher.userId}
-                  className="rounded-2xl border bg-white p-4 shadow-sm"
-                  style={{ borderColor: "rgba(0,198,167,0.25)" }}
-                >
-                  <p className="font-semibold" style={{ color: NAVY }}>
-                    {teacher.name}
-                  </p>
-                  <p className="mt-1 text-sm break-all" style={{ color: MUTED }}>
-                    {teacher.email}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-3 text-xs" style={{ color: MUTED }}>
-                    <span>Joined {formatDate(teacher.joinedAt)}</span>
-                    <span>·</span>
-                    <span>{teacher.generationsUsedThisMonth} generations</span>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={removingId === teacher.userId}
-                    onClick={() => void onRemoveTeacher(teacher.userId, teacher.name)}
-                    className="mt-4 w-full rounded-lg border border-red-200 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+              {teachers.map((teacher) => {
+                const { role, department } = getTeacherRole(teacher);
+                const isDirty = Boolean(pendingEdits[teacher.userId]);
+                const isSaving = savingRoleId === teacher.userId;
+                const isSuccess = roleSuccessId === teacher.userId;
+
+                return (
+                  <div
+                    key={teacher.userId}
+                    className="rounded-2xl border bg-white p-4 shadow-sm"
+                    style={{ borderColor: "rgba(0,198,167,0.25)" }}
                   >
-                    {removingId === teacher.userId ? "Removing…" : "Remove teacher"}
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold" style={{ color: NAVY }}>{teacher.name}</p>
+                        {teacher.role !== "teacher" && (
+                          <span
+                            className="mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold"
+                            style={
+                              teacher.role === "hod"
+                                ? { background: "rgba(0,198,167,0.12)", color: TEAL }
+                                : { background: "rgba(10,22,40,0.08)", color: NAVY }
+                            }
+                          >
+                            {teacher.role === "hod" ? "HOD" : "Admin"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="mt-1 text-sm break-all" style={{ color: MUTED }}>{teacher.email}</p>
+                    <div className="mt-3 flex flex-wrap gap-3 text-xs" style={{ color: MUTED }}>
+                      <span>Joined {formatDate(teacher.joinedAt)}</span>
+                      <span>·</span>
+                      <span>{teacher.generationsUsedThisMonth} generations</span>
+                    </div>
+
+                    {/* Role & Department */}
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold" style={{ color: MUTED }}>Role</label>
+                        <select
+                          value={role}
+                          onChange={(e) =>
+                            setTeacherPending(teacher.userId, {
+                              role: e.target.value as SchoolAdminTeacher["role"],
+                              department: pendingEdits[teacher.userId]?.department ?? teacher.department,
+                            })
+                          }
+                          className="w-full rounded-lg border border-slate-300 px-2 py-2 text-xs outline-none"
+                          style={{ color: NAVY }}
+                        >
+                          {ROLE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold" style={{ color: MUTED }}>Department</label>
+                        <select
+                          value={department ?? ""}
+                          onChange={(e) =>
+                            setTeacherPending(teacher.userId, {
+                              role: pendingEdits[teacher.userId]?.role ?? teacher.role,
+                              department: e.target.value || null,
+                            })
+                          }
+                          className="w-full rounded-lg border border-slate-300 px-2 py-2 text-xs outline-none"
+                          style={{ color: NAVY }}
+                        >
+                          <option value="">— None —</option>
+                          {DEPARTMENT_OPTIONS.map((d) => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {isSuccess ? (
+                      <p className="mt-3 text-center text-xs font-semibold" style={{ color: TEAL }}>
+                        Role updated successfully
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!isDirty || isSaving}
+                        onClick={() => void onSaveRole(teacher)}
+                        className="mt-3 w-full rounded-lg border py-2 text-sm font-semibold transition disabled:opacity-40"
+                        style={
+                          isDirty && !isSaving
+                            ? { borderColor: TEAL, color: TEAL, background: "rgba(0,198,167,0.07)" }
+                            : { borderColor: "#CBD5E0", color: "#94a3b8" }
+                        }
+                      >
+                        {isSaving ? "Saving…" : "Save Role"}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={removingId === teacher.userId}
+                      onClick={() => void onRemoveTeacher(teacher.userId, teacher.name)}
+                      className="mt-2 w-full rounded-lg border border-red-200 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {removingId === teacher.userId ? "Removing…" : "Remove teacher"}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}

@@ -18,16 +18,17 @@ export async function POST(req: Request) {
 
   const supabase = getSupabaseServiceRole();
   if (!supabase) {
+    console.error("[waitlist] Supabase service role client is null — check SUPABASE_SERVICE_ROLE_KEY env var");
     return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
   }
 
-  const { error } = await supabase.from("waitlist").insert({
-    email,
-    plan_interested: body.plan_interested ?? null,
-  });
+  const insertPayload = { email, plan_interested: body.plan_interested ?? null };
+  console.log("[waitlist] attempting insert:", insertPayload);
+
+  const { error } = await supabase.from("waitlist").insert(insertPayload);
 
   if (error) {
-    console.error("[waitlist] insert failed:", error.message);
+    console.error("[waitlist] insert failed — code:", error.code, "| message:", error.message, "| details:", error.details, "| hint:", error.hint);
     return NextResponse.json({ error: "Failed to save. Please try again." }, { status: 500 });
   }
 

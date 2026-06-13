@@ -24,6 +24,8 @@ export type SchoolTeacherRow = {
   email: string;
   joined_at: string;
   generations_used_this_month: number;
+  role: "teacher" | "hod" | "admin";
+  department: string | null;
 };
 
 export const SCHOOL_WELCOME_SESSION_KEY = "layah_school_welcome";
