@@ -18,6 +18,11 @@ export const SUPER_ADMIN_NAV_LINK = {
   label: "Super Admin",
 } as const;
 
+export const HOD_DASHBOARD_NAV_LINK = {
+  href: "/hod-dashboard",
+  label: "HOD Dashboard",
+} as const;
+
 export type AppNavLink = (typeof APP_NAV_LINKS)[number];
 
 export function isNavLinkActive(pathname: string, href: string): boolean {

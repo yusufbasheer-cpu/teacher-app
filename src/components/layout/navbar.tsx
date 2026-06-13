@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { SoundToggleButton } from "@/components/effects/sound-toggle-button";
 import { clearActiveSession } from "@/lib/active-session";
-import { APP_NAV_LINKS, SCHOOL_ADMIN_NAV_LINK, SUPER_ADMIN_NAV_LINK, isNavLinkActive } from "@/lib/app-nav-links";
+import { APP_NAV_LINKS, SCHOOL_ADMIN_NAV_LINK, SUPER_ADMIN_NAV_LINK, HOD_DASHBOARD_NAV_LINK, isNavLinkActive } from "@/lib/app-nav-links";
 import { supabase } from "@/lib/supabase";
 import { Container } from "@/components/ui/container";
 
@@ -17,6 +17,7 @@ export function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const [isSchoolAdmin, setIsSchoolAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isHod, setIsHod] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -42,6 +43,7 @@ export function Navbar() {
       if (!user) {
         setIsSchoolAdmin(false);
         setIsSuperAdmin(false);
+        setIsHod(false);
         return;
       }
 
@@ -52,23 +54,30 @@ export function Navbar() {
       if (!session?.access_token) {
         setIsSchoolAdmin(false);
         setIsSuperAdmin(false);
+        setIsHod(false);
         return;
       }
 
       try {
-        const [schoolRes, superRes] = await Promise.all([
+        const [schoolRes, superRes, hodRes] = await Promise.all([
           fetch("/api/school-admin/me", {
             headers: { Authorization: `Bearer ${session.access_token}` },
           }),
           fetch("/api/super-admin/me"),
+          fetch("/api/hod/me", {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }),
         ]);
         const schoolBody = (await schoolRes.json()) as { isAdmin?: boolean };
         const superBody = (await superRes.json()) as { isSuperAdmin?: boolean };
+        const hodBody = (await hodRes.json()) as { isHod?: boolean };
         setIsSchoolAdmin(Boolean(schoolBody.isAdmin));
         setIsSuperAdmin(Boolean(superBody.isSuperAdmin));
+        setIsHod(Boolean(hodBody.isHod));
       } catch {
         setIsSchoolAdmin(false);
         setIsSuperAdmin(false);
+        setIsHod(false);
       }
     };
 
@@ -134,6 +143,15 @@ export function Navbar() {
                 style={navLinkStyle(SCHOOL_ADMIN_NAV_LINK.href)}
               >
                 {SCHOOL_ADMIN_NAV_LINK.label}
+              </Link>
+            ) : null}
+            {isHod ? (
+              <Link
+                href={HOD_DASHBOARD_NAV_LINK.href}
+                className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-xl px-3 py-2 text-sm transition"
+                style={navLinkStyle(HOD_DASHBOARD_NAV_LINK.href)}
+              >
+                {HOD_DASHBOARD_NAV_LINK.label}
               </Link>
             ) : null}
             {isSuperAdmin ? (
@@ -221,6 +239,15 @@ export function Navbar() {
                 style={navLinkStyle(SCHOOL_ADMIN_NAV_LINK.href)}
               >
                 {SCHOOL_ADMIN_NAV_LINK.label}
+              </Link>
+            ) : null}
+            {isHod ? (
+              <Link
+                href={HOD_DASHBOARD_NAV_LINK.href}
+                className="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm transition"
+                style={navLinkStyle(HOD_DASHBOARD_NAV_LINK.href)}
+              >
+                {HOD_DASHBOARD_NAV_LINK.label}
               </Link>
             ) : null}
             {isSuperAdmin ? (

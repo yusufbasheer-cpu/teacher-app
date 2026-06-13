@@ -12,6 +12,7 @@ function DashboardContent() {
   const router = useRouter();
   const startedRef = useRef(false);
   const [adminDenied, setAdminDenied] = useState(false);
+  const [hodDeniedState, setHodDeniedState] = useState(false);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -21,7 +22,11 @@ function DashboardContent() {
       const params =
         typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
 
-      const denied = params?.get("admin_denied") === "1" || params?.get("access_denied") === "1";
+      const denied =
+        params?.get("admin_denied") === "1" ||
+        params?.get("access_denied") === "1" ||
+        params?.get("hod_denied") === "1";
+      const hodDenied = params?.get("hod_denied") === "1";
 
       const code = params?.get("code");
       if (code) {
@@ -80,6 +85,7 @@ function DashboardContent() {
 
       if (denied) {
         setAdminDenied(true);
+        if (hodDenied) setHodDeniedState(true);
         window.history.replaceState(null, "", "/dashboard");
         return;
       }
@@ -102,10 +108,12 @@ function DashboardContent() {
           style={{ borderColor: "rgba(0,198,167,0.25)" }}
         >
           <p className="text-lg font-semibold" style={{ color: "#0A1628" }}>
-            You do not have admin access
+            {hodDeniedState ? "Access restricted to Department Heads" : "You do not have admin access"}
           </p>
           <p className="mt-2 text-sm" style={{ color: "#4A5568" }}>
-            Your account is not listed as a school administrator.
+            {hodDeniedState
+              ? "Only teachers with the HOD role can access the HOD Dashboard."
+              : "Your account is not listed as a school administrator."}
           </p>
           <Link
             href="/lesson-plan"
