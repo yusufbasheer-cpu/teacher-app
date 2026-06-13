@@ -20,6 +20,7 @@ import {
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
 import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
+import { PdfModal, type PdfSectionKey } from "@/components/lesson-plan/pdf-modal";
 
 function hasAflSelections(s: AflSelectionsPayload | undefined): boolean {
   if (!s) return false;
@@ -45,6 +46,10 @@ type TeacherPackageViewerProps = {
   aflSelections?: AflSelectionsPayload;
   /** Pre-generated PPT slide URLs from lesson generation (embedded at download time). */
   pptSlideImageUrls?: (string | null)[] | null;
+  /** Curriculum name shown in PDF header (e.g. "UAE MOE", "CBSE/NCERT"). */
+  curriculumType?: string;
+  /** Teaching strategy shown in PDF header. */
+  teachingStrategy?: string;
 };
 
 type ExportKey =
@@ -249,11 +254,14 @@ export function TeacherPackageViewer({
   learningObjectives,
   aflSelections,
   pptSlideImageUrls,
+  curriculumType,
+  teachingStrategy,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
   const [busy, setBusy] = useState<ExportKey | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   const showTeacherDownloads = hasTeacherPackageContent(lessonPlan);
   const hasPpt = hasSectionContent(lessonPlan, "PPT Slide Content");
@@ -555,14 +563,29 @@ export function TeacherPackageViewer({
               active={busy === "ppt"}
               packagingOnly={Boolean(pptSlideImageUrls?.some(Boolean))}
             />
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={onDownloadZip}
-              className="animate-slide-up stagger-8 mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0A8F7A] hover:shadow-lg disabled:opacity-50 sm:w-auto"
-            >
-              {busy === "zip" ? "Building ZIP…" : "Download ZIP package"}
-            </button>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={busy !== null}
+                onClick={onDownloadZip}
+                className="animate-slide-up stagger-8 inline-flex min-h-11 items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0A8F7A] hover:shadow-lg disabled:opacity-50"
+              >
+                {busy === "zip" ? "Building ZIP…" : "Download ZIP package"}
+              </button>
+              <button
+                type="button"
+                disabled={busy !== null}
+                onClick={() => setShowPdfModal(true)}
+                className="animate-slide-up stagger-8 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#00C6A7] bg-white px-4 py-3 text-sm font-semibold text-[#00C6A7] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-lg disabled:opacity-50"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9" />
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                  <rect x="6" y="14" width="12" height="8" />
+                </svg>
+                Download PDF
+              </button>
+            </div>
             <p className="mt-1.5 text-xs text-slate-500">
               ZIP includes only the materials present in this package.
             </p>
@@ -577,6 +600,34 @@ export function TeacherPackageViewer({
       )}
 
       {exportError ? <p className="animate-shake text-sm text-red-600">{exportError}</p> : null}
+
+      <PdfModal
+        isOpen={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        subject={subject}
+        grade={grade}
+        topic={topic}
+        curriculumType={curriculumType}
+        teacherName={teacherName}
+        teachingStrategy={teachingStrategy}
+        availableSections={[
+          ...(hasLesson
+            ? [{ key: "lesson" as PdfSectionKey, label: "Full Lesson Plan", heading: "Full Lesson Plan", content: lessonPlan["Full Lesson Plan"] ?? "" }]
+            : []),
+          ...(hasWorksheet
+            ? [{ key: "worksheet" as PdfSectionKey, label: "Worksheet", heading: "Worksheet", content: lessonPlan["Worksheet"] ?? "" }]
+            : []),
+          ...(hasAssessment
+            ? [{ key: "assessment" as PdfSectionKey, label: "Question Paper", heading: "Assessment Questions", content: lessonPlan["Assessment Questions"] ?? "" }]
+            : []),
+          ...(hasNotes
+            ? [{ key: "notes" as PdfSectionKey, label: "Teacher Notes", heading: "Teacher Notes", content: lessonPlan["Teacher Notes"] ?? "" }]
+            : []),
+          ...(learningObjectives?.trim()
+            ? [{ key: "objectives" as PdfSectionKey, label: "Learning Objectives & Outcomes", heading: "Learning Objectives & Outcomes", content: learningObjectives.trim() }]
+            : []),
+        ]}
+      />
 
       <div className="overflow-x-auto pb-1">
         <div

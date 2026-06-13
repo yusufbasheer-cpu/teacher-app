@@ -1722,6 +1722,8 @@ export function LessonPlanGenerator() {
                   ? user.user_metadata.full_name.trim()
                   : user?.email?.split("@")[0]
               }
+              curriculumType={form.curriculumType?.trim() || undefined}
+              teachingStrategy={teachingStrategy?.trim() || undefined}
             />
           </div>
           </section>
