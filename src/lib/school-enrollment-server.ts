@@ -220,35 +220,44 @@ async function ensureSchoolTeacherRow(
   }
 
   const teacherCount = await countTeachersInSchool(admin, school.id);
+  console.log("[school-enrollment] Seat check", { teacherCount, maxTeachers: school.max_teachers, schoolId: school.id });
+
   if (teacherCount >= school.max_teachers) {
     throw new Error("SCHOOL_FULL");
   }
 
-  // Upsert with ignoreDuplicates so a race-condition second login never creates duplicates
-  // and never overwrites an admin-assigned role/department.
+  // Do NOT include role/department here — they have DB-level defaults and may not exist
+  // yet if the HOD migration hasn't been applied. Adding them to the payload would cause
+  // a "column does not exist" error that silently blocks enrollment.
   const { error: upsertError } = await admin.from("school_teachers").upsert(
     {
       school_account_id: school.id,
       user_id: userId,
       email: email.trim().toLowerCase(),
-      role: "teacher",
-      department: null,
       generations_used_this_month: 0,
     },
     { onConflict: "user_id", ignoreDuplicates: true },
   );
 
   if (upsertError) {
-    console.error("[school-enrollment] upsert school_teachers failed:", upsertError.message);
+    console.error("[school-enrollment] ❌ upsert school_teachers FAILED", {
+      code: upsertError.code,
+      message: upsertError.message,
+      details: upsertError.details,
+      hint: upsertError.hint,
+    });
     throw upsertError;
   }
 
   await syncActiveTeachersCount(admin, school.id);
+  const finalCount = await countTeachersInSchool(admin, school.id);
 
-  console.log("[school-enrollment] First login — added to school_teachers", {
+  console.log("[school-enrollment] ✅ Teacher added to school_teachers", {
     userId,
+    email,
     schoolId: school.id,
-    activeTeachers: await countTeachersInSchool(admin, school.id),
+    schoolName: school.school_name,
+    activeTeachers: finalCount,
   });
 
   return { newlyJoined: true };
@@ -380,7 +389,12 @@ export async function processSchoolEnrollment(
         message: buildSchoolMaxTeachersMessage(school.admin_email),
       };
     }
-    console.error("[school-enrollment] failed to enroll teacher:", err);
+    console.error("[school-enrollment] ❌ Enrollment failed — teacher NOT added to school_teachers", {
+      userId,
+      email,
+      schoolId: school.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
     await ensureIndividualUsage(admin, userId);
     return { ok: true, blocked: false, individual: true, newlyJoined: false };
   }
