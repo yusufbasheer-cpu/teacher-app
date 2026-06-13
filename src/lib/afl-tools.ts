@@ -994,7 +994,7 @@ export function formatAflForAiPrompt(
     );
   }
 
-  lines.push("", "**Full 31-tool catalog:**", "");
+  lines.push("", "**Full 87-tool catalog:**", "");
   for (const group of AFL_PHASE_GROUPS) {
     lines.push(`**${group.title}**`);
     lines.push(formatToolCatalogLines(group.tools));

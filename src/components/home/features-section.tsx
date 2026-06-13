@@ -42,7 +42,7 @@ const features = [
     title: "AFL Activity Tools",
     href: "/lesson-plan",
     description:
-      "31 built-in Assessment for Learning tools to make your lessons more engaging and evidence-based.",
+      "87 built-in Assessment for Learning tools to make your lessons more engaging and evidence-based.",
   },
 ];
 

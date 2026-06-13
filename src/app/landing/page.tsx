@@ -190,7 +190,7 @@ export default function LandingPage() {
             />
             <FeatureCard
               emoji="✅"
-              title="31 AFL Tools"
+              title="87 AFL Tools"
               description="Built-in Assessment for Learning tools to make your lessons more engaging and evidence-based."
               bg="#F0F4FF"
               iconColor="#6366F1"
@@ -291,7 +291,7 @@ const HERO_CHECKLIST = [
   "Differentiated for Higher, Middle & Lower Achievers",
   "KHDA & SPEA Inspection-Ready Format",
   "Project-Based Learning Strategy Applied",
-  "31 AFL Tools Integrated",
+  "87 AFL Tools Integrated",
   "13-Slide Professional PowerPoint",
   "Differentiated Worksheet Pack",
   "Question Paper with Mark Scheme",
