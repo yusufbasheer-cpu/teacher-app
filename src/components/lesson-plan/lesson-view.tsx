@@ -183,7 +183,6 @@ export function LessonView({ id }: { id: string }) {
             learningObjectives={lesson.learning_objectives ?? ""}
             pptThemeId={DEFAULT_PPT_THEME_ID}
             teacherName={user.email?.split("@")[0]}
-            curriculumType={lesson.curriculum?.trim() || undefined}
           />
         </div>
       </div>
