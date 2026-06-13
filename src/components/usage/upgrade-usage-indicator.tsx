@@ -61,6 +61,7 @@ export function UpgradeUsageIndicator({ usage, loading }: Props) {
 
       <WaitlistModal
         open={modalOpen}
+        plan={upgradePlan ?? undefined}
         onClose={() => setModalOpen(false)}
       />
     </>

@@ -91,7 +91,7 @@ export function GenerationLimitModal({
           </button>
         </div>
 
-        <WaitlistModal open={waitlistOpen} onClose={() => { setWaitlistOpen(false); onClose(); }} />
+        <WaitlistModal open={waitlistOpen} plan="pro" onClose={() => { setWaitlistOpen(false); onClose(); }} />
       </div>
     </div>
   );

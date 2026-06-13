@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const NAVY = "#0A1628";
 const TEAL = "#00C6A7";
@@ -8,14 +8,24 @@ const TEAL = "#00C6A7";
 type WaitlistModalProps = {
   open: boolean;
   onClose: () => void;
+  plan?: string;
   initialEmail?: string;
 };
 
-export function WaitlistModal({ open, onClose, initialEmail = "" }: WaitlistModalProps) {
+export function WaitlistModal({ open, onClose, plan, initialEmail = "" }: WaitlistModalProps) {
   const [email, setEmail] = useState(initialEmail);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!done) return;
+    const timer = setTimeout(() => {
+      onClose();
+      setTimeout(() => { setDone(false); setError(null); }, 300);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [done, onClose]);
 
   if (!open) return null;
 
@@ -31,7 +41,7 @@ export function WaitlistModal({ open, onClose, initialEmail = "" }: WaitlistModa
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), plan_interested: plan ?? null }),
       });
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
@@ -47,11 +57,7 @@ export function WaitlistModal({ open, onClose, initialEmail = "" }: WaitlistModa
 
   const handleClose = () => {
     onClose();
-    // Reset state after animation
-    setTimeout(() => {
-      setDone(false);
-      setError(null);
-    }, 300);
+    setTimeout(() => { setDone(false); setError(null); }, 300);
   };
 
   return (
@@ -61,7 +67,6 @@ export function WaitlistModal({ open, onClose, initialEmail = "" }: WaitlistModa
       aria-modal="true"
       aria-labelledby="waitlist-modal-title"
     >
-      {/* Backdrop */}
       <button
         type="button"
         className="absolute inset-0 bg-[#0A1628]/70 backdrop-blur-sm"
@@ -73,7 +78,6 @@ export function WaitlistModal({ open, onClose, initialEmail = "" }: WaitlistModa
         className="relative w-full max-w-sm rounded-3xl border bg-white shadow-2xl"
         style={{ borderColor: "rgba(0,198,167,0.3)" }}
       >
-        {/* Close button */}
         <button
           type="button"
           onClick={handleClose}
@@ -87,34 +91,26 @@ export function WaitlistModal({ open, onClose, initialEmail = "" }: WaitlistModa
 
         <div className="px-7 py-8">
           {done ? (
-            /* Success state */
             <div className="text-center">
               <p className="text-4xl">🎉</p>
               <h2 className="mt-4 text-xl font-bold" style={{ color: NAVY }}>
                 You&apos;re on the list!
               </h2>
               <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
-                We&apos;ll notify you as soon as Pro payments launch. Thanks for your interest!
+                We&apos;ll email you as soon as Pro plans launch.
               </p>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="mt-6 inline-flex min-h-10 items-center justify-center rounded-xl px-6 text-sm font-semibold text-white transition hover:opacity-90"
-                style={{ background: TEAL }}
-              >
-                Got it
-              </button>
+              <p className="mt-2 text-xs" style={{ color: "#94a3b8" }}>
+                Closing automatically…
+              </p>
             </div>
           ) : (
-            /* Form state */
             <>
-              {/* Icon */}
               <div
                 className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
                 style={{ background: "rgba(0,198,167,0.12)" }}
               >
                 <svg className="size-7" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" stroke={TEAL} strokeWidth="1.8" strokeLinejoin="round" />
+                  <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke={TEAL} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
 
@@ -123,10 +119,10 @@ export function WaitlistModal({ open, onClose, initialEmail = "" }: WaitlistModa
                 className="text-center text-xl font-bold"
                 style={{ color: NAVY }}
               >
-                Payments Coming Soon!
+                Payment System Coming Soon! 🚀
               </h2>
               <p className="mt-2 text-center text-sm leading-relaxed" style={{ color: "#4A5568" }}>
-                Enter your email to be notified when Pro plan launches.
+                We are putting the final touches on our payment system. Join the waitlist and we will notify you the moment Pro plans are available.
               </p>
 
               <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 space-y-3">
@@ -134,7 +130,7 @@ export function WaitlistModal({ open, onClose, initialEmail = "" }: WaitlistModa
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
+                  placeholder="Enter your email"
                   required
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-[#00C6A7] focus:ring-2"
                   autoFocus

@@ -4,9 +4,9 @@ import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  let body: { email?: string };
+  let body: { email?: string; plan_interested?: string | null };
   try {
-    body = (await req.json()) as { email?: string };
+    body = (await req.json()) as { email?: string; plan_interested?: string | null };
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
@@ -21,13 +21,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
   }
 
-  const { error } = await supabase.from("waitlist").insert({ email });
+  const { error } = await supabase.from("waitlist").insert({
+    email,
+    plan_interested: body.plan_interested ?? null,
+  });
 
   if (error) {
     console.error("[waitlist] insert failed:", error.message);
     return NextResponse.json({ error: "Failed to save. Please try again." }, { status: 500 });
   }
 
-  console.log("[waitlist] email saved:", email);
+  console.log("[waitlist] email saved:", email, "plan:", body.plan_interested ?? "unknown");
   return NextResponse.json({ ok: true });
 }

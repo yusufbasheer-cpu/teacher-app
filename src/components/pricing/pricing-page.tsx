@@ -348,10 +348,11 @@ function PricingCard({
 export function PricingPage() {
   const [billing, setBilling] = useState<Billing>("monthly");
   const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [waitlistPlan, setWaitlistPlan] = useState<string | undefined>(undefined);
   const { region } = usePricingRegion();
   const isAnnual = billing === "annual";
 
-  const openPayment = (_planKey: UpgradePlanKey) => setWaitlistOpen(true);
+  const openPayment = (planKey: UpgradePlanKey) => { setWaitlistPlan(planKey); setWaitlistOpen(true); };
 
   return (
     <main
@@ -526,6 +527,7 @@ export function PricingPage() {
 
       <WaitlistModal
         open={waitlistOpen}
+        plan={waitlistPlan}
         onClose={() => setWaitlistOpen(false)}
       />
     </main>
