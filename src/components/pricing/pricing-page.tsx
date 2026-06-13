@@ -232,7 +232,7 @@ function PlanPrice({
       {billing === "monthly" ? (
         <p
           className="mt-2 text-sm"
-          style={{ color: lightText ? "rgba(255,255,255,0.65)" : "#64748b" }}
+          style={{ color: lightText ? "rgba(255,255,255,0.65)" : "#4A5568" }}
         >
           Or {formatRegionalPrice(region, prices.annual, "year")}
         </p>
@@ -305,7 +305,7 @@ function PricingCard({
         {plan.generations}
       </p>
       {plan.teachers ? (
-        <p className="mt-1 text-sm" style={{ color: lightText ? "rgba(255,255,255,0.75)" : "#64748b" }}>
+        <p className="mt-1 text-sm" style={{ color: lightText ? "rgba(255,255,255,0.75)" : "#4A5568" }}>
           {plan.teachers}
         </p>
       ) : null}
@@ -398,10 +398,10 @@ export function PricingPage() {
             <button
               type="button"
               onClick={() => setBilling("monthly")}
-              className="rounded-full px-6 py-2.5 text-sm font-semibold transition"
+              className="rounded-full px-6 py-3 text-sm font-semibold transition"
               style={{
                 background: !isAnnual ? NAVY : "transparent",
-                color: !isAnnual ? "#fff" : "#64748b",
+                color: !isAnnual ? "#fff" : "#4A5568",
               }}
             >
               Monthly
@@ -409,10 +409,10 @@ export function PricingPage() {
             <button
               type="button"
               onClick={() => setBilling("annual")}
-              className="rounded-full px-6 py-2.5 text-sm font-semibold transition"
+              className="rounded-full px-6 py-3 text-sm font-semibold transition"
               style={{
                 background: isAnnual ? NAVY : "transparent",
-                color: isAnnual ? "#fff" : "#64748b",
+                color: isAnnual ? "#fff" : "#4A5568",
               }}
             >
               Annual

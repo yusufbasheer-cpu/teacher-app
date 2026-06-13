@@ -82,6 +82,19 @@ canvas {
   animation: shimmer 1.6s ease-in-out infinite;
 }
 
+/* ── Keyboard focus states — WCAG AA (Fix 4) ──────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #00C6A7;
+  outline-offset: 2px;
+}
+
+/* Form inputs retain box-shadow glow instead of outline */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
 /* ── Form input focus glow ─────────────────────────────────────────────────── */
 input:focus,
 textarea:focus,

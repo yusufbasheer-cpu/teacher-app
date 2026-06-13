@@ -71,7 +71,7 @@ function FooterLinkGroup({ title, links }: { title: string; links: { label: stri
               {isExternal ? (
                 <a
                   href={link.href}
-                  className="text-sm transition hover:opacity-100"
+                  className="inline-flex min-h-[44px] items-center py-1 text-sm transition hover:opacity-100"
                   style={{ color: "rgba(255,255,255,0.65)" }}
                   target={link.href.startsWith("http") ? "_blank" : undefined}
                   rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
@@ -81,7 +81,7 @@ function FooterLinkGroup({ title, links }: { title: string; links: { label: stri
               ) : (
                 <Link
                   href={link.href}
-                  className="text-sm transition hover:opacity-100"
+                  className="inline-flex min-h-[44px] items-center py-1 text-sm transition hover:opacity-100"
                   style={{ color: "rgba(255,255,255,0.65)" }}
                 >
                   {link.label}
@@ -121,7 +121,7 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={social.label}
-                  className="flex size-9 items-center justify-center rounded-lg transition hover:opacity-100"
+                  className="flex h-11 w-11 items-center justify-center rounded-xl transition hover:opacity-100"
                   style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
                 >
                   <social.icon />

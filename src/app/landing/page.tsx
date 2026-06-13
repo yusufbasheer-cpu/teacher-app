@@ -108,7 +108,7 @@ export default function LandingPage() {
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
               href="/lesson-plan"
-              className="btn-pulse inline-flex min-h-14 items-center justify-center rounded-2xl px-10 py-4 text-base font-bold text-white shadow-xl transition hover:opacity-90 hover:shadow-2xl"
+              className="btn-pulse inline-flex min-h-14 items-center justify-center rounded-2xl px-10 py-4 text-lg font-bold text-white shadow-xl transition hover:opacity-90 hover:shadow-2xl"
               style={{ background: TEAL }}
             >
               Start for Free — No Credit Card 🚀
@@ -122,7 +122,7 @@ export default function LandingPage() {
             </a>
           </div>
 
-          <p className="mt-6 font-caveat text-base" style={{ color: "#9CA3AF" }}>
+          <p className="mt-6 font-caveat text-base" style={{ color: "#4A5568" }}>
             Trusted by teachers across UAE · CBSE · British · American curricula 🌍
           </p>
         </div>
@@ -257,12 +257,12 @@ export default function LandingPage() {
           <div className="mt-14 text-center">
             <Link
               href="/lesson-plan"
-              className="btn-pulse inline-flex min-h-14 items-center justify-center rounded-2xl px-12 py-4 text-base font-bold text-white shadow-xl transition hover:opacity-90"
+              className="btn-pulse inline-flex min-h-14 items-center justify-center rounded-2xl px-12 py-4 text-lg font-bold text-white shadow-xl transition hover:opacity-90"
               style={{ background: TEAL }}
             >
               Try It Now — It&apos;s Free 🚀
             </Link>
-            <p className="font-caveat mt-4 text-base" style={{ color: "#9CA3AF" }}>No credit card needed · Cancel anytime</p>
+            <p className="font-caveat mt-4 text-base" style={{ color: "#4A5568" }}>No credit card needed · Cancel anytime</p>
           </div>
         </div>
       </section>
@@ -289,7 +289,7 @@ export default function LandingPage() {
           </p>
           <Link
             href="/lesson-plan"
-            className="mt-8 inline-flex min-h-14 items-center justify-center rounded-2xl bg-white px-12 py-4 text-base font-bold shadow-xl transition hover:bg-slate-50"
+            className="mt-8 inline-flex min-h-14 items-center justify-center rounded-2xl bg-white px-12 py-4 text-lg font-bold shadow-xl transition hover:bg-slate-50"
             style={{ color: "#0A8F7A" }}
           >
             Get Started Free — No Credit Card Required
