@@ -157,7 +157,7 @@ async function loadTeachersForSchool(
 ): Promise<SchoolAdminTeacher[]> {
   const { data: teachers, error: teachersError } = await admin
     .from("school_teachers")
-    .select("user_id, email, joined_at, generations_used_this_month, role, department")
+    .select("*")
     .eq("school_account_id", schoolId)
     .order("joined_at", { ascending: true });
 
