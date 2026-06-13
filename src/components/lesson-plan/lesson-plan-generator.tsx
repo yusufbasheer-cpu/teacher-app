@@ -59,7 +59,6 @@ import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import { sanitizeUserMessage, toUserFacingError, USER_FACING_ERROR, GENERATION_FAILED_ERROR } from "@/lib/user-facing-errors";
-import * as Sentry from "@sentry/nextjs";
 import {
   AFL_PHASE_GROUPS,
   AFL_PHASE_IDS,
@@ -207,33 +206,6 @@ const QUICK_TIPS = [
   "Select only the sections you need to generate faster.",
 ];
 
-/** Temporary — visible only for yusuf.basheer@gmail.com. Remove once Sentry is confirmed. */
-function SentryTestButton() {
-  const [state, setState] = useState<"idle" | "sent">("idle");
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5">
-      <span className="text-xs text-slate-500">🔧 Dev tools</span>
-      <button
-        type="button"
-        onClick={() => {
-          console.log("Sentry DSN:", process.env.NEXT_PUBLIC_SENTRY_DSN);
-          console.log("Sentry initialized:", Sentry.isInitialized());
-          console.log("Sending test error to Sentry…");
-          Sentry.captureException(new Error("Test error from Layah"));
-          console.log("Test error sent to Sentry");
-          setState("sent");
-          setTimeout(() => setState("idle"), 5000);
-        }}
-        className="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
-      >
-        Test Sentry
-      </button>
-      {state === "sent" ? (
-        <span className="text-xs font-medium text-green-600">✅ Error sent — check Sentry dashboard</span>
-      ) : null}
-    </div>
-  );
-}
 
 export function LessonPlanGenerator() {
   const router = useRouter();
@@ -922,9 +894,6 @@ export function LessonPlanGenerator() {
           Signed in as <span className="font-semibold">{user.email}</span>
         </div>
         <UpgradeUsageIndicator usage={usage} loading={usageLoading} />
-        {user.email === "yusuf.basheer@gmail.com" ? (
-          <SentryTestButton />
-        ) : null}
       </div>
 
       <div className="grid min-w-0 gap-8 lg:grid-cols-[0.95fr_1.05fr]">
