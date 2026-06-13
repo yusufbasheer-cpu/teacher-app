@@ -155,48 +155,16 @@ async function loadTeachersForSchool(
   admin: SupabaseClient,
   schoolId: string,
 ): Promise<SchoolAdminTeacher[]> {
-  console.log("[school-admin] loadTeachersForSchool — schoolId:", schoolId);
-
-  // ── Step A: Dump ALL rows (no filter) to see actual column names and values ──
-  const { data: allRows, error: allRowsError } = await admin
+  const { data: teachers, error } = await admin
     .from("school_teachers")
     .select("*")
-    .limit(20);
-
-  console.log("[school-admin] ALL school_teachers rows (unfiltered):", JSON.stringify(allRows ?? []), "error:", allRowsError?.message ?? null);
-
-  if (allRows && allRows.length > 0) {
-    console.log("[school-admin] Actual column names in school_teachers row:", Object.keys(allRows[0]));
-  }
-
-  // ── Step B: Try filtering by school_account_id ──────────────────────────
-  const { data: byAccountId, error: byAccountIdError } = await admin
-    .from("school_teachers")
-    .select("*")
-    .eq("school_account_id", schoolId)
+    .eq("school_id", schoolId)
     .order("joined_at", { ascending: true });
 
-  console.log("[school-admin] filter by school_account_id =", schoolId, "→ count:", byAccountId?.length ?? 0, "error:", byAccountIdError?.message ?? null);
+  console.log("TEACHERS QUERY RESULT:", JSON.stringify(teachers), "ERROR:", JSON.stringify(error), "schoolId used:", schoolId);
 
-  // ── Step C: Fallback — filter by school_id if school_account_id returned nothing ──
-  let teachers = byAccountId;
-  if (!byAccountIdError && (!teachers || teachers.length === 0)) {
-    const { data: bySchoolId, error: bySchoolIdError } = await admin
-      .from("school_teachers")
-      .select("*")
-      .eq("school_id", schoolId)
-      .order("joined_at", { ascending: true });
-
-    console.log("[school-admin] fallback filter by school_id =", schoolId, "→ count:", bySchoolId?.length ?? 0, "error:", bySchoolIdError?.message ?? null);
-
-    if (!bySchoolIdError && bySchoolId && bySchoolId.length > 0) {
-      teachers = bySchoolId;
-    }
-  }
-
-  const teachersError = byAccountIdError;
-  if (teachersError) {
-    console.error("[school-admin] list teachers failed:", teachersError.message);
+  if (error) {
+    console.error("[school-admin] list teachers failed:", error.message);
     return [];
   }
 
@@ -293,7 +261,7 @@ export async function updateTeacherRoleInSchool(
   const { data: membership } = await admin
     .from("school_teachers")
     .select("id")
-    .eq("school_account_id", school.id)
+    .eq("school_id", school.id)
     .eq("user_id", teacherUserId)
     .maybeSingle();
 
@@ -304,7 +272,7 @@ export async function updateTeacherRoleInSchool(
   const { error } = await admin
     .from("school_teachers")
     .update({ role, department: department ?? null })
-    .eq("school_account_id", school.id)
+    .eq("school_id", school.id)
     .eq("user_id", teacherUserId);
 
   if (error) {
@@ -333,7 +301,7 @@ export async function removeTeacherFromSchool(
   const { data: membership } = await admin
     .from("school_teachers")
     .select("id")
-    .eq("school_account_id", school.id)
+    .eq("school_id", school.id)
     .eq("user_id", teacherUserId)
     .maybeSingle();
 
@@ -344,7 +312,7 @@ export async function removeTeacherFromSchool(
   const { error: deleteError } = await admin
     .from("school_teachers")
     .delete()
-    .eq("school_account_id", school.id)
+    .eq("school_id", school.id)
     .eq("user_id", teacherUserId);
 
   if (deleteError) {
@@ -355,7 +323,7 @@ export async function removeTeacherFromSchool(
   const { count } = await admin
     .from("school_teachers")
     .select("id", { count: "exact", head: true })
-    .eq("school_account_id", school.id);
+    .eq("school_id", school.id);
 
   await admin
     .from("school_accounts")

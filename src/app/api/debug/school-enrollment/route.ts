@@ -45,7 +45,7 @@ export async function GET() {
   // ── Step 3: ALL rows in school_teachers (no filter) ───────────────────────
   const { data: allTeacherRows, error: allTeachersError } = await admin
     .from("school_teachers")
-    .select("id, user_id, email, school_account_id, joined_at");
+    .select("id, user_id, email, school_id, joined_at");
 
   steps["3_all_school_teachers_rows"] = {
     totalRows: allTeacherRows?.length ?? 0,
@@ -83,14 +83,14 @@ export async function GET() {
     your_user_id: userId,
     your_email: email,
     school_teachers_row_found: Boolean(teacherRow),
-    school_account_id_in_teachers_row: teacherRow?.school_account_id ?? null,
+    school_id_in_teachers_row: teacherRow?.school_id ?? null,
     school_id_from_findSchoolForAdmin: adminSchoolId,
-    ids_match: teacherRow ? teacherRow.school_account_id === adminSchoolId : null,
+    ids_match: teacherRow ? teacherRow.school_id === adminSchoolId : null,
     diagnosis: !teacherRow
       ? "❌ No row in school_teachers for your user_id"
-      : teacherRow.school_account_id === adminSchoolId
+      : teacherRow.school_id === adminSchoolId
         ? "✅ IDs match — query should work"
-        : `❌ ID MISMATCH — school_teachers has school_account_id=${teacherRow.school_account_id} but findSchoolForAdmin returned id=${adminSchoolId}`,
+        : `❌ ID MISMATCH — school_teachers has school_id=${teacherRow.school_id} but findSchoolForAdmin returned id=${adminSchoolId}`,
   };
 
   // ── Step 7: Domain-based school lookup (enrollment path) ─────────────────

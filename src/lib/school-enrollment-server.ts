@@ -71,10 +71,10 @@ async function findSchoolByDomain(
 async function getTeacherMembership(
   admin: SupabaseClient,
   userId: string,
-): Promise<{ school_account_id: string; email: string } | null> {
+): Promise<{ school_id: string; email: string } | null> {
   const { data, error } = await admin
     .from("school_teachers")
-    .select("school_account_id, email")
+    .select("school_id, email")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -123,7 +123,7 @@ async function countTeachersInSchool(admin: SupabaseClient, schoolId: string): P
   const { count, error } = await admin
     .from("school_teachers")
     .select("id", { count: "exact", head: true })
-    .eq("school_account_id", schoolId);
+    .eq("school_id", schoolId);
 
   if (error) {
     console.error("[school-enrollment] count teachers failed:", error.message);
@@ -202,7 +202,7 @@ async function ensureSchoolTeacherRow(
   const existing = await getTeacherMembership(admin, userId);
 
   if (existing) {
-    if (existing.school_account_id === school.id) {
+    if (existing.school_id === school.id) {
       await syncTeacherGenerationsFromUsage(admin, userId);
       console.log("[school-enrollment] Teacher already in school_teachers — not incrementing", {
         userId,
@@ -213,7 +213,7 @@ async function ensureSchoolTeacherRow(
 
     console.warn("[school-enrollment] User already belongs to another school", {
       userId,
-      existingSchoolId: existing.school_account_id,
+      existingSchoolId: existing.school_id,
       requestedSchoolId: school.id,
     });
     return { newlyJoined: false };
@@ -231,7 +231,7 @@ async function ensureSchoolTeacherRow(
   // a "column does not exist" error that silently blocks enrollment.
   const { error: upsertError } = await admin.from("school_teachers").upsert(
     {
-      school_account_id: school.id,
+      school_id: school.id,
       user_id: userId,
       email: email.trim().toLowerCase(),
       generations_used_this_month: 0,
