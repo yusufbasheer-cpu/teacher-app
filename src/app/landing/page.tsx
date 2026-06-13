@@ -51,7 +51,7 @@ export default function LandingPage() {
 
       {/* ── HERO ───────────────────────────────────────────────────────────── */}
       <section
-        className="relative overflow-hidden pb-0 pt-16 md:pt-24"
+        className="relative overflow-hidden pb-16 pt-16 md:pb-24 md:pt-24"
         style={{ background: "linear-gradient(160deg, #F0FDFB 0%, #FFFFFF 60%)" }}
       >
         {/* Floating blobs */}
@@ -68,96 +68,77 @@ export default function LandingPage() {
         <Sparkle className="top-20 left-[45%] opacity-40" color="#FCD34D" size={10} />
         <Sparkle className="top-48 right-[30%] opacity-50" color="#F472B6" size={16} />
 
-        <div className="relative mx-auto max-w-4xl px-6 text-center">
-          {/* Caveat accent */}
-          <p className="font-caveat mb-3 text-xl font-semibold" style={{ color: TEAL }}>
-            ✨ designed for teachers, by a teacher
-          </p>
+        <div className="relative mx-auto max-w-7xl px-6">
+          <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center lg:gap-16">
 
-          {/* Badge */}
-          <span
-            className="mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-widest"
-            style={{ borderColor: TEAL, color: TEAL, background: "rgba(0,198,167,0.08)" }}
-          >
-            <span className="inline-block h-2 w-2 animate-pulse rounded-full" style={{ background: TEAL }} />
-            AI-powered lesson planning
-          </span>
+            {/* ── LEFT: hero text ──────────────────────────────────────── */}
+            <div className="flex-1 text-center lg:text-left">
+              {/* Caveat accent */}
+              <p className="font-caveat mb-3 text-xl font-semibold" style={{ color: TEAL }}>
+                ✨ designed for teachers, by a teacher
+              </p>
 
-          <h1
-            className="text-5xl font-extrabold leading-tight tracking-tight sm:text-6xl lg:text-7xl"
-            style={{ color: NAVY }}
-          >
-            Plan better lessons{" "}
-            <span
-              style={{
-                background: "linear-gradient(135deg, #00C6A7 0%, #0A8F7A 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              in minutes
-            </span>{" "}
-            🎓
-          </h1>
-
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed sm:text-xl" style={{ color: "#374151" }}>
-            Layah generates complete lesson plans, beautiful PowerPoint presentations, worksheets,
-            and assessments — so you can focus on what matters: your students.
-          </p>
-
-          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link
-              href="/lesson-plan"
-              className="btn-pulse inline-flex min-h-14 items-center justify-center rounded-2xl px-10 py-4 text-lg font-bold text-white shadow-xl transition hover:opacity-90 hover:shadow-2xl"
-              style={{ background: TEAL }}
-            >
-              Start for Free — No Credit Card 🚀
-            </Link>
-            <a
-              href="#how-it-works"
-              className="inline-flex min-h-14 items-center justify-center rounded-2xl border px-8 py-4 text-base font-semibold transition hover:bg-gray-50"
-              style={{ borderColor: "#E5E7EB", color: NAVY }}
-            >
-              See how it works →
-            </a>
-          </div>
-
-          <p className="mt-6 font-caveat text-base" style={{ color: "#4A5568" }}>
-            Trusted by teachers across UAE · CBSE · British · American curricula 🌍
-          </p>
-        </div>
-
-        {/* Preview card */}
-        <div className="relative mx-auto mt-14 max-w-2xl px-6">
-          <div
-            className="rounded-3xl border bg-white p-6 shadow-2xl sm:p-8"
-            style={{ borderColor: "rgba(0,198,167,0.2)" }}
-          >
-            <div className="flex items-center gap-2 mb-5">
-              <div className="h-3 w-3 rounded-full bg-red-400" />
-              <div className="h-3 w-3 rounded-full bg-yellow-400" />
-              <div className="h-3 w-3 rounded-full bg-green-400" />
-              <span className="ml-2 font-caveat text-sm font-semibold" style={{ color: TEAL }}>
-                Layah is thinking... ✍️
+              {/* Badge */}
+              <span
+                className="mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-widest"
+                style={{ borderColor: TEAL, color: TEAL, background: "rgba(0,198,167,0.08)" }}
+              >
+                <span className="inline-block h-2 w-2 animate-pulse rounded-full" style={{ background: TEAL }} />
+                AI-powered lesson planning
               </span>
+
+              <h1
+                className="text-5xl font-extrabold leading-tight tracking-tight sm:text-6xl lg:text-5xl xl:text-6xl"
+                style={{ color: NAVY }}
+              >
+                Plan better lessons{" "}
+                <span
+                  style={{
+                    background: "linear-gradient(135deg, #00C6A7 0%, #0A8F7A 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  in minutes
+                </span>{" "}
+                🎓
+              </h1>
+
+              <p
+                className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed sm:text-xl lg:mx-0"
+                style={{ color: "#374151" }}
+              >
+                Layah generates complete lesson plans, beautiful PowerPoint presentations, worksheets,
+                and assessments — so you can focus on what matters: your students.
+              </p>
+
+              <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
+                <Link
+                  href="/lesson-plan"
+                  className="btn-pulse inline-flex min-h-14 items-center justify-center rounded-2xl px-10 py-4 text-lg font-bold text-white shadow-xl transition hover:opacity-90 hover:shadow-2xl"
+                  style={{ background: TEAL }}
+                >
+                  Start for Free — No Credit Card 🚀
+                </Link>
+                <a
+                  href="#how-it-works"
+                  className="inline-flex min-h-14 items-center justify-center rounded-2xl border px-8 py-4 text-base font-semibold transition hover:bg-gray-50"
+                  style={{ borderColor: "#E5E7EB", color: NAVY }}
+                >
+                  See how it works →
+                </a>
+              </div>
+
+              <p className="mt-6 font-caveat text-base" style={{ color: "#4A5568" }}>
+                Trusted by teachers across UAE · CBSE · British · American curricula 🌍
+              </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                { emoji: "📝", label: "Lesson Plan", desc: "Grade 7 Science · Photosynthesis", bg: "#E6F7F5" },
-                { emoji: "🖥️", label: "10 PPT Slides", desc: "With AFL activity tools", bg: "#FFF3E0" },
-                { emoji: "📋", label: "Worksheets", desc: "Differentiated 3 levels", bg: "#F3E8FF" },
-              ].map((item) => (
-                <div key={item.label} className="rounded-2xl p-4" style={{ background: item.bg }}>
-                  <p className="text-2xl">{item.emoji}</p>
-                  <p className="mt-2 text-sm font-bold" style={{ color: NAVY }}>{item.label}</p>
-                  <p className="mt-0.5 text-xs" style={{ color: "#6B7280" }}>{item.desc}</p>
-                </div>
-              ))}
+
+            {/* ── RIGHT: premium preview card ──────────────────────────── */}
+            <div className="w-full flex-shrink-0 lg:w-[460px]">
+              <HeroPreviewCard />
             </div>
-            <div className="mt-4 flex items-center gap-2 rounded-xl p-3" style={{ background: "#F0FDFB" }}>
-              <span style={{ color: TEAL }}>✓</span>
-              <p className="text-sm font-semibold" style={{ color: NAVY }}>Complete lesson pack ready in 45 seconds</p>
-            </div>
+
           </div>
         </div>
       </section>
@@ -304,6 +285,148 @@ export default function LandingPage() {
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
+
+const HERO_CHECKLIST = [
+  "Learning Objectives — UAE MOE Aligned",
+  "Differentiated for Higher, Middle & Lower Achievers",
+  "KHDA & SPEA Inspection-Ready Format",
+  "Project-Based Learning Strategy Applied",
+  "31 AFL Tools Integrated",
+  "13-Slide Professional PowerPoint",
+  "Differentiated Worksheet Pack",
+  "Question Paper with Mark Scheme",
+] as const;
+
+const HERO_AVATARS = [
+  { initial: "A", bg: "#F59E0B" },
+  { initial: "T", bg: "#00C6A7" },
+  { initial: "S", bg: "#8B5CF6" },
+  { initial: "M", bg: "#3B82F6" },
+  { initial: "R", bg: "#EC4899" },
+] as const;
+
+function TealCheck() {
+  return (
+    <svg
+      className="mt-0.5 h-[18px] w-[18px] shrink-0"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden
+    >
+      <circle cx="9" cy="9" r="9" fill="rgba(0,198,167,0.12)" />
+      <path
+        d="M5.5 9l2.5 2.5 4.5-5"
+        stroke="#00C6A7"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function HeroPreviewCard() {
+  return (
+    <div
+      className="relative mx-auto w-full max-w-md lg:mx-0"
+      style={{ transform: "rotate(1deg)" }}
+    >
+      {/* Soft glow behind the card */}
+      <div
+        className="pointer-events-none absolute -inset-4 rounded-3xl blur-2xl"
+        style={{ background: "rgba(0,198,167,0.10)" }}
+      />
+
+      <div
+        className="relative overflow-hidden rounded-2xl bg-white shadow-xl"
+        style={{ border: "1px solid rgba(0,198,167,0.22)" }}
+      >
+        {/* Teal top accent bar */}
+        <div
+          className="h-1.5 w-full"
+          style={{ background: "linear-gradient(90deg, #00C6A7 0%, #0A8F7A 100%)" }}
+        />
+
+        {/* Card header */}
+        <div
+          className="px-5 pb-4 pt-5"
+          style={{ borderBottom: "1px solid #F3F4F6" }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold" style={{ color: "#6B7280" }}>
+                📚 Science · Grade 7
+              </p>
+              <p
+                className="mt-1 text-xl font-bold leading-tight"
+                style={{
+                  color: NAVY,
+                  fontFamily: "var(--font-poppins), ui-sans-serif, system-ui, sans-serif",
+                }}
+              >
+                Photosynthesis
+              </p>
+              <p className="mt-1 text-xs" style={{ color: "#6B7280" }}>
+                Generated in 45 seconds ⚡
+              </p>
+            </div>
+            <span
+              className="shrink-0 rounded-full px-3 py-1 text-xs font-bold"
+              style={{ background: "rgba(0,198,167,0.12)", color: TEAL }}
+            >
+              UAE MOE
+            </span>
+          </div>
+        </div>
+
+        {/* Checklist — items fade in one by one via CSS stagger */}
+        <ul className="space-y-2.5 px-5 py-4">
+          {HERO_CHECKLIST.map((item, i) => (
+            <li
+              key={item}
+              className={`animate-fade-in stagger-${i + 1} flex items-start gap-3`}
+            >
+              <TealCheck />
+              <span
+                className="text-sm leading-snug"
+                style={{ color: "#374151" }}
+              >
+                {item}
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        {/* Card footer */}
+        <div
+          className="px-5 pb-5 pt-3"
+          style={{ borderTop: "1px solid #F3F4F6" }}
+        >
+          <div className="flex items-center gap-3">
+            {/* Avatar stack */}
+            <div className="flex -space-x-2">
+              {HERO_AVATARS.map((a) => (
+                <div
+                  key={a.initial}
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white ring-2 ring-white"
+                  style={{ background: a.bg }}
+                  aria-label={`User ${a.initial}`}
+                >
+                  {a.initial}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs leading-snug" style={{ color: "#6B7280" }}>
+              Join{" "}
+              <strong style={{ color: NAVY }}>500+ teachers</strong>{" "}
+              saving hours every week
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function FeatureCard({
   emoji, title, description, bg, iconColor,
