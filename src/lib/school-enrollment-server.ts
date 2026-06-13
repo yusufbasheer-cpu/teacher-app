@@ -86,12 +86,6 @@ async function getTeacherMembership(
   return data;
 }
 
-/** True if this user_id already has a school_teachers row (any school). */
-async function hasExistingTeacherRow(admin: SupabaseClient, userId: string): Promise<boolean> {
-  const membership = await getTeacherMembership(admin, userId);
-  return Boolean(membership);
-}
-
 async function syncActiveTeachersCount(admin: SupabaseClient, schoolId: string): Promise<void> {
   const count = await countTeachersInSchool(admin, schoolId);
   const { error } = await admin
@@ -230,23 +224,23 @@ async function ensureSchoolTeacherRow(
     throw new Error("SCHOOL_FULL");
   }
 
-  const { error: insertError } = await admin.from("school_teachers").insert({
-    school_account_id: school.id,
-    user_id: userId,
-    email: email.trim().toLowerCase(),
-    generations_used_this_month: 0,
-  });
+  // Upsert with ignoreDuplicates so a race-condition second login never creates duplicates
+  // and never overwrites an admin-assigned role/department.
+  const { error: upsertError } = await admin.from("school_teachers").upsert(
+    {
+      school_account_id: school.id,
+      user_id: userId,
+      email: email.trim().toLowerCase(),
+      role: "teacher",
+      department: null,
+      generations_used_this_month: 0,
+    },
+    { onConflict: "user_id", ignoreDuplicates: true },
+  );
 
-  if (insertError) {
-    if (insertError.code === "23505") {
-      const alreadyJoined = await hasExistingTeacherRow(admin, userId);
-      if (alreadyJoined) {
-        await syncTeacherGenerationsFromUsage(admin, userId);
-        return { newlyJoined: false };
-      }
-    }
-    console.error("[school-enrollment] insert school_teachers failed:", insertError.message);
-    throw insertError;
+  if (upsertError) {
+    console.error("[school-enrollment] upsert school_teachers failed:", upsertError.message);
+    throw upsertError;
   }
 
   await syncActiveTeachersCount(admin, school.id);
