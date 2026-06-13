@@ -1,30 +1,40 @@
 import { NextResponse } from "next/server";
-import { authenticateRequest } from "@/lib/user-usage-server";
+import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
-import { extractEmailDomain, isPersonalEmailDomain, normalizeEmailDomain, isSchoolPlanType } from "@/lib/school-accounts";
+import {
+  extractEmailDomain,
+  isPersonalEmailDomain,
+  normalizeEmailDomain,
+  isSchoolPlanType,
+} from "@/lib/school-accounts";
 
 export const runtime = "nodejs";
 
-export async function GET(req: Request) {
+// Readable directly in the browser — uses cookie-based auth (same as school-admin page).
+export async function GET() {
   const steps: Record<string, unknown> = {};
 
-  // ── Step 1: Authenticate ─────────────────────────────────────────────────
-  const auth = await authenticateRequest(req);
-  if (!auth.ok) {
-    return NextResponse.json({ error: auth.message, steps }, { status: auth.status });
-  }
-
+  // ── Step 1: Read session from cookies (same method as school-admin/page.tsx) ──
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
-  } = await auth.supabase.auth.getUser(auth.accessToken);
+  } = await supabase.auth.getUser();
 
   const userId = user?.id ?? null;
   const email = user?.email?.trim().toLowerCase() ?? null;
 
-  steps["1_auth"] = { ok: true, userId, email };
+  steps["1_auth"] = {
+    method: "createServerSupabaseClient (cookie-based)",
+    loggedIn: Boolean(user),
+    userId,
+    email,
+  };
 
   if (!userId || !email) {
-    return NextResponse.json({ error: "No user/email from session", steps }, { status: 400 });
+    return NextResponse.json(
+      { error: "Not logged in — visit layah.in first, then open this URL", steps },
+      { status: 401 },
+    );
   }
 
   // ── Step 2: Service role client ──────────────────────────────────────────
@@ -36,7 +46,10 @@ export async function GET(req: Request) {
   };
 
   if (!admin) {
-    return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY missing", steps }, { status: 500 });
+    return NextResponse.json(
+      { error: "SUPABASE_SERVICE_ROLE_KEY missing in environment", steps },
+      { status: 500 },
+    );
   }
 
   // ── Step 3: Domain extraction ────────────────────────────────────────────
@@ -45,10 +58,15 @@ export async function GET(req: Request) {
   steps["3_domain"] = { email, domain, isPersonal };
 
   if (!domain || isPersonal) {
-    return NextResponse.json({
-      error: isPersonal ? "Personal email domain — not a school email" : "Could not extract domain",
-      steps,
-    }, { status: 200 });
+    return NextResponse.json(
+      {
+        error: isPersonal
+          ? `"${domain}" is a personal email domain — not eligible for school enrollment`
+          : "Could not extract domain from email",
+        steps,
+      },
+      { status: 200 },
+    );
   }
 
   // ── Step 4: school_accounts lookup ───────────────────────────────────────
@@ -61,25 +79,26 @@ export async function GET(req: Request) {
     .maybeSingle();
 
   steps["4_school_exact_match"] = {
-    normalized,
+    queried_domain: normalized,
     found: Boolean(exactSchool),
     school: exactSchool ?? null,
     error: exactError?.message ?? null,
   };
 
-  // Fallback: list all schools and fuzzy-match
+  // Fallback: list every school and fuzzy-match
   const { data: allSchools, error: listError } = await admin
     .from("school_accounts")
     .select("id, school_name, plan_type, email_domain, max_teachers, active_teachers");
 
   const fuzzyMatch = (allSchools ?? []).find(
-    (row) => isSchoolPlanType(row.plan_type as string) &&
-      normalizeEmailDomain(String(row.email_domain)) === normalized
+    (row) =>
+      isSchoolPlanType(row.plan_type as string) &&
+      normalizeEmailDomain(String(row.email_domain)) === normalized,
   );
 
-  steps["4b_school_fuzzy_match"] = {
-    allSchoolsCount: allSchools?.length ?? 0,
-    allDomains: (allSchools ?? []).map((s) => s.email_domain),
+  steps["4b_all_schools"] = {
+    totalSchools: allSchools?.length ?? 0,
+    registeredDomains: (allSchools ?? []).map((s) => s.email_domain),
     fuzzyMatchFound: Boolean(fuzzyMatch),
     fuzzyMatch: fuzzyMatch ?? null,
     listError: listError?.message ?? null,
@@ -88,10 +107,13 @@ export async function GET(req: Request) {
   const school = exactSchool ?? fuzzyMatch ?? null;
 
   if (!school) {
-    return NextResponse.json({
-      error: `No school found for domain "${normalized}". See step 4b for all registered domains.`,
-      steps,
-    }, { status: 200 });
+    return NextResponse.json(
+      {
+        error: `No school_accounts row found for domain "${normalized}". Check step 4b for all registered domains.`,
+        steps,
+      },
+      { status: 200 },
+    );
   }
 
   // ── Step 5: Existing school_teachers row ─────────────────────────────────
@@ -102,12 +124,19 @@ export async function GET(req: Request) {
     .maybeSingle();
 
   steps["5_existing_membership"] = {
-    found: Boolean(existingRow),
+    alreadyInTable: Boolean(existingRow),
     row: existingRow ?? null,
     error: existingError?.message ?? null,
   };
 
-  // ── Step 6: Count teachers in school ─────────────────────────────────────
+  if (existingRow) {
+    return NextResponse.json(
+      { message: "✅ Teacher already in school_teachers — enrollment was successful", steps },
+      { status: 200 },
+    );
+  }
+
+  // ── Step 6: Seat capacity ─────────────────────────────────────────────────
   const { count: teacherCount, error: countError } = await admin
     .from("school_teachers")
     .select("id", { count: "exact", head: true })
@@ -120,18 +149,11 @@ export async function GET(req: Request) {
     error: countError?.message ?? null,
   };
 
-  if (existingRow) {
-    return NextResponse.json({
-      message: "Teacher already in school_teachers — no insert needed",
-      steps,
-    });
-  }
-
   if ((teacherCount ?? 0) >= school.max_teachers) {
-    return NextResponse.json({
-      error: "School is at capacity (max_teachers reached)",
-      steps,
-    }, { status: 200 });
+    return NextResponse.json(
+      { error: "School is at capacity — max_teachers limit reached", steps },
+      { status: 200 },
+    );
   }
 
   // ── Step 7: Attempt upsert ────────────────────────────────────────────────
@@ -153,11 +175,16 @@ export async function GET(req: Request) {
     ok: !upsertError,
     data: upsertData ?? null,
     error: upsertError
-      ? { code: upsertError.code, message: upsertError.message, details: upsertError.details, hint: upsertError.hint }
+      ? {
+          code: upsertError.code,
+          message: upsertError.message,
+          details: upsertError.details,
+          hint: upsertError.hint,
+        }
       : null,
   };
 
-  // ── Step 8: Verify row was inserted ──────────────────────────────────────
+  // ── Step 8: Verify row landed ─────────────────────────────────────────────
   const { data: verifyRow, error: verifyError } = await admin
     .from("school_teachers")
     .select("*")
@@ -172,10 +199,10 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     message: upsertError
-      ? "❌ Upsert FAILED — see step 7 for the exact error"
+      ? "❌ Upsert FAILED — see step 7_upsert_result for the exact Postgres error"
       : verifyRow
-        ? "✅ Teacher successfully added to school_teachers"
-        : "⚠️ Upsert reported success but row not found — possible ignoreDuplicates silent skip",
+        ? "✅ Teacher successfully inserted into school_teachers"
+        : "⚠️ Upsert reported no error but row is missing — check for ignoreDuplicates conflict",
     steps,
   });
 }
