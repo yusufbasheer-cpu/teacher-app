@@ -29,7 +29,7 @@ function csrfGuard(request: NextRequest): NextResponse | null {
  * Refresh auth session (cookies) and forward OAuth ?code= to /auth/callback.
  * @see https://supabase.com/docs/guides/auth/server-side/nextjs
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const csrfBlock = csrfGuard(request);
   if (csrfBlock) return csrfBlock;
 
@@ -53,7 +53,7 @@ export async function middleware(request: NextRequest) {
     request.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie.name, cookie.value);
     });
-    console.log("[middleware] OAuth code on /school-register → /auth/callback → /school-register?step=2");
+    console.log("[proxy] OAuth code on /school-register → /auth/callback → /school-register?step=2");
     return redirectResponse;
   }
 
@@ -64,7 +64,7 @@ export async function middleware(request: NextRequest) {
     request.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie.name, cookie.value);
     });
-    console.log("[middleware] OAuth code on", pathname, "→ /auth/callback");
+    console.log("[proxy] OAuth code on", pathname, "→ /auth/callback");
     return redirectResponse;
   }
 
