@@ -17,6 +17,7 @@
     "canvas-confetti": "^1.9.4",
     "docx": "latest",
     "framer-motion": "^12.38.0",
+    "jspdf": "^4.2.1",
     "jszip": "latest",
     "mammoth": "^1.12.0",
     "next": "latest",
