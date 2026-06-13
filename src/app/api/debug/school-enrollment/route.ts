@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
+import { findSchoolForAdmin } from "@/lib/school-admin-server";
 import {
   extractEmailDomain,
   isPersonalEmailDomain,
@@ -14,21 +15,14 @@ export const runtime = "nodejs";
 export async function GET() {
   const steps: Record<string, unknown> = {};
 
-  // ── Step 1: Read session from cookies (same method as school-admin/page.tsx) ──
+  // ── Step 1: Session from cookies ─────────────────────────────────────────
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   const userId = user?.id ?? null;
   const email = user?.email?.trim().toLowerCase() ?? null;
 
-  steps["1_auth"] = {
-    method: "createServerSupabaseClient (cookie-based)",
-    loggedIn: Boolean(user),
-    userId,
-    email,
-  };
+  steps["1_auth"] = { loggedIn: Boolean(user), userId, email };
 
   if (!userId || !email) {
     return NextResponse.json(
@@ -37,7 +31,6 @@ export async function GET() {
     );
   }
 
-  // ── Step 2: Service role client ──────────────────────────────────────────
   const admin = getSupabaseServiceRole();
   steps["2_service_role"] = {
     ok: Boolean(admin),
@@ -46,163 +39,83 @@ export async function GET() {
   };
 
   if (!admin) {
-    return NextResponse.json(
-      { error: "SUPABASE_SERVICE_ROLE_KEY missing in environment", steps },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY missing", steps }, { status: 500 });
   }
 
-  // ── Step 3: Domain extraction ────────────────────────────────────────────
-  const domain = extractEmailDomain(email);
-  const isPersonal = domain ? isPersonalEmailDomain(domain) : null;
-  steps["3_domain"] = { email, domain, isPersonal };
+  // ── Step 3: ALL rows in school_teachers (no filter) ───────────────────────
+  const { data: allTeacherRows, error: allTeachersError } = await admin
+    .from("school_teachers")
+    .select("id, user_id, email, school_account_id, joined_at");
 
-  if (!domain || isPersonal) {
-    return NextResponse.json(
-      {
-        error: isPersonal
-          ? `"${domain}" is a personal email domain — not eligible for school enrollment`
-          : "Could not extract domain from email",
-        steps,
-      },
-      { status: 200 },
-    );
-  }
+  steps["3_all_school_teachers_rows"] = {
+    totalRows: allTeacherRows?.length ?? 0,
+    rows: allTeacherRows ?? [],
+    error: allTeachersError?.message ?? null,
+  };
 
-  // ── Step 4: school_accounts lookup ───────────────────────────────────────
-  const normalized = normalizeEmailDomain(domain);
-
-  const { data: exactSchool, error: exactError } = await admin
+  // ── Step 4: ALL rows in school_accounts ───────────────────────────────────
+  const { data: allSchools, error: allSchoolsError } = await admin
     .from("school_accounts")
-    .select("id, school_name, plan_type, email_domain, max_teachers, active_teachers, admin_email")
-    .eq("email_domain", normalized)
-    .maybeSingle();
+    .select("id, school_name, email_domain, admin_email, plan_type, max_teachers, active_teachers");
 
-  steps["4_school_exact_match"] = {
-    queried_domain: normalized,
-    found: Boolean(exactSchool),
-    school: exactSchool ?? null,
-    error: exactError?.message ?? null,
+  steps["4_all_school_accounts_rows"] = {
+    totalRows: allSchools?.length ?? 0,
+    rows: allSchools ?? [],
+    error: allSchoolsError?.message ?? null,
   };
 
-  // Fallback: list every school and fuzzy-match
-  const { data: allSchools, error: listError } = await admin
-    .from("school_accounts")
-    .select("id, school_name, plan_type, email_domain, max_teachers, active_teachers");
+  // ── Step 5: findSchoolForAdmin — exact same lookup as school-admin page ───
+  const schoolForAdmin = await findSchoolForAdmin(email);
 
-  const fuzzyMatch = (allSchools ?? []).find(
-    (row) =>
-      isSchoolPlanType(row.plan_type as string) &&
-      normalizeEmailDomain(String(row.email_domain)) === normalized,
-  );
-
-  steps["4b_all_schools"] = {
-    totalSchools: allSchools?.length ?? 0,
-    registeredDomains: (allSchools ?? []).map((s) => s.email_domain),
-    fuzzyMatchFound: Boolean(fuzzyMatch),
-    fuzzyMatch: fuzzyMatch ?? null,
-    listError: listError?.message ?? null,
-  };
-
-  const school = exactSchool ?? fuzzyMatch ?? null;
-
-  if (!school) {
-    return NextResponse.json(
-      {
-        error: `No school_accounts row found for domain "${normalized}". Check step 4b for all registered domains.`,
-        steps,
-      },
-      { status: 200 },
-    );
-  }
-
-  // ── Step 5: Existing school_teachers row ─────────────────────────────────
-  const { data: existingRow, error: existingError } = await admin
-    .from("school_teachers")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  steps["5_existing_membership"] = {
-    alreadyInTable: Boolean(existingRow),
-    row: existingRow ?? null,
-    error: existingError?.message ?? null,
-  };
-
-  if (existingRow) {
-    return NextResponse.json(
-      { message: "✅ Teacher already in school_teachers — enrollment was successful", steps },
-      { status: 200 },
-    );
-  }
-
-  // ── Step 6: Seat capacity ─────────────────────────────────────────────────
-  const { count: teacherCount, error: countError } = await admin
-    .from("school_teachers")
-    .select("id", { count: "exact", head: true })
-    .eq("school_account_id", school.id);
-
-  steps["6_seat_check"] = {
-    currentCount: teacherCount ?? 0,
-    maxTeachers: school.max_teachers,
-    hasCapacity: (teacherCount ?? 0) < school.max_teachers,
-    error: countError?.message ?? null,
-  };
-
-  if ((teacherCount ?? 0) >= school.max_teachers) {
-    return NextResponse.json(
-      { error: "School is at capacity — max_teachers limit reached", steps },
-      { status: 200 },
-    );
-  }
-
-  // ── Step 7: Attempt upsert ────────────────────────────────────────────────
-  const upsertPayload = {
-    school_account_id: school.id,
-    user_id: userId,
-    email,
-    generations_used_this_month: 0,
-  };
-
-  steps["7_upsert_payload"] = upsertPayload;
-
-  const { data: upsertData, error: upsertError } = await admin
-    .from("school_teachers")
-    .upsert(upsertPayload, { onConflict: "user_id", ignoreDuplicates: true })
-    .select();
-
-  steps["7_upsert_result"] = {
-    ok: !upsertError,
-    data: upsertData ?? null,
-    error: upsertError
-      ? {
-          code: upsertError.code,
-          message: upsertError.message,
-          details: upsertError.details,
-          hint: upsertError.hint,
-        }
+  steps["5_findSchoolForAdmin"] = {
+    queriedAdminEmail: email,
+    found: Boolean(schoolForAdmin),
+    school: schoolForAdmin
+      ? { id: schoolForAdmin.id, name: schoolForAdmin.school_name, adminEmail: schoolForAdmin.admin_email }
       : null,
   };
 
-  // ── Step 8: Verify row landed ─────────────────────────────────────────────
-  const { data: verifyRow, error: verifyError } = await admin
-    .from("school_teachers")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
+  // ── Step 6: ID mismatch diagnosis ────────────────────────────────────────
+  const adminSchoolId = schoolForAdmin?.id ?? null;
+  const teacherRow = (allTeacherRows ?? []).find((r) => r.user_id === userId);
 
-  steps["8_verify_after_upsert"] = {
-    rowExists: Boolean(verifyRow),
-    row: verifyRow ?? null,
-    error: verifyError?.message ?? null,
+  steps["6_id_mismatch_check"] = {
+    your_user_id: userId,
+    your_email: email,
+    school_teachers_row_found: Boolean(teacherRow),
+    school_account_id_in_teachers_row: teacherRow?.school_account_id ?? null,
+    school_id_from_findSchoolForAdmin: adminSchoolId,
+    ids_match: teacherRow ? teacherRow.school_account_id === adminSchoolId : null,
+    diagnosis: !teacherRow
+      ? "❌ No row in school_teachers for your user_id"
+      : teacherRow.school_account_id === adminSchoolId
+        ? "✅ IDs match — query should work"
+        : `❌ ID MISMATCH — school_teachers has school_account_id=${teacherRow.school_account_id} but findSchoolForAdmin returned id=${adminSchoolId}`,
   };
 
-  return NextResponse.json({
-    message: upsertError
-      ? "❌ Upsert FAILED — see step 7_upsert_result for the exact Postgres error"
-      : verifyRow
-        ? "✅ Teacher successfully inserted into school_teachers"
-        : "⚠️ Upsert reported no error but row is missing — check for ignoreDuplicates conflict",
-    steps,
-  });
+  // ── Step 7: Domain-based school lookup (enrollment path) ─────────────────
+  const domain = extractEmailDomain(email);
+  const isPersonal = domain ? isPersonalEmailDomain(domain) : null;
+  steps["7_domain_check"] = { domain, isPersonal };
+
+  if (domain && !isPersonal) {
+    const normalized = normalizeEmailDomain(domain);
+    const { data: domainSchool } = await admin
+      .from("school_accounts")
+      .select("id, school_name, email_domain")
+      .eq("email_domain", normalized)
+      .maybeSingle();
+
+    const fuzzy = (allSchools ?? []).find(
+      (r) => isSchoolPlanType(r.plan_type as string) && normalizeEmailDomain(String(r.email_domain)) === normalized,
+    );
+
+    steps["7b_school_by_domain"] = {
+      normalizedDomain: normalized,
+      exactMatch: domainSchool ?? null,
+      fuzzyMatch: fuzzy ?? null,
+    };
+  }
+
+  return NextResponse.json({ steps });
 }

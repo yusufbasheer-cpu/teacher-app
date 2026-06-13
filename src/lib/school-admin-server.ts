@@ -155,11 +155,19 @@ async function loadTeachersForSchool(
   admin: SupabaseClient,
   schoolId: string,
 ): Promise<SchoolAdminTeacher[]> {
+  console.log("[school-admin] loadTeachersForSchool — filtering by school_account_id:", schoolId);
+
+  // Also dump ALL rows in school_teachers so we can spot any ID mismatch
+  const { data: allRows } = await admin.from("school_teachers").select("user_id, email, school_account_id");
+  console.log("[school-admin] ALL school_teachers rows:", JSON.stringify(allRows ?? []));
+
   const { data: teachers, error: teachersError } = await admin
     .from("school_teachers")
     .select("*")
     .eq("school_account_id", schoolId)
     .order("joined_at", { ascending: true });
+
+  console.log("[school-admin] query result — count:", teachers?.length ?? 0, "error:", teachersError?.message ?? null);
 
   if (teachersError) {
     console.error(
@@ -228,6 +236,7 @@ export async function getSchoolAdminDashboard(
   existingSchool?: SchoolAccountRow | null,
 ): Promise<SchoolAdminDashboardData | null> {
   const school = existingSchool ?? (await findSchoolForAdmin(adminEmail));
+  console.log("[school-admin] getSchoolAdminDashboard — adminEmail:", adminEmail, "school found:", school ? { id: school.id, name: school.school_name, adminEmail: school.admin_email } : null);
   if (!school) return null;
 
   const admin = getSupabaseServiceRole();
