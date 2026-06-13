@@ -155,25 +155,48 @@ async function loadTeachersForSchool(
   admin: SupabaseClient,
   schoolId: string,
 ): Promise<SchoolAdminTeacher[]> {
-  console.log("[school-admin] loadTeachersForSchool — filtering by school_account_id:", schoolId);
+  console.log("[school-admin] loadTeachersForSchool — schoolId:", schoolId);
 
-  // Also dump ALL rows in school_teachers so we can spot any ID mismatch
-  const { data: allRows } = await admin.from("school_teachers").select("user_id, email, school_account_id");
-  console.log("[school-admin] ALL school_teachers rows:", JSON.stringify(allRows ?? []));
+  // ── Step A: Dump ALL rows (no filter) to see actual column names and values ──
+  const { data: allRows, error: allRowsError } = await admin
+    .from("school_teachers")
+    .select("*")
+    .limit(20);
 
-  const { data: teachers, error: teachersError } = await admin
+  console.log("[school-admin] ALL school_teachers rows (unfiltered):", JSON.stringify(allRows ?? []), "error:", allRowsError?.message ?? null);
+
+  if (allRows && allRows.length > 0) {
+    console.log("[school-admin] Actual column names in school_teachers row:", Object.keys(allRows[0]));
+  }
+
+  // ── Step B: Try filtering by school_account_id ──────────────────────────
+  const { data: byAccountId, error: byAccountIdError } = await admin
     .from("school_teachers")
     .select("*")
     .eq("school_account_id", schoolId)
     .order("joined_at", { ascending: true });
 
-  console.log("[school-admin] query result — count:", teachers?.length ?? 0, "error:", teachersError?.message ?? null);
+  console.log("[school-admin] filter by school_account_id =", schoolId, "→ count:", byAccountId?.length ?? 0, "error:", byAccountIdError?.message ?? null);
 
+  // ── Step C: Fallback — filter by school_id if school_account_id returned nothing ──
+  let teachers = byAccountId;
+  if (!byAccountIdError && (!teachers || teachers.length === 0)) {
+    const { data: bySchoolId, error: bySchoolIdError } = await admin
+      .from("school_teachers")
+      .select("*")
+      .eq("school_id", schoolId)
+      .order("joined_at", { ascending: true });
+
+    console.log("[school-admin] fallback filter by school_id =", schoolId, "→ count:", bySchoolId?.length ?? 0, "error:", bySchoolIdError?.message ?? null);
+
+    if (!bySchoolIdError && bySchoolId && bySchoolId.length > 0) {
+      teachers = bySchoolId;
+    }
+  }
+
+  const teachersError = byAccountIdError;
   if (teachersError) {
-    console.error(
-      "[school-admin] list teachers failed (showing overview anyway):",
-      teachersError.message,
-    );
+    console.error("[school-admin] list teachers failed:", teachersError.message);
     return [];
   }
 
