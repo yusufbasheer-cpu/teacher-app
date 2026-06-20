@@ -29,9 +29,33 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Layah.ai",
+  title: "Layah – AI Lesson Planning for Teachers",
   description:
-    "Modern AI workspace for teachers to build lesson plans and classroom presentations.",
+    "Layah helps teachers create complete lesson plans, PPTs, worksheets and assessments using AI. Save hours every week. KHDA and SPEA aligned for UAE schools. Try free.",
+  metadataBase: new URL("https://layah.in"),
+  openGraph: {
+    title: "Layah – AI Lesson Planning for Teachers",
+    description:
+      "Layah helps teachers create complete lesson plans, PPTs, worksheets and assessments using AI. Save hours every week. KHDA and SPEA aligned for UAE schools. Try free.",
+    url: "https://layah.in",
+    siteName: "Layah",
+    images: [
+      {
+        url: "/Logo.png",
+        width: 512,
+        height: 512,
+        alt: "Layah logo",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Layah – AI Lesson Planning for Teachers",
+    description:
+      "Layah helps teachers create complete lesson plans, PPTs, worksheets and assessments using AI. Save hours every week. KHDA and SPEA aligned for UAE schools. Try free.",
+    images: ["/Logo.png"],
+  },
 };
 
 export const viewport: Viewport = {
@@ -45,8 +69,42 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "Layah",
+      url: "https://layah.in",
+      logo: "https://layah.in/Logo.png",
+      description:
+        "AI-powered lesson planning and teaching resource generation platform for educators",
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Layah",
+      applicationCategory: "EducationalApplication",
+      operatingSystem: "Web",
+      description:
+        "AI-powered platform that generates complete lesson plans, PowerPoint presentations, worksheets, question papers, and differentiated resources for teachers",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        description: "Free plan available",
+      },
+      url: "https://layah.in",
+    },
+  ];
+
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body
         className={`${plusJakartaSans.variable} ${caveat.variable} ${poppins.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
         style={{ color: "#0A1628" }}
