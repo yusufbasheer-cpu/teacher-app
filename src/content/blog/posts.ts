@@ -155,6 +155,357 @@ export const posts: BlogPost[] = [
     ],
   },
   {
+    slug: "10-modern-teaching-strategies-every-teacher-should-know",
+    title: "10 Modern Teaching Strategies Every Teacher Should Know in 2026",
+    excerpt:
+      "From Project-Based Learning to Design Thinking, here's a complete guide to the teaching strategies reshaping classrooms worldwide — and how to apply them without extra planning time.",
+    author: "Mohammed Yusuf",
+    publishedAt: "2026-06-20",
+    readTime: 7,
+    coverGradient: "linear-gradient(135deg, #0f2d1a 0%, #00C6A7 100%)",
+    content: [
+      {
+        type: "p",
+        text: "Great teaching has never been about standing at the front of a room and delivering information. The best lessons are the ones that put students in the driver's seat — curious, challenged, and actively constructing their own understanding. Modern teaching strategies are built on this principle. Below is a guide to ten approaches reshaping classrooms worldwide in 2026, with practical examples of each.",
+      },
+      {
+        type: "h2",
+        text: "1. Project-Based Learning (PBL)",
+      },
+      {
+        type: "p",
+        text: "In Project-Based Learning, students spend an extended period investigating a complex, real-world question and produce a tangible outcome at the end — a presentation, a product, a campaign, or a solution. Unlike traditional units, PBL drives content learning through the project rather than layering the project on top of content. Example: A Year 9 Science class investigates local air quality data and produces a public health report for the school community, covering the chemistry of pollutants, data analysis, and persuasive writing along the way.",
+      },
+      {
+        type: "h2",
+        text: "2. Problem-Based Learning",
+      },
+      {
+        type: "p",
+        text: "Problem-Based Learning (PrBL) places a complex, messy, real-world problem in front of students at the start of a unit — before they have all the knowledge to solve it. The gap between what they know and what they need drives motivated self-directed learning. Example: A Business Studies class is told that a local restaurant is on the verge of closing and tasked with diagnosing why and presenting a turnaround strategy. Students learn about cash flow, marketing, and operations because they need those tools to solve the problem.",
+      },
+      {
+        type: "h2",
+        text: "3. Inquiry-Based Learning",
+      },
+      {
+        type: "p",
+        text: "Inquiry-Based Learning positions questions — not answers — as the starting point of every lesson. Students generate their own questions, design investigations, and draw conclusions from evidence. The teacher's role shifts from instructor to facilitator. Example: A Geography teacher shows students satellite images of the same landscape taken 30 years apart. Students generate their own questions about what changed and why, then research, debate, and present their findings. The content is Geography; the skill is thinking like a geographer.",
+      },
+      {
+        type: "h2",
+        text: "4. Design Thinking",
+      },
+      {
+        type: "p",
+        text: "Design Thinking brings a five-phase human-centred problem-solving process into the classroom: Empathise, Define, Ideate, Prototype, and Test. It is particularly powerful for cross-curricular projects and teaches students to treat failure as data rather than a verdict. Example: A Year 7 PSHE class uses Design Thinking to address the issue of student loneliness in school. They interview peers (Empathise), define the core problem, brainstorm solutions (Ideate), build a prototype buddy system, and test it with a small group before presenting their findings to school leadership.",
+      },
+      {
+        type: "h2",
+        text: "5. Case Study-Based Learning",
+      },
+      {
+        type: "p",
+        text: "Borrowed from business and medical schools, Case Study-Based Learning immerses students in detailed, real-world scenarios that they must analyse, discuss, and respond to. It develops critical thinking and the ability to apply theoretical knowledge to complex situations. Example: An Economics class examines the 2008 financial crisis through primary documents, news archives, and data. Students take on the roles of bank regulators, investors, and policymakers, making decisions with the information available at the time and evaluating the consequences.",
+      },
+      {
+        type: "h2",
+        text: "6. Experiential Learning",
+      },
+      {
+        type: "p",
+        text: "David Kolb's Experiential Learning Cycle — do, reflect, conceptualise, apply — underpins one of the most evidence-backed approaches in education. Learning is most durable when it is grounded in concrete experience followed by structured reflection. Example: A PE teacher takes students through a team-building challenge, then leads a guided reflection on communication, leadership, and trust. The physical activity is the vehicle; the learning is about interpersonal skills. The reflection is what makes it stick.",
+      },
+      {
+        type: "h2",
+        text: "7. Cooperative and Collaborative Learning",
+      },
+      {
+        type: "p",
+        text: "Cooperative learning assigns structured interdependent roles within groups so that every student has a meaningful contribution to make and the group cannot succeed without each member. It is more rigorous than general group work, which often allows passengers. Example: In a Jigsaw activity, each student in a History class becomes an 'expert' on one aspect of the French Revolution. Students then regroup so that each new group contains one expert from each area, and they teach each other — meaning every student must learn deeply enough to explain their topic to peers.",
+      },
+      {
+        type: "h2",
+        text: "8. Flipped Classroom",
+      },
+      {
+        type: "p",
+        text: "In the Flipped Classroom model, direct instruction moves out of the classroom — delivered via short video or audio for students to access at home — freeing up lesson time for practice, discussion, and application. The teacher's expertise is used where it matters most: working with students in real time. Example: A Maths teacher records a 10-minute video explaining quadratic equations. Students watch it at home and arrive in class with questions already formed. The lesson becomes entirely practical — the teacher circulates, identifies misconceptions, and gives targeted support rather than lecturing.",
+      },
+      {
+        type: "h2",
+        text: "9. Challenge-Based Learning",
+      },
+      {
+        type: "p",
+        text: "Challenge-Based Learning (CBL) asks students to identify a meaningful real-world challenge, explore it deeply, develop solutions, and then implement and evaluate those solutions. It was originally developed by Apple and has strong roots in STEM education, though it works across subjects. Example: A Year 10 Science class takes on the challenge of reducing plastic waste in their school. They research the science of polymers, audit current waste, design experiments to test alternatives, and present their recommendations to the facilities manager. The challenge is real; the impact is tangible.",
+      },
+      {
+        type: "h2",
+        text: "10. Discovery Learning",
+      },
+      {
+        type: "p",
+        text: "Discovery Learning, rooted in Jerome Bruner's constructivist theory, creates conditions for students to figure things out for themselves rather than being told. The teacher designs the environment and poses the provocation; students make the discovery. Example: A Primary Science teacher places a collection of objects near a bowl of water without any instructions. Students predict which will float or sink, test their predictions, and begin to articulate the rules they are noticing. The teacher asks questions that push deeper — 'What if I flatten this ball of clay? What changes?' — but never provides the answer directly.",
+      },
+      {
+        type: "h2",
+        text: "Bringing These Strategies Into Your Planning",
+      },
+      {
+        type: "p",
+        text: "The challenge with most modern teaching strategies is not understanding them — it is having time to design lessons that actually embody them. A well-structured PBL unit takes significant planning. A good Discovery Learning lesson requires careful sequencing. Flipped Classroom content needs to be created and curated. This is where the planning load multiplies.",
+      },
+      {
+        type: "p",
+        text: "Layah addresses this directly. When generating a lesson plan, you can specify the teaching strategy you want to apply — PBL, inquiry-based, collaborative, flipped — and the platform will structure the lesson around that approach, including differentiated activities, AFL checkpoints, and a ready-to-use PowerPoint. You get the pedagogical rigour of modern teaching without the hours of planning it traditionally demands.",
+      },
+      {
+        type: "quote",
+        text: "The strategies are not the hard part. The hard part is designing a lesson that genuinely uses them rather than just naming them in the planning document.",
+      },
+      {
+        type: "p",
+        text: "If you are ready to build lessons that actually reflect how students learn best — without spending your Sunday engineering every detail from scratch — Layah is worth exploring. Your first lesson plan is free.",
+      },
+    ],
+  },
+  {
+    slug: "assessment-for-learning-tools-for-classroom",
+    title: "87 Assessment for Learning Tools to Transform Your Classroom",
+    excerpt:
+      "Formative assessment is the backbone of effective teaching. Here's why AFL matters, the categories every teacher should use, and how to build a toolkit that actually works.",
+    author: "Mohammed Yusuf",
+    publishedAt: "2026-06-20",
+    readTime: 6,
+    coverGradient: "linear-gradient(135deg, #0A1628 0%, #7c3aed 100%)",
+    content: [
+      {
+        type: "p",
+        text: "In 1998, education researchers Paul Black and Dylan Wiliam published a meta-analysis of over 250 studies on classroom assessment. Their conclusion was striking: formative assessment — assessment used to inform teaching rather than to grade students — had a larger positive impact on student achievement than almost any other educational intervention. Over 25 years later, the research is even clearer. Assessment for Learning (AFL) is not just a teaching technique. It is the mechanism through which great teaching actually works.",
+      },
+      {
+        type: "h2",
+        text: "What Is Assessment for Learning?",
+      },
+      {
+        type: "p",
+        text: "Assessment for Learning (AFL) refers to any strategy a teacher uses to gather evidence of student understanding during the learning process — and then acts on that evidence to adjust their teaching. The key distinction is between assessment OF learning (a test at the end of a unit that measures what students know) and assessment FOR learning (checking understanding throughout a lesson to decide what happens next).",
+      },
+      {
+        type: "p",
+        text: "AFL is not about data or grades. It is about the question a teacher asks mid-lesson that reveals a class-wide misconception. It is the exit ticket that shows three students need a different explanation. It is the pair discussion that exposes that students can repeat a definition but cannot apply it. AFL is teaching in real time.",
+      },
+      {
+        type: "h2",
+        text: "Why It Matters More Than Ever",
+      },
+      {
+        type: "p",
+        text: "Modern classrooms are more diverse than ever before. In any class of 30 students, there may be learners spanning several years of prior attainment, students with varying language proficiency, learners with diagnosed learning needs, and students who simply had a very different experience of primary education. Without AFL, a teacher delivers to an imagined average student and hopes for the best. With AFL, the teacher knows — in the moment — where each learner actually is.",
+      },
+      {
+        type: "ul",
+        items: [
+          "AFL reduces the attainment gap between higher and lower achieving students",
+          "It increases student metacognition — awareness of their own learning",
+          "It prevents misconceptions from becoming embedded over time",
+          "It makes lessons more responsive without requiring more planning",
+          "It gives students a role in their own progress rather than passive recipients",
+        ],
+      },
+      {
+        type: "h2",
+        text: "The Four Phases of AFL",
+      },
+      {
+        type: "p",
+        text: "Effective AFL is not a single technique deployed at the end of a lesson. It is woven throughout every phase of learning. A useful way to think about it is by lesson phase.",
+      },
+      {
+        type: "h3",
+        text: "Starter and Activation",
+      },
+      {
+        type: "p",
+        text: "Before teaching new content, effective teachers assess what students already know — and what they think they know. Starter AFL tools include KWL charts (Know, Want to know, Learned), entry tickets, quick polls, odd-one-out tasks, and prior knowledge probes. These are not busy work. They tell the teacher whether to spend five minutes recapping or whether the class is ready to move straight on.",
+      },
+      {
+        type: "h3",
+        text: "Main Phase Checks",
+      },
+      {
+        type: "p",
+        text: "During the main teaching phase, AFL tools help teachers track understanding in real time without stopping momentum. Hinge questions — carefully designed multiple-choice questions where each wrong answer reveals a specific misconception — are among the most powerful tools in any teacher's repertoire. Think-Pair-Share gives every student time to process before one voice speaks. Mini-whiteboard responses let a teacher scan the entire class at once.",
+      },
+      {
+        type: "h3",
+        text: "Plenary and Consolidation",
+      },
+      {
+        type: "p",
+        text: "The end of a lesson is a missed opportunity in many classrooms. Rather than packing up and moving on, plenary AFL tools consolidate and reveal. Exit tickets — students respond to one well-crafted question before leaving — give teachers a precise picture of the class before the next lesson. The 3-2-1 reflection (three things learned, two things they found interesting, one question remaining) builds metacognitive habit alongside assessment data.",
+      },
+      {
+        type: "h3",
+        text: "Differentiation Checks",
+      },
+      {
+        type: "p",
+        text: "Differentiated AFL tools — confidence rating scales, self-assessment rubrics, traffic light self-marking, two stars and a wish peer feedback — give students agency in their own assessment while providing the teacher with data about who needs support and who is ready to be stretched.",
+      },
+      {
+        type: "h2",
+        text: "The Planning Problem with AFL",
+      },
+      {
+        type: "p",
+        text: "Here is the honest tension: teachers understand the value of AFL. Most teachers actively want to embed it in their practice. The barrier is not motivation — it is time and cognitive load. Designing a well-crafted hinge question for a specific concept takes thought. Choosing the right AFL tool for the right phase of learning requires experience and planning. When you are already stretched, AFL is often the first thing to get cut from a lesson plan.",
+      },
+      {
+        type: "quote",
+        text: "I know I should be using more AFL. I just don't always have time to plan which tools to use and when. So I end up defaulting to the same three I always use.",
+      },
+      {
+        type: "h2",
+        text: "87 AFL Tools Built Into Every Lesson",
+      },
+      {
+        type: "p",
+        text: "Layah was built with AFL at its core. The platform includes 87 AFL tools — categorised by lesson phase, purpose, and student interaction type — that are embedded directly into lesson plan generation. When you generate a lesson in Layah, AFL tools are not an afterthought. They are part of the lesson structure from the first draft.",
+      },
+      {
+        type: "p",
+        text: "Each AFL tool also comes with a ready-to-print activity sheet — a student-facing resource that supports the tool in the classroom. That means no separate worksheet creation, no hunting for templates, no cutting and pasting from other sources. The activity sheet is generated alongside the lesson plan, the PowerPoint, and the differentiated activities, in one single workflow.",
+      },
+      {
+        type: "p",
+        text: "If you want to build an AFL-rich classroom without it costing you an extra hour of planning per lesson, try Layah free. Your first complete lesson plan — AFL tools, activity sheets, and all — is on us.",
+      },
+    ],
+  },
+  {
+    slug: "complete-guide-differentiated-instruction",
+    title: "The Complete Guide to Differentiated Instruction for Every Classroom",
+    excerpt:
+      "Every classroom has learners at different levels. Here's how to differentiate effectively for higher, middle, and lower achievers — without tripling your planning time.",
+    author: "Mohammed Yusuf",
+    publishedAt: "2026-06-20",
+    readTime: 6,
+    coverGradient: "linear-gradient(135deg, #1a0a28 0%, #00C6A7 100%)",
+    content: [
+      {
+        type: "p",
+        text: "Walk into almost any classroom in the world and you will find learners at wildly different points in their understanding. Some students arrive knowing most of what you planned to teach. Others are missing foundational knowledge from two or three years prior. Most are somewhere in the middle. Differentiated instruction is the professional response to this reality — the practice of adjusting how you teach so that every learner has access to meaningful challenge and appropriate support.",
+      },
+      {
+        type: "h2",
+        text: "What Differentiated Instruction Actually Means",
+      },
+      {
+        type: "p",
+        text: "Differentiated instruction, pioneered by education researcher Carol Ann Tomlinson, is not about teaching three different lessons simultaneously. It is not about dumbing content down for some students or giving the fastest finishers extra busy work. At its core, differentiation means designing one lesson that provides multiple pathways to the same learning objective — so that every student in the room is working at an appropriate level of challenge.",
+      },
+      {
+        type: "p",
+        text: "Tomlinson's model identifies four classroom elements that can be differentiated: Content (what students learn), Process (how they make sense of it), Product (how they demonstrate understanding), and Environment (the conditions in which they work). Most teachers begin with content and process; the most experienced practitioners differentiate all four fluidly.",
+      },
+      {
+        type: "h2",
+        text: "Why Differentiation Is Non-Negotiable",
+      },
+      {
+        type: "p",
+        text: "Research consistently shows that when students are taught content that is either too easy or too difficult, their engagement and progress both decline. Vygotsky's Zone of Proximal Development tells us that genuine learning happens in the zone just beyond what a student can do independently — where they are challenged but supported. A lesson pitched at the class average leaves the top quarter under-stretched and the bottom quarter lost.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Students taught within their ZPD show significantly higher retention",
+          "Differentiation reduces low-level behaviour caused by boredom or confusion",
+          "High-ability students are often the most underchallenged group in a classroom",
+          "KHDA and Ofsted inspections specifically look for evidence of effective differentiation",
+          "Teachers who differentiate well report higher student engagement and fewer classroom management issues",
+        ],
+      },
+      {
+        type: "h2",
+        text: "Differentiating Content: What Students Learn",
+      },
+      {
+        type: "p",
+        text: "Differentiating content does not mean teaching different topics to different students. It means adjusting the complexity, abstraction, and depth of the material. For a lesson on climate change, all students explore the same concept — but lower-ability students work with scaffolded texts at a more accessible reading level, core students work with standard resources, and higher-ability students engage with primary research data and competing scientific arguments.",
+      },
+      {
+        type: "p",
+        text: "Practical content differentiation tools include: tiered reading texts, audio or visual alternatives for complex written material, graphic organisers that pre-structure information, and vocabulary support sheets that allow lower-ability students to engage with higher-level concepts without being blocked by unfamiliar terms.",
+      },
+      {
+        type: "h2",
+        text: "Differentiating Process: How Students Make Sense of It",
+      },
+      {
+        type: "p",
+        text: "Process differentiation is about the thinking activities students engage in to understand content. Sentence starters scaffold complex thinking for students who struggle to organise their ideas in writing. Thinking frames provide structure for analysis tasks. Tiered questioning — using Bloom's Taxonomy to design questions at different cognitive levels — allows every student to respond meaningfully to the same topic, at the level of thinking they are ready for.",
+      },
+      {
+        type: "p",
+        text: "One of the most practical process differentiation strategies is flexible grouping. Rather than fixed ability groups — which can stigmatise students and limit expectations — flexible grouping reshapes student groups based on the specific task. A student who struggles with reading comprehension might be in a support group for a literacy task but in a stretch group for a spatial reasoning challenge. Differentiation should reflect the task, not a fixed label.",
+      },
+      {
+        type: "h2",
+        text: "Differentiating Product: How Students Demonstrate Understanding",
+      },
+      {
+        type: "p",
+        text: "Product differentiation gives students different ways to show what they have learned. A student with strong verbal skills might demonstrate understanding through a class presentation. A student who struggles with spoken English but excels visually might produce an annotated diagram. Tiered tasks ask all students to address the same learning objective but at different levels of complexity — a foundational task, a core task, and an extended challenge.",
+      },
+      {
+        type: "p",
+        text: "Choice boards are a particularly effective product differentiation tool. Students choose from a menu of tasks — all addressing the same objective — based on their learning preference and confidence level. This gives students agency while ensuring that all pathways lead to the same destination.",
+      },
+      {
+        type: "h2",
+        text: "Common Mistakes Teachers Make",
+      },
+      {
+        type: "p",
+        text: "Even well-intentioned differentiation can miss the mark. Here are the most common mistakes to avoid.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Only differentiating the worksheet, not the lesson — the most common error",
+          "Treating differentiation as a compliance exercise rather than a teaching decision",
+          "Forgetting to differentiate upward — high-ability students need stretch too",
+          "Using fixed ability groups that become permanent and self-limiting",
+          "Making differentiation so complex that it is unsustainable beyond one lesson",
+          "Differentiation that lowers expectations rather than scaffolding to higher ones",
+        ],
+      },
+      {
+        type: "quote",
+        text: "The goal of differentiation is not to make the lesson easier for some students. It is to make the same high standard accessible to all of them.",
+      },
+      {
+        type: "h2",
+        text: "How to Differentiate Without Tripling Your Workload",
+      },
+      {
+        type: "p",
+        text: "The most common reason teachers underuse differentiation is time. Writing three versions of every activity, creating scaffolded texts from scratch, designing tiered questioning for every lesson — the planning load is genuinely prohibitive. This is the problem Layah was built to solve.",
+      },
+      {
+        type: "p",
+        text: "When you generate a lesson plan in Layah, three-tier differentiated activities are produced automatically — support, core, and extension — alongside the main lesson plan, PowerPoint, and AFL tools. You do not need to write them separately or adapt the core task manually. The differentiation is built in from the first draft, ready to edit and personalise if needed.",
+      },
+      {
+        type: "p",
+        text: "Differentiated instruction is one of the most powerful things a teacher can do for their students. It should not require double the planning time. With Layah, it does not. Try your first lesson plan free and see what properly differentiated planning looks like when the heavy lifting is already done.",
+      },
+    ],
+  },
+  {
     slug: "how-ai-is-changing-lesson-planning",
     title: "How AI Is Changing Lesson Planning for Teachers in 2025",
     excerpt:
