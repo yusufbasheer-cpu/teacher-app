@@ -3,31 +3,37 @@ import { ImageResponse } from "next/og";
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
+// Same stacked-diamond design as icon.tsx, scaled 5.625× for 180×180.
 export default function AppleIcon() {
+  const diamond = (top: number, left: number, color: string) => ({
+    position: "absolute" as const,
+    width: "79px",
+    height: "79px",
+    border: `11px solid ${color}`,
+    borderRadius: "17px",
+    transform: "rotate(45deg)",
+    top: `${top}px`,
+    left: `${left}px`,
+  });
+
   return new ImageResponse(
     (
       <div
         style={{
           width: "100%",
           height: "100%",
-          background: "#00C6A7",
-          borderRadius: "34px",
+          background: "#0A1628",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <span
-          style={{
-            color: "white",
-            fontSize: 120,
-            fontWeight: 900,
-            lineHeight: 1,
-            letterSpacing: "-4px",
-          }}
-        >
-          L
-        </span>
+        {/* Bottom diamond (back, darkest) */}
+        <div style={diamond(84, 39, "#009E85")} />
+        {/* Middle diamond */}
+        <div style={diamond(51, 51, "#00C6A7")} />
+        {/* Top diamond (front, lightest) */}
+        <div style={diamond(22, 62, "#3DDBC8")} />
       </div>
     ),
     { ...size }

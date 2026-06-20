@@ -88,37 +88,55 @@ function makeICO(images) {
   return Buffer.concat([header, ...entries, ...images.map(i => i.png)]);
 }
 
-// ── Pixel function: teal rounded-rect with white "L" ──────────────────────
-// Colors
-const TEAL        = [0, 198, 167, 255]; // #00C6A7
-const WHITE       = [255, 255, 255, 255];
+// ── Pixel function: stacked diamond logo icon ─────────────────────────────
+// Recreates the three stacked teal diamond (rotated rounded-square) shapes
+// from the Layah logo. Uses L1-norm (Manhattan distance) for the diamond shape
+// since a square rotated 45° is exactly an L1 ball.
+//
+// CSS reference (32×32 icon.tsx):
+//   14×14 square, 2px border, rotated 45° → L1 outer-r=7, inner-r=5
+//   Top diamond : center (18,11)  lightest teal
+//   Mid diamond : center (16,16)  standard teal
+//   Bot diamond : center (14,22)  darkest  teal
+
+const NAVY        = [10, 22, 40, 255];   // #0A1628
 const TRANSPARENT = [0, 0, 0, 0];
 
 function layahPixel(x, y, w, h) {
-  const radius = Math.round(w * 0.19);
-  const cx = x + 0.5, cy = y + 0.5;
+  const px = x + 0.5, py = y + 0.5;
 
-  // Rounded-corner clip
-  function inside() {
-    if (cx < radius  && cy < radius)       return Math.hypot(cx - radius,       cy - radius)       < radius;
-    if (cx > w-radius && cy < radius)       return Math.hypot(cx - (w - radius), cy - radius)       < radius;
-    if (cx < radius  && cy > h - radius)    return Math.hypot(cx - radius,       cy - (h - radius)) < radius;
-    if (cx > w-radius && cy > h - radius)   return Math.hypot(cx - (w - radius), cy - (h - radius)) < radius;
+  // Rounded-corner clip (same as before)
+  const radius = Math.round(w * 0.19);
+  function insideRoundedRect() {
+    if (px < radius  && py < radius)       return Math.hypot(px - radius,       py - radius)       < radius;
+    if (px > w-radius && py < radius)       return Math.hypot(px - (w - radius), py - radius)       < radius;
+    if (px < radius  && py > h - radius)    return Math.hypot(px - radius,       py - (h - radius)) < radius;
+    if (px > w-radius && py > h - radius)   return Math.hypot(px - (w - radius), py - (h - radius)) < radius;
     return true;
   }
-  if (!inside()) return TRANSPARENT;
+  if (!insideRoundedRect()) return TRANSPARENT;
 
-  // Map pixel centre to 16-unit grid for the "L" design
-  // Design:
-  //   Vertical bar : grid-x ∈ [3.5, 6),  grid-y ∈ [2, 14)
-  //   Horizontal bar: grid-x ∈ [3.5, 12), grid-y ∈ [11, 14)
-  const gx = cx / w * 16;
-  const gy = cy / h * 16;
+  // Scale all coordinates from 32-unit reference to actual size
+  const s = w / 32;
 
-  const inVertical   = gx >= 3.5 && gx < 6  && gy >= 2  && gy < 14;
-  const inHorizontal = gx >= 3.5 && gx < 12 && gy >= 11 && gy < 14;
+  // Diamonds in front-to-back order (top is frontmost)
+  // r_outer = 7*s (half of 14px square, L1 radius)
+  // r_inner = 5*s (r_outer minus 2px stroke width)
+  const diamonds = [
+    { cx: 18*s, cy: 11*s, ro: 7*s, ri: 5*s, color: [61, 219, 200, 255]  }, // top  #3DDBC8
+    { cx: 16*s, cy: 16*s, ro: 7*s, ri: 5*s, color: [0, 198, 167, 255]   }, // mid  #00C6A7
+    { cx: 14*s, cy: 22*s, ro: 7*s, ri: 5*s, color: [0, 158, 133, 255]   }, // bot  #009E85
+  ];
 
-  return (inVertical || inHorizontal) ? WHITE : TEAL;
+  // For each pixel, find the frontmost diamond that contains it.
+  // If on its edge → diamond color; if inside it → navy bg; outside all → navy bg.
+  for (const d of diamonds) {
+    const dist = Math.abs(px - d.cx) + Math.abs(py - d.cy);
+    if (dist <= d.ro) {
+      return dist >= d.ri ? d.color : NAVY;
+    }
+  }
+  return NAVY;
 }
 
 // ── Generate ───────────────────────────────────────────────────────────────
