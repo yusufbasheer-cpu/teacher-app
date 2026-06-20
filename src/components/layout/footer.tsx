@@ -34,6 +34,7 @@ function XIcon() {
 
 const COMPANY_LINKS = [
   { label: "About Layah", href: "/about" },
+  { label: "Blog", href: "/blog" },
   { label: "Contact Us", href: "/contact" },
   { label: "Privacy Policy", href: "/privacy" },
   { label: "Terms of Service", href: "/terms" },
