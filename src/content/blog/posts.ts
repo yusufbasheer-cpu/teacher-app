@@ -19,6 +19,142 @@ export type BlogPost = {
 
 export const posts: BlogPost[] = [
   {
+    slug: "how-much-time-teachers-spend-lesson-planning",
+    title: "How Much Time Do Teachers Really Spend on Lesson Planning? (And How to Get It Back)",
+    excerpt:
+      "Teachers spend an average of 7–12 hours per week on lesson planning alone. Here's what that time really costs you — and how to reclaim it without sacrificing quality.",
+    author: "Mohammed Yusuf",
+    publishedAt: "2026-06-20",
+    readTime: 5,
+    coverGradient: "linear-gradient(135deg, #0A1628 0%, #0891b2 100%)",
+    content: [
+      {
+        type: "p",
+        text: "Ask any teacher what their Sunday evening looks like and you will probably get the same answer: a laptop open on the kitchen table, a cold cup of tea, and a growing pile of lesson plans that still need finishing before Monday morning. The classroom hours are only part of the job. The planning, the preparation, the differentiation, the assessments — that is where the hidden shift begins.",
+      },
+      {
+        type: "h2",
+        text: "The Numbers Don't Lie",
+      },
+      {
+        type: "p",
+        text: "Research consistently shows that the average teacher works well beyond their contracted hours. In the UK, a 2023 Teacher Wellbeing Index found that teachers worked an average of 47 hours per week — nearly 12 hours more than their paid time. In the UAE, similar patterns emerge, with many teachers reporting that lesson planning and resource creation alone consume between 7 and 12 hours of their personal time each week.",
+      },
+      {
+        type: "ul",
+        items: [
+          "7–12 hours per week on lesson planning and resource creation",
+          "3–5 hours per week on marking and assessment",
+          "2–4 hours per week on admin, emails, and data entry",
+          "Up to 50% of this work happens outside contracted school hours",
+          "Early-career teachers spend significantly more — often double these figures",
+        ],
+      },
+      {
+        type: "p",
+        text: "These are not just numbers on a spreadsheet. They represent evenings taken from families, weekends that never quite feel like weekends, and a quiet erosion of the energy that teachers need to actually show up well for their students.",
+      },
+      {
+        type: "h2",
+        text: "What That Time Is Actually Costing You",
+      },
+      {
+        type: "p",
+        text: "The most obvious cost is personal time — but burnout runs deeper than that. When teachers are spending their evenings and weekends on planning, they arrive in the classroom tired. The creativity, the patience, the ability to read the room and respond to a student who is struggling — all of that requires energy that has already been spent. The irony is that teachers who overplan outside the classroom often underperform inside it, not because they are not talented, but because they are exhausted.",
+      },
+      {
+        type: "quote",
+        text: "We did not go into teaching to spend our lives making PowerPoints. We went into it for the moments when something clicks for a student. But by Friday, I barely have enough left in the tank to notice those moments.",
+      },
+      {
+        type: "p",
+        text: "Beyond burnout, there is a longer-term mental health cost. Teacher anxiety rates are significantly higher than the general population. The constant pressure to produce high-quality resources, hit curriculum standards, differentiate for every learner, and satisfy inspection frameworks — all while managing a classroom of real human beings — is genuinely unsustainable for many educators.",
+      },
+      {
+        type: "h2",
+        text: "Why Lesson Planning Takes So Long",
+      },
+      {
+        type: "p",
+        text: "It is worth being honest about why this takes as long as it does. A properly built lesson plan is not just a list of activities. It requires several distinct thinking tasks that each demand focused attention.",
+      },
+      {
+        type: "ol",
+        items: [
+          "Researching curriculum standards and mapping learning objectives",
+          "Designing a lesson sequence with clear phase transitions",
+          "Choosing and writing AFL (Assessment for Learning) strategies",
+          "Building differentiated tasks for high, mid, and lower-ability students",
+          "Creating a presentation with visual structure and accurate content",
+          "Writing worksheets, question papers, or activity sheets to accompany the lesson",
+          "Cross-referencing school and inspection framework requirements",
+        ],
+      },
+      {
+        type: "p",
+        text: "Done properly, this is two to three hours of work per lesson. For a teacher with five different lessons to plan each week, the mathematics are brutal.",
+      },
+      {
+        type: "h2",
+        text: "The Real Problem Is Not the Hours",
+      },
+      {
+        type: "p",
+        text: "Here is something that rarely gets said clearly: the problem is not that teachers are not working hard enough. The problem is that a significant portion of what teachers do outside the classroom is mechanical work that does not require their professional expertise. Typing out lesson objectives, formatting a PowerPoint, writing the same differentiation scaffolds they have written a hundred times before — none of this needs a qualified, experienced educator. It just needs time. And time is the one thing teachers do not have.",
+      },
+      {
+        type: "h2",
+        text: "How AI Is Changing the Equation",
+      },
+      {
+        type: "p",
+        text: "In the last two years, AI tools have quietly started to change what is possible for educators. Not by replacing the professional judgement that makes a great teacher, but by absorbing the mechanical layer of the job. Generating a first draft of a lesson plan structure, building a differentiated worksheet, producing a slide deck from a topic and learning objective — these are tasks that AI can now do in seconds.",
+      },
+      {
+        type: "p",
+        text: "Globally, schools that are embracing these tools are reporting something interesting: teachers are not becoming lazier. They are becoming more reflective. With the mechanical work handled, teachers spend their preparation time editing, refining, and adding the contextual knowledge that only they have — the specific needs of their class, the running jokes that make a hook land, the student who needs a slightly different scaffold. The quality of planning goes up, not down.",
+      },
+      {
+        type: "h2",
+        text: "Where Layah Fits In",
+      },
+      {
+        type: "p",
+        text: "Layah was built specifically for this gap. It is a platform that generates complete, curriculum-aligned lesson plans — including the PowerPoint presentation, differentiated worksheets, question papers, and AFL activity sheets — from a single topic input. The output takes minutes, not hours, and is structured to meet KHDA and SPEA inspection frameworks for teachers in the UAE.",
+      },
+      {
+        type: "ul",
+        items: [
+          "Complete lesson plans with phase-by-phase structure",
+          "PowerPoint presentations with built-in AFL tool integration",
+          "Differentiated activity sheets for support, core, and extension groups",
+          "Question papers with mark schemes",
+          "31 AFL tool activity sheets ready to print and use",
+        ],
+      },
+      {
+        type: "p",
+        text: "The goal was never to replace the teacher. It was to give the Sunday evening back.",
+      },
+      {
+        type: "h2",
+        text: "A Different Kind of Sunday Evening",
+      },
+      {
+        type: "p",
+        text: "Imagine finishing your lesson planning by 11am on a Sunday. Not because you cut corners — because you used the first two hours to generate solid drafts and spent the next hour making them yours. The rest of the day is yours. The week ahead feels lighter. You walk into Monday with something that teachers rarely get to feel: genuine readiness.",
+      },
+      {
+        type: "p",
+        text: "That is what we are building towards at Layah. Not just a faster way to make resources, but a sustainable way to teach — one where the energy you pour into the job actually makes it back to the classroom, and to the students who need it most.",
+      },
+      {
+        type: "p",
+        text: "If you have never tried Layah, your first lesson plan is free. No credit card, no commitment — just a glimpse of what Sunday evenings could look like when the planning takes care of itself.",
+      },
+    ],
+  },
+  {
     slug: "how-ai-is-changing-lesson-planning",
     title: "How AI Is Changing Lesson Planning for Teachers in 2025",
     excerpt:
