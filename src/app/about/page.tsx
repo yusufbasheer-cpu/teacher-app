@@ -184,6 +184,20 @@ export default function AboutPage() {
               <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
                 A passionate educator who built Layah to solve the planning challenges he faced every day in the classroom.
               </p>
+              <a
+                href="https://www.linkedin.com/company/layah-ai/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium transition hover:opacity-80"
+                style={{ borderColor: "#E2E8F0", color: "#4A5568" }}
+              >
+                <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z" />
+                  <rect x="2" y="9" width="4" height="12" />
+                  <circle cx="4" cy="4" r="2" />
+                </svg>
+                Follow on LinkedIn
+              </a>
             </div>
           </div>
         </Container>

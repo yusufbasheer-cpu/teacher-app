@@ -78,6 +78,11 @@ export default function RootLayout({
       logo: "https://layah.in/Logo.png",
       description:
         "AI-powered lesson planning and teaching resource generation platform for educators",
+      sameAs: [
+        "https://www.instagram.com/layah.teachers",
+        "https://www.linkedin.com/company/layah-ai/",
+        "https://x.com/layah_ai",
+      ],
     },
     {
       "@context": "https://schema.org",
