@@ -136,8 +136,33 @@ export function Footer() {
           <FooterLinkGroup title="Support" links={SUPPORT_LINKS} />
         </div>
 
+        {/* Product Hunt badge */}
         <div
-          className="mt-12 flex flex-col items-center gap-2 border-t pt-6 text-center sm:flex-row sm:justify-between"
+          className="mt-12 flex flex-col items-center gap-3 border-t pt-8"
+          style={{ borderColor: "rgba(255,255,255,0.08)" }}
+        >
+          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>
+            Featured on
+          </p>
+          <a
+            href="https://www.producthunt.com/products/layah?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-layah"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition hover:opacity-80"
+          >
+            <img
+              alt="Layah - AI lesson plans & PPTs — built by a teacher, for teachers | Product Hunt"
+              width="250"
+              height="54"
+              src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1176691&theme=light&t=1782192628393"
+              style={{ width: 250, height: 54 }}
+            />
+          </a>
+        </div>
+
+        {/* Copyright bar */}
+        <div
+          className="mt-6 flex flex-col items-center gap-2 border-t pt-6 text-center sm:flex-row sm:justify-between"
           style={{ borderColor: "rgba(255,255,255,0.08)" }}
         >
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
