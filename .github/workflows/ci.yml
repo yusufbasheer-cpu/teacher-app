@@ -25,6 +25,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test
+        run: npm run test
+
       - name: Build
         # No real secrets in CI — the app is written to degrade gracefully when
         # env vars are missing, so placeholder values are enough to prove the
