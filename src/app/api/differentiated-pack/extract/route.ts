@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createRequire } from "node:module";
 import mammoth from "mammoth";
+import { authenticateRequest } from "@/lib/user-usage-server";
+import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -27,6 +29,15 @@ function sniff(buf: Buffer): "pdf" | "docx" | null {
 }
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const ipLimit = checkRateLimit(`differentiated-pack-extract:ip:${ip}`, 20, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
   let formData: FormData;
   try {
     formData = await req.formData();

@@ -12,6 +12,16 @@ import {
   type QuestionPaperDifficulty,
   type QuestionPaperTimeOption,
 } from "@/lib/question-paper";
+import { authenticateRequest } from "@/lib/user-usage-server";
+import {
+  checkRateLimit,
+  checkSpendingProtection,
+  getClientIp,
+  rateLimitResponse,
+  HOUR_MS,
+  DAY_MS,
+} from "@/lib/rate-limit";
+import { sendEmail } from "@/lib/send-email";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -31,6 +41,30 @@ type BlueprintBody = {
 };
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const ipLimit = checkRateLimit(`question-paper-blueprint:ip:${ip}`, 10, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
+  const userDayLimit = checkRateLimit(`question-paper-blueprint:user:${auth.userId}`, 30, DAY_MS);
+  if (!userDayLimit.ok) return rateLimitResponse(userDayLimit.resetInSeconds);
+
+  const spending = checkSpendingProtection(auth.userId);
+  if (spending.blocked) {
+    if (spending.shouldAlert) {
+      void sendEmail({
+        to: "info@layah.in",
+        subject: "Layah Spending Alert — User Blocked",
+        text: `User ${auth.userId} exceeded 50 API calls in one hour and has been automatically blocked.\n\nEndpoint: /api/question-paper/blueprint\nTime: ${new Date().toISOString()}`,
+      });
+    }
+    return rateLimitResponse(spending.resetInSeconds);
+  }
+
   let body: BlueprintBody;
   try {
     body = (await req.json()) as BlueprintBody;

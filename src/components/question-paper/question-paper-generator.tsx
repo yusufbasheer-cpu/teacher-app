@@ -14,7 +14,7 @@ import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-load
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
 import { UpgradeUsageIndicator } from "@/components/usage/upgrade-usage-indicator";
 import { useUserUsage } from "@/hooks/use-user-usage";
-import { getAuthHeaders } from "@/lib/auth-headers";
+import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
 import {
@@ -176,7 +176,11 @@ export function QuestionPaperGenerator() {
     const fd = new FormData();
     for (const f of Array.from(files)) fd.append("files", f);
     try {
-      const res = await fetch("/api/lesson-plan/extract-upload", { method: "POST", body: fd });
+      const res = await fetch("/api/lesson-plan/extract-upload", {
+        method: "POST",
+        headers: await getAuthOnlyHeaders(),
+        body: fd,
+      });
       const raw = await res.text();
       const parsed = tryParseApiJson<ExtractPayload>(raw, res.status, "question-paper-upload");
       if (!parsed.ok) {
@@ -408,7 +412,7 @@ export function QuestionPaperGenerator() {
 
       const bpRes = await fetch("/api/question-paper/blueprint", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           subject,
           grade,

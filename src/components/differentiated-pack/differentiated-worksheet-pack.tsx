@@ -14,6 +14,7 @@ import { triggerFileDownload } from "@/lib/trigger-file-download";
 import { filterUserFacingNotices } from "@/lib/image-notices";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
+import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 
 function safeFilePart(topic: string) {
   return topic
@@ -132,7 +133,7 @@ export function DifferentiatedWorksheetPack() {
         setLevelProgress((prev) => ({ ...prev, [level]: "loading" }));
         const res = await fetch("/api/differentiated-pack", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: await getAuthHeaders(),
           body: JSON.stringify({
             level,
             topic: topic.trim(),
@@ -223,7 +224,11 @@ export function DifferentiatedWorksheetPack() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/differentiated-pack/extract", { method: "POST", body: fd });
+      const res = await fetch("/api/differentiated-pack/extract", {
+        method: "POST",
+        headers: await getAuthOnlyHeaders(),
+        body: fd,
+      });
       const raw = await res.text();
       console.log("[differentiated-pack extract client] HTTP", res.status, "len", raw.length);
       type ExtractApi = { error?: string; extractedText?: string };
@@ -254,7 +259,7 @@ export function DifferentiatedWorksheetPack() {
     try {
       const res = await fetch("/api/differentiated-pack/infer-meta", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({ rawText: lessonSourceText.trim() }),
       });
       const raw = await res.text();
@@ -307,7 +312,7 @@ export function DifferentiatedWorksheetPack() {
     try {
       const res = await fetch("/api/differentiated-pack/export-docx", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           documentTitle,
           fileBaseName,
@@ -338,7 +343,7 @@ export function DifferentiatedWorksheetPack() {
     try {
       const res = await fetch("/api/differentiated-pack/export-zip", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           subject: subject.trim(),
           grade: grade.trim(),

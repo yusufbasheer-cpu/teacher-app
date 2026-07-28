@@ -3,6 +3,16 @@ import { apiErrorResponse } from "@/lib/api-client-error";
 import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import { looksLikeJsonObject, parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
+import { authenticateRequest } from "@/lib/user-usage-server";
+import {
+  checkRateLimit,
+  checkSpendingProtection,
+  getClientIp,
+  rateLimitResponse,
+  HOUR_MS,
+  DAY_MS,
+} from "@/lib/rate-limit";
+import { sendEmail } from "@/lib/send-email";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,6 +38,30 @@ topic (string), subject (string), grade (string), learningObjectives (string).
 Infer sensible values from headings and body if labels are missing. Use English. Grade examples: "Grade 7", "Year 9".`;
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const ipLimit = checkRateLimit(`infer-meta:ip:${ip}`, 10, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
+  const userDayLimit = checkRateLimit(`infer-meta:user:${auth.userId}`, 30, DAY_MS);
+  if (!userDayLimit.ok) return rateLimitResponse(userDayLimit.resetInSeconds);
+
+  const spending = checkSpendingProtection(auth.userId);
+  if (spending.blocked) {
+    if (spending.shouldAlert) {
+      void sendEmail({
+        to: "info@layah.in",
+        subject: "Layah Spending Alert — User Blocked",
+        text: `User ${auth.userId} exceeded 50 API calls in one hour and has been automatically blocked.\n\nEndpoint: /api/differentiated-pack/infer-meta\nTime: ${new Date().toISOString()}`,
+      });
+    }
+    return rateLimitResponse(spending.resetInSeconds);
+  }
+
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
   if (!apiKey) {
     return apiErrorResponse("Missing DEEPSEEK_API_KEY", 500, "infer-meta");

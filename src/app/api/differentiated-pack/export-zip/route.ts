@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import JSZip from "jszip";
 import { buildDocxBuffer, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import type { DifferentiatedPackContent } from "@/lib/differentiated-pack-markers";
+import { authenticateRequest } from "@/lib/user-usage-server";
+import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -25,6 +27,15 @@ const FILES: { key: keyof DifferentiatedPackContent; title: string; base: string
 ];
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const ipLimit = checkRateLimit(`differentiated-pack-export-zip:ip:${ip}`, 30, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
   let body: Body;
   try {
     body = (await req.json()) as Body;

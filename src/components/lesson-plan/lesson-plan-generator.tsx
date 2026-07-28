@@ -53,7 +53,7 @@ import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson"
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
 import { UpgradeUsageIndicator } from "@/components/usage/upgrade-usage-indicator";
 import { useUserUsage } from "@/hooks/use-user-usage";
-import { getAuthHeaders } from "@/lib/auth-headers";
+import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { filterUserFacingNotices } from "@/lib/image-notices";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
@@ -467,6 +467,7 @@ export function LessonPlanGenerator() {
 
       const res = await fetch("/api/lesson-plan/extract-upload", {
         method: "POST",
+        headers: await getAuthOnlyHeaders(),
         body: fd,
       });
 

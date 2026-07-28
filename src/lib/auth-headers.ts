@@ -16,3 +16,18 @@ export async function getAuthHeaders(
       : {}),
   };
 }
+
+/**
+ * Authorization header only — for FormData uploads, where the browser must
+ * set its own multipart Content-Type (with boundary). Setting Content-Type
+ * manually on a FormData body breaks the upload.
+ */
+export async function getAuthOnlyHeaders(): Promise<HeadersInit> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return session?.access_token
+    ? { Authorization: `Bearer ${session.access_token}` }
+    : {};
+}

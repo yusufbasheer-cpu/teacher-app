@@ -44,9 +44,6 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ ok: boolea
       user: config.user,
       pass: config.pass,
     },
-    tls: {
-      rejectUnauthorized: false,
-    },
   });
 
   try {
