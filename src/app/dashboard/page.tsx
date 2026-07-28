@@ -4,8 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { registerActiveSession } from "@/lib/active-session";
-import { schoolPlanResetDate } from "@/lib/school-plan-reset-date";
-import { isPersonalEmailDomain, SCHOOL_WELCOME_SESSION_KEY } from "@/lib/school-accounts";
+import { SCHOOL_WELCOME_SESSION_KEY } from "@/lib/school-accounts";
 import { supabase } from "@/lib/supabase";
 
 function DashboardContent() {
@@ -43,32 +42,15 @@ function DashboardContent() {
         return;
       }
 
+      // School plan assignment already happened server-side in
+      // /api/auth/callback (via applySchoolPlanForEmail, using the service
+      // role) before redirecting here with ?school_check=1 — this used to
+      // also re-fetch the school and upsert user_usage client-side, which
+      // was both redundant and a direct write to user_usage from the
+      // browser using the public anon key + the user's own JWT. Only the
+      // "show the welcome banner" bookkeeping is still needed here.
       const schoolCheck = params?.get("school_check") === "1";
       if (schoolCheck) {
-        const user = await supabase.auth.getUser();
-        const email = user.data.user?.email;
-        const domain = email?.split("@")[1];
-
-        if (domain && !isPersonalEmailDomain(domain)) {
-          const { data: school } = await supabase
-            .from("school_accounts")
-            .select("*")
-            .eq("email_domain", domain)
-            .maybeSingle();
-
-          if (school && user.data.user?.id) {
-            await supabase.from("user_usage").upsert(
-              {
-                user_id: user.data.user.id,
-                plan_type: school.plan_type,
-                generations_limit: -1,
-                reset_date: schoolPlanResetDate(),
-              },
-              { onConflict: "user_id" },
-            );
-          }
-        }
-
         const welcome = params?.get("school_welcome");
         if (welcome) {
           try {

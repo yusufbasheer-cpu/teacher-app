@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { processSchoolEnrollment } from "@/lib/school-enrollment-server";
 import { normalizeEmailDomain } from "@/lib/school-accounts";
-import { schoolPlanResetDate } from "@/lib/school-plan-reset-date";
 
 export type ApplySchoolPlanResult = {
   matched: boolean;
@@ -47,34 +46,6 @@ export async function findSchoolByEmailDomain(
   }
 
   return school as SchoolRow;
-}
-
-/**
- * Upsert school plan on user_usage (authenticated client or service role).
- */
-export async function upsertSchoolUserUsage(
-  supabase: SupabaseClient,
-  userId: string,
-  school: SchoolRow,
-): Promise<boolean> {
-  const { error: usageError } = await supabase.from("user_usage").upsert(
-    {
-      user_id: userId,
-      plan_type: school.plan_type,
-      generations_limit: -1,
-      generations_used: 0,
-      reset_date: schoolPlanResetDate(),
-    },
-    { onConflict: "user_id" },
-  );
-
-  if (usageError) {
-    console.error("[auth/callback] user_usage upsert error:", usageError.message, usageError.code);
-    return false;
-  }
-
-  console.log("School plan applied successfully");
-  return true;
 }
 
 /**

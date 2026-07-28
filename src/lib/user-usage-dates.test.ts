@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { firstDayOfNextMonthUtc, needsMonthlyReset, todayUtcDateString } from "./user-usage";
-import { schoolPlanResetDate } from "./school-plan-reset-date";
 
 describe("test environment sanity", () => {
   it("runs in a non-UTC zone so local-time date bugs actually surface", () => {
@@ -61,28 +60,5 @@ describe("todayUtcDateString / needsMonthlyReset — UTC boundary, not local tim
   it("needsMonthlyReset stays true well past the boundary (dormant user)", () => {
     vi.setSystemTime(new Date("2026-08-05T12:00:00Z"));
     expect(needsMonthlyReset("2026-08-01")).toBe(true);
-  });
-});
-
-describe("schoolPlanResetDate — the known-divergent local-time duplicate", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("DISAGREES with firstDayOfNextMonthUtc at the Dubai month boundary — this is the bug", () => {
-    // At 2026-07-31T21:00:00Z (= Aug 1, 01:00 in Dubai), the UTC-correct
-    // reset anchor is still "2026-08-01" (one month from *today*, July).
-    // schoolPlanResetDate() uses new Date().getMonth() in LOCAL time, which
-    // on a Dubai server is already August, so it anchors to September 1st
-    // instead — a full extra month of "free" usage for school-plan users.
-    // This test documents the drift; Phase 2 deletes the buggy function.
-    vi.setSystemTime(new Date("2026-07-31T21:00:00Z"));
-    const correct = firstDayOfNextMonthUtc(new Date());
-    const buggy = schoolPlanResetDate();
-    expect(correct).toBe("2026-08-01");
-    expect(buggy).not.toBe(correct);
   });
 });

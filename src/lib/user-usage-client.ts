@@ -1,72 +1,53 @@
 import { supabase } from "@/lib/supabase";
-import {
-  DEFAULT_FREE_USAGE_INSERT,
-  firstDayOfNextMonthUtc,
-  logUsageSnapshot,
-  toUsageSnapshot,
-} from "@/lib/user-usage";
+import { logUsageSnapshot, normalizeUsageRow, toUsageSnapshot, type UserUsageRow } from "@/lib/user-usage";
 
-/** Client-side: create user_usage on first login/signup if missing (uses user session + RLS). */
-export async function ensureUserUsageOnClient(userId: string): Promise<void> {
-  const { data: existing, error: readError } = await supabase
-    .from("user_usage")
-    .select("id, user_id, generations_used, generations_limit, plan_type, reset_date")
-    .eq("user_id", userId)
-    .maybeSingle();
+type EnsureUsageRpcPayload = {
+  outcome: string;
+  user_id: string;
+  plan_type: string;
+  generations_used: number;
+  generations_limit: number;
+  reset_date: string;
+  created_at: string;
+};
 
-  if (readError) {
-    console.warn("[user-usage] client read failed:", {
-      message: readError.message,
-      code: readError.code,
-      details: readError.details,
-      hint: readError.hint,
+/**
+ * Client-side: create user_usage on first login/signup if missing, via the
+ * ensure_user_usage() security-definer RPC (see
+ * supabase/migrations/20260728120000_usage_gate_functions.sql). Creation and
+ * the monthly reset both happen atomically inside the RPC under a row lock —
+ * this used to do a raw select-then-insert directly against the table, which
+ * only worked because `authenticated` had a direct INSERT grant on
+ * user_usage. That grant is what let any logged-in user PATCH their own
+ * plan_type via the public anon key, so it was revoked (see
+ * supabase/migrations/20260728123000_user_usage_lockdown.sql); this RPC is
+ * the only way to create a row now.
+ */
+export async function ensureUserUsageOnClient(): Promise<void> {
+  const { data, error } = await supabase.rpc("ensure_user_usage");
+
+  if (error) {
+    console.warn("[user-usage] client ensure_user_usage RPC failed:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
     });
     return;
   }
 
-  if (existing) {
-    const snapshot = toUsageSnapshot({
-      user_id: userId,
-      plan_type: existing.plan_type as "free",
-      generations_used: existing.generations_used,
-      generations_limit: existing.generations_limit,
-      reset_date: existing.reset_date,
-      created_at: "",
-    });
-    logUsageSnapshot("ensureUserUsageOnClient (existing)", snapshot);
-    return;
-  }
+  const payload = (Array.isArray(data) ? data[0] : data) as EnsureUsageRpcPayload | null;
+  if (!payload) return;
 
-  const resetDate = firstDayOfNextMonthUtc();
-  const { data: inserted, error: insertError } = await supabase
-    .from("user_usage")
-    .insert({
-      user_id: userId,
-      plan_type: DEFAULT_FREE_USAGE_INSERT.plan_type,
-      generations_used: DEFAULT_FREE_USAGE_INSERT.generations_used,
-      generations_limit: DEFAULT_FREE_USAGE_INSERT.generations_limit,
-      reset_date: resetDate,
-    })
-    .select("generations_used, generations_limit, plan_type, reset_date")
-    .single();
+  const row: UserUsageRow = {
+    user_id: payload.user_id,
+    plan_type: payload.plan_type as UserUsageRow["plan_type"],
+    generations_used: payload.generations_used,
+    generations_limit: payload.generations_limit,
+    reset_date: payload.reset_date,
+    created_at: payload.created_at,
+  };
 
-  if (insertError) {
-    console.warn("[user-usage] client insert failed:", {
-      message: insertError.message,
-      code: insertError.code,
-      details: insertError.details,
-      hint: insertError.hint,
-    });
-    return;
-  }
-
-  const snapshot = toUsageSnapshot({
-    user_id: userId,
-    plan_type: inserted.plan_type as "free",
-    generations_used: inserted.generations_used,
-    generations_limit: inserted.generations_limit,
-    reset_date: inserted.reset_date,
-    created_at: "",
-  });
-  logUsageSnapshot("ensureUserUsageOnClient (created)", snapshot);
+  const snapshot = toUsageSnapshot(normalizeUsageRow(row));
+  logUsageSnapshot(`ensureUserUsageOnClient (${payload.outcome})`, snapshot);
 }

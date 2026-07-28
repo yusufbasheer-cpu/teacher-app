@@ -34,14 +34,14 @@ export async function completeGooglePostAuthLogin(
     return { ok: true };
   }
 
-  await ensureUserUsageOnClient(userId);
+  await ensureUserUsageOnClient();
   return { ok: true };
 }
 
 /** Email/password: no school enrollment — individual accounts only. */
 export async function completeEmailPostAuthLogin(userId: string): Promise<PostAuthLoginResult> {
   await registerSession(userId);
-  await ensureUserUsageOnClient(userId);
+  await ensureUserUsageOnClient();
   fetch("/api/welcome-email", { method: "POST" }).catch(() => {});
   return { ok: true };
 }
