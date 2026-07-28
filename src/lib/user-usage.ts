@@ -1,10 +1,7 @@
-export type PlanType =
-  | "free"
-  | "pro"
-  | "pro_plus"
-  | "school_starter"
-  | "school_pro"
-  | "school_enterprise";
+import { isPlanId, PLANS, type PlanId } from "@/lib/plans";
+
+/** @deprecated import PlanId from "@/lib/plans" directly in new code. Kept as an alias so existing imports of PlanType keep working unchanged. */
+export type PlanType = PlanId;
 
 export type UserUsageRow = {
   id?: string;
@@ -21,7 +18,7 @@ export function defaultFreeUsageSnapshot(): UserUsageSnapshot {
   return {
     planType: "free",
     generationsUsed: 0,
-    generationsLimit: 15,
+    generationsLimit: PLANS.free.generationsLimit ?? 15,
     unlimited: false,
     canGenerate: true,
     resetDate: firstDayOfNextMonthUtc(),
@@ -39,39 +36,21 @@ export type UserUsageSnapshot = {
 
 export const GENERATION_LIMIT_ERROR_CODE = "GENERATION_LIMIT_REACHED";
 
-const SCHOOL_PLANS: PlanType[] = ["school_starter", "school_pro", "school_enterprise"];
-
 export function isPlanType(value: string): value is PlanType {
-  return [
-    "free",
-    "pro",
-    "pro_plus",
-    "school_starter",
-    "school_pro",
-    "school_enterprise",
-  ].includes(value);
+  return isPlanId(value);
 }
 
 export function getGenerationsLimitForPlan(plan: PlanType): number | null {
-  switch (plan) {
-    case "free":
-      return 15;
-    case "pro":
-      return 30;
-    case "pro_plus":
-      return 60;
-    default:
-      return null;
-  }
+  return PLANS[plan].generationsLimit;
 }
 
 export function isUnlimitedPlan(plan: PlanType): boolean {
-  return SCHOOL_PLANS.includes(plan) || getGenerationsLimitForPlan(plan) === null;
+  return PLANS[plan].unlimited;
 }
 
 /** Pro Plus and all school plans (unlimited generations + full product tier). */
 export function hasProPlusAccess(plan: PlanType): boolean {
-  return plan === "pro_plus" || SCHOOL_PLANS.includes(plan);
+  return PLANS[plan].proPlusFeatures;
 }
 
 function formatYmd(date: Date): string {
@@ -166,13 +145,13 @@ export function getUpgradePitch(plan: PlanType): { headline: string; subline: st
   if (plan === "free") {
     return {
       headline: "You have used all your generations for this month.",
-      subline: "Upgrade to Pro for 30 generations per month for just 15 AED.",
+      subline: `Upgrade to Pro for ${PLANS.pro.generationsLimit} generations per month for just 15 AED.`,
     };
   }
   if (plan === "pro") {
     return {
       headline: "You have used all your Pro generations for this month.",
-      subline: "Upgrade to Pro Plus for 60 generations per month for just 25 AED.",
+      subline: `Upgrade to Pro Plus for ${PLANS.pro_plus.generationsLimit} generations per month for just 25 AED.`,
     };
   }
   return {
@@ -190,5 +169,5 @@ export function formatLimitMessage(used: number, limit: number | null, unlimited
 export const DEFAULT_FREE_USAGE_INSERT = {
   plan_type: "free" as const,
   generations_used: 0,
-  generations_limit: 15,
+  generations_limit: PLANS.free.generationsLimit ?? 15,
 };

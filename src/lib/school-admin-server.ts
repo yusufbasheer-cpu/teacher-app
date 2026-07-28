@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { isSchoolPlanType, type SchoolAccountRow } from "@/lib/school-accounts";
 import { firstDayOfNextMonthUtc } from "@/lib/user-usage";
+import { PLANS } from "@/lib/plans";
 
 export type SchoolAdminTeacher = {
   userId: string;
@@ -335,7 +336,7 @@ export async function removeTeacherFromSchool(
     .from("user_usage")
     .update({
       plan_type: "free",
-      generations_limit: 15,
+      generations_limit: PLANS.free.generationsLimit ?? 15,
       reset_date: resetDate,
     })
     .eq("user_id", teacherUserId);

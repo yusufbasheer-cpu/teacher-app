@@ -1,4 +1,5 @@
 import type { PlanType } from "@/lib/user-usage";
+import { PLANS } from "@/lib/plans";
 
 export type SchoolPlanType = Extract<
   PlanType,
@@ -75,11 +76,11 @@ export function isSchoolPlanType(value: string): value is SchoolPlanType {
 }
 
 /** Unlimited generations for all school plans. */
-export function schoolPlanGenerationsLimit(_plan: SchoolPlanType): number {
-  return -1;
+export function schoolPlanGenerationsLimit(plan: SchoolPlanType): number {
+  return PLANS[plan].generationsLimit ?? -1;
 }
 
 /** School teachers receive the same product access as Pro Plus subscribers. */
-export function schoolPlanHasProPlusFeatures(_plan: SchoolPlanType): boolean {
-  return true;
+export function schoolPlanHasProPlusFeatures(plan: SchoolPlanType): boolean {
+  return PLANS[plan].proPlusFeatures;
 }

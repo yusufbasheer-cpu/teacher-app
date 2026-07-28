@@ -13,6 +13,7 @@ import {
   type SchoolPlanType,
 } from "@/lib/school-accounts";
 import { firstDayOfNextMonthUtc } from "@/lib/user-usage";
+import { PLANS } from "@/lib/plans";
 
 export type SchoolEnrollmentResult =
   | {
@@ -280,7 +281,7 @@ async function ensureIndividualUsage(admin: SupabaseClient, userId: string): Pro
     user_id: userId,
     plan_type: "free",
     generations_used: 0,
-    generations_limit: 15,
+    generations_limit: PLANS.free.generationsLimit ?? 15,
     reset_date: resetDate,
   });
 

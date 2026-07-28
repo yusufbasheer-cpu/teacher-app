@@ -4,14 +4,9 @@ import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { isSuperAdmin } from "@/lib/super-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 import { logAdminAction } from "@/lib/audit-log";
+import { planIdByAdminLabel } from "@/lib/plans";
 
 export const runtime = "nodejs";
-
-const PLAN_MAP: Record<string, string> = {
-  "School Starter": "school_starter",
-  "School Pro": "school_pro",
-  "School Enterprise": "school_enterprise",
-};
 
 const TEACHER_MAP: Record<string, number> = {
   "Up to 10": 10,
@@ -46,7 +41,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Registration not found" }, { status: 404 });
   }
 
-  const planType = PLAN_MAP[reg.plan_selected] ?? "school_starter";
+  const planType = planIdByAdminLabel(reg.plan_selected) ?? "school_starter";
   const maxTeachers = TEACHER_MAP[reg.num_teachers] ?? 10;
 
   const { error: insertError } = await admin.from("school_accounts").insert({

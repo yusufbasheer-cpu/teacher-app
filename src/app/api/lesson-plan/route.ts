@@ -4,6 +4,7 @@ import {
   authenticateRequest,
   recordSuccessfulGeneration,
 } from "@/lib/user-usage-server";
+import { getUpgradePitch } from "@/lib/user-usage";
 import {
   checkRateLimit,
   checkSpendingProtection,
@@ -703,10 +704,7 @@ export async function POST(req: Request) {
         usage: gate.usage,
         upgradePitch: {
           headline: gate.message,
-          subline:
-            gate.usage.planType === "free"
-              ? "Upgrade to Pro for 30 generations per month for just 15 AED."
-              : "Upgrade your plan for more generations this month.",
+          subline: getUpgradePitch(gate.usage.planType).subline,
         },
       },
       { status: gate.status },

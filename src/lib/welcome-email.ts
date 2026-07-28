@@ -1,5 +1,7 @@
 import { sendEmail } from "@/lib/send-email";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
+import { firstDayOfNextMonthUtc } from "@/lib/user-usage";
+import { PLANS } from "@/lib/plans";
 
 const LAYAH_URL = "https://layah.in";
 
@@ -61,7 +63,7 @@ function buildWelcomeHtml(name: string): string {
       <div style="border:1px solid #E2E8F0;border-radius:12px;padding:20px;margin-bottom:24px;">
         <p style="color:#0A1628;font-size:14px;font-weight:700;margin:0 0 8px;">Your Free Plan</p>
         <p style="color:#4A5568;font-size:14px;line-height:1.5;margin:0;">
-          You have <strong style="color:#00C6A7;">15 free generations</strong> this month. Each generation creates a complete lesson plan with PPT, worksheets, and more.
+          You have <strong style="color:#00C6A7;">${PLANS.free.generationsLimit} free generations</strong> this month. Each generation creates a complete lesson plan with PPT, worksheets, and more.
         </p>
       </div>
 
@@ -69,7 +71,7 @@ function buildWelcomeHtml(name: string): string {
       <div style="background:linear-gradient(135deg,#0A1628,#0e2647);border-radius:12px;padding:20px;text-align:center;">
         <p style="color:#ffffff;font-size:14px;font-weight:700;margin:0 0 8px;">Want unlimited access?</p>
         <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0 0 16px;">
-          Upgrade to Pro for just <strong style="color:#00C6A7;">15 AED/month</strong> — get 30 generations, all themes, and priority support.
+          Upgrade to Pro for just <strong style="color:#00C6A7;">15 AED/month</strong> — get ${PLANS.pro.generationsLimit} generations, all themes, and priority support.
         </p>
         <a href="${LAYAH_URL}/pricing" style="display:inline-block;border:1px solid #00C6A7;color:#00C6A7;font-size:13px;font-weight:600;text-decoration:none;padding:10px 28px;border-radius:8px;">
           View Plans
@@ -136,8 +138,11 @@ export async function sendWelcomeEmailIfNew(
           user_id: userId,
           plan_type: "free",
           generations_used: 0,
-          generations_limit: 15,
-          reset_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
+          generations_limit: PLANS.free.generationsLimit ?? 15,
+          // UTC-anchored, not local time — a local-time computation here
+          // previously drifted by a month for a UTC+4 (Dubai) server around
+          // the month boundary. See firstDayOfNextMonthUtc's own tests.
+          reset_date: firstDayOfNextMonthUtc(),
           welcome_email_sent: false,
         },
         { onConflict: "user_id" },
@@ -166,7 +171,7 @@ export async function sendWelcomeEmailIfNew(
         "",
         `Start creating now: ${LAYAH_URL}/lesson-plan`,
         "",
-        "Your free plan: 15 generations this month.",
+        `Your free plan: ${PLANS.free.generationsLimit} generations this month.`,
         "Want unlimited access? Upgrade to Pro for just 15 AED/month.",
         "",
         `View plans: ${LAYAH_URL}/pricing`,

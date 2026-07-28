@@ -1,5 +1,7 @@
 /** Geo-based pricing regions for /pricing */
 
+import { PLAN_IDS, PLANS, type PlanDefinition, type PlanId } from "@/lib/plans";
+
 export type PricingRegionId =
   | "gcc"
   | "india"
@@ -19,12 +21,8 @@ export type PricingRegionId =
   | "singapore"
   | "myanmar";
 
-export type PaidPlanKey =
-  | "pro"
-  | "proPlus"
-  | "schoolStarter"
-  | "schoolPro"
-  | "schoolEnterprise";
+/** Derived from plans.ts — the set of non-null PlanDefinition.priceKey values. */
+export type PaidPlanKey = NonNullable<PlanDefinition["priceKey"]>;
 
 export type PlanPricePair = { monthly: number; annual: number };
 
@@ -456,13 +454,8 @@ export function formatRegionalPrice(
   }
 }
 
-export function getPlanPriceKey(planId: string): PaidPlanKey | null {
-  const map: Record<string, PaidPlanKey> = {
-    pro: "pro",
-    "pro-plus": "proPlus",
-    "school-starter": "schoolStarter",
-    "school-pro": "schoolPro",
-    "school-enterprise": "schoolEnterprise",
-  };
-  return map[planId] ?? null;
+/** Resolves a /pricing slug (e.g. "pro-plus") to its PRICING_REGIONS price key, via plans.ts. */
+export function getPlanPriceKey(planSlug: string): PaidPlanKey | null {
+  const id = PLAN_IDS.find((planId: PlanId) => PLANS[planId].slug === planSlug);
+  return id ? PLANS[id].priceKey : null;
 }
