@@ -4,9 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Footer } from "@/components/layout/footer";
-
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { SectionLabel } from "@/components/marketing/section-label";
 
 type FaqItem = { q: string; a: string };
 type FaqCategory = { title: string; items: FaqItem[] };
@@ -76,8 +76,7 @@ const FAQ_DATA: FaqCategory[] = [
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
-      className="size-5 shrink-0 transition-transform duration-300"
-      style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", color: open ? TEAL : "#94A3B8" }}
+      className={`size-5 shrink-0 transition-transform duration-300 ${open ? "rotate-180 text-primary" : "text-muted-foreground"}`}
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -90,24 +89,20 @@ function ChevronIcon({ open }: { open: boolean }) {
 
 function AccordionItem({ item, isOpen, onToggle }: { item: FaqItem; isOpen: boolean; onToggle: () => void }) {
   return (
-    <div className="border-b" style={{ borderColor: "#E2E8F0" }}>
+    <div className="border-b border-border">
       <button
         type="button"
         onClick={onToggle}
         className="flex w-full items-center justify-between gap-4 py-5 text-left"
       >
-        <span className="text-sm font-semibold sm:text-base" style={{ color: NAVY }}>
-          {item.q}
-        </span>
+        <span className="text-sm font-semibold text-navy sm:text-base">{item.q}</span>
         <ChevronIcon open={isOpen} />
       </button>
       <div
         className="overflow-hidden transition-all duration-300"
         style={{ maxHeight: isOpen ? 300 : 0, opacity: isOpen ? 1 : 0 }}
       >
-        <p className="pb-5 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
-          {item.a}
-        </p>
+        <p className="pb-5 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
       </div>
     </div>
   );
@@ -127,34 +122,35 @@ export default function FaqPage() {
   })).filter((cat) => cat.items.length > 0);
 
   return (
-    <div className="min-h-screen" style={{ background: "#F7F9FC", color: NAVY }}>
+    <div className="site-editorial min-h-screen bg-background text-foreground">
       {/* Hero */}
-      <section className="relative overflow-hidden py-20 sm:py-28" style={{ background: NAVY }}>
-        <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 50% 50%, ${TEAL}33, transparent 60%)` }} />
+      <section className="bg-navy py-20 sm:py-28">
         <Container>
-          <div className="relative mx-auto max-w-3xl text-center">
-            <p className="mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider" style={{ background: "rgba(0,198,167,0.15)", color: TEAL }}>
-              Help Center
-            </p>
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-5xl" style={{ fontWeight: 700 }}>
-              Frequently Asked Questions
+          <div className="mx-auto max-w-3xl text-center">
+            <SectionLabel className="justify-center flex">Help center</SectionLabel>
+            <h1 className="font-display mt-4 text-3xl font-semibold tracking-tight text-chalk sm:text-5xl">
+              Frequently asked questions
             </h1>
-            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/60">
+            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-chalk/65">
               Everything you need to know about Layah. Can&apos;t find the answer you&apos;re looking for? Reach out to our support team.
             </p>
 
-            {/* Search */}
             <div className="relative mx-auto mt-8 max-w-md">
-              <svg className="absolute left-4 top-1/2 size-5 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.4)" strokeWidth="2">
+              <svg
+                className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-chalk/40"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
               </svg>
-              <input
+              <Input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search questions..."
-                className="w-full rounded-xl border py-3 pl-12 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:ring-2"
-                style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.12)" }}
+                className="h-12 border-chalk/15 bg-chalk/8 pl-12 text-chalk placeholder:text-chalk/40"
               />
             </div>
           </div>
@@ -167,26 +163,19 @@ export default function FaqPage() {
           <div className="mx-auto max-w-3xl">
             {filtered.length === 0 ? (
               <div className="py-12 text-center">
-                <p className="text-lg font-semibold" style={{ color: NAVY }}>No results found</p>
-                <p className="mt-2 text-sm" style={{ color: "#4A5568" }}>
+                <p className="text-lg font-semibold text-navy">No results found</p>
+                <p className="mt-2 text-sm text-muted-foreground">
                   Try a different search term or browse all questions below.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="mt-4 rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-                  style={{ background: TEAL }}
-                >
-                  Clear Search
-                </button>
+                <Button className="mt-4 rounded-lg" onClick={() => setSearch("")}>
+                  Clear search
+                </Button>
               </div>
             ) : (
               filtered.map((category) => (
                 <div key={category.title} className="mb-10">
-                  <h2 className="mb-1 text-lg font-bold sm:text-xl" style={{ color: NAVY }}>
-                    {category.title}
-                  </h2>
-                  <div className="mb-4 h-0.5 w-12 rounded-full" style={{ background: TEAL }} />
+                  <h2 className="mb-1 text-lg font-bold text-navy sm:text-xl">{category.title}</h2>
+                  <div className="mb-4 h-0.5 w-12 rounded-full bg-primary" />
                   {category.items.map((item) => {
                     const key = `${category.title}-${item.q}`;
                     return (
@@ -206,24 +195,24 @@ export default function FaqPage() {
       </section>
 
       {/* Still have questions */}
-      <section className="py-16 sm:py-20" style={{ background: `linear-gradient(135deg, ${TEAL}, #0A8F7A)` }}>
+      <section className="border-t border-border bg-navy py-16 sm:py-20">
         <Container>
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl font-bold text-white sm:text-3xl">Still have questions?</h2>
-            <p className="mt-4 text-base text-white/80">
+            <h2 className="font-display text-2xl font-semibold text-chalk sm:text-3xl">Still have questions?</h2>
+            <p className="mt-4 text-base text-chalk/70">
               Our team is here to help. Reach out and we&apos;ll get back to you within 24 hours.
             </p>
             <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-              <Link
-                href="/contact"
-                className="inline-flex min-h-12 items-center justify-center rounded-lg bg-white px-8 py-3 text-sm font-semibold shadow-lg transition hover:bg-slate-50"
-                style={{ color: "#0A8F7A" }}
-              >
-                Contact Us
+              <Link href="/contact" className={buttonVariants({ size: "lg", className: "h-11 rounded-lg px-8" })}>
+                Contact us
               </Link>
               <a
                 href="mailto:info@layah.in"
-                className="inline-flex min-h-12 items-center justify-center rounded-lg border border-white/30 px-8 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                className={buttonVariants({
+                  variant: "outline",
+                  size: "lg",
+                  className: "h-11 rounded-lg border-chalk/25 bg-transparent px-8 text-chalk hover:bg-chalk/10 hover:text-chalk",
+                })}
               >
                 info@layah.in
               </a>

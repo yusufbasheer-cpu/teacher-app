@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Caveat, Plus_Jakarta_Sans, Poppins } from "next/font/google";
-import { AppEffects } from "@/components/effects/app-effects";
+import { Caveat, IBM_Plex_Mono, Plus_Jakarta_Sans, Poppins, Space_Grotesk } from "next/font/google";
 import { SoundProvider } from "@/components/effects/sound-provider";
 import { ActiveSessionGuard } from "@/components/auth/active-session-guard";
 import { CookieBanner } from "@/components/layout/cookie-banner";
@@ -26,6 +25,22 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "600", "700"],
   variable: "--font-poppins",
+});
+
+// Marketing-pages-only typography (see docs/architecture.md §6 — no nested
+// layout.tsx exists, so fonts load globally here but are only applied via
+// font-display/font-mono-editorial classes on the /landing, /about, /pricing,
+// /faq, /blog routes).
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-space-grotesk",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["500"],
+  variable: "--font-plex-mono",
 });
 
 export const metadata: Metadata = {
@@ -118,13 +133,12 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${plusJakartaSans.variable} ${caveat.variable} ${poppins.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
+        className={`${plusJakartaSans.variable} ${caveat.variable} ${poppins.variable} ${spaceGrotesk.variable} ${plexMono.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
         style={{ color: "#0A1628" }}
       >
         <SentryProvider />
         <PostHogProvider>
           <SoundProvider>
-            <AppEffects />
             <NavbarWrapper />
             <ActiveSessionGuard>
               <PageTransitionWrapper>{children}</PageTransitionWrapper>

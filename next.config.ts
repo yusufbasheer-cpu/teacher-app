@@ -21,6 +21,9 @@ const CSP = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["pdf-parse", "tesseract.js", "@fal-ai/client"],
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
+  },
   async headers() {
     return [
       {

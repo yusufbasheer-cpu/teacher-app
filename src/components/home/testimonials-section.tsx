@@ -2,10 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Container } from "@/components/ui/container";
-
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
-const GOLD = "#F59E0B";
+import { Card, CardContent } from "@/components/ui/card";
+import { SectionLabel } from "@/components/marketing/section-label";
 
 type Testimonial = {
   name: string;
@@ -14,8 +12,6 @@ type Testimonial = {
   rating: number;
   initials: string;
 };
-
-const ACCENT_COLORS = ["#00C6A7", "#F59E0B", "#8B5CF6", "#EC4899"];
 
 const TESTIMONIALS: Testimonial[] = [
   {
@@ -54,9 +50,9 @@ const TESTIMONIALS: Testimonial[] = [
 
 function Stars({ count }: { count: number }) {
   return (
-    <div className="flex gap-0.5">
+    <div className="flex gap-0.5 text-primary">
       {Array.from({ length: count }).map((_, i) => (
-        <svg key={i} className="size-4" viewBox="0 0 20 20" fill={GOLD}>
+        <svg key={i} className="size-4" viewBox="0 0 20 20" fill="currentColor">
           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
         </svg>
       ))}
@@ -64,41 +60,31 @@ function Stars({ count }: { count: number }) {
   );
 }
 
-function TestimonialCard({ testimonial, visible, accentColor }: { testimonial: Testimonial; visible: boolean; accentColor: string }) {
+function TestimonialCard({ testimonial, visible }: { testimonial: Testimonial; visible: boolean }) {
   return (
-    <div
-      className="flex flex-col rounded-2xl bg-white p-6 shadow-sm transition-all duration-700 hover:shadow-lg hover:-translate-y-0.5"
+    <Card
+      className="border-border shadow-none transition-all duration-700 hover:shadow-md"
       style={{
-        borderLeft: `4px solid ${accentColor}`,
-        border: `1px solid #E5E7EB`,
-        borderLeftWidth: "4px",
-        borderLeftColor: accentColor,
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(24px)",
-        boxShadow: visible ? "0 2px 16px rgba(0,0,0,0.06)" : "none",
+        transform: visible ? "translateY(0)" : "translateY(20px)",
       }}
     >
-      <Stars count={testimonial.rating} />
-      <p className="mt-4 flex-1 text-sm leading-relaxed" style={{ color: "#374151" }}>
-        &ldquo;{testimonial.review}&rdquo;
-      </p>
-      <div className="mt-5 flex items-center gap-3">
-        <div
-          className="flex size-11 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white"
-          style={{ background: `linear-gradient(135deg, ${NAVY}, ${TEAL})` }}
-        >
-          {testimonial.initials}
+      <CardContent className="flex flex-1 flex-col">
+        <Stars count={testimonial.rating} />
+        <p className="mt-4 flex-1 text-sm leading-relaxed text-foreground/80">
+          &ldquo;{testimonial.review}&rdquo;
+        </p>
+        <div className="mt-5 flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-navy font-mono-editorial text-xs font-medium text-chalk">
+            {testimonial.initials}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-navy">{testimonial.name}</p>
+            <p className="text-xs text-muted-foreground">{testimonial.title}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-bold" style={{ color: NAVY }}>
-            {testimonial.name}
-          </p>
-          <p className="text-xs font-medium" style={{ color: "#9CA3AF" }}>
-            {testimonial.title}
-          </p>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -125,26 +111,21 @@ export function TestimonialsSection() {
   }, []);
 
   return (
-    <section ref={ref} className="py-16 sm:py-20" style={{ background: "#F9FAFB" }}>
+    <section ref={ref} className="border-t border-border py-16 sm:py-20">
       <Container>
         <div className="mx-auto mb-12 max-w-2xl text-center">
-          <p
-            className="mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider"
-            style={{ background: "rgba(0,198,167,0.12)", color: TEAL }}
-          >
-            Testimonials
-          </p>
-          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl" style={{ color: NAVY }}>
-            Teachers love Layah ❤️
+          <SectionLabel className="justify-center flex">Testimonials</SectionLabel>
+          <h2 className="font-display mt-3 text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
+            Teachers on Layah
           </h2>
-          <p className="mt-3 text-sm sm:text-base leading-relaxed" style={{ color: "#374151" }}>
-            Join thousands of teachers saving hours every week
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Join thousands of teachers saving hours every week.
           </p>
         </div>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {TESTIMONIALS.map((t, i) => (
             <div key={t.name} style={{ transitionDelay: `${i * 120}ms` }}>
-              <TestimonialCard testimonial={t} visible={visible} accentColor={ACCENT_COLORS[i % ACCENT_COLORS.length]} />
+              <TestimonialCard testimonial={t} visible={visible} />
             </div>
           ))}
         </div>

@@ -19,8 +19,22 @@ yarn-error.log*
 pnpm-debug.log*
 
 # local env files
-.env*.local
+.env*
+!.env.example
+
+# accidental secret-copy artifacts (seen in the wild, easy to miss)
+env.download
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# playwright mcp artifacts
+.playwright-mcp/
+
+# personal notes, not part of the shipped app
+obsidian-vault/
+
+# Tesseract OCR model — not read from a local langPath in code (tesseract.js
+# fetches its own copy at runtime); keeping it out of git saves 5MB+ per clone
+eng.traineddata

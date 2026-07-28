@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Footer } from "@/components/layout/footer";
+import { Card } from "@/components/ui/card";
+import { SectionLabel } from "@/components/marketing/section-label";
 import { posts, formatDate } from "@/content/blog/posts";
 
 export const metadata: Metadata = {
@@ -9,9 +11,6 @@ export const metadata: Metadata = {
   description:
     "Practical articles for teachers on lesson planning, AI tools, KHDA frameworks, and saving time in the classroom. Written by educators, for educators.",
 };
-
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
 
 function ClockIcon() {
   return (
@@ -39,58 +38,34 @@ export default function BlogPage() {
   );
 
   return (
-    <>
-      <main style={{ background: "#F9FAFB", minHeight: "100vh" }}>
-        {/* Header */}
-        <div style={{ background: NAVY }} className="pb-16 pt-20">
-          <Container>
-            <p
-              className="mb-4 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold"
-              style={{ borderColor: TEAL, color: TEAL, background: "rgba(0,198,167,0.1)" }}
-            >
-              Layah Blog
-            </p>
-            <h1
-              className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl"
-            >
-              Teaching tips &amp; AI resources
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
-              Practical articles for educators on lesson planning, AI tools, KHDA frameworks, and reclaiming your time.
-            </p>
-          </Container>
-        </div>
+    <div className="site-editorial min-h-screen bg-background text-foreground">
+      {/* Header */}
+      <div className="bg-navy pb-16 pt-20">
+        <Container>
+          <SectionLabel>Layah blog</SectionLabel>
+          <h1 className="font-display mt-4 text-4xl font-semibold tracking-tight text-chalk sm:text-5xl">
+            Teaching tips &amp; AI resources
+          </h1>
+          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-chalk/65">
+            Practical articles for educators on lesson planning, AI tools, KHDA frameworks, and reclaiming your time.
+          </p>
+        </Container>
+      </div>
 
-        {/* Post grid */}
-        <Container className="py-16">
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {sorted.map((post) => (
-              <Link
-                key={post.slug}
-                href={`/blog/${post.slug}`}
-                className="group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:shadow-md"
-                style={{ borderColor: "#E5E7EB" }}
-              >
-                {/* Cover placeholder */}
-                <div
-                  className="h-48 w-full flex-shrink-0"
-                  style={{ background: post.coverGradient }}
-                />
-
-                {/* Card body */}
+      {/* Post grid */}
+      <Container className="py-16">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {sorted.map((post) => (
+            <Link key={post.slug} href={`/blog/${post.slug}`} className="group block">
+              <Card className="h-full gap-0 overflow-hidden border-border py-0 shadow-none transition hover:shadow-md">
+                <div className="h-40 w-full flex-shrink-0" style={{ background: post.coverGradient }} />
                 <div className="flex flex-1 flex-col p-6">
-                  <h2
-                    className="text-lg font-bold leading-snug transition group-hover:opacity-80"
-                    style={{ color: NAVY }}
-                  >
+                  <h2 className="font-display text-lg font-semibold leading-snug text-navy transition group-hover:text-primary">
                     {post.title}
                   </h2>
-                  <p className="mt-2 flex-1 text-sm leading-relaxed" style={{ color: "#6B7280" }}>
-                    {post.excerpt}
-                  </p>
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">{post.excerpt}</p>
 
-                  {/* Meta */}
-                  <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs" style={{ color: "#9CA3AF" }}>
+                  <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono-editorial text-[0.7rem] text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <ClockIcon />
                       {post.readTime} min read
@@ -101,19 +76,17 @@ export default function BlogPage() {
                     </span>
                   </div>
 
-                  <span
-                    className="mt-4 inline-flex items-center gap-1 text-sm font-semibold transition group-hover:gap-2"
-                    style={{ color: TEAL }}
-                  >
+                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary transition group-hover:gap-2">
                     Read article →
                   </span>
                 </div>
-              </Link>
-            ))}
-          </div>
-        </Container>
-      </main>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </Container>
+
       <Footer />
-    </>
+    </div>
   );
 }

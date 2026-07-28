@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Container } from "@/components/ui/container";
-
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
+import { Card } from "@/components/ui/card";
+import { SectionLabel } from "@/components/marketing/section-label";
 
 type Stat = {
   value: number;
@@ -13,11 +12,11 @@ type Stat = {
 };
 
 const STATS: Stat[] = [
-  { value: 15, suffix: "+", label: "Curriculums Supported" },
-  { value: 25, suffix: "+", label: "Subjects Available" },
-  { value: 13, suffix: "", label: "Structured PPT Elements" },
-  { value: 6, suffix: "", label: "Global Frameworks" },
-  { value: 87, suffix: "", label: "Activity Sheet AFL Tools" },
+  { value: 15, suffix: "+", label: "Curriculums supported" },
+  { value: 25, suffix: "+", label: "Subjects available" },
+  { value: 13, suffix: "", label: "Structured PPT elements" },
+  { value: 6, suffix: "", label: "Global frameworks" },
+  { value: 87, suffix: "", label: "Activity Sheet AFL tools" },
 ];
 
 function useCountUp(target: number, duration: number, trigger: boolean) {
@@ -56,17 +55,13 @@ function StatCard({ stat, inView }: { stat: Stat; inView: boolean }) {
   const count = useCountUp(stat.value, 1500, inView);
 
   return (
-    <div
-      className="flex flex-col items-center rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-md hover:-translate-y-0.5"
-      style={{ borderColor: "rgba(0,198,167,0.2)" }}
-    >
-      <p className="text-4xl font-extrabold tracking-tight sm:text-5xl" style={{ color: TEAL }}>
-        {count}{stat.suffix}
+    <Card className="items-center border-border py-6 text-center shadow-none">
+      <p className="font-display text-4xl font-semibold tracking-tight text-primary sm:text-5xl">
+        {count}
+        {stat.suffix}
       </p>
-      <p className="mt-2 text-center text-sm font-semibold leading-snug" style={{ color: NAVY }}>
-        {stat.label}
-      </p>
-    </div>
+      <p className="mt-2 text-center text-sm font-medium leading-snug text-navy">{stat.label}</p>
+    </Card>
   );
 }
 
@@ -93,20 +88,15 @@ export function StatsSection() {
   }, []);
 
   return (
-    <section ref={ref} className="py-16 sm:py-20" style={{ background: "#FFFFFF" }}>
+    <section ref={ref} className="border-t border-border py-16 sm:py-20">
       <Container>
         <div className="mx-auto mb-10 max-w-2xl text-center">
-          <p
-            className="mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider"
-            style={{ background: "rgba(0,198,167,0.12)", color: TEAL }}
-          >
-            Layah in Numbers
-          </p>
-          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl" style={{ color: NAVY }}>
-            Built for every classroom 🌍
+          <SectionLabel className="justify-center flex">Layah in numbers</SectionLabel>
+          <h2 className="font-display mt-3 text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
+            Built for every classroom
           </h2>
-          <p className="mt-3 text-sm sm:text-base leading-relaxed" style={{ color: "#374151" }}>
-            Trusted by teachers across the globe with comprehensive curriculum coverage and powerful tools.
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Trusted by teachers across the globe with comprehensive curriculum coverage.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">

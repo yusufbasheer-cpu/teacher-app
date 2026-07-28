@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Container } from "@/components/ui/container";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SectionLabel } from "@/components/marketing/section-label";
 import { WaitlistModal } from "@/components/payment/waitlist-modal";
 import type { UpgradePlanKey } from "@/components/payment/payment-modal";
 import { usePricingRegion } from "@/hooks/use-pricing-region";
@@ -11,9 +15,6 @@ import {
   type PaidPlanKey,
   type PricingRegion,
 } from "@/lib/pricing-regions";
-
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
 
 type Billing = "monthly" | "annual";
 
@@ -161,19 +162,8 @@ const FAQ = [
 
 function CheckIcon({ className = "" }: { className?: string }) {
   return (
-    <svg
-      className={`size-5 shrink-0 ${className}`}
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden
-    >
-      <path
-        d="M5 10l3 3 7-7"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg className={`size-5 shrink-0 ${className}`} viewBox="0 0 20 20" fill="none" aria-hidden>
+      <path d="M5 10l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -191,10 +181,7 @@ function PlanPrice({
 }) {
   if (!plan.priceKey) {
     return (
-      <p
-        className="text-3xl font-extrabold tracking-tight"
-        style={{ color: lightText ? "#fff" : NAVY }}
-      >
+      <p className={`font-display text-3xl font-semibold tracking-tight ${lightText ? "text-chalk" : "text-navy"}`}>
         Free Forever
       </p>
     );
@@ -208,32 +195,20 @@ function PlanPrice({
   return (
     <div>
       {showStrike ? (
-        <p
-          className="text-sm line-through"
-          style={{ color: lightText ? "rgba(255,255,255,0.5)" : "#94a3b8" }}
-        >
+        <p className={`text-sm line-through ${lightText ? "text-chalk/50" : "text-muted-foreground"}`}>
           {formatRegionalPrice(region, prices.monthly * 12, "year")}
         </p>
       ) : null}
-      <p
-        className="text-3xl font-extrabold tracking-tight"
-        style={{ color: lightText ? "#fff" : NAVY }}
-      >
+      <p className={`font-display text-3xl font-semibold tracking-tight ${lightText ? "text-chalk" : "text-navy"}`}>
         {formatRegionalPrice(region, amount, period)}
       </p>
       {billing === "annual" ? (
-        <span
-          className="mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide"
-          style={{ background: "rgba(0,198,167,0.2)", color: TEAL }}
-        >
+        <span className="mt-2 inline-flex rounded-md bg-primary/15 px-2 py-0.5 font-mono-editorial text-[0.65rem] font-medium uppercase tracking-wide text-primary">
           Save 2 months
         </span>
       ) : null}
       {billing === "monthly" ? (
-        <p
-          className="mt-2 text-sm"
-          style={{ color: lightText ? "rgba(255,255,255,0.65)" : "#4A5568" }}
-        >
+        <p className={`mt-2 text-sm ${lightText ? "text-chalk/65" : "text-muted-foreground"}`}>
           Or {formatRegionalPrice(region, prices.annual, "year")}
         </p>
       ) : null}
@@ -256,92 +231,76 @@ function PricingCard({
   const isSchool = plan.variant === "school";
   const lightText = isFeatured;
   const isMailto = plan.cta.href.startsWith("mailto:");
-  const ctaClassName =
-    "mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 py-3 text-center text-sm font-semibold transition hover:opacity-95";
-  const ctaStyle = isFeatured
-    ? { background: TEAL, color: NAVY }
-    : plan.id === "school-enterprise"
-      ? { background: NAVY, color: "#fff", border: `2px solid ${TEAL}` }
-      : { background: NAVY, color: "#fff" };
+  const ctaClassName = "mt-8 w-full rounded-lg";
 
   return (
-    <article
-      className={`relative flex flex-col rounded-3xl p-7 shadow-sm transition hover:shadow-lg sm:p-8 ${
-        isFeatured ? "lg:scale-[1.02] lg:shadow-xl" : ""
-      }`}
-      style={
+    <Card
+      className={`relative gap-0 py-7 shadow-none transition sm:py-8 ${
         isFeatured
-          ? {
-              background: `linear-gradient(160deg, ${NAVY} 0%, #132a4a 55%, ${NAVY} 100%)`,
-              border: `2px solid ${TEAL}`,
-              boxShadow: `0 20px 50px rgba(0,198,167,0.18)`,
-            }
+          ? "border-2 border-primary bg-navy lg:scale-[1.02]"
           : isSchool
-            ? { background: "#fff", border: `2px solid ${NAVY}` }
-            : { background: "#fff", border: `1px solid rgba(10,22,40,0.12)` }
-      }
+            ? "border-2 border-navy"
+            : "border-border"
+      }`}
     >
-      {plan.badge ? (
-        <span
-          className="absolute right-5 top-5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide"
-          style={{
-            background: plan.badge === "Best Value" ? NAVY : TEAL,
-            color: plan.badge === "Best Value" ? "#fff" : NAVY,
-          }}
-        >
-          {plan.badge}
-        </span>
-      ) : null}
-
-      <h3 className="text-xl font-bold" style={{ color: lightText ? "#fff" : NAVY }}>
-        {plan.name}
-      </h3>
-
-      <div className="mt-3">
-        <PlanPrice plan={plan} region={region} billing={billing} lightText={lightText} />
-      </div>
-
-      <p className="mt-4 text-sm font-semibold" style={{ color: lightText ? TEAL : "#0A8F7A" }}>
-        {plan.generations}
-      </p>
-      {plan.teachers ? (
-        <p className="mt-1 text-sm" style={{ color: lightText ? "rgba(255,255,255,0.75)" : "#4A5568" }}>
-          {plan.teachers}
-        </p>
-      ) : null}
-
-      <ul className="mt-6 flex flex-1 flex-col gap-2.5">
-        {plan.features.map((item) => (
-          <li
-            key={item}
-            className="flex items-start gap-2.5 text-sm leading-snug"
-            style={{ color: lightText ? "rgba(255,255,255,0.9)" : "#334155" }}
+      <CardContent className="flex flex-1 flex-col">
+        {plan.badge ? (
+          <span
+            className={`absolute right-6 top-6 rounded-md px-2.5 py-1 font-mono-editorial text-[0.65rem] font-medium uppercase tracking-wide ${
+              plan.badge === "Best Value" ? "bg-navy text-chalk" : "bg-primary text-navy"
+            }`}
           >
-            <CheckIcon className={lightText ? "text-[#00C6A7]" : "text-[#0A8F7A]"} />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
+            {plan.badge}
+          </span>
+        ) : null}
 
-      {plan.upgradeKey && onUpgrade ? (
-        <button
-          type="button"
-          onClick={() => onUpgrade(plan.upgradeKey!)}
-          className={ctaClassName}
-          style={ctaStyle}
-        >
-          {plan.cta.label}
-        </button>
-      ) : isMailto ? (
-        <a href={plan.cta.href} className={ctaClassName} style={ctaStyle}>
-          {plan.cta.label}
-        </a>
-      ) : (
-        <Link href={plan.cta.href} className={ctaClassName} style={ctaStyle}>
-          {plan.cta.label}
-        </Link>
-      )}
-    </article>
+        <h3 className={`font-display text-xl font-semibold ${lightText ? "text-chalk" : "text-navy"}`}>
+          {plan.name}
+        </h3>
+
+        <div className="mt-3">
+          <PlanPrice plan={plan} region={region} billing={billing} lightText={lightText} />
+        </div>
+
+        <p className={`mt-4 text-sm font-medium ${lightText ? "text-primary" : "text-primary"}`}>
+          {plan.generations}
+        </p>
+        {plan.teachers ? (
+          <p className={`mt-1 text-sm ${lightText ? "text-chalk/75" : "text-muted-foreground"}`}>{plan.teachers}</p>
+        ) : null}
+
+        <ul className="mt-6 flex flex-1 flex-col gap-2.5">
+          {plan.features.map((item) => (
+            <li
+              key={item}
+              className={`flex items-start gap-2.5 text-sm leading-snug ${lightText ? "text-chalk/90" : "text-foreground/80"}`}
+            >
+              <CheckIcon className="text-primary" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+
+        {plan.upgradeKey && onUpgrade ? (
+          <Button
+            type="button"
+            onClick={() => onUpgrade(plan.upgradeKey!)}
+            className={ctaClassName}
+            variant={isFeatured ? "default" : "outline"}
+          >
+            {plan.cta.label}
+          </Button>
+        ) : isMailto ? (
+          <a href={plan.cta.href} className={buttonVariants({ variant: "outline", className: ctaClassName })}>
+            {plan.cta.label}
+          </a>
+        ) : (
+          <Link href={plan.cta.href} className={buttonVariants({ className: ctaClassName })}>
+            {plan.cta.label}
+          </Link>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -352,90 +311,63 @@ export function PricingPage() {
   const { region } = usePricingRegion();
   const isAnnual = billing === "annual";
 
-  const openPayment = (planKey: UpgradePlanKey) => { setWaitlistPlan(planKey); setWaitlistOpen(true); };
+  const openPayment = (planKey: UpgradePlanKey) => {
+    setWaitlistPlan(planKey);
+    setWaitlistOpen(true);
+  };
 
   return (
-    <main
-      className="min-h-screen pb-24 pt-10"
-      style={{ background: "linear-gradient(180deg, #eef2f7 0%, #f7f9fc 35%, #ffffff 70%)" }}
-    >
+    <main className="site-editorial min-h-screen bg-background pb-24 pt-10 text-foreground">
       <Container>
         <header className="mx-auto max-w-3xl text-center">
-          <p
-            className="mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider"
-            style={{ background: "rgba(0,198,167,0.12)", color: TEAL }}
-          >
-            Pricing
-          </p>
-          <h1
-            className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl"
-            style={{ color: NAVY }}
-          >
+          <SectionLabel className="justify-center flex">Pricing</SectionLabel>
+          <h1 className="font-display mt-3 text-3xl font-semibold tracking-tight text-navy sm:text-4xl md:text-5xl">
             Plans for every teacher and school
           </h1>
-          <p className="mt-4 text-base sm:text-lg" style={{ color: "#4A5568" }}>
+          <p className="mt-4 text-base text-muted-foreground sm:text-lg">
             Start free. Upgrade when you are ready. Schools get unlimited generations for every teacher.
           </p>
         </header>
 
         <div className="mx-auto mt-6 flex justify-center">
-          <p
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm"
-            style={{ background: "#fff", border: `1px solid rgba(0,198,167,0.3)`, color: NAVY }}
-          >
-            <span className="text-lg leading-none" aria-hidden>🇦🇪</span>
-            <span>Prices shown in <strong>AED</strong> (UAE Dirham)</span>
+          <p className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-navy shadow-sm">
+            <span className="text-lg leading-none" aria-hidden>
+              🇦🇪
+            </span>
+            <span>
+              Prices shown in <strong>AED</strong> (UAE Dirham)
+            </span>
           </p>
         </div>
 
         <div className="mx-auto mt-10 flex flex-col items-center gap-3">
-          <div
-            className="inline-flex rounded-full p-1 shadow-sm"
-            style={{ background: "#fff", border: `1px solid rgba(10,22,40,0.12)` }}
-            role="group"
-            aria-label="Billing period"
-          >
-            <button
-              type="button"
-              onClick={() => setBilling("monthly")}
-              className="rounded-full px-6 py-3 text-sm font-semibold transition"
-              style={{
-                background: !isAnnual ? NAVY : "transparent",
-                color: !isAnnual ? "#fff" : "#4A5568",
-              }}
-            >
-              Monthly
-            </button>
-            <button
-              type="button"
-              onClick={() => setBilling("annual")}
-              className="rounded-full px-6 py-3 text-sm font-semibold transition"
-              style={{
-                background: isAnnual ? NAVY : "transparent",
-                color: isAnnual ? "#fff" : "#4A5568",
-              }}
-            >
-              Annual
-            </button>
-          </div>
+          <Tabs value={billing} onValueChange={(v) => setBilling(v as Billing)}>
+            <TabsList className="h-11 gap-0.5 rounded-lg bg-card p-1 shadow-sm ring-1 ring-border">
+              <TabsTrigger
+                value="monthly"
+                className="h-9 rounded-md px-6 text-sm font-medium data-active:bg-navy data-active:text-chalk"
+              >
+                Monthly
+              </TabsTrigger>
+              <TabsTrigger
+                value="annual"
+                className="h-9 rounded-md px-6 text-sm font-medium data-active:bg-navy data-active:text-chalk"
+              >
+                Annual
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           {isAnnual ? (
-            <p
-              className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold"
-              style={{ background: "rgba(0,198,167,0.12)", color: "#0A8F7A" }}
-            >
-              <span className="inline-block h-2 w-2 rounded-full" style={{ background: TEAL }} aria-hidden />
+            <p className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
               Save 2 months on all annual plans
             </p>
           ) : null}
         </div>
 
         <section className="mt-14">
-          <h2 className="text-center text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
-            For teachers
-          </h2>
-          <p className="mt-2 text-center text-lg font-semibold sm:text-xl" style={{ color: NAVY }}>
-            Individual plans
-          </p>
+          <SectionLabel className="justify-center flex">For teachers</SectionLabel>
+          <p className="mt-2 text-center text-lg font-semibold text-navy sm:text-xl">Individual plans</p>
           <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3 xl:items-stretch">
             {TEACHER_PLAN_DEFS.map((plan) => (
               <PricingCard key={plan.id} plan={plan} region={region} billing={billing} onUpgrade={openPayment} />
@@ -443,20 +375,10 @@ export function PricingPage() {
           </div>
         </section>
 
-        <section
-          className="mt-20 rounded-3xl p-6 sm:p-10"
-          style={{
-            background: `linear-gradient(135deg, ${NAVY} 0%, #132a4a 100%)`,
-            border: `1px solid rgba(0,198,167,0.25)`,
-          }}
-        >
-          <h2 className="text-center text-sm font-bold uppercase tracking-widest text-[#00C6A7]">
-            For schools
-          </h2>
-          <p className="mt-2 text-center text-lg font-semibold text-white sm:text-xl">
-            School &amp; district plans
-          </p>
-          <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-white/65">
+        <section className="mt-20 rounded-2xl border border-navy-rule/20 bg-navy p-6 sm:p-10">
+          <SectionLabel className="justify-center flex">For schools</SectionLabel>
+          <p className="mt-2 text-center text-lg font-semibold text-chalk sm:text-xl">School &amp; district plans</p>
+          <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-chalk/65">
             Unlimited generations for every teacher on your plan. Enterprise includes custom branding and API access.
           </p>
           <div className="mt-10 grid gap-6 lg:grid-cols-3 lg:items-stretch">
@@ -467,69 +389,46 @@ export function PricingPage() {
           <div className="mt-10 text-center">
             <Link
               href="/school-register"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold transition hover:opacity-90"
-              style={{ background: TEAL, color: NAVY }}
+              className={buttonVariants({ size: "lg", className: "h-12 rounded-lg px-8" })}
             >
-              <svg
-                className="size-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
               </svg>
               Get School Plan
             </Link>
-            <p className="mt-3 text-sm text-white/50">
+            <p className="mt-3 text-sm text-chalk/50">
               Register your school and our team will set you up within 24 hours
             </p>
           </div>
         </section>
 
         <section className="mt-20">
-          <h2 className="text-center text-2xl font-bold sm:text-3xl" style={{ color: NAVY }}>
+          <h2 className="font-display text-center text-2xl font-semibold text-navy sm:text-3xl">
             Frequently asked questions
           </h2>
           <div className="mx-auto mt-10 max-w-3xl space-y-4">
             {FAQ.map((item) => (
               <details
                 key={item.q}
-                className="group rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md open:shadow-md"
-                style={{ borderColor: "rgba(0,198,167,0.25)" }}
+                className="group rounded-xl border border-border bg-card p-5 shadow-sm transition open:shadow-md"
               >
-                <summary
-                  className="cursor-pointer list-none text-base font-semibold marker:content-none"
-                  style={{ color: NAVY }}
-                >
+                <summary className="cursor-pointer list-none text-base font-semibold text-navy marker:content-none">
                   <span className="flex items-center justify-between gap-4">
                     {item.q}
-                    <span
-                      className="text-xl font-normal transition group-open:rotate-45"
-                      style={{ color: TEAL }}
-                      aria-hidden
-                    >
+                    <span className="text-xl font-normal text-primary transition group-open:rotate-45" aria-hidden>
                       +
                     </span>
                   </span>
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
-                  {item.a}
-                </p>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
               </details>
             ))}
           </div>
         </section>
       </Container>
 
-      <WaitlistModal
-        open={waitlistOpen}
-        plan={waitlistPlan}
-        onClose={() => setWaitlistOpen(false)}
-      />
+      <WaitlistModal open={waitlistOpen} plan={waitlistPlan} onClose={() => setWaitlistOpen(false)} />
     </main>
   );
 }

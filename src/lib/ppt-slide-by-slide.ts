@@ -36,7 +36,7 @@ export function parseSinglePptSlideModelResponse(raw: string): string {
   const lower = trimmed.toLowerCase();
   const si = lower.indexOf(SINGLE_PPT_SLIDE_BODY_START.toLowerCase());
   if (si === -1) return stripOuterMarkdownFences(trimmed);
-  let rest = trimmed.slice(si + SINGLE_PPT_SLIDE_BODY_START.length).replace(/^\s*\r?\n?/, "");
+  const rest = trimmed.slice(si + SINGLE_PPT_SLIDE_BODY_START.length).replace(/^\s*\r?\n?/, "");
   const ei = rest.toLowerCase().indexOf(SINGLE_PPT_SLIDE_BODY_END.toLowerCase());
   if (ei !== -1) return rest.slice(0, ei).trim();
   return rest.trim();

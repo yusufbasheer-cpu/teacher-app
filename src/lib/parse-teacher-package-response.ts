@@ -56,7 +56,7 @@ function extractLabeledSection(
   const lower = text.toLowerCase();
   const si = lower.indexOf(startMarker.toLowerCase());
   if (si === -1) return null;
-  let rest = text.slice(si + startMarker.length).replace(/^\s*\r?\n?/, "");
+  const rest = text.slice(si + startMarker.length).replace(/^\s*\r?\n?/, "");
   const ei = rest.toLowerCase().indexOf(endMarker.toLowerCase());
   if (ei !== -1) {
     const chunk = rest.slice(0, ei).trim();

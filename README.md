@@ -1,17 +1,22 @@
-# Teacher AI Studio
+# Layah
 
-A clean Next.js + Tailwind CSS starter for a teacher-focused AI web app.
+AI lesson-planning SaaS for schoolteachers (layah.in). From a subject, grade, topic and
+curriculum, Layah generates a full teacher package: a structured lesson plan, a 13-slide
+PowerPoint, worksheets, homework, a question paper with mark scheme, and differentiated
+(Foundation/Core/Extension) worksheet packs — exportable as Word/PPT/ZIP.
+
+See [docs/architecture.md](docs/architecture.md) for the full architecture writeup
+(routes, API, data flow, auth) and [docs/ui-flow.md](docs/ui-flow.md) for a route-by-route
+UI walkthrough.
 
 ## Stack
 
-- Next.js (App Router, TypeScript)
-- Tailwind CSS
-- ESLint
-- PptxGenJS (PowerPoint export)
-- docx (Word export)
-- JSZip (ZIP packaging)
+- Next.js (App Router, TypeScript), Tailwind CSS 4, shadcn/ui
+- Supabase (Postgres + Auth), raw SQL migrations in `supabase/migrations/`
+- DeepSeek for AI generation, fal.ai / Pexels for images
+- Sentry (errors), PostHog (analytics)
 
-## Getting Started
+## Getting started
 
 1. Install dependencies:
 
@@ -19,46 +24,36 @@ A clean Next.js + Tailwind CSS starter for a teacher-focused AI web app.
    npm install
    ```
 
-2. Run the development server:
+2. Copy `.env.example` to `.env.local` and fill in the keys (Supabase, DeepSeek, SMTP,
+   etc.). See `.env.example` for the full list.
+
+3. Run the dev server:
 
    ```bash
    npm run dev
    ```
 
-3. Open [http://localhost:3000](http://localhost:3000)
+   Opens on [http://localhost:3001](http://localhost:3001) (note: port **3001**, not 3000).
 
-4. Add your DeepSeek key:
+4. Before pushing, run:
 
-   - Copy `.env.example` to `.env.local`
-   - Set `DEEPSEEK_API_KEY`
-   - Set `NEXT_PUBLIC_SUPABASE_URL`
-   - Set `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   ```bash
+   npm run typecheck
+   npm run lint
+   npm run build
+   ```
 
-## Supabase Setup
+## Deployment
 
-Run `supabase/schema.sql` in the Supabase SQL editor to create `lesson_plans` and
-enable RLS policies so each teacher only sees their own saved records.
+The app deploys to Vercel on push to `main`. There is also a separate Python service
+(`python-ppt-api/`) deployed independently — check `python-ppt-api/render.yaml` /
+`railway.json` / `Procfile` to confirm which platform is currently live for it.
 
-Auth uses Supabase email/password:
+## Project structure
 
-- `/auth` for signup/login
-- `/lesson-plan` requires login before generating/saving
-- `/my-lesson-plans` shows only the logged-in teacher's saved plans
-
-## Initial Structure
-
-- `src/app` - routes, root layout, and global styles
-- `src/components/home` - homepage sections
-- `src/components/lesson-plan` - lesson plan generator UI
-- `src/components/lesson-plan/my-lesson-plans-list.tsx` - saved plans list
-- `src/components/layout` - shared layout pieces (navbar)
-- `src/components/auth` - signup/login UI
-- `src/components/ui` - reusable UI primitives
-- `src/lib` - app-level constants/helpers
-- `src/types` - shared TypeScript types
-- `src/app/api/lesson-plan` - DeepSeek lesson plan API route
-- `src/app/api/lesson-plan/export/pptx` - PPT content → multi-slide PowerPoint
-- `src/app/api/lesson-plan/export/docx` - section → Word (.docx)
-- `src/app/api/lesson-plan/export/zip` - full teacher package ZIP
-- `src/app/my-lesson-plans` - page to browse and reopen saved plans
-- `supabase/schema.sql` - table and RLS policies for saved lesson plans
+- `src/app` — routes, root layout, API routes (`src/app/api`)
+- `src/components` — UI, organized by feature (`lesson-plan/`, `question-paper/`,
+  `school/`, `admin/`, etc.) plus shared primitives in `components/ui/`
+- `src/lib` — server/client helpers (Supabase clients, DeepSeek prompts, exports, pricing)
+- `src/content/blog` — blog posts (hardcoded TypeScript, no CMS)
+- `supabase/` — `schema.sql` and dated migrations, applied via the Supabase CLI/dashboard
