@@ -1,15 +1,13 @@
+import * as Sentry from "@sentry/nextjs";
 import { createClient, type PostgrestError, type SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
+import { checkRateLimit, HOUR_MS } from "@/lib/rate-limit";
+import { sendEmail } from "@/lib/send-email";
 import {
-  DEFAULT_FREE_USAGE_INSERT,
   defaultFreeUsageSnapshot,
-  firstDayOfNextMonthUtc,
   GENERATION_LIMIT_ERROR_CODE,
-  getGenerationsLimitForPlan,
-  isPlanType,
   logGenerationCounted,
   logUsageSnapshot,
-  needsMonthlyReset,
   normalizeUsageRow,
   toUsageSnapshot,
   type UserUsageRow,
@@ -70,114 +68,67 @@ export function logExactSupabaseError(
   });
 }
 
-async function insertDefaultUsage(
+type UsageRpcPayload = {
+  outcome: string;
+  user_id: string;
+  plan_type: string;
+  generations_used: number;
+  generations_limit: number;
+  reset_date: string;
+  created_at: string;
+};
+
+async function callUsageRpc(
   supabase: SupabaseClient,
-  userId: string,
-): Promise<UserUsageRow | null> {
-  const resetDate = firstDayOfNextMonthUtc();
-  const { data, error } = await supabase
-    .from(USER_USAGE_TABLE)
-    .insert({
-      user_id: userId,
-      plan_type: DEFAULT_FREE_USAGE_INSERT.plan_type,
-      generations_used: DEFAULT_FREE_USAGE_INSERT.generations_used,
-      generations_limit: DEFAULT_FREE_USAGE_INSERT.generations_limit,
-      reset_date: resetDate,
-    })
-    .select("*")
-    .single();
+  fn: "ensure_user_usage" | "consume_user_generation",
+): Promise<{ ok: true; outcome: string; row: UserUsageRow } | { ok: false; error: PostgrestError }> {
+  const { data, error } = await supabase.rpc(fn);
+  if (error) return { ok: false, error };
 
-  if (error) {
-    logSupabaseError("insert default user_usage", error, { userId });
-
-    if (error.code === "23505") {
-      const { data: existing, error: retryError } = await supabase
-        .from(USER_USAGE_TABLE)
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (retryError) {
-        logSupabaseError("select after insert conflict", retryError, { userId });
-        return null;
-      }
-      if (existing) return normalizeUsageRow(existing as UserUsageRow);
-    }
-
-    return null;
+  const payload = (Array.isArray(data) ? data[0] : data) as UsageRpcPayload | null;
+  if (!payload) {
+    return {
+      ok: false,
+      error: {
+        message: `${fn} returned no payload`,
+        code: "EMPTY_RPC_RESULT",
+        details: "",
+        hint: "",
+        name: "PostgrestError",
+      } as PostgrestError,
+    };
   }
 
-  DEBUG && console.log("[user-usage] created new user_usage row", {
-    user_id: userId,
-    generations_used: 0,
-    generations_limit: 15,
-    reset_date: resetDate,
+  const row = normalizeUsageRow({
+    user_id: payload.user_id,
+    plan_type: payload.plan_type as UserUsageRow["plan_type"],
+    generations_used: payload.generations_used,
+    generations_limit: payload.generations_limit,
+    reset_date: payload.reset_date,
+    created_at: payload.created_at,
   });
 
-  return normalizeUsageRow(data as UserUsageRow);
-}
-
-async function applyMonthlyResetIfNeeded(
-  supabase: SupabaseClient,
-  row: UserUsageRow,
-): Promise<UserUsageRow> {
-  if (!needsMonthlyReset(row.reset_date)) return normalizeUsageRow(row);
-
-  const plan = isPlanType(row.plan_type) ? row.plan_type : "free";
-  const limit = getGenerationsLimitForPlan(plan);
-  const generations_limit = limit ?? -1;
-  const nextReset = firstDayOfNextMonthUtc();
-
-  const { data, error } = await supabase
-    .from(USER_USAGE_TABLE)
-    .update({
-      generations_used: 0,
-      reset_date: nextReset,
-      generations_limit,
-    })
-    .eq("user_id", row.user_id)
-    .select("*")
-    .single();
-
-  if (error || !data) {
-    logSupabaseError("monthly reset update", error, { userId: row.user_id });
-    return normalizeUsageRow({
-      ...row,
-      generations_used: 0,
-      reset_date: nextReset,
-      generations_limit,
-    });
-  }
-
-  return normalizeUsageRow(data as UserUsageRow);
+  return { ok: true, outcome: payload.outcome, row };
 }
 
 /**
- * Ensure a user_usage row exists (create on first login/signup), apply monthly reset, normalize.
+ * Ensure a user_usage row exists (create on first login/signup), apply monthly
+ * reset, normalize. Delegates to the ensure_user_usage() security-definer RPC
+ * (supabase/migrations/20260728120000_usage_gate_functions.sql) so the row is
+ * created and reset atomically under a row lock, rather than the previous
+ * select-then-insert-then-update sequence run over the user's own JWT client.
  */
 export async function ensureUserUsageRecord(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserUsageRow | null> {
   try {
-    const { data, error } = await supabase
-      .from(USER_USAGE_TABLE)
-      .select("id, user_id, plan_type, generations_used, generations_limit, reset_date, created_at")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (error) {
-      logSupabaseError("select user_usage by user_id", error, { userId });
+    const result = await callUsageRpc(supabase, "ensure_user_usage");
+    if (!result.ok) {
+      logSupabaseError("rpc ensure_user_usage", result.error, { userId });
       return null;
     }
-
-    let row = data as UserUsageRow | null;
-    if (!row) {
-      row = await insertDefaultUsage(supabase, userId);
-      if (!row) return null;
-    }
-
-    row = await applyMonthlyResetIfNeeded(supabase, row);
-    return row;
+    return result.row;
   } catch (err) {
     console.error("[user-usage] ensureUserUsageRecord unexpected error", {
       userId,
@@ -203,38 +154,107 @@ export async function getOrCreateUserUsage(
   return snapshot;
 }
 
+/** A held generation slot. Pass to refundGeneration() if the paid AI call afterward fails. */
+export type GenerationReservation = { userId: string; resetDate: string };
+
+/** Returned when the usage gate itself couldn't be checked (RPC/DB failure). See handleGateFailure. */
+export const USAGE_CHECK_UNAVAILABLE_CODE = "USAGE_CHECK_UNAVAILABLE";
+
 export type GenerationGateResult =
-  | { ok: true; usage: UserUsageSnapshot; checkSkipped?: boolean }
+  | { ok: true; usage: UserUsageSnapshot; reservation: GenerationReservation | null; checkSkipped?: boolean }
   | {
       ok: false;
       status: number;
-      code: typeof GENERATION_LIMIT_ERROR_CODE;
+      code: typeof GENERATION_LIMIT_ERROR_CODE | typeof USAGE_CHECK_UNAVAILABLE_CODE;
       message: string;
       usage: UserUsageSnapshot;
     };
 
+// Break-glass: if the usage gate itself starts failing (RPC missing/broken,
+// outage), set USAGE_GATE_FAIL_OPEN=true in the environment and redeploy to
+// fall back to unmetered generation rather than blocking every user. Default
+// is fail-closed — see the reasoning in the Phase 4 commit message.
+const FAIL_OPEN = process.env.USAGE_GATE_FAIL_OPEN === "true";
+
 /**
- * Verify generation allowance after auth. On any DB/check failure, fail-open (allow generation).
- * Only blocks when generations_used >= generations_limit.
+ * Reports a usage-gate failure loudly (console + Sentry + a rate-limited
+ * alert email) and returns either a fail-open allowance or a fail-closed 503,
+ * depending on the USAGE_GATE_FAIL_OPEN break-glass env var.
  */
-export async function assertCanGenerate(
+function handleGateFailure(userId: string, error: PostgrestError): GenerationGateResult {
+  console.error("[usage-gate] USAGE_GATE_FAILED", {
+    userId,
+    code: error.code,
+    message: error.message,
+    hint: error.hint,
+    failOpen: FAIL_OPEN,
+  });
+
+  Sentry.captureException(new Error(`usage gate failed: ${error.message}`), {
+    tags: { area: "usage_gate", pgcode: error.code ?? "unknown" },
+  });
+
+  // Reuses the existing in-memory rate limiter purely to throttle the alert
+  // email to once per hour — not a new dependency.
+  if (checkRateLimit("usage_gate_alert", 1, HOUR_MS).ok) {
+    void sendEmail({
+      to: "info@layah.in",
+      subject: "Layah ALERT — usage gate failing",
+      text: `consume_user_generation/ensure_user_usage failed.\ncode=${error.code}\nmessage=${error.message}\nfailOpen=${FAIL_OPEN}\ntime=${new Date().toISOString()}`,
+    });
+  }
+
+  if (FAIL_OPEN) {
+    return {
+      ok: true,
+      usage: defaultFreeUsageSnapshot(),
+      reservation: null,
+      checkSkipped: true,
+    };
+  }
+
+  return {
+    ok: false,
+    status: 503,
+    code: USAGE_CHECK_UNAVAILABLE_CODE,
+    message: "We could not check your plan just now. Please try again in a moment.",
+    usage: defaultFreeUsageSnapshot(),
+  };
+}
+
+/**
+ * Atomically reserve one generation BEFORE spending money on DeepSeek/fal.
+ * Replaces the old check-then-act assertCanGenerate + incrementGenerationsUsed
+ * pair: reset, limit check, and increment now happen as one unit under a row
+ * lock inside the consume_user_generation() RPC
+ * (supabase/migrations/20260728120000_usage_gate_functions.sql), so
+ * concurrent requests can no longer all pass the check before any of them
+ * increments.
+ *
+ * On success, the caller MUST either use the generation and discard
+ * `reservation`, or call refundGeneration(reservation) if the paid AI call
+ * fails — mirroring today's "a failed generation costs nothing" behaviour,
+ * just moved to before the spend instead of after.
+ *
+ * Fails CLOSED (503) on any RPC/DB error rather than allowing unmetered
+ * generation, unless USAGE_GATE_FAIL_OPEN=true is set as a break-glass.
+ */
+export async function reserveGeneration(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<GenerationGateResult> {
   try {
-    const usage = await getOrCreateUserUsage(supabase, userId);
+    const result = await callUsageRpc(supabase, "consume_user_generation");
 
-    if (!usage) {
-      console.warn(
-        "[user-usage] assertCanGenerate: allowance check failed — allowing generation (fail-open)",
-        { userId },
-      );
-      return { ok: true, usage: defaultFreeUsageSnapshot(), checkSkipped: true };
+    if (!result.ok) {
+      return handleGateFailure(userId, result.error);
     }
 
-    if (!usage.canGenerate) {
+    const usage = toUsageSnapshot(result.row);
+
+    if (result.outcome === "limit_reached") {
       const limit = usage.generationsLimit ?? 0;
-      DEBUG && console.log("[user-usage] assertCanGenerate: limit reached", {
+      DEBUG && console.log("[usage-gate] limit reached", {
         userId,
         generations_used: usage.generationsUsed,
         generations_limit: limit,
@@ -248,214 +268,65 @@ export async function assertCanGenerate(
       };
     }
 
-    return { ok: true, usage };
+    const reservation: GenerationReservation | null =
+      result.outcome === "incremented" ? { userId, resetDate: result.row.reset_date } : null;
+
+    if (reservation) {
+      logGenerationCounted(usage);
+    }
+    logUsageSnapshot("reserveGeneration", usage);
+
+    return { ok: true, usage, reservation };
   } catch (err) {
-    console.error(
-      "[user-usage] assertCanGenerate: unexpected error — allowing generation (fail-open)",
-      {
-        userId,
-        error:
-          err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
-      },
-    );
-    return { ok: true, usage: defaultFreeUsageSnapshot(), checkSkipped: true };
-  }
-}
-
-async function verifyAuthenticatedUserId(
-  supabase: SupabaseClient,
-  userId: string,
-  accessToken?: string,
-): Promise<{ ok: true; authUserId: string } | { ok: false; reason: string }> {
-  const {
-    data: { user },
-    error,
-  } = accessToken
-    ? await supabase.auth.getUser(accessToken)
-    : await supabase.auth.getUser();
-
-  if (error || !user) {
-    console.error("[user-usage] verifyAuthenticatedUserId failed:", error?.message ?? "no user");
-    return {
-      ok: false,
-      reason: error?.message ?? "No authenticated user on Supabase client",
-    };
-  }
-
-  DEBUG && console.log("[user-usage] authenticated session for increment", {
-    auth_uid: user.id,
-    requested_user_id: userId,
-    match: user.id === userId,
-    hasAccessToken: Boolean(accessToken),
-  });
-
-  if (user.id !== userId) {
-    return {
-      ok: false,
-      reason: `user_id mismatch: JWT user ${user.id} !== requested ${userId}`,
-    };
-  }
-
-  return { ok: true, authUserId: user.id };
-}
-
-async function runUsageIncrementUpdate(
-  client: SupabaseClient,
-  authUserId: string,
-  nextUsed: number,
-  label: string,
-): Promise<{ row: UserUsageRow | null; error: PostgrestError | null }> {
-  console.log(`[user-usage] BEFORE Supabase update (${label})`, {
-    table: USER_USAGE_TABLE,
-    user_id: authUserId,
-    generations_used: nextUsed,
-  });
-
-  const { data, error } = await client
-    .from(USER_USAGE_TABLE)
-    .update({ generations_used: nextUsed })
-    .eq("user_id", authUserId)
-    .select("id, user_id, plan_type, generations_used, generations_limit, reset_date, created_at")
-    .maybeSingle();
-
-  console.log(`[user-usage] AFTER Supabase update (${label})`, {
-    user_id: authUserId,
-    success: !error && Boolean(data),
-    generations_used: data?.generations_used ?? null,
-    error: error
-      ? { message: error.message, code: error.code, details: error.details, hint: error.hint }
-      : null,
-  });
-
-  if (error) {
-    logExactSupabaseError(`update generations_used (${label})`, error, {
-      user_id: authUserId,
-      generations_used: nextUsed,
+    console.error("[usage-gate] reserveGeneration unexpected error", {
+      userId,
+      error: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
     });
-  } else if (!data) {
-    console.error(
-      `[user-usage] Supabase update (${label}) returned no row — likely RLS blocked update. user_id=${authUserId}`,
-    );
+    return handleGateFailure(userId, {
+      message: err instanceof Error ? err.message : String(err),
+      code: "UNEXPECTED",
+      details: "",
+      hint: "",
+      name: "PostgrestError",
+    } as PostgrestError);
   }
-
-  return { row: data ? normalizeUsageRow(data as UserUsageRow) : null, error };
 }
 
 /**
- * Increment generations_used by 1 after a successful generation. Returns updated usage snapshot.
+ * Give a reserved generation back after the paid AI call that followed it
+ * failed. No-op for unlimited plans (reservation is null). Uses the
+ * service-role client — refund_user_generation() is granted to service_role
+ * only, precisely so a user can never call it themselves to zero out their
+ * own counter.
  */
-export async function incrementGenerationsUsed(
-  supabase: SupabaseClient,
-  userId: string,
-  accessToken?: string,
-): Promise<UserUsageSnapshot | null> {
-  try {
-    const authCheck = await verifyAuthenticatedUserId(supabase, userId, accessToken);
-    if (!authCheck.ok) {
-      console.error("[user-usage] incrementGenerationsUsed: auth check failed", {
-        userId,
-        reason: authCheck.reason,
-      });
-      return null;
-    }
+export async function refundGeneration(reservation: GenerationReservation | null): Promise<void> {
+  if (!reservation) return;
 
-    const authUserId = authCheck.authUserId;
-    DEBUG && console.log("[user-usage] incrementGenerationsUsed: auth ok", {
-      user_id: authUserId,
-      idsMatch: authUserId === userId,
-    });
-
-    const { data: rpcData, error: rpcError } = await supabase.rpc("increment_user_generations");
-    const rpcRow = Array.isArray(rpcData) ? rpcData[0] : rpcData;
-
-    if (!rpcError && rpcRow) {
-      const row = normalizeUsageRow(rpcRow as UserUsageRow);
-      if (row.user_id !== authUserId) {
-        console.error("[user-usage] RPC returned wrong user_id", {
-          expected: authUserId,
-          got: row.user_id,
-        });
-      } else {
-        const snapshot = toUsageSnapshot(row);
-        logGenerationCounted(snapshot);
-        logUsageSnapshot("incrementGenerationsUsed (rpc)", snapshot);
-        return snapshot;
-      }
-    }
-
-    if (rpcError) {
-      logSupabaseError("rpc increment_user_generations", rpcError, { userId: authUserId });
-    }
-
-    const row = await ensureUserUsageRecord(supabase, authUserId);
-    if (!row) {
-      console.warn("[user-usage] incrementGenerationsUsed: skipped (no row)", {
-        userId: authUserId,
-      });
-      return null;
-    }
-
-    const before = toUsageSnapshot(row);
-    if (before.unlimited) {
-      logGenerationCounted(before);
-      return before;
-    }
-
-    const currentUsed = Math.max(0, Number(row.generations_used) || 0);
-    const nextUsed = currentUsed + 1;
-
-    let { row: updatedRow, error: updateError } = await runUsageIncrementUpdate(
-      supabase,
-      authUserId,
-      nextUsed,
-      "user-jwt",
+  const admin = getSupabaseServiceRole();
+  if (!admin) {
+    console.error(
+      "[usage-gate] REFUND SKIPPED — SUPABASE_SERVICE_ROLE_KEY not set, user was charged a generation for a failed request",
+      reservation,
     );
-
-    if (updateError || !updatedRow) {
-      const admin = getSupabaseServiceRole();
-      if (admin) {
-        console.warn("[user-usage] retrying increment with service role after user JWT update failed");
-        const adminResult = await runUsageIncrementUpdate(admin, authUserId, nextUsed, "service-role");
-        updatedRow = adminResult.row;
-        updateError = adminResult.error;
-      } else {
-        console.warn(
-          "[user-usage] SUPABASE_SERVICE_ROLE_KEY not set — cannot retry increment with service role",
-        );
-      }
-    }
-
-    if (updateError || !updatedRow) {
-      if (updateError) {
-        console.error("[user-usage] increment update failed — exact error:", updateError.message, {
-          code: updateError.code,
-          details: updateError.details,
-          hint: updateError.hint,
-        });
-      }
-      return before;
-    }
-
-    const snapshot = toUsageSnapshot(updatedRow);
-    logGenerationCounted(snapshot);
-    logUsageSnapshot("incrementGenerationsUsed (update)", snapshot);
-    return snapshot;
-  } catch (err) {
-    console.error("[user-usage] incrementGenerationsUsed unexpected error", {
-      userId,
-      error: err instanceof Error ? { name: err.name, message: err.message } : err,
-    });
-    return null;
+    return;
   }
-}
 
-/** Call only after generation succeeded; attaches usage to API payload when increment succeeds. */
-export async function recordSuccessfulGeneration(
-  supabase: SupabaseClient,
-  userId: string,
-  accessToken: string,
-): Promise<UserUsageSnapshot | null> {
-  return incrementGenerationsUsed(supabase, userId, accessToken);
+  const { data, error } = await admin.rpc("refund_user_generation", {
+    p_user_id: reservation.userId,
+    p_reset_date: reservation.resetDate,
+  });
+
+  if (error) {
+    console.error("[usage-gate] refund failed", {
+      ...reservation,
+      message: error.message,
+      code: error.code,
+    });
+    return;
+  }
+
+  const outcome = (Array.isArray(data) ? data[0] : data) as { outcome?: string } | null;
+  console.log("[usage-gate] refund", { userId: reservation.userId, outcome: outcome?.outcome });
 }
 
 export async function authenticateRequest(

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { callDeepSeekChat } from "@/lib/question-paper-deepseek";
 import {
-  assertCanGenerate,
   authenticateRequest,
-  recordSuccessfulGeneration,
+  refundGeneration,
+  reserveGeneration,
 } from "@/lib/user-usage-server";
 import {
   checkRateLimit,
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     return rateLimitResponse(spending.resetInSeconds);
   }
 
-  const gate = await assertCanGenerate(auth.supabase, auth.userId);
+  const gate = await reserveGeneration(auth.supabase, auth.userId);
   if (!gate.ok) {
     return NextResponse.json(
       { error: gate.message, code: gate.code, usage: gate.usage },
@@ -111,6 +111,7 @@ export async function POST(req: Request) {
 
   if ("error" in ds) {
     console.error("[question-paper]", ds.error);
+    await refundGeneration(gate.reservation);
     return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
@@ -118,20 +119,15 @@ export async function POST(req: Request) {
 
   if (!parsed.questionPaper?.trim()) {
     console.error("[question-paper] empty question paper from model");
+    await refundGeneration(gate.reservation);
     return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
-
-  const usage = await recordSuccessfulGeneration(
-    auth.supabase,
-    auth.userId,
-    auth.accessToken,
-  );
 
   return NextResponse.json({
     questionPaper: parsed.questionPaper,
     ...(parsed.answerKey ? { answerKey: parsed.answerKey } : {}),
     ...(parsed.markingScheme ? { markingScheme: parsed.markingScheme } : {}),
     ...(parsed.parseNotice ? { parseNotice: parsed.parseNotice } : {}),
-    ...(usage ? { usage } : {}),
+    usage: gate.usage,
   });
 }

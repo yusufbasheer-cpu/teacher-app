@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import {
-  assertCanGenerate,
   authenticateRequest,
-  recordSuccessfulGeneration,
+  refundGeneration,
+  reserveGeneration,
 } from "@/lib/user-usage-server";
 import { getUpgradePitch } from "@/lib/user-usage";
 import {
@@ -695,7 +695,7 @@ export async function POST(req: Request) {
     return rateLimitResponse(spending.resetInSeconds);
   }
 
-  const gate = await assertCanGenerate(auth.supabase, auth.userId);
+  const gate = await reserveGeneration(auth.supabase, auth.userId);
   if (!gate.ok) {
     return NextResponse.json(
       {
@@ -748,14 +748,10 @@ export async function POST(req: Request) {
             onProgress: (message) => send({ type: "progress", message }),
           });
           const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
-          const usage = await recordSuccessfulGeneration(
-            auth.supabase,
-            auth.userId,
-            auth.accessToken,
-          );
-          send({ type: "complete", ...payload, ...(usage ? { usage } : {}) });
+          send({ type: "complete", ...payload, usage: gate.usage });
         } catch (e) {
           console.error("[lesson-plan] stream generation failed:", e);
+          await refundGeneration(gate.reservation);
           send({ type: "error", message: USER_FACING_ERROR });
         } finally {
           controller.close();
@@ -777,14 +773,10 @@ export async function POST(req: Request) {
       strategyBlock,
     });
     const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
-    const usage = await recordSuccessfulGeneration(
-      auth.supabase,
-      auth.userId,
-      auth.accessToken,
-    );
-    return NextResponse.json({ ...payload, ...(usage ? { usage } : {}) });
+    return NextResponse.json({ ...payload, usage: gate.usage });
   } catch (e) {
     console.error("[lesson-plan] generation failed:", e);
+    await refundGeneration(gate.reservation);
     return NextResponse.json({ error: USER_FACING_ERROR }, { status: 500 });
   }
 }
