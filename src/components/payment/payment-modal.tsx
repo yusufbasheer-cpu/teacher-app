@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getAuthHeaders } from "@/lib/auth-headers";
+import { usePricingRegion } from "@/hooks/use-pricing-region";
 import { PRICING_REGIONS, formatRegionalPrice, type PaidPlanKey } from "@/lib/pricing-regions";
 
 const NAVY = "#0A1628";
@@ -49,7 +50,7 @@ const PLAN_INFO: Record<UpgradePlanKey, { name: string; priceKey: PaidPlanKey; g
 };
 
 // Razorpay checkout only supports charging in INR today, so this modal always prices and
-// charges off the India region regardless of the visitor's own pricing region.
+// charges off the India region regardless of the visitor's own (now geo-detected) pricing region.
 const INR_REGION = PRICING_REGIONS.india;
 
 const RAZORPAY_PLAN_TYPE: Record<UpgradePlanKey, "pro" | "pro_plus"> = {
@@ -58,18 +59,20 @@ const RAZORPAY_PLAN_TYPE: Record<UpgradePlanKey, "pro" | "pro_plus"> = {
 };
 
 type RazorpayResponse = {
-  razorpay_order_id: string;
+  razorpay_order_id?: string;
+  razorpay_subscription_id?: string;
   razorpay_payment_id: string;
   razorpay_signature: string;
 };
 
 type RazorpayOptions = {
   key: string;
-  amount: number;
-  currency: string;
+  amount?: number;
+  currency?: string;
   name: string;
   description: string;
-  order_id: string;
+  order_id?: string;
+  subscription_id?: string;
   prefill?: { email?: string; contact?: string };
   theme?: { color: string };
   handler: (response: RazorpayResponse) => void;
@@ -111,6 +114,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
   const [billing, setBilling] = useState<Billing>(initialBilling);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { regionId } = usePricingRegion();
 
   if (!open) return null;
 
@@ -118,6 +122,8 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
   const prices = INR_REGION.prices[plan.priceKey];
   const amount = billing === "annual" ? prices.annual : prices.monthly;
   const period = billing === "annual" ? "year" : "month";
+  const isIndia = regionId === "india";
+  const isProMonthlySubscription = planKey === "pro" && billing === "monthly";
 
   const handlePayClick = async () => {
     if (typeof window === "undefined" || !window.Razorpay) {
@@ -134,6 +140,53 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      if (isProMonthlySubscription) {
+        const subRes = await fetch("/api/razorpay/create-subscription", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ planType: "pro" }),
+        });
+        const subData = await subRes.json();
+        if (!subRes.ok) {
+          throw new Error(subData.error ?? "Could not start checkout.");
+        }
+
+        const razorpay = new window.Razorpay({
+          key: subData.keyId,
+          name: "Layah",
+          description: "Pro — Monthly (auto-renews every 30 days)",
+          subscription_id: subData.subscriptionId,
+          prefill: { email: user?.email ?? undefined },
+          theme: { color: NAVY },
+          handler: async (response) => {
+            try {
+              const verifyHeaders = await getAuthHeaders();
+              const verifyRes = await fetch("/api/razorpay/verify-subscription", {
+                method: "POST",
+                headers: verifyHeaders,
+                body: JSON.stringify(response),
+              });
+              const verifyData = await verifyRes.json();
+              if (!verifyRes.ok) {
+                throw new Error(verifyData.error ?? "Subscription verification failed.");
+              }
+              setStatus("success");
+              onSuccess?.();
+            } catch (err) {
+              setStatus("error");
+              setErrorMessage(err instanceof Error ? err.message : "Subscription verification failed.");
+            }
+          },
+          modal: {
+            ondismiss: () => setStatus("idle"),
+          },
+        });
+
+        razorpay.open();
+        setStatus("idle");
+        return;
+      }
 
       const orderRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
@@ -291,6 +344,16 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
                 </p>
               )}
             </div>
+            {!isIndia && (
+              <p className="mt-2 text-[11px]" style={{ color: "#94a3b8" }}>
+                Billed in Indian Rupees (INR) via Razorpay, regardless of your local currency shown elsewhere.
+              </p>
+            )}
+            {isProMonthlySubscription && (
+              <p className="mt-2 text-[11px]" style={{ color: "#94a3b8" }}>
+                Auto-renews every 30 days until cancelled. Manage or cancel anytime from Settings.
+              </p>
+            )}
           </div>
 
           {/* Features */}
@@ -316,7 +379,9 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
                 <CheckIcon />
               </div>
               <p className="font-bold" style={{ color: NAVY }}>
-                Your plan has been upgraded successfully!
+                {isProMonthlySubscription
+                  ? "Your Pro subscription is active!"
+                  : "Your plan has been upgraded successfully!"}
               </p>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
                 Refresh the page to see your new limits and unlocked features.
@@ -346,16 +411,18 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
                 {status === "loading" ? "Starting checkout…" : "Pay with Card"}
               </button>
 
-              <button
-                type="button"
-                onClick={handlePayClick}
-                disabled={status === "loading"}
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold transition hover:bg-slate-50 disabled:opacity-60"
-                style={{ borderColor: "#5F259F", color: "#5F259F" }}
-              >
-                <UpiIcon />
-                Pay with UPI
-              </button>
+              {isIndia && (
+                <button
+                  type="button"
+                  onClick={handlePayClick}
+                  disabled={status === "loading"}
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold transition hover:bg-slate-50 disabled:opacity-60"
+                  style={{ borderColor: "#5F259F", color: "#5F259F" }}
+                >
+                  <UpiIcon />
+                  Pay with UPI
+                </button>
+              )}
 
               <p className="flex items-center justify-center gap-1.5 text-xs" style={{ color: "#94a3b8" }}>
                 <LockIcon />

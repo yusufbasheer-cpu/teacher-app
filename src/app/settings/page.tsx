@@ -19,6 +19,68 @@ const PLAN_LABELS: Record<string, string> = {
   school_enterprise: "School Enterprise",
 };
 
+type SubscriptionInfo = {
+  status: "created" | "active" | "pending" | "halted" | "cancelled";
+  current_period_end: string | null;
+  cancel_at_cycle_end: boolean;
+};
+
+function CancelConfirmModal({
+  onConfirm,
+  onCancel,
+  cancelling,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+  cancelling: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-[#0A1628]/70 backdrop-blur-sm"
+        aria-label="Close"
+        onClick={onCancel}
+      />
+      <div
+        className="relative w-full max-w-sm rounded-3xl border bg-white p-8 shadow-2xl"
+        style={{ borderColor: "rgba(0,198,167,0.3)" }}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="cancel-sub-title"
+      >
+        <h2 id="cancel-sub-title" className="text-center text-xl font-bold" style={{ color: NAVY }}>
+          Cancel auto-renewal?
+        </h2>
+        <p className="mt-3 text-center text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+          You&apos;ll keep Pro access until the end of your current billing period. No further
+          payments will be taken after that.
+        </p>
+
+        <div className="mt-7 flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={cancelling}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-red-600 text-sm font-bold text-white transition hover:bg-red-700 disabled:opacity-60"
+          >
+            {cancelling ? "Cancelling…" : "Yes, Cancel Auto-Renewal"}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={cancelling}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border text-sm font-semibold transition hover:bg-slate-50 disabled:opacity-60"
+            style={{ borderColor: "#CBD5E0", color: "#4A5568" }}
+          >
+            Keep Subscription
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DeleteConfirmModal({
   onConfirm,
   onCancel,
@@ -94,7 +156,24 @@ export default function SettingsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const didInit = useRef(false);
+
+  const loadSubscription = async () => {
+    try {
+      const res = await fetch("/api/razorpay/subscription", {
+        headers: await getAuthHeaders(),
+        cache: "no-store",
+      });
+      const data = (await res.json()) as { subscription?: SubscriptionInfo | null };
+      setSubscription(data.subscription ?? null);
+    } catch {
+      /* subscription section is optional */
+    }
+  };
 
   useEffect(() => {
     if (didInit.current) return;
@@ -121,9 +200,10 @@ export default function SettingsPage() {
         if (data.usage) setUsage(data.usage);
       } catch {
         /* usage optional */
-      } finally {
-        setLoadingPage(false);
       }
+
+      await loadSubscription();
+      setLoadingPage(false);
     };
 
     void init();
@@ -151,6 +231,30 @@ export default function SettingsPage() {
       /* silent — browser already shows network errors */
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    setCancelling(true);
+    setCancelError(null);
+
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/razorpay/cancel-subscription", { method: "POST", headers });
+      const data = (await res.json()) as { error?: string };
+
+      if (!res.ok) {
+        setCancelError(data.error ?? "Something went wrong. Please try again.");
+        setCancelling(false);
+        return;
+      }
+
+      await loadSubscription();
+      setShowCancelModal(false);
+    } catch {
+      setCancelError("Something went wrong. Please try again.");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -229,6 +333,49 @@ export default function SettingsPage() {
               </div>
             </dl>
           </section>
+
+          {/* Manage subscription */}
+          {subscription && (subscription.status === "active" || subscription.status === "pending") && (
+            <section
+              className="mt-6 rounded-3xl border bg-white p-6 shadow-sm"
+              style={{ borderColor: "rgba(0,198,167,0.2)" }}
+            >
+              <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
+                Manage Subscription
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+                Pro Monthly · Billed ₹349 every 30 days via Razorpay
+                {subscription.status === "pending" && (
+                  <span className="mt-1 block font-semibold text-amber-600">
+                    Your last renewal payment failed — we&apos;re automatically retrying. Your Pro access is unaffected for now.
+                  </span>
+                )}
+              </p>
+
+              {cancelError && <p className="mt-3 text-sm text-red-600">{cancelError}</p>}
+
+              {subscription.cancel_at_cycle_end ? (
+                <p className="mt-4 text-sm font-semibold" style={{ color: NAVY }}>
+                  Cancels on {subscription.current_period_end ?? "your next billing date"} — no further charges.
+                </p>
+              ) : (
+                <>
+                  {subscription.current_period_end && (
+                    <p className="mt-1 text-sm" style={{ color: "#64748b" }}>
+                      Next billing date: {subscription.current_period_end}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelModal(true)}
+                    className="mt-4 inline-flex min-h-10 items-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+                  >
+                    Cancel Auto-Renewal
+                  </button>
+                </>
+              )}
+            </section>
+          )}
 
           {/* Download my data */}
           <section
@@ -336,6 +483,14 @@ export default function SettingsPage() {
           onConfirm={handleDeleteConfirm}
           onCancel={() => { setShowDeleteModal(false); setDeleteError(null); }}
           deleting={deleting}
+        />
+      )}
+
+      {showCancelModal && (
+        <CancelConfirmModal
+          onConfirm={handleCancelSubscription}
+          onCancel={() => { setShowCancelModal(false); setCancelError(null); }}
+          cancelling={cancelling}
         />
       )}
     </main>

@@ -28,6 +28,12 @@ export async function POST(req: Request) {
   if (!billingPeriod || !isBillingPeriod(billingPeriod)) {
     return NextResponse.json({ error: "Invalid billing period." }, { status: 400 });
   }
+  if (planType === "pro" && billingPeriod === "monthly") {
+    return NextResponse.json(
+      { error: "Pro Monthly is billed via auto-pay subscription. Use /api/razorpay/create-subscription." },
+      { status: 400 },
+    );
+  }
 
   const razorpay = getRazorpayClient();
   const admin = getSupabaseServiceRole();
