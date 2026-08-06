@@ -112,7 +112,11 @@ export async function POST(req: Request) {
       break;
     }
 
-    case "subscription.cancelled": {
+    case "subscription.cancelled":
+    case "subscription.completed": {
+      // completed = the subscription's total_count of billing cycles was reached (see
+      // create-subscription's EFFECTIVELY_INDEFINITE_CYCLES comment) -- treat the same as
+      // cancelled rather than leaving the user stuck on a plan nothing will renew anymore.
       await admin
         .from("subscriptions")
         .update({ status: "cancelled", updated_at: now })

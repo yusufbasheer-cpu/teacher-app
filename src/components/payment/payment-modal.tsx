@@ -71,13 +71,16 @@ type RazorpayOptions = {
   currency?: string;
   name: string;
   description: string;
+  image?: string;
   order_id?: string;
   subscription_id?: string;
-  prefill?: { email?: string; contact?: string };
+  prefill?: { email?: string; contact?: string; method?: "card" | "upi" };
   theme?: { color: string };
   handler: (response: RazorpayResponse) => void;
   modal?: { ondismiss?: () => void };
 };
+
+const LAYAH_LOGO_URL = "https://layah.in/Logo.png";
 
 declare global {
   interface Window {
@@ -125,7 +128,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
   const isIndia = regionId === "india";
   const isProMonthlySubscription = planKey === "pro" && billing === "monthly";
 
-  const handlePayClick = async () => {
+  const handlePayClick = async (method: "card" | "upi") => {
     if (typeof window === "undefined" || !window.Razorpay) {
       setStatus("error");
       setErrorMessage("Payment is still loading. Please try again in a moment.");
@@ -156,8 +159,9 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
           key: subData.keyId,
           name: "Layah",
           description: "Pro — Monthly (auto-renews every 30 days)",
+          image: LAYAH_LOGO_URL,
           subscription_id: subData.subscriptionId,
-          prefill: { email: user?.email ?? undefined },
+          prefill: { email: user?.email ?? undefined, method },
           theme: { color: NAVY },
           handler: async (response) => {
             try {
@@ -207,8 +211,9 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
         currency: orderData.currency,
         name: "Layah",
         description: `${plan.name} — ${billing === "annual" ? "Annual" : "Monthly"}`,
+        image: LAYAH_LOGO_URL,
         order_id: orderData.orderId,
-        prefill: { email: user?.email ?? undefined },
+        prefill: { email: user?.email ?? undefined, method },
         theme: { color: NAVY },
         handler: async (response) => {
           try {
@@ -402,7 +407,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
               )}
               <button
                 type="button"
-                onClick={handlePayClick}
+                onClick={() => handlePayClick("card")}
                 disabled={status === "loading"}
                 className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
                 style={{ background: NAVY }}
@@ -414,7 +419,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
               {isIndia && (
                 <button
                   type="button"
-                  onClick={handlePayClick}
+                  onClick={() => handlePayClick("upi")}
                   disabled={status === "loading"}
                   className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold transition hover:bg-slate-50 disabled:opacity-60"
                   style={{ borderColor: "#5F259F", color: "#5F259F" }}

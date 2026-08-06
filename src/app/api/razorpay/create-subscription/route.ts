@@ -5,9 +5,13 @@ import { getRazorpayClient } from "@/lib/razorpay";
 
 export const runtime = "nodejs";
 
-// Roughly 100 years of 30-day cycles -- Razorpay requires a total_count, this is the
-// established way to approximate "renews until cancelled" rather than a fixed term.
-const EFFECTIVELY_INDEFINITE_CYCLES = 1200;
+// ~10 years of 30-day cycles. Razorpay requires a total_count (shown to the customer at
+// checkout as "charged every 30 days until <date>") -- 10 years reads as a normal long-running
+// subscription rather than an alarming multi-century commitment, while still being far longer
+// than any realistic subscriber lifetime. If a subscription ever actually reaches this count,
+// the webhook's subscription.completed handler downgrades the user the same way cancellation
+// does, so nothing is left in a stuck state.
+const EFFECTIVELY_INDEFINITE_CYCLES = 120;
 
 export async function POST(req: Request) {
   const auth = await authenticateRequest(req);
