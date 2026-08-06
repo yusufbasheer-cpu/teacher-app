@@ -78,10 +78,10 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇮🇳",
     decimals: 0,
     prices: p(
-      // TEMPORARY: Pro dropped to ₹10 flat (both billing periods) so early real users can go
-      // Pro for a nominal amount while the Razorpay flow is being validated live. Revert to
-      // 749/7490 once this promo period ends.
-      { monthly: 10, annual: 10 },
+      // TEMP for testing the Pro Monthly auto-pay flow cheaply: monthly shown as ₹10 to match
+      // the ₹10 test Plan (RAZORPAY_PRO_PLAN_ID in .env.local). Annual is a one-time purchase,
+      // unaffected, left at the real price. Revert monthly to 349 once testing is done.
+      { monthly: 10, annual: 3490 },
       { monthly: 1249, annual: 12490 },
       { monthly: 7499, annual: 74990 },
       { monthly: 17499, annual: 174990 },

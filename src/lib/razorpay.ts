@@ -41,13 +41,34 @@ export function amountInPaiseFor(planType: RazorpayPlanType, billingPeriod: Bill
   return Math.round(rupees * 100);
 }
 
-export function verifyPaymentSignature(orderId: string, paymentId: string, signature: string): boolean {
-  const secret = process.env.RAZORPAY_KEY_SECRET?.trim();
-  if (!secret) return false;
-
-  const expected = crypto.createHmac("sha256", secret).update(`${orderId}|${paymentId}`).digest("hex");
+function hmacMatches(payload: string, secret: string, signature: string): boolean {
+  const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
   const expectedBuf = Buffer.from(expected, "hex");
   const actualBuf = Buffer.from(signature, "hex");
   if (expectedBuf.length !== actualBuf.length) return false;
   return crypto.timingSafeEqual(expectedBuf, actualBuf);
+}
+
+export function verifyPaymentSignature(orderId: string, paymentId: string, signature: string): boolean {
+  const secret = process.env.RAZORPAY_KEY_SECRET?.trim();
+  if (!secret) return false;
+  return hmacMatches(`${orderId}|${paymentId}`, secret, signature);
+}
+
+/** Verification formula for a subscription's first checkout payment (distinct from orders). */
+export function verifySubscriptionSignature(
+  subscriptionId: string,
+  paymentId: string,
+  signature: string,
+): boolean {
+  const secret = process.env.RAZORPAY_KEY_SECRET?.trim();
+  if (!secret) return false;
+  return hmacMatches(`${paymentId}|${subscriptionId}`, secret, signature);
+}
+
+/** Verifies an inbound webhook POST -- a different secret (dashboard-configured) than the API key secret. */
+export function verifyWebhookSignature(rawBody: string, signature: string): boolean {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET?.trim();
+  if (!secret || !signature) return false;
+  return Razorpay.validateWebhookSignature(rawBody, signature, secret);
 }

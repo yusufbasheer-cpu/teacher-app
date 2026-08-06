@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPageLayout title="Terms of Service" lastUpdated="May 24, 2026">
+    <LegalPageLayout title="Terms of Service" lastUpdated="August 7, 2026">
       <p>
         These Terms of Service (&quot;Terms&quot;) govern your access to and use of Layah.ai
         (&quot;Layah,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) at{" "}
@@ -79,9 +79,39 @@ export default function TermsPage() {
 
       <LegalSection title="6. Subscriptions and payments">
         <p>
-          Paid plans are billed as described at checkout (monthly or annual). Fees are non-refundable
-          except where required by law or explicitly stated. We may change pricing with reasonable notice.
-          Failure to pay may result in suspension or downgrade of your account.
+          Payments are processed by Razorpay, our third-party payment provider, and are charged in
+          Indian Rupees (INR) regardless of what currency is displayed to you elsewhere on the Service.
+          We do not store your full card, UPI, or bank details — Razorpay handles this in accordance
+          with its own security standards and applicable payment regulations.
+        </p>
+        <p>
+          <strong>Auto-renewal (Pro Monthly).</strong> The Pro Monthly plan is a recurring subscription
+          that automatically renews every 30 days at the then-current price, charged to your saved
+          payment method, until you cancel. By subscribing, you authorize us and Razorpay to make these
+          recurring charges. You will be notified before each renewal charge as required by applicable
+          payment regulations.
+        </p>
+        <p>
+          <strong>Cancelling auto-renewal.</strong> You can cancel anytime from Settings → Manage
+          Subscription. Cancellation stops future charges but takes effect at the end of your current
+          paid 30-day period — you keep Pro access until then, and we do not provide partial refunds
+          for the unused portion of a period.
+        </p>
+        <p>
+          <strong>Failed renewal payments.</strong> If a renewal charge fails (for example, an expired
+          card), we will not immediately remove your access. Razorpay will automatically retry the
+          charge for a grace period; if all retries fail, your account will be downgraded to the Free
+          plan.
+        </p>
+        <p>
+          <strong>One-time purchases.</strong> Annual Pro, Pro Plus, and School plans are charged as a
+          single one-time payment for the selected period and do not auto-renew unless we tell you
+          otherwise at checkout.
+        </p>
+        <p>
+          Fees are otherwise non-refundable except where required by law or explicitly stated. We may
+          change pricing with reasonable notice before your next renewal; changes do not apply
+          retroactively to a period you have already paid for.
         </p>
         <p>
           School and enterprise plans may be subject to separate agreements.

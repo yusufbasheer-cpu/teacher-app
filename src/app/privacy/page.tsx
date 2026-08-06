@@ -38,8 +38,8 @@ export default function PrivacyPage() {
         </p>
         <p>
           <strong className="text-[#0A1628]">Payment information.</strong> If you purchase a paid
-          plan, payment processing is handled by our payment provider. We do not store full card
-          numbers on our servers.
+          plan, payment processing is handled by our payment provider, Razorpay. We do not store full
+          card, UPI, or bank details on our servers.
         </p>
       </LegalSection>
 
