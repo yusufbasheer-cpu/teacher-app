@@ -1,8 +1,13 @@
 ﻿import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { LessonPlanGenerator } from "@/components/lesson-plan/lesson-plan-generator";
 import { SchoolWelcomeBanner } from "@/components/school/school-welcome-banner";
 import { Container } from "@/components/ui/container";
 import { Skeleton } from "@/components/ui/animate";
+import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function LessonPlanFallback() {
   return (
@@ -18,7 +23,16 @@ function LessonPlanFallback() {
   );
 }
 
-export default function LessonPlanPage() {
+export default async function LessonPlanPage() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user?.id) {
+    redirect("/auth");
+  }
+
   return (
     <main className="min-h-screen pb-16 pt-10">
       <Container>

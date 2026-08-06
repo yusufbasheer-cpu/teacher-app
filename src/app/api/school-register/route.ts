@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/send-email";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
+import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,9 @@ type RegistrationBody = {
 };
 
 export async function POST(req: Request) {
+  const ipLimit = checkRateLimit(`school-register:ip:${getClientIp(req)}`, 5, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
   let body: RegistrationBody;
   try {
     body = (await req.json()) as RegistrationBody;

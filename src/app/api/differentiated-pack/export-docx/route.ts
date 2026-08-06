@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildDocxBuffer, sanitizeExportFileName } from "@/lib/lesson-plan-export";
+import { authenticateRequest } from "@/lib/user-usage-server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -14,6 +15,11 @@ type Body = {
 };
 
 export async function POST(req: Request) {
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
   let body: Body;
   try {
     body = (await req.json()) as Body;

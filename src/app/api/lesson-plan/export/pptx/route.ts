@@ -8,6 +8,8 @@ import {
   DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
   isValidTemplateId as isValidPptThemeId,
 } from "@/lib/ppt-template-config";
+import { authenticateRequest } from "@/lib/user-usage-server";
+import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -37,6 +39,13 @@ type Body = {
 };
 
 export async function POST(req: Request) {
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+  const ipLimit = checkRateLimit(`lesson-plan-export-pptx:ip:${getClientIp(req)}`, 20, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
   let body: Body;
   try {
     body = (await req.json()) as Body;

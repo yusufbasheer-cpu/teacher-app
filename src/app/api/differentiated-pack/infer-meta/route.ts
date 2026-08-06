@@ -3,6 +3,8 @@ import { apiErrorResponse } from "@/lib/api-client-error";
 import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import { looksLikeJsonObject, parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
+import { authenticateRequest } from "@/lib/user-usage-server";
+import { checkRateLimit, getClientIp, rateLimitResponse, DAY_MS, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,6 +30,16 @@ topic (string), subject (string), grade (string), learningObjectives (string).
 Infer sensible values from headings and body if labels are missing. Use English. Grade examples: "Grade 7", "Year 9".`;
 
 export async function POST(req: Request) {
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
+  const ipLimit = checkRateLimit(`infer-meta:ip:${getClientIp(req)}`, 10, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  const userLimit = checkRateLimit(`infer-meta:user:${auth.userId}`, 30, DAY_MS);
+  if (!userLimit.ok) return rateLimitResponse(userLimit.resetInSeconds);
+
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
   if (!apiKey) {
     return apiErrorResponse("Missing DEEPSEEK_API_KEY", 500, "infer-meta");

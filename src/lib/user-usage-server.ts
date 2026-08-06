@@ -153,12 +153,23 @@ async function applyMonthlyResetIfNeeded(
 
 /**
  * Ensure a user_usage row exists (create on first login/signup), apply monthly reset, normalize.
+ * The client no longer has a raw INSERT/UPDATE grant on user_usage (see the 20260806150000
+ * lockdown migration) -- ensure_own_user_usage() is a SECURITY DEFINER RPC that does both, scoped
+ * to auth.uid(). Falls back to a service-role write only if the RPC itself errors.
  */
 export async function ensureUserUsageRecord(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserUsageRow | null> {
   try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc("ensure_own_user_usage");
+    if (!rpcError && rpcData) {
+      return normalizeUsageRow(rpcData as UserUsageRow);
+    }
+    if (rpcError) {
+      logSupabaseError("rpc ensure_own_user_usage", rpcError, { userId });
+    }
+
     const { data, error } = await supabase
       .from(USER_USAGE_TABLE)
       .select("id, user_id, plan_type, generations_used, generations_limit, reset_date, created_at")
@@ -171,12 +182,15 @@ export async function ensureUserUsageRecord(
     }
 
     let row = data as UserUsageRow | null;
+    const admin = getSupabaseServiceRole();
+
     if (!row) {
-      row = await insertDefaultUsage(supabase, userId);
+      if (!admin) return null;
+      row = await insertDefaultUsage(admin, userId);
       if (!row) return null;
     }
 
-    row = await applyMonthlyResetIfNeeded(supabase, row);
+    row = await applyMonthlyResetIfNeeded(admin ?? supabase, row);
     return row;
   } catch (err) {
     console.error("[user-usage] ensureUserUsageRecord unexpected error", {

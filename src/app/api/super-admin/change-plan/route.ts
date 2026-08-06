@@ -3,17 +3,9 @@ import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { isSuperAdmin } from "@/lib/super-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 import { logAdminAction } from "@/lib/audit-log";
+import { isPlanType, getGenerationsLimitForPlan } from "@/lib/user-usage";
 
 export const runtime = "nodejs";
-
-const PLAN_LIMITS: Record<string, number> = {
-  free: 15,
-  pro: 30,
-  pro_plus: 60,
-  school_starter: -1,
-  school_pro: -1,
-  school_enterprise: -1,
-};
 
 export async function POST(req: Request) {
   const supabase = await createServerSupabaseClient();
@@ -26,13 +18,16 @@ export async function POST(req: Request) {
   if (!userId || !planType) {
     return NextResponse.json({ error: "Missing userId or planType" }, { status: 400 });
   }
+  if (!isPlanType(planType)) {
+    return NextResponse.json({ error: `Invalid planType: ${planType}` }, { status: 400 });
+  }
 
   const admin = getSupabaseServiceRole();
   if (!admin) {
     return NextResponse.json({ error: "Service unavailable." }, { status: 500 });
   }
 
-  const limit = PLAN_LIMITS[planType] ?? 15;
+  const limit = getGenerationsLimitForPlan(planType) ?? -1;
 
   const { error } = await admin
     .from("user_usage")
