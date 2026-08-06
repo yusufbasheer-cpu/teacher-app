@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { WaitlistModal } from "@/components/payment/waitlist-modal";
+import { PaymentModal } from "@/components/payment/payment-modal";
+import { getUpgradePlan } from "@/components/usage/upgrade-usage-indicator";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 
 const NAVY = "#0A1628";
@@ -22,12 +23,13 @@ export function GenerationLimitModal({
   subline,
   onClose,
 }: GenerationLimitModalProps) {
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
 
   if (!open) return null;
 
   const limit = usage?.generationsLimit ?? 15;
   const used = usage?.generationsUsed ?? 0;
+  const upgradePlan = getUpgradePlan(usage);
 
   return (
     <div
@@ -73,14 +75,16 @@ export function GenerationLimitModal({
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => setWaitlistOpen(true)}
-            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:opacity-95"
-            style={{ background: TEAL }}
-          >
-            Join Waitlist
-          </button>
+          {upgradePlan && (
+            <button
+              type="button"
+              onClick={() => setPaymentOpen(true)}
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:opacity-95"
+              style={{ background: TEAL }}
+            >
+              Upgrade Now
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -91,7 +95,14 @@ export function GenerationLimitModal({
           </button>
         </div>
 
-        <WaitlistModal open={waitlistOpen} plan="pro" onClose={() => { setWaitlistOpen(false); onClose(); }} />
+        {upgradePlan && (
+          <PaymentModal
+            open={paymentOpen}
+            planKey={upgradePlan}
+            onClose={() => { setPaymentOpen(false); onClose(); }}
+            onSuccess={() => window.location.reload()}
+          />
+        )}
       </div>
     </div>
   );

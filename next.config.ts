@@ -4,15 +4,17 @@ import { withSentryConfig } from "@sentry/nextjs";
 const CSP = [
   "default-src 'self'",
   // Next.js requires unsafe-inline for hydration scripts
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com https://checkout.razorpay.com",
   "style-src 'self' 'unsafe-inline'",
   // Images: self, data URIs, blobs, and any HTTPS source (Pexels, fal.ai CDN, etc.)
   "img-src 'self' data: blob: https:",
   "font-src 'self'",
-  // API connections: Supabase, DeepSeek, fal.ai, ipapi, Sentry
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.deepseek.com https://rest.fal.run https://fal.run https://queue.fal.run https://ipapi.co https://api.country.is https://api.pexels.com https://*.sentry.io https://sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com",
+  // API connections: Supabase, DeepSeek, fal.ai, ipapi, Sentry, Razorpay
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.deepseek.com https://rest.fal.run https://fal.run https://queue.fal.run https://ipapi.co https://api.country.is https://api.pexels.com https://*.sentry.io https://sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://api.razorpay.com https://lumberjack.razorpay.com",
   // Workers: blob: required by Sentry replay and other browser workers
   "worker-src blob: 'self'",
+  // Razorpay's checkout overlay renders card/3DS/OTP steps in an iframe from these origins
+  "frame-src https://api.razorpay.com https://checkout.razorpay.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
