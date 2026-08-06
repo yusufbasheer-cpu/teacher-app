@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Container } from "@/components/ui/container";
-import { PaymentModal, type UpgradePlanKey } from "@/components/payment/payment-modal";
+import { WaitlistModal } from "@/components/payment/waitlist-modal";
+import type { UpgradePlanKey } from "@/components/payment/payment-modal";
 import { usePricingRegion } from "@/hooks/use-pricing-region";
 import {
   formatRegionalPrice,
@@ -346,12 +347,12 @@ function PricingCard({
 
 export function PricingPage() {
   const [billing, setBilling] = useState<Billing>("monthly");
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [paymentPlan, setPaymentPlan] = useState<UpgradePlanKey>("pro");
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [waitlistPlan, setWaitlistPlan] = useState<string | undefined>(undefined);
   const { region } = usePricingRegion();
   const isAnnual = billing === "annual";
 
-  const openPayment = (planKey: UpgradePlanKey) => { setPaymentPlan(planKey); setPaymentOpen(true); };
+  const openPayment = (planKey: UpgradePlanKey) => { setWaitlistPlan(planKey); setWaitlistOpen(true); };
 
   return (
     <main
@@ -524,12 +525,10 @@ export function PricingPage() {
         </section>
       </Container>
 
-      <PaymentModal
-        open={paymentOpen}
-        planKey={paymentPlan}
-        initialBilling={billing}
-        onClose={() => setPaymentOpen(false)}
-        onSuccess={() => window.location.reload()}
+      <WaitlistModal
+        open={waitlistOpen}
+        plan={waitlistPlan}
+        onClose={() => setWaitlistOpen(false)}
       />
     </main>
   );

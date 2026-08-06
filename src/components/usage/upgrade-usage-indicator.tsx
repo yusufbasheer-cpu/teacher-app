@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { GenerationUsageIndicator } from "@/components/usage/generation-usage-indicator";
-import { PaymentModal, type UpgradePlanKey } from "@/components/payment/payment-modal";
+import { WaitlistModal } from "@/components/payment/waitlist-modal";
+import type { UpgradePlanKey } from "@/components/payment/payment-modal";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 
 const TEAL = "#00C6A7";
@@ -13,7 +14,7 @@ type Props = {
   loading?: boolean;
 };
 
-export function getUpgradePlan(usage: UserUsageSnapshot | null): UpgradePlanKey | null {
+function getUpgradePlan(usage: UserUsageSnapshot | null): UpgradePlanKey | null {
   if (!usage) return null;
   if (usage.unlimited) return null;
   if (usage.planType === "free") return "pro";
@@ -53,19 +54,16 @@ export function UpgradeUsageIndicator({ usage, loading }: Props) {
             className="shrink-0 inline-flex min-h-9 items-center gap-1.5 rounded-xl px-4 text-sm font-bold text-white transition hover:opacity-90"
             style={{ background: TEAL }}
           >
-            Upgrade Now
+            Join Waitlist
           </button>
         </div>
       )}
 
-      {upgradePlan && (
-        <PaymentModal
-          open={modalOpen}
-          planKey={upgradePlan}
-          onClose={() => setModalOpen(false)}
-          onSuccess={() => window.location.reload()}
-        />
-      )}
+      <WaitlistModal
+        open={modalOpen}
+        plan={upgradePlan ?? undefined}
+        onClose={() => setModalOpen(false)}
+      />
     </>
   );
 }
