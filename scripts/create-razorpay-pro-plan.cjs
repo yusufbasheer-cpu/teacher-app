@@ -1,10 +1,12 @@
-// One-time setup: creates the Razorpay Plan used for Pro Monthly auto-pay subscriptions.
-// Run once: `node scripts/create-razorpay-pro-plan.cjs`
+// Creates a Razorpay Plan used for Pro Monthly auto-pay subscriptions.
+// Run: `node scripts/create-razorpay-pro-plan.cjs [amountInRupees]` (defaults to 349).
 // Prints a plan_id -- paste it into RAZORPAY_PRO_PLAN_ID in .env.local and Vercel.
 //
-// Razorpay Plans are immutable: if the Pro Monthly price changes later, run this again to
-// create a NEW plan and update RAZORPAY_PRO_PLAN_ID -- existing subscribers stay on their
-// original plan/price (create-subscription only affects new sign-ups going forward).
+// Razorpay Plans are immutable -- each amount needs its own plan. This is also how you make a
+// cheap test plan: `node scripts/create-razorpay-pro-plan.cjs 10` creates a real ₹10/30-day plan
+// you can point RAZORPAY_PRO_PLAN_ID at temporarily to test the full checkout+webhook loop for
+// almost nothing, then switch RAZORPAY_PRO_PLAN_ID back to the real ₹349 plan afterward --
+// existing subscribers on a given plan are unaffected when you change which plan new sign-ups use.
 const fs = require("fs");
 const path = require("path");
 const Razorpay = require("razorpay");
@@ -35,14 +37,20 @@ async function main() {
 
   const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
+  const amountRupees = Number(process.argv[2] ?? 349);
+  if (!Number.isFinite(amountRupees) || amountRupees <= 0) {
+    console.error("Invalid amount. Usage: node scripts/create-razorpay-pro-plan.cjs [amountInRupees]");
+    process.exit(1);
+  }
+
   // period: "daily", interval: 30 -> bills exactly every 30 days (not calendar-month, which
   // would drift between 28-31 days depending on the month).
   const plan = await razorpay.plans.create({
     period: "daily",
     interval: 30,
     item: {
-      name: "Layah Pro Monthly",
-      amount: 34900, // paise -- must match src/lib/pricing-regions.ts india.pro.monthly (349) at creation time
+      name: amountRupees === 349 ? "Layah Pro Monthly" : `Layah Pro Monthly (TEST - ₹${amountRupees})`,
+      amount: Math.round(amountRupees * 100), // paise
       currency: "INR",
     },
   });

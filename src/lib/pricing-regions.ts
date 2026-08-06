@@ -78,7 +78,10 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇮🇳",
     decimals: 0,
     prices: p(
-      { monthly: 349, annual: 3490 },
+      // TEMP for testing the Pro Monthly auto-pay flow cheaply: monthly shown as ₹10 to match
+      // the ₹10 test Plan (RAZORPAY_PRO_PLAN_ID in .env.local). Annual is a one-time purchase,
+      // unaffected, left at the real price. Revert monthly to 349 once testing is done.
+      { monthly: 10, annual: 3490 },
       { monthly: 1249, annual: 12490 },
       { monthly: 7499, annual: 74990 },
       { monthly: 17499, annual: 174990 },
