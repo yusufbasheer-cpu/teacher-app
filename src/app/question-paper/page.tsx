@@ -1,8 +1,22 @@
+import { redirect } from "next/navigation";
 import { QuestionPaperGenerator } from "@/components/question-paper/question-paper-generator";
 import { Container } from "@/components/ui/container";
 import { FadeIn } from "@/components/ui/animate";
+import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 
-export default function QuestionPaperPage() {
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+export default async function QuestionPaperPage() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user?.id) {
+    redirect("/auth");
+  }
+
   return (
     <main
       className="min-h-screen pb-16 pt-10"

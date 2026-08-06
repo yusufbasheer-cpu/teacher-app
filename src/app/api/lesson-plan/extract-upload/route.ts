@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createRequire } from "node:module";
 import { createWorker, PSM, type Worker } from "tesseract.js";
+import { authenticateRequest } from "@/lib/user-usage-server";
+import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -123,6 +125,13 @@ function collectFiles(formData: FormData): File[] {
 }
 
 export async function POST(req: Request) {
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+  const ipLimit = checkRateLimit(`extract-upload:ip:${getClientIp(req)}`, 20, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
   log("POST: start", {
     contentType: req.headers.get("content-type")?.slice(0, 80) ?? null,
   });

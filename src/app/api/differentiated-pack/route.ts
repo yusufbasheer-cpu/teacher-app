@@ -9,6 +9,8 @@ import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 import { countFilledPackSections, parseDifferentiatedPack } from "@/lib/parse-differentiated-pack";
+import { authenticateRequest } from "@/lib/user-usage-server";
+import { checkRateLimit, getClientIp, rateLimitResponse, DAY_MS, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -42,6 +44,16 @@ type GenerateBody = {
 };
 
 export async function POST(req: Request) {
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
+  const ipLimit = checkRateLimit(`differentiated-pack:ip:${getClientIp(req)}`, 10, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  const userLimit = checkRateLimit(`differentiated-pack:user:${auth.userId}`, 30, DAY_MS);
+  if (!userLimit.ok) return rateLimitResponse(userLimit.resetInSeconds);
+
   const apiKey = process.env.DEEPSEEK_API_KEY?.trim() ?? "";
   if (!apiKey) {
     return apiErrorResponse("Missing DEEPSEEK_API_KEY", 500, "differentiated-pack");

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import JSZip from "jszip";
 import { buildDocxBuffer, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import type { DifferentiatedPackContent } from "@/lib/differentiated-pack-markers";
+import { authenticateRequest } from "@/lib/user-usage-server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -25,6 +26,11 @@ const FILES: { key: keyof DifferentiatedPackContent; title: string; base: string
 ];
 
 export async function POST(req: Request) {
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
   let body: Body;
   try {
     body = (await req.json()) as Body;

@@ -12,6 +12,8 @@ import {
   type QuestionPaperDifficulty,
   type QuestionPaperTimeOption,
 } from "@/lib/question-paper";
+import { authenticateRequest } from "@/lib/user-usage-server";
+import { checkRateLimit, getClientIp, rateLimitResponse, DAY_MS, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -31,6 +33,16 @@ type BlueprintBody = {
 };
 
 export async function POST(req: Request) {
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
+  const ipLimit = checkRateLimit(`qp-blueprint:ip:${getClientIp(req)}`, 10, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  const userLimit = checkRateLimit(`qp-blueprint:user:${auth.userId}`, 30, DAY_MS);
+  if (!userLimit.ok) return rateLimitResponse(userLimit.resetInSeconds);
+
   let body: BlueprintBody;
   try {
     body = (await req.json()) as BlueprintBody;
