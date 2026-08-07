@@ -25,6 +25,8 @@ import {
   drawBulletBlock,
   drawProgressPill,
   estimateRowHeight,
+  estimateBlockHeight,
+  getImageNaturalSize,
   type BulletVariant,
 } from "@/lib/ppt-render-primitives";
 
@@ -170,12 +172,19 @@ function chunkLinesByHeight(lines: string[], cpl: number, maxHeight: number): st
 
 // ─── Asset helpers ────────────────────────────────────────────────────────────
 
-async function fetchAsDataUri(url: string): Promise<string> {
+type ImageAsset = { dataUri: string; width: number | undefined; height: number | undefined };
+
+async function fetchImageAsset(url: string): Promise<ImageAsset> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const mime = (res.headers.get("content-type")?.split(";")[0]?.trim() ?? "image/png")
     .replace(/^(?!image\/).*/, "image/png");
-  return `data:${mime};base64,${Buffer.from(await res.arrayBuffer()).toString("base64")}`;
+  const buf = Buffer.from(await res.arrayBuffer());
+  const size = getImageNaturalSize(buf);
+  return {
+    dataUri: `data:${mime};base64,${buf.toString("base64")}`,
+    width: size?.width, height: size?.height,
+  };
 }
 
 let _logoCache: string | null | undefined;
@@ -255,7 +264,7 @@ function doHeroOpenSlide(
   tpl: TemplateConfig,
   subject: string,
   grade: string,
-  imageDataUri: string | null,
+  image: ImageAsset | null,
   slideNum: number,
   total: number,
   layahLogo: string | null,
@@ -309,10 +318,11 @@ function doHeroOpenSlide(
   });
 
   // image
-  if (imageDataUri) {
+  if (image) {
     drawRoundedImageFrame(pptx, slide, {
       x: L.imageX, y: L.imageY, w: L.imageW, h: L.imageH,
-      imageDataUri, tpl, altText: "Title slide illustration",
+      imageDataUri: image.dataUri, naturalWidth: image.width, naturalHeight: image.height,
+      tpl, altText: "Title slide illustration",
     });
   }
 
@@ -370,7 +380,7 @@ function doContentSlide(
   chunk: string[],
   chunkIdx: number,
   tpl: TemplateConfig,
-  imageDataUri: string | null,
+  image: ImageAsset | null,
   subject: string,
   slideNum: number,
   total: number,
@@ -382,7 +392,7 @@ function doContentSlide(
   const f = tpl.fonts;
   const L = tpl.layout;
   const isCont = chunkIdx > 0;
-  const hasImg = imageDataUri !== null && !isCont;
+  const hasImg = image !== null && !isCont;
   const kind = SLIDE_KIND_BY_INDEX[deckIdx] ?? "standard";
   const variant = bulletVariantFor(kind);
 
@@ -438,13 +448,22 @@ function doContentSlide(
   }
 
   const cpl = hasImg ? CPL_IMAGE : CPL_FULL;
+
+  // Vertically center short bodies within the remaining content area instead of pinning them to
+  // the top — a 1-2 line body left top-aligned in a 5.65" box reads as broken/empty, not minimal.
+  const availableBottom = CONTENT_Y + CONTENT_H;
+  const usedH = estimateBlockHeight(chunk, cpl);
+  const slack = Math.max(0, availableBottom - bodyY - usedH);
+  bodyY += slack / 2;
+
   drawBulletBlock(pptx, slide, { x: CONTENT_X, y: bodyY, w: contentW, lines: chunk, tpl, variant, cpl });
 
   // ── Image panel ──
-  if (hasImg && imageDataUri) {
+  if (hasImg && image) {
     drawRoundedImageFrame(pptx, slide, {
       x: IMAGE_X, y: CONTENT_Y, w: IMAGE_W, h: CONTENT_H,
-      imageDataUri, tpl, altText: "AI-generated illustration",
+      imageDataUri: image.dataUri, naturalWidth: image.width, naturalHeight: image.height,
+      tpl, altText: "AI-generated illustration",
     });
   }
 
@@ -472,12 +491,12 @@ export async function buildPptxFromTemplateEngine(params: {
   const tpl = getTemplateConfig(params.templateId);
   const deck = params.slides;
 
-  // Resolve image URLs to data URIs in parallel
-  const imageDataUris: (string | null)[] = await Promise.all(
+  // Resolve image URLs to data URIs (+ natural dimensions, for undistorted placement) in parallel
+  const images: (ImageAsset | null)[] = await Promise.all(
     deck.map(async (_, i) => {
       const url = params.slideImageUrls?.[i] ?? null;
       if (!url) return null;
-      try { return await fetchAsDataUri(url); } catch { return null; }
+      try { return await fetchImageAsset(url); } catch { return null; }
     }),
   );
 
@@ -497,7 +516,7 @@ export async function buildPptxFromTemplateEngine(params: {
   let totalPhysical = 1; // always 1 for the hero-open slide
   for (let i = 1; i < deck.length; i++) {
     if (SLIDE_KIND_BY_INDEX[i] === "hero-close") { chunksByDeckIdx[i] = []; totalPhysical += 1; continue; }
-    const hasImg = Boolean(imageDataUris[i]);
+    const hasImg = Boolean(images[i]);
     const cpl = hasImg ? CPL_IMAGE : CPL_FULL;
     const kind = SLIDE_KIND_BY_INDEX[i] ?? "standard";
     const budget = kind === "activity" && ACTIVITY_CHIP_LABEL[i] ? CONTENT_H - ACTIVITY_CHIP_RESERVE_H : CONTENT_H;
@@ -511,11 +530,11 @@ export async function buildPptxFromTemplateEngine(params: {
 
   for (let di = 0; di < deck.length; di++) {
     const model = deck[di]!;
-    const imgUri = imageDataUris[di] ?? null;
+    const image = images[di] ?? null;
     const kind = SLIDE_KIND_BY_INDEX[di] ?? "standard";
 
     if (kind === "hero-open") {
-      doHeroOpenSlide(pptx, model, tpl, params.subject, params.grade, imgUri, slideNum, totalPhysical, layahLogo, schoolLogo);
+      doHeroOpenSlide(pptx, model, tpl, params.subject, params.grade, image, slideNum, totalPhysical, layahLogo, schoolLogo);
       slideNum++;
       continue;
     }
@@ -525,13 +544,13 @@ export async function buildPptxFromTemplateEngine(params: {
       continue;
     }
 
-    const hasImg = imgUri !== null;
+    const hasImg = image !== null;
     const chunks = chunksByDeckIdx[di]!;
 
     for (let ci = 0; ci < chunks.length; ci++) {
       doContentSlide(
         pptx, model, di, chunks[ci]!, ci, tpl,
-        ci === 0 && hasImg ? imgUri : null,
+        ci === 0 && hasImg ? image : null,
         params.subject, slideNum, totalPhysical, layahLogo, schoolLogo,
       );
       slideNum++;

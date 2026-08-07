@@ -7,6 +7,55 @@
 import PptxGenJS from "pptxgenjs";
 import type { TemplateConfig } from "@/lib/ppt-template-config";
 
+// ─── Natural image size (for undistorted placement) ───────────────────────────────────────────
+//
+// pptxgenjs ships a `sizing: {type: "cover"}` option, but in the installed version its natural-
+// image-dimension lookup is dead code (commented out upstream), so it silently no-ops and just
+// stretches the source image to fill the box — the exact distortion we're trying to avoid. We
+// read real width/height ourselves (PNG/JPEG/WEBP headers only, no decoding) and size the image
+// to fit its frame without distortion instead of depending on that library feature.
+
+export function getImageNaturalSize(buf: Buffer): { width: number; height: number } | null {
+  try {
+    // PNG: 8-byte signature, then IHDR chunk with width/height as big-endian uint32 at offset 16/20.
+    if (buf.length >= 24 && buf.readUInt32BE(0) === 0x89504e47 && buf.readUInt32BE(4) === 0x0d0a1a0a) {
+      return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+    }
+    // JPEG: scan markers for a start-of-frame segment carrying height/width.
+    if (buf.length >= 4 && buf[0] === 0xff && buf[1] === 0xd8) {
+      let i = 2;
+      while (i + 9 < buf.length) {
+        if (buf[i] !== 0xff) { i++; continue; }
+        const marker = buf[i + 1]!;
+        if (marker === 0xd8 || marker === 0xd9) { i += 2; continue; }
+        if (marker >= 0xd0 && marker <= 0xd7) { i += 2; continue; }
+        const segLen = buf.readUInt16BE(i + 2);
+        const isSOF =
+          (marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) ||
+          (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf);
+        if (isSOF) {
+          return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+        }
+        i += 2 + segLen;
+      }
+      return null;
+    }
+    // WEBP (VP8X extended header carries canvas size; VP8 lossy carries frame size).
+    if (buf.length >= 30 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") {
+      const chunk = buf.toString("ascii", 12, 16);
+      if (chunk === "VP8X") {
+        return { width: (buf.readUIntLE(24, 3) + 1), height: (buf.readUIntLE(27, 3) + 1) };
+      }
+      if (chunk === "VP8 ") {
+        return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Row-height heuristics (kept in sync with chunking budget in ppt-template-engine.ts) ─────
 
 /** Height (inches) reserved per wrapped text line inside a bullet/checklist row. */
@@ -22,6 +71,11 @@ export function wrappedLineCount(text: string, cpl: number): number {
 
 export function estimateRowHeight(text: string, cpl: number): number {
   return Math.max(ROW_MIN_H, wrappedLineCount(text, cpl) * ROW_LINE_H) + ROW_GAP;
+}
+
+/** Total height `drawBulletBlock` will consume for `lines` — lets callers center short blocks. */
+export function estimateBlockHeight(lines: string[], cpl: number): number {
+  return lines.reduce((sum, line) => sum + estimateRowHeight(line, cpl), 0);
 }
 
 // ─── Lead-in label detection ("Higher Achievers: a challenging task…") ──────────────────────
@@ -107,15 +161,33 @@ export function drawCardFrame(
 export function drawRoundedImageFrame(
   pptx: PptxGenJS,
   slide: PptxGenJS.Slide,
-  opts: { x: number; y: number; w: number; h: number; imageDataUri: string; tpl: TemplateConfig; altText?: string },
+  opts: {
+    x: number; y: number; w: number; h: number; imageDataUri: string; tpl: TemplateConfig;
+    altText?: string; naturalWidth?: number; naturalHeight?: number;
+  },
 ): void {
-  const { x, y, w, h, imageDataUri, tpl, altText } = opts;
+  const { x, y, w, h, imageDataUri, tpl, altText, naturalWidth, naturalHeight } = opts;
   const d = tpl.design;
   const pad = 0.1;
+  const boxW = w - pad * 2;
+  const boxH = h - pad * 2;
   drawCardFrame(pptx, slide, { x, y, w, h, tpl });
+
+  // Fit the image inside its frame at its own aspect ratio instead of stretching it to fill —
+  // pptxgenjs's built-in `sizing: {type:"cover"}` can't do this (its natural-size lookup is dead
+  // code in the installed version), so we size/center it ourselves from the real pixel dimensions.
+  let drawW = boxW, drawH = boxH, drawX = x + pad, drawY = y + pad;
+  if (naturalWidth && naturalHeight) {
+    const scale = Math.min(boxW / naturalWidth, boxH / naturalHeight);
+    drawW = naturalWidth * scale;
+    drawH = naturalHeight * scale;
+    drawX = x + pad + (boxW - drawW) / 2;
+    drawY = y + pad + (boxH - drawH) / 2;
+  }
+
   slide.addImage({
     data: imageDataUri,
-    x: x + pad, y: y + pad, w: w - pad * 2, h: h - pad * 2,
+    x: drawX, y: drawY, w: drawW, h: drawH,
     altText: altText ?? "Slide illustration",
     shadow: { type: "outer", color: d.shadow.color, opacity: d.shadow.opacity * 0.7, blur: d.shadow.blur * 0.6, offset: 2, angle: 90 },
   });
