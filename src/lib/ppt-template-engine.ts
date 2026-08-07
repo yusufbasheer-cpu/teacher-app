@@ -64,7 +64,7 @@ const SLIDE_ICONS: readonly string[] = [
 
 // ─── Fixed slide "kind" per deck index — drives card/marker/chip styling ─────
 
-type SlideKind = "hero-open" | "hero-close" | "checklist" | "activity" | "standard";
+type SlideKind = "hero-open" | "hero-close" | "checklist" | "activity" | "standard" | "concept";
 
 const SLIDE_KIND_BY_INDEX: readonly SlideKind[] = [
   "hero-open",  // 0  Subject / Grade / Date
@@ -72,7 +72,7 @@ const SLIDE_KIND_BY_INDEX: readonly SlideKind[] = [
   "standard",   // 2  Chapter, Topic and SDG Goal
   "checklist",  // 3  Learning Objectives
   "checklist",  // 4  Learning Outcomes
-  "standard",   // 5  Main Phase Core Teaching
+  "concept",    // 5  Main Phase Core Teaching — densest slide; diagram left, key concepts right
   "activity",   // 6  Differentiated Activity and Mini Plenary
   "standard",   // 7  UAE / Real-Life Connection
   "activity",   // 8  Plenary
@@ -89,8 +89,19 @@ const ACTIVITY_CHIP_LABEL: Record<number, string> = {
   9: "Take It Further",
 };
 
+/** Eyebrow chip for "concept" slides — currently just Main Phase (index 5). */
+const CONCEPT_CHIP_LABEL: Record<number, string> = {
+  5: "Key Concepts",
+};
+
 function bulletVariantFor(kind: SlideKind): BulletVariant {
   return kind === "checklist" ? "checklist" : kind === "activity" ? "activity" : "bullet";
+}
+
+function chipLabelFor(kind: SlideKind, deckIdx: number): string | undefined {
+  if (kind === "activity") return ACTIVITY_CHIP_LABEL[deckIdx];
+  if (kind === "concept") return CONCEPT_CHIP_LABEL[deckIdx];
+  return undefined;
 }
 
 // ─── Fixed layout constants (same for every template) ────────────────────────
@@ -103,18 +114,25 @@ const FOOTER_H  = 0.4;
 
 // Header interior
 const HDR_BADGE_SIZE = 0.72;
-const HDR_BADGE_X    = 0.3;
+const HDR_BADGE_X    = 0.3; // matches SLIDE_MARGIN below (declared after use)
 const HDR_TITLE_Y = 0.1;
 const HDR_TITLE_H = 1.0;
 
-// Content / image columns
-const CONTENT_X            = 0.3;
+// Content / image columns — margins symmetric: 0.3" on both the left (content) and right (image)
+// edge of the slide (previously the image panel ran to within 0.15" of the right edge while
+// content stayed 0.3" from the left — an inconsistent margin, fixed here).
+const SLIDE_MARGIN         = 0.3;
+const CONTENT_X            = SLIDE_MARGIN;
 const CONTENT_Y            = HEADER_H + 0.18;   // 1.38"
 const CONTENT_W_WITH_IMAGE = 7.73;
-const CONTENT_W_FULL       = 12.88;
+const CONTENT_W_FULL       = SLIDE_W - SLIDE_MARGIN * 2;
 const CONTENT_H            = FOOTER_Y - CONTENT_Y - 0.12;
 const IMAGE_X = 8.67;
-const IMAGE_W = 4.51;
+const IMAGE_W = SLIDE_W - SLIDE_MARGIN - IMAGE_X;
+/** Gap between the content and image columns — used to mirror the layout for "concept" slides. */
+const COLUMN_GAP = IMAGE_X - (CONTENT_X + CONTENT_W_WITH_IMAGE);
+/** "concept" kind: image on the LEFT, content on the RIGHT (mirrors the standard layout). */
+const CONCEPT_CONTENT_X = CONTENT_X + IMAGE_W + COLUMN_GAP;
 
 // Footer interior
 const FTR_TEXT_Y   = FOOTER_Y + 0.07;
@@ -125,8 +143,8 @@ const FTR_LOGO_X   = 5.9;
 const FTR_LOGO_Y   = FOOTER_Y + 0.04;
 const FTR_LOGO_W   = 1.15;
 const FTR_LOGO_H   = 0.32;
-const FTR_NUM_X    = 11.35;
 const FTR_NUM_W    = 1.85;
+const FTR_NUM_X    = SLIDE_W - SLIDE_MARGIN - FTR_NUM_W; // right-aligned text, same 0.3" margin as everything else
 const PROGRESS_H   = 0.08;
 
 // Chunking — chars-per-line stays a font-metric estimate; row budgeting now uses actual
@@ -134,7 +152,7 @@ const PROGRESS_H   = 0.08;
 // room instead of being packed as dense wrapped paragraphs.
 const CPL_IMAGE = Math.floor(CONTENT_W_WITH_IMAGE * 7.6);  // ≈58
 const CPL_FULL  = Math.floor(CONTENT_W_FULL       * 7.6);  // ≈97
-const ACTIVITY_CHIP_RESERVE_H = 0.46;
+const CHIP_RESERVE_H = 0.46;
 
 // ─── Text utilities ───────────────────────────────────────────────────────────
 
@@ -436,14 +454,19 @@ function doContentSlide(
   });
 
   // ── Body content ──
+  // "concept" slides (currently just Main Phase) mirror the standard layout — image on the left,
+  // key-concept text on the right — instead of text-left/image-right. Same column widths either
+  // way, just swapped, so the margin/gap math stays consistent with every other slide.
+  const isConceptMirrored = kind === "concept" && hasImg;
   const contentW = hasImg ? CONTENT_W_WITH_IMAGE : CONTENT_W_FULL;
+  const contentX = isConceptMirrored ? CONCEPT_CONTENT_X : CONTENT_X;
   let bodyY = CONTENT_Y;
 
-  if (variant === "activity" && !isCont) {
-    const chipLabel = ACTIVITY_CHIP_LABEL[deckIdx];
+  if (!isCont) {
+    const chipLabel = chipLabelFor(kind, deckIdx);
     if (chipLabel) {
-      drawSectionChip(pptx, slide, { text: chipLabel, x: CONTENT_X, y: bodyY, tpl });
-      bodyY += ACTIVITY_CHIP_RESERVE_H;
+      drawSectionChip(pptx, slide, { text: chipLabel, x: contentX, y: bodyY, tpl });
+      bodyY += CHIP_RESERVE_H;
     }
   }
 
@@ -456,12 +479,12 @@ function doContentSlide(
   const slack = Math.max(0, availableBottom - bodyY - usedH);
   bodyY += slack / 2;
 
-  drawBulletBlock(pptx, slide, { x: CONTENT_X, y: bodyY, w: contentW, lines: chunk, tpl, variant, cpl });
+  drawBulletBlock(pptx, slide, { x: contentX, y: bodyY, w: contentW, lines: chunk, tpl, variant, cpl });
 
   // ── Image panel ──
   if (hasImg && image) {
     drawRoundedImageFrame(pptx, slide, {
-      x: IMAGE_X, y: CONTENT_Y, w: IMAGE_W, h: CONTENT_H,
+      x: isConceptMirrored ? CONTENT_X : IMAGE_X, y: CONTENT_Y, w: IMAGE_W, h: CONTENT_H,
       imageDataUri: image.dataUri, naturalWidth: image.width, naturalHeight: image.height,
       tpl, altText: "AI-generated illustration",
     });
@@ -474,6 +497,49 @@ function doContentSlide(
     ? `${model.speakerNotes ?? ""}\n\n(Continuation slide — same section.)`
     : (model.speakerNotes ?? "");
   slide.addNotes(notes);
+}
+
+// ─── Deck layout stats (for internal QA scoring — see ppt-quality-report.ts) ──────────────────
+//
+// Deliberately decoupled from buildPptxFromTemplateEngine (duplicates a little of its chunk-
+// budget math) rather than changing that function's return shape — this is an optional,
+// zero-risk-to-production analysis path, not something wired into the real render/export flow.
+
+export type SlideLayoutStat = {
+  deckIdx: number;
+  kind: SlideKind;
+  hasImage: boolean;
+  physicalSlideCount: number; // 1 = fits on one slide; >1 = needed "Continued" overflow slide(s)
+  fillRatio: number; // 0 = empty box, 1 = exactly fills available content height, >1 = overflowed budget (shouldn't happen — chunking prevents it, but flagged if it does)
+};
+
+export function computeDeckLayoutStats(
+  slides: StructuredLessonSlideModel[],
+  slideImageUrls?: (string | null)[] | null,
+): SlideLayoutStat[] {
+  const stats: SlideLayoutStat[] = [
+    { deckIdx: 0, kind: "hero-open", hasImage: Boolean(slideImageUrls?.[0]), physicalSlideCount: 1, fillRatio: 1 },
+  ];
+  for (let i = 1; i < slides.length; i++) {
+    const kind = SLIDE_KIND_BY_INDEX[i] ?? "standard";
+    if (kind === "hero-close") {
+      stats.push({ deckIdx: i, kind, hasImage: false, physicalSlideCount: 1, fillRatio: 1 });
+      continue;
+    }
+    const hasImg = Boolean(slideImageUrls?.[i]);
+    const cpl = hasImg ? CPL_IMAGE : CPL_FULL;
+    const chipReserve = chipLabelFor(kind, i) ? CHIP_RESERVE_H : 0;
+    const budget = CONTENT_H - chipReserve;
+    const lines = normalizeToLines(slides[i]!.body);
+    const chunks = chunkLinesByHeight(lines, cpl, budget);
+    const usedH = estimateBlockHeight(lines, cpl);
+    stats.push({
+      deckIdx: i, kind, hasImage: hasImg,
+      physicalSlideCount: chunks.length,
+      fillRatio: budget > 0 ? usedH / (budget * chunks.length) : 0,
+    });
+  }
+  return stats;
 }
 
 // ─── Main build function ──────────────────────────────────────────────────────
@@ -511,7 +577,7 @@ export async function buildPptxFromTemplateEngine(params: {
   pptx.title   = `Slides — ${params.topic}`;
 
   // Pre-compute chunks (and physical slide count) per deck slide, reserving space for the
-  // activity eyebrow chip on the first physical chunk of activity-kind slides.
+  // eyebrow chip (activity or concept kind) on the first physical chunk where one is shown.
   const chunksByDeckIdx: string[][][] = new Array(deck.length);
   let totalPhysical = 1; // always 1 for the hero-open slide
   for (let i = 1; i < deck.length; i++) {
@@ -519,7 +585,7 @@ export async function buildPptxFromTemplateEngine(params: {
     const hasImg = Boolean(images[i]);
     const cpl = hasImg ? CPL_IMAGE : CPL_FULL;
     const kind = SLIDE_KIND_BY_INDEX[i] ?? "standard";
-    const budget = kind === "activity" && ACTIVITY_CHIP_LABEL[i] ? CONTENT_H - ACTIVITY_CHIP_RESERVE_H : CONTENT_H;
+    const budget = chipLabelFor(kind, i) ? CONTENT_H - CHIP_RESERVE_H : CONTENT_H;
     const lines = normalizeToLines(deck[i]!.body);
     const chunks = chunkLinesByHeight(lines, cpl, budget);
     chunksByDeckIdx[i] = chunks;

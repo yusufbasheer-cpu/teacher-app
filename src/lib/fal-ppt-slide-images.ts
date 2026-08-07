@@ -84,13 +84,13 @@ export function buildLessonPptFluxPrompt(meta: PptSlideImageMeta, slot: LessonPp
       core = `Curiosity and discovery learning illustration: lightbulbs, question marks, magnifying glass motifs for "${topic}". Flat vector educational poster`;
       break;
     case "fallback_pexels_uae":
-      core = `UAE and Dubai themed abstract illustration symbolic of real-world links to "${topic}", geometric landmarks silhouette hints, modern Gulf aesthetic`;
+      core = `UAE and Dubai themed flat-design vector illustration symbolic of real-world links to "${topic}", geometric landmarks silhouette icons, modern Gulf aesthetic`;
       break;
     case "fallback_pexels_plenary":
-      core = `Reflection and classroom summary graphic for "${topic}" in ${subject}: journal icons, recap arrows, calm classroom palette`;
+      core = `Reflection and classroom summary flat-design vector illustration for "${topic}" in ${subject}: journal icons, recap arrows, calm classroom palette`;
       break;
     case "fallback_pexels_extended":
-      core = `Research homework and independent study graphic for "${topic}" in ${subject}: notebook, laptop silhouette as object only, study desk flat lay`;
+      core = `Research homework and independent study flat-design vector illustration for "${topic}" in ${subject}: notebook, laptop, and study-desk icons`;
       break;
     default:
       core = `Professional educational illustration for "${topic}", flat design`;

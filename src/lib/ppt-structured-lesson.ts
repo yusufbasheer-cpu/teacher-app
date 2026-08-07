@@ -780,13 +780,16 @@ function pickDeck(
   isAr: boolean,
   plan: string,
   ppt: string,
-  contextAnchor: string,
+  /** No longer prefixed onto the fallback body — it read as a leaked internal label
+   *  ("Context: EVS, Grade 3, topic ..."), not presentable slide content. Kept as a parameter
+   *  (unused) so all 8 call sites below don't need their positional args reshuffled. */
+  _contextAnchor: string,
   pptIsolatedBody?: string,
 ): { body: string; notes: string } {
   const fromPlan = plan ? extractFromFullPlanDeck(plan, kind) : "";
   // Use pre-isolated body when available to prevent cross-slide content bleed.
   const fromPpt = pptIsolatedBody?.trim() || (ppt ? extractFromPptContent(ppt, pptHints) : "");
-  const bodyRaw = mergeBodies(fromPlan, fromPpt, `${contextAnchor}\n${topicFallback}`);
+  const bodyRaw = mergeBodies(fromPlan, fromPpt, topicFallback);
   const body = stripMarkdownSymbolsForStudents(bodyRaw);
   const notes = buildTeacherSlideNotes(
     suggestedTiming,
@@ -1120,8 +1123,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "starter",
     ["starter", "hook", "warm up", "predict", "guess", "التمهيد", "استهلال"],
     isAr
-      ? `تمهيد غني لموضوع «${topic}»: يشوق الطلاب ويدفعهم للتنبؤ بالموضوع دون كشف الفصل أو الأهداف. نشاط تفاعلي مفصل بخطوات زمنية واضحة ومهام يقوم بها كل طالب.`
-      : `Rich starter for "${topic}": hook learners, invite predictions about what today is about, without naming the chapter or listing objectives. Interactive, detailed, timed steps; no objectives or chapter reveal on this slide.`,
+      ? `تمهيد: «${topic}»\n\nخذ لحظة للتفكير فيما تعرفه بالفعل.\n\nشارك فكرة أو سؤالاً أو تخميناً حول موضوع اليوم مع زميلك.`
+      : `Warm-Up: "${topic}"\n\nTake a moment to think about what you already know.\n\nShare one idea, question, or guess about today's topic with a partner.`,
     "5–10 minutes",
     isAr,
     plan,
@@ -1135,8 +1138,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "chapterTopicSdg",
     ["chapter", "unit", "sdg", "الفصل", "الوحدة"],
     isAr
-      ? `فقط: اسم الفصل، اسم الموضوع «${topic}»، وهدف تنمية مستدامة واحد مرتبط (رقم واسم). بلا أنشطة ولا أهداف ولا شرح إضافي.`
-      : `Only: chapter name, topic name "${topic}", and one SDG goal (number and title) linked to this learning. No activities, objectives, or extra explanation.`,
+      ? `نظرة عامة على الفصل\n\nالموضوع: «${topic}»\n\nيرتبط هذا الموضوع بأهداف التنمية المستدامة للأمم المتحدة.`
+      : `Chapter Overview\n\nTopic: "${topic}"\n\nSDG Connection: this topic links to the UN Sustainable Development Goals.`,
     "2 minutes",
     isAr,
     plan,
@@ -1166,8 +1169,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "learningOutcomes",
     ["learning outcomes", "students will", "النواتج"],
     isAr
-      ? `فقط نواتج قابلة للقياس لدرس «${topic}» بعد التعلم. صاغها بصيغة أفعال قابلة للملاحظة وتتوافق مع الأهداف دون نسخ صياغتها حرفياً. لا أنشطة ولا ملخص فصل.`
-      : `Learning outcomes only: measurable, observable statements of what learners will be able to do after this lesson, aligned with objectives but not copied verbatim. No activities or chapter summary.`,
+      ? `بنهاية هذا الدرس، سيكون الطلاب قادرين على إظهار فهم واضح وقابل للقياس لموضوع «${topic}».`
+      : `By the end of this lesson, students will be able to demonstrate a clear, measurable understanding of "${topic}".`,
     "3 minutes",
     isAr,
     plan,
@@ -1181,8 +1184,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "mainPhase",
     ["main phase", "main teaching", "core teaching", "المرحلة الأساسية", "شرح"],
     isAr
-      ? `المرحلة الأساسية لموضوع «${topic}»: أولاً المحتوى التعليمي الكامل (مفاهيم، مصطلحات، شرح واضح، مثال معنى). بعد ذلك فقط أنشطة تطبيق (مثل I Do / We Do / You Do أو محطات تعلم) تدعم ما تم شرحه ولا تحل محله. لا اختتام ولا تمايز ولا بطاقة خروج.`
-      : `Main phase core teaching for "${topic}": first deliver the full lesson content (concepts, key terms, clear explanation, concise worked meaning). Only after that, add learning activities (e.g. I Do, We Do, You Do, stations, jigsaw) that apply the taught ideas and do not replace the explanation. No plenary, differentiation, or exit ticket on this slide.`,
+      ? `الشرح الأساسي: «${topic}»\n\nالمفاهيم والمصطلحات والشرح الأساسي لدرس اليوم، يليها أنشطة تطبيقية موجهة لترسيخ الفهم.`
+      : `Core Teaching: "${topic}"\n\nKey concepts, terms, and explanations for today's lesson, followed by guided practice activities to apply what students have learned.`,
     "25–35 minutes",
     isAr,
     plan,
@@ -1196,8 +1199,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "differentiated",
     ["differentiation", "mini plenary", "support", "extension", "التمايز", "تلخيص"],
     isAr
-      ? `مهام متمايزة لموضوع «${topic}»: (1) ذوو التحصيل الأعلى — تحدٍّ يمتد إلى ما وراء الهدف، (2) ذوو التحصيل الأوسط — نشاط قياسي يحقق الهدف، (3) ذوو التحصيل الأدنى — نشاط مدعوم بالتسقيل والإرشاد. ثم في الأسفل: تلخيص مصغر — سؤال سريع للتحقق من الفهم.`
-      : `Differentiated tasks for "${topic}": (1) Higher Achievers — a challenging task extending beyond the objective, (2) Middle Achievers — a standard task matching the objective, (3) Lower Achievers — a scaffolded task with sentence starters or guided prompts. At the bottom: Mini Plenary — one quick question to check understanding.`,
+      ? `مهام متمايزة: «${topic}»\n\nذوو التحصيل الأعلى — تحدٍّ يمتد إلى ما وراء الهدف.\nذوو التحصيل الأوسط — نشاط قياسي يحقق الهدف.\nذوو التحصيل الأدنى — نشاط مدعوم بالتسقيل والإرشاد.\n\nتلخيص مصغر: سؤال سريع للتحقق من الفهم.`
+      : `Differentiated Tasks: "${topic}"\n\nHigher Achievers — a challenging task extending beyond the objective.\nMiddle Achievers — a standard task matching the objective.\nLower Achievers — a scaffolded task with sentence starters or guided prompts.\n\nMini Plenary: one quick question to check understanding.`,
     "10–12 minutes",
     isAr,
     plan,
@@ -1242,7 +1245,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   const s10Merged = mergeBodies(
     hw,
     s10Pick.body,
-    isAr ? `${contextAnchor}\nمهمة واحدة فقط.` : `${contextAnchor}\nSingle extended task only.`,
+    isAr ? `مهمة موسعة: «${topic}»\n\nاستكشف هذا الموضوع أكثر قبل الحصة القادمة.` : `Extended Task: "${topic}"\n\nExplore this topic further before the next lesson.`,
   );
   const s10Body = stripMarkdownSymbolsForStudents(
     sanitizeSlide10ExtendedBody(s10Merged, T[9]!),
@@ -1253,8 +1256,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "exitTicket",
     ["exit ticket", "ticket to leave", "بطاقة الخروج"],
     isAr
-      ? `فقط بطاقة خروج قصيرة لموضوع «${topic}» لقياس سريع. لا شرح ولا واجب موسع.`
-      : `Exit ticket only for "${topic}": concise formative questions. No lesson explanation or homework text on this slide.`,
+      ? `تحقق سريع: «${topic}»\n\nسؤال قصير للتحقق من فهمك قبل مغادرة درس اليوم.`
+      : `Quick Check: "${topic}"\n\nA short question to check your understanding before you leave today's lesson.`,
     "3–4 minutes",
     isAr,
     plan,
@@ -1268,8 +1271,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     "successCriteria",
     ["success criteria", "self-evaluation", "i can", "معايير النجاح"],
     isAr
-      ? `فقط معايير النجاح والتقييم الذاتي لموضوع «${topic}» (مثل أستطيع أن، قائمة تحقق، مقياس). لا محتوى جديد ولا تكرار بطاقة الخروج.`
-      : `Success criteria and self evaluation only for "${topic}": I can statements, checklist, or rating scale. No new teaching content and no exit ticket repetition.`,
+      ? `معايير النجاح\n\nتأمل فيما تعلمته عن «${topic}» اليوم وقيّم مدى ثقتك بفهمك له.`
+      : `Success Criteria\n\nReflect on what you have learned about "${topic}" today and rate your own confidence.`,
     "3–4 minutes",
     isAr,
     plan,

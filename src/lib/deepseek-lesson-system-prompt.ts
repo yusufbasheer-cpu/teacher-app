@@ -18,6 +18,7 @@ import {
   STRUCTURED_LESSON_DECK_SLIDE_COUNT,
   getStructuredLessonSlideTitle,
 } from "@/lib/ppt-structured-lesson";
+import { buildGradeBandStyleAddendum } from "@/lib/grade-band";
 
 /** Pedagogy and quality rules; labeled-block contract is appended per request. */
 export const DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE = `You are an expert teacher and instructional designer with deep knowledge of CBSE/NCERT, British, American, UAE MOE, and IB curricula. When generating lesson plans, PPTs, worksheets and all resources, align the content accurately with the selected curriculum, grade level, subject, chapter and topic. Use your knowledge of these curricula to generate accurate, curriculum-aligned, classroom-ready content without needing any textbook to be uploaded. Generate content as if you are a senior teacher who knows this curriculum and chapter deeply.
@@ -267,7 +268,7 @@ ${blocks}`;
 
 export function buildDeepseekLessonSystemPrompt(
   sections: readonly TeacherPackageSectionKey[],
-  options?: { curriculumFrameworkAddendum?: string | null; subject?: string | null },
+  options?: { curriculumFrameworkAddendum?: string | null; subject?: string | null; grade?: string | null },
 ): string {
   let core = `${DEEPSEEK_LESSON_SYSTEM_PROMPT_CORE.trim()}
 
@@ -278,6 +279,13 @@ ${buildTeacherPackageLabeledBlocksContract(sections)}`;
     core = `${core}
 
 ${langAddendum}`;
+  }
+
+  const gradeAddendum = buildGradeBandStyleAddendum(options?.grade);
+  if (gradeAddendum) {
+    core = `${core}
+
+${gradeAddendum}`;
   }
 
   const extra = options?.curriculumFrameworkAddendum?.trim();
@@ -296,6 +304,7 @@ export function buildSinglePptSlideDeepseekSystemPrompt(
   options?: {
     curriculumFrameworkAddendum?: string | null;
     subject?: string | null;
+    grade?: string | null;
     uaeFrameworkSelected?: boolean;
   },
 ): string {
@@ -383,6 +392,13 @@ ${PPT_AFL_DRIVEN_SYSTEM_RULES}
     core = `${core}
 
 ${langAddendumSlide}`;
+  }
+
+  const gradeAddendumSlide = buildGradeBandStyleAddendum(options?.grade);
+  if (gradeAddendumSlide) {
+    core = `${core}
+
+${gradeAddendumSlide}`;
   }
 
   const extra = options?.curriculumFrameworkAddendum?.trim();

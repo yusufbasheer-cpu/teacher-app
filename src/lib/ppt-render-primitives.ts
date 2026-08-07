@@ -131,7 +131,7 @@ export function drawSectionChip(
   slide.addText(text.toUpperCase(), {
     x, y, w, h,
     fontSize: d.typography.sectionLabel, bold: true, color: d.chipText,
-    fontFace: tpl.fonts.face, align: "center", valign: "middle", charSpacing: 1,
+    fontFace: tpl.fonts.face, align: "center", valign: "middle", charSpacing: 1, fit: "shrink",
   });
   return { w, h };
 }
@@ -256,13 +256,17 @@ export function drawBulletBlock(
           { text: `${label}  `, options: { bold: true, color: c.accent, fontSize: f.contentSize, fontFace: f.face } },
           { text: rest, options: { color: c.contentText, fontSize: f.contentSize, fontFace: f.face } },
         ],
-        { x: textX, y: curY, w: textW, h: rowH, valign: "top", lineSpacingMultiple: 1.18 },
+        // fit:"shrink" is a safety net, not the primary sizing mechanism — chunkLinesByHeight
+        // already budgets each row's height from estimateRowHeight, but an unusually long single
+        // word/URL/number can still overflow the wrap estimate; shrink-to-fit catches that case
+        // instead of clipping.
+        { x: textX, y: curY, w: textW, h: rowH, valign: "top", lineSpacingMultiple: 1.18, fit: "shrink" },
       );
     } else {
       slide.addText(raw, {
         x: textX, y: curY, w: textW, h: rowH,
         fontSize: f.contentSize, color: c.contentText, fontFace: f.face,
-        valign: "top", lineSpacingMultiple: 1.18,
+        valign: "top", lineSpacingMultiple: 1.18, fit: "shrink",
       });
     }
 
