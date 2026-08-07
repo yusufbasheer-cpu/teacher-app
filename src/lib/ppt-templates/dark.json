@@ -20,6 +20,16 @@
     "imagePanelBackground": "1E2A45",
     "imagePanelBorder": "3D5080"
   },
+  "design": {
+    "radius": { "card": 0.12, "chip": 0.14, "image": 0.14 },
+    "shadow": { "color": "000000", "opacity": 0.4, "blur": 10, "offset": 4 },
+    "cardFill": "202C4A",
+    "cardBorder": "3D5080",
+    "checklistTick": "FFD700",
+    "chipFill": "27345A",
+    "chipText": "FFD700",
+    "typography": { "sectionLabel": 12, "bulletLead": 16, "caption": 11 }
+  },
   "fonts": {
     "titleSize": 36,
     "contentSize": 16,

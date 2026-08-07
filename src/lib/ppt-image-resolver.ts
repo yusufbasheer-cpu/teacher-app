@@ -1,8 +1,10 @@
 /**
  * PPT deck images — generated once during lesson-plan creation (not on download).
  *
- * Phase 1 — Pexels only (slides 1, 2, 8, 9, 10): runs first, independent of fal.ai.
- * Phase 2 — fal.ai (slides 3, 6, 7, 11, 12): optional; failures do not block Pexels.
+ * Fal AI (Flux) is the primary source for every image slide (all 10 image slots, deck indices
+ * 0,1,2,5,6,7,8,9,10,11) — consistent flat-illustration style instead of mixed-in stock photos.
+ * Pexels is kept only as a fallback for the 5 slides that have a matching photo query, used if
+ * Fal fails (rate limit, circuit open, missing credentials) or returns nothing.
  */
 
 import { getFalCredentials } from "@/lib/fal-flux-section-images";
@@ -43,32 +45,23 @@ function titleSlidePexelsQuery(m: PptDeckImageMeta): string {
   return subject ? `${subject} education` : "education";
 }
 
-const PEXELS_DECK_SPECS: readonly {
+/** Every image slide, in deck order. Fal is always primary; `pexelsQuery` is a fallback-only path. */
+const DECK_IMAGE_SPECS: readonly {
   idx: number;
   slideNumber1Based: number;
-  query: (m: PptDeckImageMeta) => string;
+  falSlot: LessonPptFluxSlot;
+  pexelsQuery?: (m: PptDeckImageMeta) => string;
 }[] = [
-  { idx: 0, slideNumber1Based: 1, query: titleSlidePexelsQuery },
-  { idx: 1, slideNumber1Based: 2, query: () => "curiosity discovery thinking students" },
-  { idx: 7, slideNumber1Based: 8, query: slide8PexelsQuery },
-  { idx: 8, slideNumber1Based: 9, query: () => "reflection classroom learning summary" },
-  { idx: 9, slideNumber1Based: 10, query: () => "research study homework learning" },
-];
-
-const PEXELS_FALLBACK_SLOT: Record<number, LessonPptFluxSlot> = {
-  0: "title_slide_fal_fallback",
-  1: "fallback_pexels_starter",
-  7: "fallback_pexels_uae",
-  8: "fallback_pexels_plenary",
-  9: "fallback_pexels_extended",
-};
-
-const FAL_PRIMARY_SPECS: readonly { idx: number; slot: LessonPptFluxSlot }[] = [
-  { idx: 2, slot: "sdg_chapter" },
-  { idx: 5, slot: "main_teaching" },
-  { idx: 6, slot: "differentiated_activity" },
-  { idx: 10, slot: "exit_ticket" },
-  { idx: 11, slot: "success_criteria" },
+  { idx: 0, slideNumber1Based: 1, falSlot: "title_slide_fal_fallback", pexelsQuery: titleSlidePexelsQuery },
+  { idx: 1, slideNumber1Based: 2, falSlot: "fallback_pexels_starter", pexelsQuery: () => "curiosity discovery thinking students" },
+  { idx: 2, slideNumber1Based: 3, falSlot: "sdg_chapter" },
+  { idx: 5, slideNumber1Based: 6, falSlot: "main_teaching" },
+  { idx: 6, slideNumber1Based: 7, falSlot: "differentiated_activity" },
+  { idx: 7, slideNumber1Based: 8, falSlot: "fallback_pexels_uae", pexelsQuery: slide8PexelsQuery },
+  { idx: 8, slideNumber1Based: 9, falSlot: "fallback_pexels_plenary", pexelsQuery: () => "reflection classroom learning summary" },
+  { idx: 9, slideNumber1Based: 10, falSlot: "fallback_pexels_extended", pexelsQuery: () => "research study homework learning" },
+  { idx: 10, slideNumber1Based: 11, falSlot: "exit_ticket" },
+  { idx: 11, slideNumber1Based: 12, falSlot: "success_criteria" },
 ];
 
 export type PptDeckImageGenerationResult = {
@@ -76,125 +69,12 @@ export type PptDeckImageGenerationResult = {
   notices: string[];
 };
 
-function logDeckPexelsAssignment(deck: (string | null)[], phase: string): void {
-  console.log(`[ppt-deck-images][${phase}] Pexels URL assignment to deck indices:`);
-  for (const idx of [0, 1, 7, 8, 9]) {
-    const url = deck[idx];
-    const label = PEXELS_SLIDE_LABELS[idx] ?? `index-${idx}`;
-    console.log(
-      `  deck[${idx}] (${label}): ${url ? `SET → ${url.slice(0, 100)}…` : "null (no image)"}`,
-    );
-  }
-}
-
-/**
- * Phase 1: Pexels only — never waits on fal.ai.
- */
-async function runPexelsPhase(
-  meta: PptDeckImageMeta,
-  deck: (string | null)[],
-  used: Set<string>,
-  notices: string[],
-  skipFalFallback: boolean,
-): Promise<void> {
-  console.log("[ppt-deck-images] ═══ PHASE 1: PEXELS ONLY (independent of fal.ai) ═══");
-  logPexelsEnvStatus("ppt-deck-pexels-phase");
-
-  const pexelsOk = Boolean(resolvePexelsApiKey());
-  if (!pexelsOk) {
-    notices.push(
-      "Pexels images skipped: set a valid PEXELS_API_KEY from https://www.pexels.com/api/ in .env.local (not a URL).",
-    );
-    console.warn("[ppt-deck-images] Pexels phase SKIPPED — invalid/missing API key");
-    return;
-  }
-
-  for (const spec of PEXELS_DECK_SPECS) {
+function logDeckAssignment(deck: (string | null)[]): void {
+  console.log("[ppt-deck-images] final URL assignment to deck indices:");
+  for (const spec of DECK_IMAGE_SPECS) {
+    const url = deck[spec.idx];
     const label = PEXELS_SLIDE_LABELS[spec.idx] ?? `slide-${spec.slideNumber1Based}`;
-    const q = spec.query(meta);
-
-    console.log(
-      `[ppt-deck-images] Pexels call START — slide ${spec.slideNumber1Based} → deck[${spec.idx}] query="${q}"`,
-    );
-
-    let url = await fetchPexelsUniqueLandscapeUrl(q, used, {
-      verboseLog: true,
-      logLabel: label,
-      slideNumber1Based: spec.slideNumber1Based,
-    });
-
-    if (!url && !skipFalFallback) {
-      const falSlot = PEXELS_FALLBACK_SLOT[spec.idx];
-      if (falSlot) {
-        console.log(
-          `[ppt-deck-images] Pexels returned null for slide ${spec.slideNumber1Based} — trying fal fallback (${falSlot})`,
-        );
-        url = await generateLessonPptFluxImageDeduped(meta, falSlot, used, {
-          verboseLog: true,
-          logLabel: `${label}-fal-fallback`,
-        });
-      }
-    } else if (!url && skipFalFallback) {
-      console.warn(
-        `[ppt-deck-images] Pexels returned null for slide ${spec.slideNumber1Based} — fal fallback SKIPPED (fal unavailable)`,
-      );
-    }
-
-    if (url) {
-      deck[spec.idx] = url;
-      used.add(url);
-      console.log(
-        `[ppt-deck-images] deck[${spec.idx}] slide ${spec.slideNumber1Based} ASSIGNED ← ${url.slice(0, 96)}…`,
-      );
-    } else {
-      console.warn(`[ppt-deck-images] deck[${spec.idx}] slide ${spec.slideNumber1Based} — NO IMAGE`);
-    }
-  }
-
-  logDeckPexelsAssignment(deck, "after-pexels-phase");
-}
-
-/**
- * Phase 2: fal.ai slots only — runs after Pexels; failures do not affect Pexels URLs already set.
- */
-async function runFalPhase(
-  meta: PptDeckImageMeta,
-  deck: (string | null)[],
-  used: Set<string>,
-  notices: string[],
-): Promise<void> {
-  const falOk = Boolean(getFalCredentials());
-  const falCircuit = getFalPptCircuitOpenReason();
-
-  console.log("[ppt-deck-images] ═══ PHASE 2: fal.ai (optional, after Pexels) ═══");
-  console.log(`[ppt-deck-images] fal credentials: ${falOk ? "present" : "missing"}, circuitOpen=${falCircuit ? "YES" : "NO"}`);
-
-  if (!falOk) {
-    console.warn("[ppt-deck-images] fal skipped: FAL_API_KEY or FAL_KEY not set");
-    return;
-  }
-  if (falCircuit) {
-    console.warn(`[ppt-deck-images] fal phase skipped — ${falCircuit}`);
-    return;
-  }
-
-  for (const { idx, slot } of FAL_PRIMARY_SPECS) {
-    const falVerboseOpts =
-      idx === 2
-        ? ({ verboseLog: true, logLabel: "slide-3-sdg" } as const)
-        : idx === 10
-          ? ({ verboseLog: true, logLabel: "slide-11-exit" } as const)
-          : idx === 11
-            ? ({ verboseLog: true, logLabel: "slide-12-success" } as const)
-            : undefined;
-    const url = await generateLessonPptFluxImageDeduped(meta, slot, used, falVerboseOpts);
-    if (url) {
-      deck[idx] = url;
-      used.add(url);
-      console.log(`[ppt-deck-images] deck[${idx}] slide ${idx + 1} (${slot}) ← fal ${url.slice(0, 64)}…`);
-    } else {
-      console.warn(`[ppt-deck-images] deck[${idx}] slide ${idx + 1} (${slot}) — fal skipped`);
-    }
+    console.log(`  deck[${spec.idx}] (${label}): ${url ? `SET → ${url.slice(0, 100)}…` : "null (no image)"}`);
   }
 }
 
@@ -206,28 +86,64 @@ export async function generatePptDeckSlideImages(
   const used = new Set<string>();
   const notices: string[] = [];
 
-  const skipFalFallback =
-    Boolean(getFalPptCircuitOpenReason()) || !getFalCredentials();
+  const falOk = Boolean(getFalCredentials());
+  const falCircuit = getFalPptCircuitOpenReason();
+  const pexelsOk = Boolean(resolvePexelsApiKey());
 
   console.log(
-    `[ppt-deck-images] start — subject="${meta.subject}", topic="${meta.topic}", deck=${deckLen}, skipFalFallback=${skipFalFallback}`,
+    `[ppt-deck-images] start — subject="${meta.subject}", topic="${meta.topic}", deck=${deckLen}, ` +
+      `fal=${falOk ? "ready" : "missing"}, falCircuitOpen=${falCircuit ? "YES" : "NO"}, pexelsFallback=${pexelsOk ? "ready" : "missing"}`,
   );
+  if (pexelsOk) logPexelsEnvStatus("ppt-deck-pexels-fallback");
 
-  await runPexelsPhase(meta, deck, used, notices, skipFalFallback);
-  await runFalPhase(meta, deck, used, notices);
-
-  const pexelsCount = [0, 1, 7, 8, 9].filter((i) => Boolean(deck[i])).length;
-  const got = deck.filter(Boolean).length;
-  console.log(
-    `[ppt-deck-images] done — ${got}/10 total slots | Pexels slides (1,2,8,9,10): ${pexelsCount}/5`,
-  );
-  console.log(`[ppt-deck-images] full deck URL map: ${JSON.stringify(deck.map((u) => (u ? "URL" : null)))}`);
-
-  if (pexelsCount === 0 && !notices.some((n) => n.includes("Pexels"))) {
+  if (!falOk || falCircuit) {
     notices.push(
-      "No Pexels images were returned. Check server logs for [pexels] HTTP status and PEXELS_API_KEY validation.",
+      falCircuit ?? "Fal AI image generation is not configured (FAL_API_KEY missing) — slide images will be limited.",
     );
   }
+
+  // Resolve all 10 slots in parallel — each fal call can take up to FAL_IMAGE_TIMEOUT_MS (90s) to
+  // time out, and running them sequentially (as this loop originally did) meant a worst case of
+  // 10x that (15 minutes) blocking lesson creation. In parallel, worst case is ~1 fal round trip.
+  const resolved = await Promise.all(
+    DECK_IMAGE_SPECS.map(async (spec) => {
+      const label = PEXELS_SLIDE_LABELS[spec.idx] ?? `slide-${spec.slideNumber1Based}`;
+      let url: string | null = null;
+
+      if (falOk && !falCircuit) {
+        url = await generateLessonPptFluxImageDeduped(meta, spec.falSlot, used, {
+          verboseLog: true,
+          logLabel: label,
+        });
+      }
+
+      if (!url && spec.pexelsQuery && pexelsOk) {
+        const q = spec.pexelsQuery(meta);
+        console.log(`[ppt-deck-images] fal unavailable/failed for ${label} — falling back to Pexels query="${q}"`);
+        url = await fetchPexelsUniqueLandscapeUrl(q, used, {
+          verboseLog: true,
+          logLabel: `${label}-pexels-fallback`,
+          slideNumber1Based: spec.slideNumber1Based,
+        });
+      }
+
+      return { spec, label, url };
+    }),
+  );
+
+  for (const { spec, label, url } of resolved) {
+    if (url) {
+      deck[spec.idx] = url;
+      used.add(url);
+    } else {
+      console.warn(`[ppt-deck-images] deck[${spec.idx}] slide ${spec.slideNumber1Based} (${label}) — NO IMAGE`);
+    }
+  }
+
+  logDeckAssignment(deck);
+
+  const got = deck.filter(Boolean).length;
+  console.log(`[ppt-deck-images] done — ${got}/${DECK_IMAGE_SPECS.length} slots filled`);
 
   return { urls: deck, notices };
 }

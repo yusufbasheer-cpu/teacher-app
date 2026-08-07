@@ -200,6 +200,7 @@ function buildMessages(
       content: buildDeepseekLessonSystemPrompt(sections, {
         curriculumFrameworkAddendum: frameworkAddendum,
         subject: input.subject.trim(),
+        grade: input.grade.trim(),
       }),
     },
     {

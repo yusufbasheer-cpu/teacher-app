@@ -26,6 +26,28 @@ type TemplateColors = {
 
 type TemplateFonts = { titleSize: number; contentSize: number; face: string };
 
+type TemplateDesign = {
+  radius: { card: number; chip: number; image: number };
+  shadow: { color: string; opacity: number; blur: number; offset: number };
+  cardFill: string;
+  cardBorder: string;
+  checklistTick: string;
+  chipFill: string;
+  chipText: string;
+  typography: { sectionLabel: number; bulletLead: number; caption: number };
+};
+
+const DEFAULT_DESIGN: TemplateDesign = {
+  radius: { card: 0.12, chip: 0.14, image: 0.14 },
+  shadow: { color: "0A1628", opacity: 0.18, blur: 8, offset: 3 },
+  cardFill: "F6FBFA",
+  cardBorder: "E2E8F0",
+  checklistTick: "00C6A7",
+  chipFill: "EEF9F7",
+  chipText: "0A8F7A",
+  typography: { sectionLabel: 12, bulletLead: 16, caption: 11 },
+};
+
 type TitleSlideLayout = {
   accentBarW: number;
   iconX: number; iconY: number; iconFontSize: number;
@@ -54,6 +76,7 @@ export type TemplateConfig = {
   colors: TemplateColors;
   fonts: TemplateFonts;
   layout: TemplateLayout;
+  design: TemplateDesign;
 };
 
 // ─── Public template IDs ──────────────────────────────────────────────────────
@@ -74,12 +97,17 @@ import warmJson    from "./ppt-templates/warm.json";
 import darkJson    from "./ppt-templates/dark.json";
 import minimalJson from "./ppt-templates/minimal.json";
 
+function withDesignDefaults(raw: unknown): TemplateConfig {
+  const cfg = raw as TemplateConfig;
+  return { ...cfg, design: { ...DEFAULT_DESIGN, ...(cfg.design ?? {}) } };
+}
+
 const TEMPLATE_MAP: Record<TemplateId, TemplateConfig> = {
-  classic: classicJson as TemplateConfig,
-  modern:  modernJson  as TemplateConfig,
-  warm:    warmJson    as TemplateConfig,
-  dark:    darkJson    as TemplateConfig,
-  minimal: minimalJson as TemplateConfig,
+  classic: withDesignDefaults(classicJson),
+  modern:  withDesignDefaults(modernJson),
+  warm:    withDesignDefaults(warmJson),
+  dark:    withDesignDefaults(darkJson),
+  minimal: withDesignDefaults(minimalJson),
 };
 
 export function getTemplateConfig(id: string): TemplateConfig {
