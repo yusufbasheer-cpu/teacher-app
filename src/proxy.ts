@@ -7,6 +7,7 @@ const ALLOWED_ORIGINS = new Set([
   "https://www.layah.in",
   "http://localhost:3000",
   "http://localhost:3001",
+  ...(process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : []),
 ]);
 
 function csrfGuard(request: NextRequest): NextResponse | null {
