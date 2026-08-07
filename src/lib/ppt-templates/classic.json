@@ -20,6 +20,16 @@
     "imagePanelBackground": "EEF9F7",
     "imagePanelBorder": "80DDD0"
   },
+  "design": {
+    "radius": { "card": 0.12, "chip": 0.14, "image": 0.14 },
+    "shadow": { "color": "0A1628", "opacity": 0.18, "blur": 8, "offset": 3 },
+    "cardFill": "F6FBFA",
+    "cardBorder": "DDEFEC",
+    "checklistTick": "00C6A7",
+    "chipFill": "EEF9F7",
+    "chipText": "0A8F7A",
+    "typography": { "sectionLabel": 12, "bulletLead": 16, "caption": 11 }
+  },
   "fonts": {
     "titleSize": 36,
     "contentSize": 16,
