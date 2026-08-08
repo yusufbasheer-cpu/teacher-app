@@ -1,9 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, type ReactNode } from "react";
-import { playWhooshSound, primeAudioOnGesture } from "@/lib/layah-sounds";
+import type { ReactNode } from "react";
 
 /**
  * Wraps every page in a smooth fade-in entry animation.
@@ -14,18 +12,6 @@ import { playWhooshSound, primeAudioOnGesture } from "@/lib/layah-sounds";
  * for fixed descendants — which breaks full-screen overlays.
  */
 export function PageTransitionWrapper({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const isFirst = useRef(true);
-
-  useEffect(() => {
-    if (isFirst.current) {
-      isFirst.current = false;
-      return;
-    }
-    primeAudioOnGesture();
-    playWhooshSound();
-  }, [pathname]);
-
   return (
     <motion.div
       initial={{ opacity: 0 }}

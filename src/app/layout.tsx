@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Caveat, IBM_Plex_Mono, Plus_Jakarta_Sans, Poppins, Space_Grotesk } from "next/font/google";
-import { SoundProvider } from "@/components/effects/sound-provider";
 import { ActiveSessionGuard } from "@/components/auth/active-session-guard";
 import { CookieBanner } from "@/components/layout/cookie-banner";
 import { AppShell } from "@/components/layout/app-shell";
@@ -139,14 +138,12 @@ export default function RootLayout({
       >
         <SentryProvider />
         <PostHogProvider>
-          <SoundProvider>
-            <AppShell>
-              <ActiveSessionGuard>
-                <PageTransitionWrapper>{children}</PageTransitionWrapper>
-              </ActiveSessionGuard>
-            </AppShell>
-            <CookieBanner />
-          </SoundProvider>
+          <AppShell>
+            <ActiveSessionGuard>
+              <PageTransitionWrapper>{children}</PageTransitionWrapper>
+            </ActiveSessionGuard>
+          </AppShell>
+          <CookieBanner />
         </PostHogProvider>
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       </body>

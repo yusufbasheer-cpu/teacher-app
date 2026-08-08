@@ -25,7 +25,6 @@ import {
 } from "@/lib/app-nav-links";
 import { supabase } from "@/lib/supabase";
 import { UserMenu } from "@/components/layout/user-menu";
-import { SoundToggleButton } from "@/components/effects/sound-toggle-button";
 
 const NAV_ITEMS = [
   { href: "/overview", label: "Dashboard", icon: LayoutDashboard },
@@ -122,7 +121,6 @@ export function AppSidebar({ user }: Props) {
         </Link>
         {!collapsed ? (
           <div className="flex shrink-0 items-center gap-1">
-            <SoundToggleButton variant="light" className="!min-h-8 !min-w-8" />
             <button
               type="button"
               onClick={toggleCollapsed}
@@ -137,7 +135,6 @@ export function AppSidebar({ user }: Props) {
 
       {collapsed ? (
         <div className="mb-1 flex flex-col items-center gap-1">
-          <SoundToggleButton variant="light" className="!min-h-8 !min-w-8" />
           <button
             type="button"
             onClick={toggleCollapsed}

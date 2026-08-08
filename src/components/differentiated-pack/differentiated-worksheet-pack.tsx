@@ -9,7 +9,6 @@ import {
   clearDiffPackSession,
   readDiffPackSession,
 } from "@/lib/differentiated-pack-session";
-import { dispatchLayahGenerationComplete } from "@/lib/layah-sounds";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
 import { filterUserFacingNotices } from "@/lib/image-notices";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
@@ -201,7 +200,6 @@ export function DifferentiatedWorksheetPack() {
       }
 
       setPack(combined);
-      dispatchLayahGenerationComplete();
       const safeNotices = filterUserFacingNotices(notices);
       setParseNotice(safeNotices.length ? safeNotices.join(" ") : null);
       if (failures.length) {

@@ -12,7 +12,7 @@
 
 ## 1. Navigation structure
 
-Global layout (`src/app/layout.tsx`) wraps every route in: Sentry → PostHog → SoundProvider → `AppEffects` (cursor/particle effects) → `NavbarWrapper` → `ActiveSessionGuard` → `PageTransitionWrapper` (page fade-in) → `CookieBanner`.
+Global layout (`src/app/layout.tsx`) wraps every route in: Sentry → PostHog → `AppEffects` (cursor/particle effects) → `NavbarWrapper` → `ActiveSessionGuard` → `PageTransitionWrapper` (page fade-in) → `CookieBanner`.
 
 **Header** (`src/components/layout/navbar.tsx`): sticky top bar, shown on every route **except `/landing`** (`NavbarWrapper` returns `null` there — `/landing` renders its own `<Navbar />` inline instead, confirmed live: the same nav markup and links appear on `/landing` as everywhere else). Nav links come from one source of truth, `src/lib/app-nav-links.ts`, and matched exactly what rendered in the browser:
 
@@ -74,7 +74,6 @@ Both routes exist and both work, but a user clicking "Dashboard" in the header n
 - **Scroll-triggered count-up stats** — the "Layah in Numbers" section on `/landing` renders `0+`/`0` for every stat until scrolled into view, then animates up to its real value (e.g. `15+` Curriculums Supported, `25+` Subjects Available). Confirmed live by scrolling the section into view. Worth knowing if you're QA-ing via a quick static screenshot — the zeros look like a bug but aren't.
 - **Card-in-`Container`** — nearly every page wraps content in `src/components/ui/container.tsx` for consistent max-width/padding.
 - **Teal/navy brand pair** (`#00C6A7` teal, `#0A1628` navy) hardcoded as inline `style` colors repeatedly across navbar, footer, headings, and CTAs, rather than centralized in a Tailwind theme/token file — every new page currently re-declares these hex values by hand.
-- **Sound-effect hooks** (`useLayahSounds`, `playWhooshSound`) fired on route transitions and button interactions, gated by a single global `SoundContext` toggle.
 - **Inconsistent footer coverage** — see §1; six pages get the footer, the rest don't.
 - **Auth-gated pages follow one of two shapes**: either (a) full page shell renders immediately and gating happens after data loads (`/lesson-plan`, `/question-paper`, `/differentiated-worksheets`, `/school-register`, `/my-lesson-plans`), or (b) a client-side redirect to `/auth` fires before/while rendering (`/dashboard`, `/settings`). Worth standardizing if consistency matters — right now it's a per-page choice, not a shared pattern.
 
@@ -91,7 +90,6 @@ Based on where they're imported from and how generic they are:
 | `PageTransitionWrapper` | `src/components/layout/page-transition-wrapper.tsx` | Global, via root layout |
 | `LegalPageLayout` | `src/components/legal/legal-page-layout.tsx` | `/privacy`, `/terms` |
 | `ActiveSessionGuard` | `src/components/auth/active-session-guard.tsx` | Global, via root layout — the single-active-device-session enforcement |
-| `SoundToggleButton` / `SoundProvider` | `src/components/effects/` | Global (navbar toggle + root provider) |
 | `GenerationUsageIndicator`, `UpgradeUsageIndicator`, `GenerationLimitModal` | `src/components/usage/` | All three AI generator pages, driven by the shared `useUserUsage` hook |
 | `CookieBanner` | `src/components/layout/cookie-banner.tsx` | Global |
 | `AppEffects` (cursor/particles) | `src/components/effects/app-effects.tsx` | Global |

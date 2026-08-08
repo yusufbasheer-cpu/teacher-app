@@ -7,7 +7,6 @@ import {
 } from "@/lib/lesson-plan";
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
-import { dispatchLayahGenerationComplete } from "@/lib/layah-sounds";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type LoadingGamePreset = "lesson-plan" | "question-paper";
@@ -379,7 +378,6 @@ export function LessonPlanLoadingGame({
 
       // Trigger confetti + celebration card
       fireConfetti();
-      dispatchLayahGenerationComplete();
       setCelebrating(true);
       return;
     }

@@ -1,6 +1,4 @@
-import { dispatchLayahDownloadSound } from "@/lib/layah-sounds";
-
-/** Trigger a file download in the browser and play the paper-rustle sound. */
+/** Trigger a file download in the browser. */
 export function triggerFileDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -10,5 +8,4 @@ export function triggerFileDownload(blob: Blob, filename: string): void {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-  dispatchLayahDownloadSound();
 }

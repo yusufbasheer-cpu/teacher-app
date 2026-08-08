@@ -122,23 +122,20 @@ teacher-app/
 ```
 <SentryProvider>          — force-initializes Sentry in the browser
   <PostHogProvider>        — initializes PostHog + captures pageviews on route change
-    <SoundProvider>        — React Context for a global "sound effects on/off" toggle
-      <AppEffects />       — cosmetic effects (particles, cursor, magnetic buttons)
-      <NavbarWrapper />     — top nav (hidden on landing)
-      <ActiveSessionGuard>  — enforces single-active-device-session for protected routes
-        <PageTransitionWrapper>
-          {page content}
-        </PageTransitionWrapper>
-      </ActiveSessionGuard>
-      <CookieBanner />
-    </SoundProvider>
+    <AppEffects />       — cosmetic effects (particles, cursor, magnetic buttons)
+    <NavbarWrapper />     — top nav (hidden on landing)
+    <ActiveSessionGuard>  — enforces single-active-device-session for protected routes
+      <PageTransitionWrapper>
+        {page content}
+      </PageTransitionWrapper>
+    </ActiveSessionGuard>
+    <CookieBanner />
   </PostHogProvider>
 </SentryProvider>
 ```
 
 - **`src/providers/posthog-provider.tsx`** — PostHog init + `PostHogPageView` (calls `usePathname`/`useSearchParams` to fire a `$pageview` event on every route change).
 - **`src/components/sentry-provider.tsx`** — belt-and-suspenders Sentry init alongside `sentry.client.config.ts`.
-- **`src/components/effects/sound-provider.tsx`** — the **only** `createContext` call in the whole codebase (`SoundContext`), consumed via `useLayahSounds()`.
 - **`src/hooks/use-user-usage.ts`** — fetches `/api/user-usage`, returns `{ usage, loading, headline, subline, refresh, applyUsage }`. Used by every generator page to show remaining-generation counts and upgrade prompts.
 - **`src/hooks/use-pricing-region.ts`** — **currently stubbed**: always returns the `gcc`/AED region regardless of the visitor's actual location. A code comment says geo-detection is disabled until the payment gateway goes live — don't assume `/api/geo` is actually driving pricing today.
 - **Reusable components** are organized by feature under `src/components/` (`lesson-plan/`, `question-paper/`, `differentiated-pack/`, `auth/`, `hod/`, `school/`, `admin/`, `payment/`, `pricing/`, `usage/`, `legal/`, `landing/`, `home/`, `layout/`, `ui/`, `effects/`, `cursor/`).
@@ -218,7 +215,7 @@ Documented in `.env.example`:
 
 **No Redux, Zustand, or React Query** — none appear in `package.json`, and none are used anywhere in `src`. State is managed with plain React:
 
-- **One** React Context in the entire app: `SoundContext` (`src/components/effects/sound-provider.tsx`), for a global sound-effects toggle.
+- **No global React Context for app state** — state is managed with plain React.
 - **Local component state** (`useState`/`useEffect`/`useCallback`) inside each feature's client component — every generator page manages its own form/loading/error state independently.
 - **Custom hooks as the shared-state layer**: `useUserUsage` and `usePricingRegion` wrap `fetch` + Supabase calls and are reused across pages.
 - **Supabase session itself is the source of truth for auth state** — components call `supabase.auth.getSession()` / `onAuthStateChange` directly rather than going through a context provider.

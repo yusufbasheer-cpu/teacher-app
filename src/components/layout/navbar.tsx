@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { SoundToggleButton } from "@/components/effects/sound-toggle-button";
 import { APP_NAV_LINKS, isNavLinkActive } from "@/lib/app-nav-links";
 import { Container } from "@/components/ui/container";
 
@@ -54,7 +53,6 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <SoundToggleButton />
             <Link
               href="/auth"
               className="ml-1 inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition hover:opacity-70"
@@ -98,10 +96,6 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <div className="flex items-center justify-between gap-2 px-1 py-1">
-              <span className="text-xs font-medium" style={{ color: "#9CA3AF" }}>Sounds</span>
-              <SoundToggleButton />
-            </div>
             <Link
               href="/auth"
               className="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-medium transition"
