@@ -1,14 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Navbar } from "@/components/layout/navbar";
-import { StatsSection } from "@/components/home/stats-section";
-import { TestimonialsSection } from "@/components/home/testimonials-section";
-import { FeedbackSection } from "@/components/home/feedback-section";
-import { Footer } from "@/components/layout/footer";
-import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { SectionLabel } from "@/components/marketing/section-label";
-import { PeriodList, PeriodItem } from "@/components/marketing/period-list";
+import { BookOpen, ClipboardCheck, Presentation } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Layah.ai — AI Lesson Planning for Teachers",
@@ -16,277 +8,366 @@ export const metadata: Metadata = {
     "Layah generates complete lesson plans, PowerPoint presentations, worksheets, and assessments in seconds. Built specifically for teachers.",
 };
 
-const FEATURES = [
-  {
-    title: "Complete lesson plans",
-    description:
-      "Fully structured plans aligned to UAE, CBSE, British and American curricula. Objectives, activities and timings included.",
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.04A8.97 8.97 0 006 3.75c-1.05 0-2.06.18-3 .51v14.25A8.99 8.99 0 016 18c2.3 0 4.4.87 6 2.29m0-14.25a8.97 8.97 0 016-2.29c1.05 0 2.06.18 3 .51v14.25A8.99 8.99 0 0018 18a8.97 8.97 0 00-6 2.29m0-14.25v14.25" />
-    ),
-  },
-  {
-    title: "Professional PPT slides",
-    description:
-      "13-slide decks with proper lesson structure and AFL tools built in — ready to open and present.",
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25a2.25 2.25 0 01-2.25 2.25h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3" />
-    ),
-  },
-  {
-    title: "Full resource pack",
-    description:
-      "Worksheets, assessments, homework and teacher notes generated together in one download.",
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.11c0-1.14-.85-2.1-1.98-2.2a48 48 0 00-1.12-.08m-5.8 0c-.06.21-.1.44-.1.67 0 .42.34.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.67m-5.8 0c-.38.02-.75.05-1.13.08-1.13.1-1.97 1.06-1.97 2.2v2.14M8.25 8.25H4.88c-.63 0-1.13.5-1.13 1.13v11.25c0 .62.5 1.12 1.13 1.12h9.75c.62 0 1.12-.5 1.12-1.12V9.38c0-.63-.5-1.13-1.12-1.13H8.25z" />
-    ),
-  },
-  {
-    title: "Curriculum alignment",
-    description:
-      "Outcomes mapped to grade-level learning standards across 15+ curricula worldwide.",
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.04A8.97 8.97 0 006 3.75c-1.05 0-2.06.18-3 .51v14.25A8.99 8.99 0 016 18c2.3 0 4.4.87 6 2.29m0-14.25a8.97 8.97 0 016-2.29c1.05 0 2.06.18 3 .51v14.25A8.99 8.99 0 0018 18a8.97 8.97 0 00-6 2.29m0-14.25v14.25" />
-    ),
-  },
-  {
-    title: "87 AFL tools",
-    description:
-      "Built-in Assessment for Learning tools, auto-selected or chosen by hand for each lesson phase.",
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    ),
-  },
-  {
-    title: "One-click export",
-    description: "Download everything as Word, PowerPoint or a single ZIP — no reformatting.",
-    icon: (
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-    ),
-  },
-];
+// ── Design tokens (match the generation wizard exactly — see
+//    lesson-plan-generator.tsx / teacher-package-viewer.tsx / app-sidebar.tsx) ──
+const TEAL = "#00C6A7";
+const TEAL_DARK = "#0A8F7A";
+const NAVY = "#0A1628";
+const BG_SOFT = "#F8FAFC";
+const BORDER = "#E2E8F0";
+const TEXT_MUTED = "#64748B";
 
-const HERO_CHECKLIST = [
-  "Learning objectives — UAE MOE aligned",
-  "Differentiated for higher, middle and lower achievers",
-  "KHDA & SPEA inspection-ready format",
-  "87 AFL tools integrated",
-  "13-slide professional PowerPoint",
-  "Question paper with mark scheme",
+const NAV_LINKS = [
+  { href: "/lesson-plan", label: "Lesson Plans" },
+  { href: "/differentiated-worksheets", label: "Worksheets" },
+  { href: "/question-paper", label: "Question Papers" },
+  { href: "/pricing", label: "Pricing" },
 ] as const;
 
-function FeatureIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-      {children}
-    </svg>
-  );
-}
+const TRUST_BADGES = ["CBSE", "ICSE", "IB", "Cambridge"] as const;
 
-function HeroPreviewCard() {
-  return (
-    <Card className="mx-auto w-full max-w-md gap-0 border-navy-rule/15 py-0 shadow-lg lg:mx-0">
-      <div className="h-1 w-full bg-primary" />
-      <div className="flex items-start justify-between gap-3 border-b border-border px-5 pb-4 pt-5">
-        <div>
-          <p className="font-mono-editorial text-[0.65rem] uppercase tracking-widest text-muted-foreground">
-            Science · Grade 7
-          </p>
-          <p className="font-display mt-1.5 text-xl font-semibold leading-tight text-navy">
-            Photosynthesis
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">Generated in 45 seconds</p>
-        </div>
-        <span className="shrink-0 rounded-md bg-primary/10 px-2.5 py-1 font-mono-editorial text-[0.65rem] font-medium text-primary">
-          UAE MOE
-        </span>
-      </div>
-      <ul className="space-y-2.5 px-5 py-4">
-        {HERO_CHECKLIST.map((item) => (
-          <li key={item} className="flex items-start gap-2.5 text-sm leading-snug text-foreground/80">
-            <svg className="mt-0.5 size-4 shrink-0 text-primary" viewBox="0 0 20 20" fill="none">
-              <path d="M4 10l4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {item}
-          </li>
-        ))}
-      </ul>
-      <div className="border-t border-border px-5 pb-5 pt-3">
-        <p className="text-xs leading-snug text-muted-foreground">
-          Joined by <strong className="text-navy">500+ teachers</strong> saving hours every week
-        </p>
-      </div>
-    </Card>
-  );
-}
+const PREVIEW_CARDS = [
+  {
+    title: "Lesson Plans",
+    icon: BookOpen,
+    items: ["Learning objectives", "Teaching sequence", "Differentiation", "Closure activities"],
+  },
+  {
+    title: "PPT Slides",
+    icon: Presentation,
+    items: ["Slide-by-slide content", "Visual prompts", "Discussion questions", "Key explanations"],
+  },
+  {
+    title: "Worksheets & Assessment",
+    icon: ClipboardCheck,
+    items: ["Practice questions", "Exit tickets", "Homework", "Teacher notes"],
+  },
+] as const;
+
+const HOW_IT_WORKS = [
+  {
+    number: 1,
+    title: "Enter your chapter",
+    description: "Choose curriculum, grade, subject, and topic.",
+  },
+  {
+    number: 2,
+    title: "Add textbook content (optional)",
+    description: "Upload a PDF, image, or paste notes.",
+  },
+  {
+    number: 3,
+    title: "Generate your teaching package",
+    description: "Get lesson plans, PPTs, worksheets, homework, and assessments instantly.",
+  },
+] as const;
+
+const FOOTER_PRODUCT_LINKS = [
+  { href: "/lesson-plan", label: "Lesson Plans" },
+  { href: "/differentiated-worksheets", label: "Worksheets" },
+  { href: "/question-paper", label: "Question Papers" },
+  { href: "/pricing", label: "Pricing" },
+] as const;
+
+const FOOTER_COMPANY_LINKS = [
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/terms", label: "Terms" },
+] as const;
 
 export default function LandingPage() {
   return (
-    <div className="site-editorial min-h-screen bg-background text-foreground">
-      <Navbar />
-
-      {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-navy py-16 md:py-24">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center lg:gap-16">
-            <div className="flex-1 text-center lg:text-left">
-              <SectionLabel className="justify-center lg:justify-start lg:flex">
-                Curriculum-aligned · UAE · CBSE · British · American
-              </SectionLabel>
-
-              <h1 className="font-display mt-4 text-4xl font-semibold leading-[1.1] tracking-tight text-chalk sm:text-5xl lg:text-5xl xl:text-6xl">
-                Plan better lessons in the time it takes to mark one.
-              </h1>
-
-              <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-chalk/70 lg:mx-0">
-                Layah generates complete lesson plans, presentations, worksheets and assessments —
-                so your evenings go back to being yours.
-              </p>
-
-              <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center lg:justify-start">
-                <Link
-                  href="/lesson-plan"
-                  className={buttonVariants({ size: "lg", className: "h-12 rounded-lg px-8 text-base" })}
-                >
-                  Start for free
-                </Link>
-                <a
-                  href="#how-it-works"
-                  className={buttonVariants({
-                    variant: "outline",
-                    size: "lg",
-                    className:
-                      "h-12 rounded-lg border-chalk/25 bg-transparent px-8 text-base text-chalk hover:bg-chalk/10 hover:text-chalk",
-                  })}
-                >
-                  See how it works
-                </a>
-              </div>
-
-              <p className="font-mono-editorial mt-6 text-xs uppercase tracking-wider text-chalk/45">
-                No credit card required
-              </p>
-            </div>
-
-            <div className="w-full flex-shrink-0 lg:w-[440px]">
-              <HeroPreviewCard />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FEATURES ─────────────────────────────────────────────────────── */}
-      <section id="features" className="py-20 md:py-28">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-14 max-w-xl">
-            <SectionLabel>Period 1 — what layah does</SectionLabel>
-            <h2 className="font-display mt-3 text-3xl font-semibold text-navy sm:text-4xl">
-              Everything a teacher needs, generated together
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Stop spending evenings planning. Layah handles the structure so you can focus on
-              teaching.
-            </p>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((feature) => (
-              <Card key={feature.title} className="border-border shadow-none transition hover:shadow-md">
-                <CardContent>
-                  <div className="mb-4 inline-flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <FeatureIcon>{feature.icon}</FeatureIcon>
-                  </div>
-                  <h3 className="font-display text-base font-semibold text-navy">{feature.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {feature.description}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ─────────────────────────────────────────────────── */}
-      <TestimonialsSection />
-
-      {/* ── STATS ────────────────────────────────────────────────────────── */}
-      <StatsSection />
-
-      {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
-      <section id="how-it-works" className="border-t border-border py-20 md:py-28">
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="mb-14 max-w-xl">
-            <SectionLabel>Period 2 — how it works</SectionLabel>
-            <h2 className="font-display mt-3 text-3xl font-semibold text-navy sm:text-4xl">
-              Ready in under two minutes
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              From blank page to a complete lesson pack, in three steps.
-            </p>
-          </div>
-
-          <PeriodList className="md:grid md:grid-cols-3 md:gap-8 md:space-y-0">
-            <PeriodItem number="01">
-              <h3 className="font-display text-base font-semibold text-navy">
-                Enter subject, grade and topic
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Tell Layah what you&apos;re teaching — subject, grade level, curriculum and topic.
-              </p>
-            </PeriodItem>
-            <PeriodItem number="02">
-              <h3 className="font-display text-base font-semibold text-navy">
-                Select curriculum and AFL tools
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Choose UAE, CBSE, British or American curriculum, or let Layah auto-select.
-              </p>
-            </PeriodItem>
-            <PeriodItem number="03">
-              <h3 className="font-display text-base font-semibold text-navy">
-                Download the complete pack
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Lesson plan, PowerPoint, worksheets and assessments — all ready to use.
-              </p>
-            </PeriodItem>
-          </PeriodList>
-
-          <div className="mt-14 text-center">
-            <Link
-              href="/lesson-plan"
-              className={buttonVariants({ size: "lg", className: "h-12 rounded-lg px-10 text-base" })}
+    <div className="min-h-screen bg-white">
+      {/* ══════════════════════════════════════════════════════════════════
+          HEADER — 64px, sticky, white, 1px border. Mobile menu uses a pure
+          CSS checkbox toggle so this page stays a server component.
+          ══════════════════════════════════════════════════════════════════ */}
+      <header
+        className="sticky top-0 z-50 bg-white/90 backdrop-blur"
+        style={{ borderBottom: `1px solid ${BORDER}` }}
+      >
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link href="/landing" className="flex shrink-0 items-center gap-2.5">
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-extrabold text-white"
+              style={{ background: NAVY }}
             >
-              Try it now — it&apos;s free
+              L
+            </span>
+            <span className="leading-tight">
+              <span className="block text-[15px] font-extrabold" style={{ color: NAVY }}>
+                Layah
+              </span>
+              <span className="block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>
+                Teacher AI Suite
+              </span>
+            </span>
+          </Link>
+
+          <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-full px-3.5 py-2 text-sm font-medium transition hover:bg-slate-50"
+                style={{ color: "#374151" }}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="hidden shrink-0 items-center gap-2 lg:flex">
+            <Link
+              href="/auth"
+              className="rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-70"
+              style={{ color: "#374151" }}
+            >
+              Login
+            </Link>
+            <Link
+              href="/auth?tab=signup"
+              className="rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+              style={{ background: TEAL }}
+            >
+              Get Started
             </Link>
           </div>
-        </div>
-      </section>
 
-      {/* ── FEEDBACK ─────────────────────────────────────────────────────── */}
-      <FeedbackSection />
-
-      {/* ── CTA BANNER ───────────────────────────────────────────────────── */}
-      <section className="bg-navy py-20">
-        <div className="mx-auto max-w-2xl px-6 text-center">
-          <SectionLabel className="justify-center flex">Start today</SectionLabel>
-          <h2 className="font-display mt-3 text-3xl font-semibold text-chalk sm:text-4xl">
-            Plan your next lesson in minutes, not hours
-          </h2>
-          <p className="mt-4 text-base text-chalk/65">
-            Save hours every week. Walk into inspections prepared.
-          </p>
-          <Link
-            href="/lesson-plan"
-            className={buttonVariants({ size: "lg", className: "mt-8 h-12 rounded-lg px-10 text-base" })}
+          {/* Mobile: hamburger (pure CSS toggle, no client JS) */}
+          <input type="checkbox" id="landing-nav-toggle" className="peer hidden" />
+          <label
+            htmlFor="landing-nav-toggle"
+            aria-label="Toggle navigation menu"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg lg:hidden"
+            style={{ border: `1px solid ${BORDER}`, color: "#374151" }}
           >
-            Get started free
-          </Link>
-        </div>
-      </section>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </label>
 
-      <Footer />
+          <div
+            className="fixed inset-x-0 top-16 hidden flex-col gap-1 bg-white p-4 shadow-md peer-checked:flex lg:hidden"
+            style={{ borderBottom: `1px solid ${BORDER}` }}
+          >
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-lg px-3 py-2.5 text-sm font-medium"
+                style={{ color: "#374151" }}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className="mt-2 flex flex-col gap-2 border-t pt-3" style={{ borderColor: BORDER }}>
+              <Link
+                href="/auth"
+                className="rounded-lg px-3 py-2.5 text-center text-sm font-semibold"
+                style={{ color: "#374151", border: `1px solid ${BORDER}` }}
+              >
+                Login
+              </Link>
+              <Link
+                href="/auth?tab=signup"
+                className="rounded-lg px-3 py-2.5 text-center text-sm font-semibold text-white"
+                style={{ background: TEAL }}
+              >
+                Get Started
+              </Link>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        {/* ══════════════════════════════════════════════════════════════
+            HERO — compact, centered, single column, max-width 820px
+            ══════════════════════════════════════════════════════════════ */}
+        <section className="mx-auto max-w-[820px] px-4 pb-10 pt-14 text-center sm:px-6">
+          <span
+            className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
+            style={{ background: "rgba(0,198,167,0.1)", color: TEAL_DARK }}
+          >
+            AI for Teachers
+          </span>
+
+          <h1
+            className="mt-5 font-extrabold leading-[1.1] tracking-tight"
+            style={{ color: NAVY, fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
+          >
+            Create lesson plans, PPTs, worksheets, and assessments in minutes
+          </h1>
+
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: TEXT_MUTED }}>
+            Generate curriculum-aligned teaching resources for <strong style={{ color: NAVY }}>CBSE, ICSE, IB, and Cambridge</strong> from
+            a topic, chapter, or textbook page.
+          </p>
+
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              href="/lesson-plan"
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-sm transition hover:opacity-90 sm:w-auto"
+              style={{ background: TEAL }}
+            >
+              Start Generating
+            </Link>
+            <a
+              href="#preview"
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold transition hover:bg-slate-50 sm:w-auto"
+              style={{ border: `1px solid ${BORDER}`, color: NAVY }}
+            >
+              View Sample Package
+            </a>
+          </div>
+
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
+            {TRUST_BADGES.map((badge) => (
+              <span
+                key={badge}
+                className="rounded-full px-3.5 py-1.5 text-xs font-bold"
+                style={{ background: "#fff", border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            PRODUCT PREVIEW — 3-card feature grid
+            ══════════════════════════════════════════════════════════════ */}
+        <section id="preview" className="mx-auto max-w-6xl px-4 py-[72px] sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-2xl font-extrabold sm:text-3xl" style={{ color: NAVY }}>
+              See what teachers receive
+            </h2>
+            <p className="mt-3 text-base" style={{ color: TEXT_MUTED }}>
+              One generation produces a complete, classroom-ready package.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {PREVIEW_CARDS.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.title}
+                  className="rounded-[20px] bg-white p-7 shadow-sm transition-shadow hover:shadow-md"
+                  style={{ border: `1px solid ${BORDER}` }}
+                >
+                  <span
+                    className="flex h-11 w-11 items-center justify-center rounded-xl"
+                    style={{ background: "rgba(0,198,167,0.1)", color: TEAL_DARK }}
+                  >
+                    <Icon size={20} />
+                  </span>
+                  <h3 className="mt-4 text-base font-bold" style={{ color: NAVY }}>
+                    {card.title}
+                  </h3>
+                  <ul className="mt-3 space-y-2">
+                    {card.items.map((item) => (
+                      <li key={item} className="text-sm" style={{ color: TEXT_MUTED }}>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            HOW IT WORKS — 3 horizontal numbered steps
+            ══════════════════════════════════════════════════════════════ */}
+        <section className="py-[72px]" style={{ background: BG_SOFT, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-2xl font-extrabold sm:text-3xl" style={{ color: NAVY }}>
+                How it works
+              </h2>
+              <p className="mt-3 text-base" style={{ color: TEXT_MUTED }}>
+                From blank page to a complete teaching package in three steps.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-8 sm:grid-cols-3">
+              {HOW_IT_WORKS.map((step) => (
+                <div key={step.number} className="text-center sm:text-left">
+                  <span
+                    className="mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-extrabold text-white sm:mx-0"
+                    style={{ background: TEAL }}
+                  >
+                    {step.number}
+                  </span>
+                  <h3 className="mt-4 text-base font-bold" style={{ color: NAVY }}>
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed" style={{ color: TEXT_MUTED }}>
+                    {step.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-12 text-center">
+              <Link
+                href="/lesson-plan"
+                className="inline-flex min-h-12 items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-sm transition hover:opacity-90"
+                style={{ background: TEAL }}
+              >
+                Start Generating
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          FOOTER — simplified, landing-page-specific (the shared Footer
+          component is intentionally left untouched — it's also used on
+          /about, /contact, /pricing, /blog, /faq).
+          ══════════════════════════════════════════════════════════════════ */}
+      <footer className="py-14" style={{ borderTop: `1px solid ${BORDER}` }}>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-10 sm:grid-cols-2 sm:gap-8">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: TEXT_MUTED }}>
+                Product
+              </h3>
+              <ul className="mt-4 space-y-2.5">
+                {FOOTER_PRODUCT_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-sm transition hover:opacity-70" style={{ color: "#374151" }}>
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: TEXT_MUTED }}>
+                Company
+              </h3>
+              <ul className="mt-4 space-y-2.5">
+                {FOOTER_COMPANY_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-sm transition hover:opacity-70" style={{ color: "#374151" }}>
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <p className="mt-12 text-xs" style={{ color: TEXT_MUTED }}>
+            © 2026 Layah. Built for teachers.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
