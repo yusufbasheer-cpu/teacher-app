@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
@@ -59,10 +60,21 @@ function GoogleSpinner() {
   );
 }
 
-export function AuthCard() {
+type AuthCardProps = {
+  /** Initial form mode. Defaults to "login" (unchanged from before this prop existed). */
+  defaultMode?: AuthMode;
+  /**
+   * When true, the "switch mode" link at the bottom navigates to the dedicated
+   * /login or /signup route instead of flipping local state. Used by those
+   * two routes; /auth keeps the original same-page toggle behavior.
+   */
+  linkMode?: boolean;
+};
+
+export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -325,26 +337,38 @@ export function AuthCard() {
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
       {message ? <p className="mt-3 text-sm" style={{ color: "#0A8F7A" }}>{message}</p> : null}
 
-      <button
-        type="button"
-        onClick={() => {
-          setMode((prev) => {
-            if (prev === "login") {
-              formLoadTime.current = Date.now();
-              setTurnstileToken(null);
-            }
-            return prev === "login" ? "signup" : "login";
-          });
-          setError(null);
-          setMessage(null);
-        }}
-        className="mt-4 text-sm font-medium transition hover:opacity-80"
-        style={{ color: "#00C6A7" }}
-      >
-        {mode === "login"
-          ? "Need an account? Sign up"
-          : "Already have an account? Login"}
-      </button>
+      {linkMode ? (
+        <Link
+          href={mode === "login" ? "/signup" : "/login"}
+          className="mt-4 inline-block text-sm font-medium transition hover:opacity-80"
+          style={{ color: "#00C6A7" }}
+        >
+          {mode === "login"
+            ? "Need an account? Sign up"
+            : "Already have an account? Login"}
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setMode((prev) => {
+              if (prev === "login") {
+                formLoadTime.current = Date.now();
+                setTurnstileToken(null);
+              }
+              return prev === "login" ? "signup" : "login";
+            });
+            setError(null);
+            setMessage(null);
+          }}
+          className="mt-4 text-sm font-medium transition hover:opacity-80"
+          style={{ color: "#00C6A7" }}
+        >
+          {mode === "login"
+            ? "Need an account? Sign up"
+            : "Already have an account? Login"}
+        </button>
+      )}
     </div>
   );
 }

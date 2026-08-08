@@ -10,9 +10,7 @@ import {
   type PaidPlanKey,
   type PricingRegion,
 } from "@/lib/pricing-regions";
-
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
+import { NAVY, TEAL, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
 
 type Billing = "monthly" | "annual";
 
@@ -354,28 +352,27 @@ export function PricingPage() {
   const openPayment = (planKey: UpgradePlanKey) => { setPaymentPlan(planKey); setPaymentOpen(true); };
 
   return (
-    <main
-      className="min-h-screen pb-24 pt-10"
-      style={{ background: "linear-gradient(180deg, #eef2f7 0%, #f7f9fc 35%, #ffffff 70%)" }}
-    >
+    <main className="min-h-screen bg-white pb-24">
       <Container>
-        <header className="mx-auto max-w-3xl text-center">
-          <p
-            className="mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider"
-            style={{ background: "rgba(0,198,167,0.12)", color: TEAL }}
+        {/* Standard secondary-page hero: badge + headline + subtext, matching
+            the landing page's hero pattern. */}
+        <section className="mx-auto max-w-[820px] px-4 pb-4 pt-14 text-center sm:px-6">
+          <span
+            className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
+            style={{ background: "rgba(0,198,167,0.1)", color: TEAL_DARK }}
           >
             Pricing
-          </p>
+          </span>
           <h1
-            className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl"
-            style={{ color: NAVY }}
+            className="mt-5 font-extrabold leading-[1.1] tracking-tight"
+            style={{ color: NAVY, fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
           >
-            Plans for every teacher and school
+            Simple pricing for teachers and schools
           </h1>
-          <p className="mt-4 text-base sm:text-lg" style={{ color: "#4A5568" }}>
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: TEXT_MUTED }}>
             Start free. Upgrade when you are ready. Schools get unlimited generations for every teacher.
           </p>
-        </header>
+        </section>
 
         <div className="mx-auto mt-6 flex justify-center">
           <p

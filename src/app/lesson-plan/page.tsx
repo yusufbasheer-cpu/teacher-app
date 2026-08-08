@@ -1,8 +1,8 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 import { LessonPlanGenerator } from "@/components/lesson-plan/lesson-plan-generator";
 import { SchoolWelcomeBanner } from "@/components/school/school-welcome-banner";
+import { SecondaryPageHero } from "@/components/layout/secondary-page-hero";
 import { Skeleton } from "@/components/ui/animate";
 
 export const dynamic = "force-dynamic";
@@ -28,13 +28,19 @@ export default async function LessonPlanPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user?.id) {
-    redirect("/auth");
-  }
-
   return (
     <main className="min-h-screen w-full pb-16 pt-8">
-      <h1 className="sr-only">AI Lesson Plan Generator</h1>
+      {user?.id ? (
+        <h1 className="sr-only">AI Lesson Plan Generator</h1>
+      ) : (
+        <SecondaryPageHero
+          badge="AI Teaching Resources"
+          headline="Generate curriculum-aligned lesson plans in minutes"
+          subtext="Create structured lesson plans with objectives, activities, differentiation and assessments."
+          ctaLabel="Start Generating"
+          ctaHref="/auth"
+        />
+      )}
       <div className="px-4 sm:px-6 lg:px-8">
         <SchoolWelcomeBanner />
       </div>

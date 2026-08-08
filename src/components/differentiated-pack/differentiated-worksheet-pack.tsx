@@ -1,6 +1,9 @@
 ﻿"use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import {
   emptyDifferentiatedPack,
   type DifferentiatedPackContent,
@@ -48,6 +51,8 @@ export function DifferentiatedWorksheetPack() {
   const [inferring, setInferring] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyDownload, setBusyDownload] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const mergeLevelResult = (
     current: DifferentiatedPackContent,
@@ -105,6 +110,24 @@ export function DifferentiatedWorksheetPack() {
     setCurriculumFramework(session.curriculumFramework ?? "");
     setLessonSourceText(session.lessonSourceText);
     setFromLessonNotice("Loaded context from your generated lesson plan. Review the fields below, then generate the pack.");
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      setCheckingAuth(false);
+    };
+    void init();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const onGenerate = async () => {
@@ -363,6 +386,31 @@ export function DifferentiatedWorksheetPack() {
   };
 
   const base = safeFilePart(topic);
+
+  if (checkingAuth) {
+    return (
+      <div className="mx-auto w-full max-w-[820px] rounded-3xl border border-[#00C6A7]/20 bg-white p-6 text-sm text-slate-600 shadow-sm">
+        Checking your account…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto w-full max-w-[820px] rounded-3xl border border-[#00C6A7]/20 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-semibold text-slate-900">Login required</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Please log in to generate differentiated worksheet packs and track your monthly generation limit.
+        </p>
+        <Link
+          href="/auth"
+          className="mt-5 inline-flex rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
+        >
+          Go to Login
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-[820px] space-y-8">
