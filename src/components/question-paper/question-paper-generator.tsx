@@ -12,7 +12,7 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
-import { UpgradeUsageIndicator } from "@/components/usage/upgrade-usage-indicator";
+import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
@@ -68,6 +68,12 @@ const inputClass =
 const sectionClass =
   "rounded-2xl border bg-white p-4 shadow-sm sm:p-5";
 
+const WIZARD_STEPS = [
+  { id: 1, label: "Paper Details" },
+  { id: 2, label: "Source Content" },
+  { id: 3, label: "Generate Package" },
+] as const;
+
 export function QuestionPaperGenerator() {
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -111,6 +117,9 @@ export function QuestionPaperGenerator() {
 
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const wizardRef = useRef<HTMLDivElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   useEffect(() => {
     const init = async () => {
@@ -484,6 +493,23 @@ export function QuestionPaperGenerator() {
     }
   };
 
+  const scrollToWizard = () => {
+    window.setTimeout(() => {
+      wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
+
+  const goToNextStep = () => {
+    if (formRef.current && !formRef.current.reportValidity()) return;
+    setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
+    scrollToWizard();
+  };
+
+  const goToPrevStep = () => {
+    setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s));
+    scrollToWizard();
+  };
+
   if (checkingAuth) {
     return (
       <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 text-sm text-slate-600 shadow-sm">
@@ -510,20 +536,17 @@ export function QuestionPaperGenerator() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <div className="rounded-2xl border border-[#00C6A7]/20 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
-          Signed in as <span className="font-semibold">{user.email}</span>
-        </div>
-        <UpgradeUsageIndicator usage={usage} loading={usageLoading} />
-      </div>
+    <div className="space-y-6" ref={wizardRef}>
+      {!result ? (
+        <>
+          <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
 
-      <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
-      <form onSubmit={onSubmit} className="space-y-6">
-        <section className={sectionClass} style={{ borderColor: "rgba(0,198,167,0.25)" }}>
-          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "#0A1628" }}>
+          <form ref={formRef} onSubmit={onSubmit} noValidate className="mx-auto w-full max-w-[820px] space-y-6">
+        {/* ══════════ STEP 1 — PAPER DETAILS ══════════ */}
+        <fieldset hidden={step !== 1} className={sectionClass} style={{ borderColor: "rgba(0,198,167,0.25)" }}>
+          <legend className="text-sm font-semibold uppercase tracking-wide" style={{ color: "#0A1628" }}>
             Basic details
-          </h2>
+          </legend>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-slate-700">Curriculum type</label>
@@ -638,12 +661,25 @@ export function QuestionPaperGenerator() {
               </select>
             </div>
           </div>
-        </section>
+        </fieldset>
 
-        <section className={`${sectionClass} border-dashed`} style={{ borderColor: "rgba(0,198,167,0.35)" }}>
-          <h2 className="text-sm font-semibold" style={{ color: "#0A1628" }}>
+        {step === 1 ? (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={goToNextStep}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#00C6A7] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A8F7A]"
+            >
+              Continue
+            </button>
+          </div>
+        ) : null}
+
+        {/* ══════════ STEP 2 — SOURCE CONTENT (OPTIONAL) ══════════ */}
+        <fieldset hidden={step !== 2} className={`${sectionClass} border-dashed`} style={{ borderColor: "rgba(0,198,167,0.35)" }}>
+          <legend className="text-sm font-semibold" style={{ color: "#0A1628" }}>
             Provide your content
-          </h2>
+          </legend>
           <p className="mt-1 text-xs text-slate-600">
             Optional — AI will generate based on topic if no content is provided (except in Strict
             mode).
@@ -697,8 +733,29 @@ export function QuestionPaperGenerator() {
               chars extracted)
             </p>
           ) : null}
-        </section>
+        </fieldset>
 
+        {step === 2 ? (
+          <div className="flex justify-between">
+            <button
+              type="button"
+              onClick={goToPrevStep}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={goToNextStep}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#00C6A7] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A8F7A]"
+            >
+              Continue
+            </button>
+          </div>
+        ) : null}
+
+        {/* ══════════ STEP 3 — GENERATE PACKAGE ══════════ */}
+        <fieldset hidden={step !== 3} className="space-y-6">
         <section className={sectionClass} style={{ borderColor: "rgba(10,22,40,0.08)" }}>
           <h2 className="text-sm font-semibold" style={{ color: "#0A1628" }}>
             Question types
@@ -858,6 +915,16 @@ export function QuestionPaperGenerator() {
           <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
         ) : null}
 
+        <div className="flex justify-between gap-3">
+          <button
+            type="button"
+            onClick={goToPrevStep}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+          >
+            Back
+          </button>
+        </div>
+
         <button
           type="submit"
           disabled={loading || totalQuestions < 1}
@@ -869,90 +936,96 @@ export function QuestionPaperGenerator() {
         <p className="text-center text-xs text-slate-500">
           Estimated time: {timeEstimate.detail} ({timeEstimate.tier})
         </p>
-      </form>
-
-      <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-24">
-        <div
-          className="min-h-[420px] rounded-2xl border shadow-sm"
-          style={{ borderColor: "rgba(0,198,167,0.3)", background: "#fff" }}
-        >
-          <div
-            className="rounded-t-2xl px-4 py-3 text-sm font-semibold text-white sm:px-5"
-            style={{ background: "#0A1628" }}
-          >
-            Preview
-          </div>
-          {result?.blueprintText ? (
-            <div className="flex border-b border-slate-200 bg-slate-50 px-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setPreviewTab("paper")}
-                className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
-                style={{
-                  background: previewTab === "paper" ? "#fff" : "transparent",
-                  color: previewTab === "paper" ? "#0A1628" : "#64748b",
-                }}
-              >
-                Question paper
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreviewTab("blueprint")}
-                className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
-                style={{
-                  background: previewTab === "blueprint" ? "#fff" : "transparent",
-                  color: previewTab === "blueprint" ? "#0A1628" : "#64748b",
-                }}
-              >
-                Blueprint
-              </button>
-            </div>
-          ) : null}
-          <div className="max-h-[min(60vh,560px)] overflow-y-auto p-4 sm:p-5">
-            {result ? (
-              <>
-                {result.parseNotice ? (
-                  <p className="mb-3 text-xs text-amber-800">{result.parseNotice}</p>
-                ) : null}
-                {result.blueprintError ? (
-                  <p className="mb-3 text-xs text-amber-800">
-                    Blueprint could not be generated. Your question paper and downloads are still
-                    available.
-                  </p>
-                ) : null}
-                <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-800">
-                  {previewText}
-                </pre>
-              </>
-            ) : (
-              <p className="text-sm text-slate-500">
-                Your generated question paper will appear here. Configure options on the left and
-                click Generate.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {result && !loading ? (
-          <>
-            <div
-              role="status"
-              aria-live="polite"
-              style={{
-                transition: "opacity 0.4s ease, transform 0.4s ease",
-                opacity: paperReady ? 1 : 0,
-                transform: paperReady ? "translateY(0)" : "translateY(-8px)",
-                pointerEvents: paperReady ? "auto" : "none",
+        </fieldset>
+          </form>
+        </>
+      ) : (
+        <section className="mx-auto w-full max-w-[820px] space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <h3 className="text-xl font-semibold text-slate-900">Your question paper is ready</h3>
+            <button
+              type="button"
+              onClick={() => {
+                setResult(null);
+                setStep(1);
               }}
-              className="rounded-2xl border border-[#00C6A7]/40 bg-[#00C6A7]/10 px-4 py-3 text-sm font-semibold text-[#007a66] shadow-sm"
+              className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
             >
-              Your Question Paper is ready!
-            </div>
+              ← Edit details
+            </button>
+          </div>
+
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              transition: "opacity 0.4s ease, transform 0.4s ease",
+              opacity: paperReady ? 1 : 0,
+              transform: paperReady ? "translateY(0)" : "translateY(-8px)",
+              pointerEvents: paperReady ? "auto" : "none",
+            }}
+            className="rounded-2xl border border-[#00C6A7]/40 bg-[#00C6A7]/10 px-4 py-3 text-sm font-semibold text-[#007a66] shadow-sm"
+          >
+            Your Question Paper is ready!
+          </div>
+
+          <div
+            className="min-h-[420px] rounded-2xl border shadow-sm"
+            style={{ borderColor: "rgba(0,198,167,0.3)", background: "#fff" }}
+          >
             <div
-              id="download-section"
-              className="rounded-2xl border px-4 py-5 shadow-sm sm:px-5"
-              style={{ borderColor: "rgba(0,198,167,0.3)", background: "#fff" }}
+              className="rounded-t-2xl px-4 py-3 text-sm font-semibold text-white sm:px-5"
+              style={{ background: "#0A1628" }}
             >
+              Preview
+            </div>
+            {result?.blueprintText ? (
+              <div className="flex border-b border-slate-200 bg-slate-50 px-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewTab("paper")}
+                  className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
+                  style={{
+                    background: previewTab === "paper" ? "#fff" : "transparent",
+                    color: previewTab === "paper" ? "#0A1628" : "#64748b",
+                  }}
+                >
+                  Question paper
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewTab("blueprint")}
+                  className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
+                  style={{
+                    background: previewTab === "blueprint" ? "#fff" : "transparent",
+                    color: previewTab === "blueprint" ? "#0A1628" : "#64748b",
+                  }}
+                >
+                  Blueprint
+                </button>
+              </div>
+            ) : null}
+            <div className="max-h-[min(60vh,560px)] overflow-y-auto p-4 sm:p-5">
+              {result?.parseNotice ? (
+                <p className="mb-3 text-xs text-amber-800">{result.parseNotice}</p>
+              ) : null}
+              {result?.blueprintError ? (
+                <p className="mb-3 text-xs text-amber-800">
+                  Blueprint could not be generated. Your question paper and downloads are still
+                  available.
+                </p>
+              ) : null}
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-800">
+                {previewText}
+              </pre>
+            </div>
+          </div>
+
+          <div
+            id="download-section"
+            className="rounded-2xl border px-4 py-5 shadow-sm sm:px-5"
+            style={{ borderColor: "rgba(0,198,167,0.3)", background: "#fff" }}
+          >
             <div className="flex flex-col gap-3">
               <button
                 type="button"
@@ -965,7 +1038,7 @@ export function QuestionPaperGenerator() {
               </button>
               <button
                 type="button"
-                disabled={!!downloading || !result.blueprintText}
+                disabled={!!downloading || !result?.blueprintText}
                 onClick={() => downloadBlueprint()}
                 className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
                 style={{ background: "#0A1628" }}
@@ -984,10 +1057,9 @@ export function QuestionPaperGenerator() {
                 {downloading === "zip" ? "Downloading…" : "Download Complete Pack as ZIP"}
               </button>
             </div>
-            </div>
-          </>
-        ) : null}
-      </div>
+          </div>
+        </section>
+      )}
 
       {loading ? (
         <LessonPlanLoadingGame
@@ -998,7 +1070,6 @@ export function QuestionPaperGenerator() {
           estimatedSeconds={timeEstimate.seconds}
         />
       ) : null}
-      </div>
 
       <GenerationLimitModal
         open={limitModalOpen}

@@ -69,13 +69,19 @@ export function wrappedLineCount(text: string, cpl: number): number {
   return Math.max(1, Math.ceil(text.length / Math.max(1, cpl)));
 }
 
-export function estimateRowHeight(text: string, cpl: number): number {
-  return Math.max(ROW_MIN_H, wrappedLineCount(text, cpl) * ROW_LINE_H) + ROW_GAP;
+/**
+ * `scale` grows both the effective row height and shrinks the effective chars-per-line — used to
+ * keep height estimates consistent with `drawBulletBlock` rendering the same lines at a larger
+ * font on sparse slides (see `fontScale` in ppt-template-engine.ts).
+ */
+export function estimateRowHeight(text: string, cpl: number, scale = 1): number {
+  const effectiveCpl = Math.max(8, Math.round(cpl / scale));
+  return Math.max(ROW_MIN_H * scale, wrappedLineCount(text, effectiveCpl) * ROW_LINE_H * scale) + ROW_GAP * scale;
 }
 
 /** Total height `drawBulletBlock` will consume for `lines` — lets callers center short blocks. */
-export function estimateBlockHeight(lines: string[], cpl: number): number {
-  return lines.reduce((sum, line) => sum + estimateRowHeight(line, cpl), 0);
+export function estimateBlockHeight(lines: string[], cpl: number, scale = 1): number {
+  return lines.reduce((sum, line) => sum + estimateRowHeight(line, cpl, scale), 0);
 }
 
 // ─── Lead-in label detection ("Higher Achievers: a challenging task…") ──────────────────────
@@ -201,30 +207,36 @@ export type BulletVariant = "bullet" | "checklist" | "activity";
  * Draws `lines` as a vertical stack of marker + text rows starting at (x, y), each row width `w`.
  * Returns the total vertical space consumed (inches) — callers pre-budget via
  * `estimateRowHeight`/chunking so this should never exceed the box height it was given.
+ *
+ * `scale` (default 1) grows font size, marker size, and row height together — used by the caller
+ * to make sparsely-filled slides read as intentional rather than empty, instead of leaving body
+ * text sitting small in a mostly-blank box. Must match the `scale` passed to
+ * `estimateRowHeight`/`estimateBlockHeight` when the caller pre-computed this block's height.
  */
 export function drawBulletBlock(
   pptx: PptxGenJS,
   slide: PptxGenJS.Slide,
-  opts: { x: number; y: number; w: number; lines: string[]; tpl: TemplateConfig; variant: BulletVariant; cpl: number },
+  opts: { x: number; y: number; w: number; lines: string[]; tpl: TemplateConfig; variant: BulletVariant; cpl: number; scale?: number },
 ): number {
-  const { x, y, w, lines, tpl, variant, cpl } = opts;
+  const { x, y, w, lines, tpl, variant, cpl, scale = 1 } = opts;
   const d = tpl.design;
   const c = tpl.colors;
   const f = tpl.fonts;
-  const markerSize = 0.2;
+  const markerSize = 0.2 * scale;
   const rowPad = variant === "checklist" ? 0.12 : 0;
   const markerX = x + rowPad;
   const textX = markerX + markerSize + 0.16;
   const textW = x + w - rowPad - (textX - x);
+  const bodyFontSize = f.contentSize * scale;
 
   let curY = y;
   for (const raw of lines) {
-    const rowH = estimateRowHeight(raw, cpl);
-    const markerY = curY + Math.max(0, (ROW_MIN_H - markerSize) / 2);
+    const rowH = estimateRowHeight(raw, cpl, scale);
+    const markerY = curY + Math.max(0, (ROW_MIN_H * scale - markerSize) / 2);
 
     if (variant === "checklist") {
       slide.addShape(pptx.ShapeType.roundRect, {
-        x, y: curY, w, h: rowH - ROW_GAP * 0.6,
+        x, y: curY, w, h: rowH - ROW_GAP * scale * 0.6,
         rectRadius: 0.06,
         fill: { color: d.cardFill }, line: { color: d.cardBorder, pt: 0.75 },
       });
@@ -234,7 +246,7 @@ export function drawBulletBlock(
       });
       slide.addText("✓", {
         x: markerX, y: markerY, w: markerSize, h: markerSize,
-        fontSize: 10, bold: true, color: "FFFFFF", align: "center", valign: "middle",
+        fontSize: 10 * scale, bold: true, color: "FFFFFF", align: "center", valign: "middle",
       });
     } else if (variant === "activity") {
       slide.addShape(pptx.ShapeType.roundRect, {
@@ -253,8 +265,17 @@ export function drawBulletBlock(
     if (label) {
       slide.addText(
         [
-          { text: `${label}  `, options: { bold: true, color: c.accent, fontSize: f.contentSize, fontFace: f.face } },
-          { text: rest, options: { color: c.contentText, fontSize: f.contentSize, fontFace: f.face } },
+          {
+            text: `${label.toUpperCase()}  `,
+            options: {
+              bold: true,
+              color: c.accent,
+              fontSize: bodyFontSize + 2,
+              fontFace: f.face,
+              charSpacing: 0.5,
+            },
+          },
+          { text: rest, options: { color: c.contentText, fontSize: bodyFontSize, fontFace: f.face } },
         ],
         // fit:"shrink" is a safety net, not the primary sizing mechanism — chunkLinesByHeight
         // already budgets each row's height from estimateRowHeight, but an unusually long single
@@ -265,7 +286,7 @@ export function drawBulletBlock(
     } else {
       slide.addText(raw, {
         x: textX, y: curY, w: textW, h: rowH,
-        fontSize: f.contentSize, color: c.contentText, fontFace: f.face,
+        fontSize: bodyFontSize, color: c.contentText, fontFace: f.face,
         valign: "top", lineSpacingMultiple: 1.18, fit: "shrink",
       });
     }

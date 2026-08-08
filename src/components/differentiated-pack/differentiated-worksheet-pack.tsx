@@ -367,7 +367,7 @@ export function DifferentiatedWorksheetPack() {
   const base = safeFilePart(topic);
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto w-full max-w-[820px] space-y-8">
       <div className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
         <h2 className="text-xl font-bold text-slate-900">How to use this pack</h2>
         <ul className="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">

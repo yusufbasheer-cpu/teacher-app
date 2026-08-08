@@ -124,10 +124,6 @@ export function MyLessonPlansList() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-[#00C6A7]/20 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
-        Signed in as <span className="font-semibold">{user.email}</span>
-      </div>
-
       <section className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 shadow-sm md:p-7">
         <div className="flex items-center justify-between gap-4">
           <div>

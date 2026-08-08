@@ -475,11 +475,18 @@ function doContentSlide(
   // Vertically center short bodies within the remaining content area instead of pinning them to
   // the top — a 1-2 line body left top-aligned in a 5.65" box reads as broken/empty, not minimal.
   const availableBottom = CONTENT_Y + CONTENT_H;
-  const usedH = estimateBlockHeight(chunk, cpl);
+  const budgetH = availableBottom - bodyY;
+  const baseUsedH = estimateBlockHeight(chunk, cpl);
+  const fillRatio = budgetH > 0 ? baseUsedH / budgetH : 1;
+  // Sparse slide — grow the body text instead of leaving it small in a mostly-empty box.
+  // Capped well short of 1.0x-to-2.0x so this never risks overflowing the height this chunk
+  // was already budgeted for by chunkLinesByHeight.
+  const fontScale = fillRatio < 0.5 ? 1.2 : fillRatio < 0.72 ? 1.1 : 1;
+  const usedH = fontScale === 1 ? baseUsedH : estimateBlockHeight(chunk, cpl, fontScale);
   const slack = Math.max(0, availableBottom - bodyY - usedH);
   bodyY += slack / 2;
 
-  drawBulletBlock(pptx, slide, { x: contentX, y: bodyY, w: contentW, lines: chunk, tpl, variant, cpl });
+  drawBulletBlock(pptx, slide, { x: contentX, y: bodyY, w: contentW, lines: chunk, tpl, variant, cpl, scale: fontScale });
 
   // ── Image panel ──
   if (hasImg && image) {

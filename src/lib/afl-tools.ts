@@ -832,6 +832,26 @@ export function suggestAutoAflToolId(
   return pool[hashPickIndex(seed, pool.length)];
 }
 
+/**
+ * Same deterministic picks the PPT auto-select prompt suggests for each
+ * AFL-bearing slide (2, 6, 7, 9, 11, 12), grouped by phase. Used so that when
+ * a teacher generates AFL Activity Sheets without picking specific tools,
+ * the sheets match what the PPT was told to use rather than going blank.
+ */
+export function buildAutoAflSelections(ctx: PptSlideAflContext): AflSelectionsPayload {
+  const out: AflSelectionsPayload = {};
+  for (const slideNum of [2, 6, 7, 9, 11, 12] as const) {
+    const binding = PPT_SLIDE_AFL_BINDINGS[slideNum];
+    if (!binding) continue;
+    const suggestedId = suggestAutoAflToolId(slideNum, ctx);
+    if (!suggestedId) continue;
+    const phase = binding.selectionPhase;
+    const existing = out[phase] ?? [];
+    if (!existing.includes(suggestedId)) out[phase] = [...existing, suggestedId];
+  }
+  return out;
+}
+
 export type AflSelectionsPayload = Partial<Record<AflPhaseId, string[]>>;
 
 /** Keep only known phase keys and tool ids that belong to that phase. */

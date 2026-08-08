@@ -13,7 +13,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
-import { FadeIn, StaggerChildren, StaggerItem } from "@/components/ui/animate";
 import type {
   LessonPlanInput,
   LessonPlanResult,
@@ -46,12 +45,11 @@ import { writeDiffPackSession } from "@/lib/differentiated-pack-session";
 import { CURRICULUM_FRAMEWORK_OPTIONS, isValidCurriculumFramework } from "@/lib/curriculum-framework";
 import {
   DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
-  TEMPLATE_CARDS as PPT_THEME_CARDS,
   type TemplateId as PptThemeId,
 } from "@/lib/ppt-template-config";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
-import { UpgradeUsageIndicator } from "@/components/usage/upgrade-usage-indicator";
+import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { filterUserFacingNotices } from "@/lib/image-notices";
@@ -129,83 +127,11 @@ function toAflPayload(map: Record<AflPhaseId, string[]>) {
   return out;
 }
 
-// ── Sidebar widget data ───────────────────────────────────────────────────────
-
-const PHASE_LABELS: Record<string, string> = {
-  starter:         "Starter",
-  main:            "Main Phase",
-  differentiation: "Differentiation",
-  plenary:         "Plenary",
-  exitTicket:      "Exit Ticket",
-  successCriteria: "Success Criteria",
-};
-
-const TOOL_SKILLS: Record<string, string[]> = {
-  "st-think-pair-share":      ["Communication", "Collaboration", "Critical Thinking"],
-  "st-kwl-chart":             ["Critical Thinking", "Problem Solving"],
-  "st-brain-dump":            ["Creativity", "Critical Thinking"],
-  "st-odd-one-out":           ["Critical Thinking", "Problem Solving"],
-  "st-picture-prompt":        ["Creativity", "Critical Thinking", "Communication"],
-  "st-true-false-challenge":  ["Critical Thinking", "Problem Solving"],
-  "st-predict-reveal":        ["Critical Thinking", "Creativity"],
-  "st-kahoot-quizizz-warm-up":["Digital Literacy", "Communication"],
-  "st-entry-ticket":          ["Critical Thinking"],
-  "mn-i-do-we-do-you-do":     ["Critical Thinking", "Collaboration"],
-  "mn-jigsaw":                ["Collaboration", "Communication", "Critical Thinking"],
-  "mn-learning-stations":     ["Creativity", "Problem Solving", "Collaboration"],
-  "mn-gallery-walk":          ["Collaboration", "Communication", "Creativity"],
-  "mn-concept-mapping":       ["Critical Thinking", "Creativity", "Problem Solving"],
-  "mn-socratic-questioning":  ["Critical Thinking", "Communication"],
-  "df-must-should-could":     ["Problem Solving", "Critical Thinking"],
-  "df-choice-board":          ["Creativity", "Problem Solving"],
-  "df-tiered-tasks":          ["Critical Thinking", "Problem Solving"],
-  "df-learning-menus":        ["Creativity", "Critical Thinking"],
-  "pl-3-2-1-reflection":      ["Critical Thinking", "Communication"],
-  "pl-hot-seat":              ["Communication", "Critical Thinking"],
-  "pl-one-word-summary":      ["Communication", "Creativity", "Critical Thinking"],
-  "pl-snowball":              ["Collaboration", "Communication", "Creativity"],
-  "et-one-minute-paper":      ["Communication", "Critical Thinking"],
-  "et-muddiest-point":        ["Critical Thinking", "Problem Solving"],
-  "et-exit-card":             ["Critical Thinking"],
-  "et-emoji-scale":           ["Communication", "Digital Literacy"],
-  "sc-traffic-light":         ["Critical Thinking", "Problem Solving"],
-  "sc-checklist-can-do":      ["Critical Thinking", "Problem Solving"],
-  "sc-two-stars-wish":        ["Communication", "Creativity", "Critical Thinking"],
-  "sc-rubric-scale":          ["Critical Thinking", "Problem Solving"],
-};
-
-type SpotlightEntry = {
-  id:          string;
-  label:       string;
-  howItWorks:  string;
-  classroomUse:string;
-  purpose:     string;
-  phase:       string;
-  phaseLabel:  string;
-  skills:      string[];
-};
-
-const ALL_AFL_SPOTLIGHT: SpotlightEntry[] = AFL_PHASE_GROUPS.flatMap((g) =>
-  g.tools.map((t) => ({
-    id:          t.id,
-    label:       t.label,
-    howItWorks:  t.howItWorks,
-    classroomUse:t.classroomUse,
-    purpose:     t.purpose,
-    phase:       g.phase,
-    phaseLabel:  PHASE_LABELS[g.phase] ?? g.phase,
-    skills:      TOOL_SKILLS[t.id] ?? ["Critical Thinking"],
-  })),
-);
-
-const QUICK_TIPS = [
-  "Be specific with your topic for better, more accurate content.",
-  "Select Activity Sheet AFL tools to get classroom-ready activities in your PPT.",
-  "Use the UAE Framework toggle for inspection-ready lesson plans.",
-  "Upload your own content so the AI uses it as the primary source.",
-  "Select only the sections you need to generate faster.",
+const WIZARD_STEPS: { id: 1 | 2 | 3; label: string }[] = [
+  { id: 1, label: "Class Details" },
+  { id: 2, label: "Source Content" },
+  { id: 3, label: "Generate Package" },
 ];
-
 
 export function LessonPlanGenerator() {
   const router = useRouter();
@@ -232,16 +158,11 @@ export function LessonPlanGenerator() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [packReady, setPackReady] = useState(false);
 
   const resultsRef = useRef<HTMLElement | null>(null);
-
-  // Pick a random AFL tool spotlight on mount (changes each page load)
-  const spotlight = useMemo(
-    () => ALL_AFL_SPOTLIGHT[Math.floor(Math.random() * ALL_AFL_SPOTLIGHT.length)]!,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
+  const wizardRef = useRef<HTMLDivElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const [sectionSelection, setSectionSelection] =
     useState<Record<TeacherPackageSectionKey, boolean>>(initialSectionSelection);
@@ -777,12 +698,10 @@ export function LessonPlanGenerator() {
     }
   };
 
-  // Scroll to results and show ready banner when generation finishes
+  // Scroll to results when generation finishes
   useEffect(() => {
     if (!loading && lessonPlan) {
-      setPackReady(true);
-      const timer = setTimeout(() => setPackReady(false), 3500);
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 120);
       return () => clearTimeout(timer);
@@ -888,25 +807,45 @@ export function LessonPlanGenerator() {
 
   const generationEta = getGenerationTimeEstimate(sectionSelection);
 
-  return (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <div className="rounded-2xl border border-[#00C6A7]/20 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-sm">
-          Signed in as <span className="font-semibold">{user.email}</span>
-        </div>
-        <UpgradeUsageIndicator usage={usage} loading={usageLoading} />
-      </div>
+  const scrollToWizard = () => {
+    window.setTimeout(() => {
+      wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
 
-      <div className="grid min-w-0 gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <form
-          onSubmit={onSubmit}
-          aria-busy={loading}
-          className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
-        >
-          <h2 className="text-xl font-semibold text-slate-900">Lesson Plan Generator</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Fill in class details, choose which materials to generate, then run the AI.
-          </p>
+  const goToNextStep = () => {
+    if (formRef.current && !formRef.current.reportValidity()) return;
+    setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
+    scrollToWizard();
+  };
+
+  const goToPrevStep = () => {
+    setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s));
+    scrollToWizard();
+  };
+
+  return (
+    <div className="w-full space-y-6" ref={wizardRef}>
+      {!lessonPlan ? (
+        <div className="space-y-6 px-4 pt-6 sm:px-6 lg:px-8">
+          <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
+
+          <form
+            ref={formRef}
+            onSubmit={onSubmit}
+            aria-busy={loading}
+            noValidate
+            className="mx-auto w-full max-w-[820px]"
+          >
+            {/* ══════════ STEP 1 — CLASS DETAILS ══════════ */}
+            <fieldset
+              hidden={step !== 1}
+              className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
+            >
+              <legend className="text-xl font-semibold text-slate-900">Class details</legend>
+              <p className="mt-2 text-sm text-slate-600">
+                Tell us who this lesson is for. This is the only step required to get started.
+              </p>
 
         <div className="mt-6 space-y-4">
           <div>
@@ -1070,109 +1009,28 @@ export function LessonPlanGenerator() {
           </div>
         </div>
 
-        {!aflPanelOpen ? (
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={() => setAflPanelOpen(true)}
-              className="w-full rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left text-sm font-semibold text-violet-950 shadow-sm transition hover:bg-violet-100"
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={goToNextStep}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#00C6A7] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A8F7A]"
+                >
+                  Continue
+                </button>
+              </div>
+            </fieldset>
+
+            {/* ══════════ STEP 2 — SOURCE CONTENT (OPTIONAL) ══════════ */}
+            <fieldset
+              hidden={step !== 2}
+              className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
             >
-              Add Activity Sheet AFL Tools to Your Lesson
-              <span className="mt-1 block text-xs font-normal text-violet-800/90">
-                Optional: pick Assessment for Learning tools by lesson phase. They are sent to the AI
-                and appear in your lesson plan and PowerPoint.
-              </span>
-            </button>
-          </div>
-        ) : (
-          <div className="mt-6 rounded-2xl border border-violet-200 bg-gradient-to-b from-violet-50/80 to-white p-4 shadow-sm md:p-5">
-            <div className="flex flex-col gap-3 border-b border-violet-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900">
-                  Select Activity Sheet AFL Tools for Your Lesson
-                </h3>
-                <p className="mt-1 text-xs text-slate-600">
-                  Tick the tools you want in each phase. They are woven into the written plan and
-                  matched slides when you generate.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAflSelected(
-                      Object.fromEntries(
-                        AFL_PHASE_IDS.map((phase) => {
-                          const allowed = new Set(
-                            AFL_PHASE_GROUPS.find((g) => g.phase === phase)?.tools.map((t) => t.id) ??
-                              [],
-                          );
-                          const ids = AFL_RECOMMENDED_IDS[phase].filter((id) => allowed.has(id));
-                          return [phase, [...ids]];
-                        }),
-                      ) as Record<AflPhaseId, string[]>,
-                    );
-                  }}
-                  className="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-900 shadow-sm hover:bg-violet-50"
-                >
-                  Select Recommended
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAflSelected(emptyAflSelected())}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-                >
-                  Clear All
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAflPanelOpen(false)}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                >
-                  Hide
-                </button>
-              </div>
-            </div>
-            <div className="mt-4 max-h-[min(70vh,520px)] space-y-5 overflow-y-auto pr-1">
-              {AFL_PHASE_GROUPS.map((group) => (
-                <fieldset key={group.phase} className="rounded-xl border border-slate-200 bg-white/90 p-3">
-                  <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-violet-800">
-                    {group.title}
-                  </legend>
-                  <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {group.tools.map((t) => {
-                      const checked = (aflSelected[group.phase] ?? []).includes(t.id);
-                      return (
-                        <li key={t.id} className="flex items-start gap-2">
-                          <input
-                            id={`afl-${t.id}`}
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(e) => {
-                              const on = e.target.checked;
-                              setAflSelected((prev) => {
-                                const cur = prev[group.phase] ?? [];
-                                const next = on
-                                  ? [...new Set([...cur, t.id])]
-                                  : cur.filter((id) => id !== t.id);
-                                return { ...prev, [group.phase]: next };
-                              });
-                            }}
-                            className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500"
-                          />
-                          <label htmlFor={`afl-${t.id}`} className="min-w-0 text-sm leading-snug text-slate-800">
-                            <span className="font-medium">{t.label}</span>
-                            <span className="mt-0.5 block text-[11px] text-slate-500">{t.purpose}</span>
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </fieldset>
-              ))}
-            </div>
-          </div>
-        )}
+              <legend className="text-xl font-semibold text-slate-900">Source content</legend>
+              <p className="mt-2 text-sm text-slate-600">
+                Add textbook pages, notes, or chapter content to generate a more accurate lesson plan.
+                This step is entirely optional — skip it and Layah will generate content from the topic
+                and objectives alone.
+              </p>
 
         <div className="mt-6 rounded-2xl border border-dashed border-[#00C6A7]/30 bg-[#00C6A7]/5 p-4 space-y-5">
           <div>
@@ -1335,6 +1193,138 @@ export function LessonPlanGenerator() {
           ) : null}
         </div>
 
+              <div className="mt-6 flex justify-between">
+                <button
+                  type="button"
+                  onClick={goToPrevStep}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={goToNextStep}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#00C6A7] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A8F7A]"
+                >
+                  Continue
+                </button>
+              </div>
+            </fieldset>
+
+            {/* ══════════ STEP 3 — GENERATE PACKAGE ══════════ */}
+            <fieldset
+              hidden={step !== 3}
+              className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
+            >
+              <legend className="text-xl font-semibold text-slate-900">Generate package</legend>
+              <p className="mt-2 text-sm text-slate-600">
+                Choose what to include, then generate your teacher package.
+              </p>
+
+        {!aflPanelOpen ? (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setAflPanelOpen(true)}
+              className="w-full rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left text-sm font-semibold text-violet-950 shadow-sm transition hover:bg-violet-100"
+            >
+              Assessment for Learning (Optional)
+              <span className="mt-1 block text-xs font-normal text-violet-800/90">
+                Optional: pick Assessment for Learning tools by lesson phase. They are sent to the AI
+                and appear in your lesson plan and PowerPoint.
+              </span>
+            </button>
+          </div>
+        ) : (
+          <div className="mt-6 rounded-2xl border border-violet-200 bg-gradient-to-b from-violet-50/80 to-white p-4 shadow-sm md:p-5">
+            <div className="flex flex-col gap-3 border-b border-violet-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Select Activity Sheet AFL Tools for Your Lesson
+                </h3>
+                <p className="mt-1 text-xs text-slate-600">
+                  Tick the tools you want in each phase. They are woven into the written plan and
+                  matched slides when you generate.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAflSelected(
+                      Object.fromEntries(
+                        AFL_PHASE_IDS.map((phase) => {
+                          const allowed = new Set(
+                            AFL_PHASE_GROUPS.find((g) => g.phase === phase)?.tools.map((t) => t.id) ??
+                              [],
+                          );
+                          const ids = AFL_RECOMMENDED_IDS[phase].filter((id) => allowed.has(id));
+                          return [phase, [...ids]];
+                        }),
+                      ) as Record<AflPhaseId, string[]>,
+                    );
+                  }}
+                  className="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-900 shadow-sm hover:bg-violet-50"
+                >
+                  Select Recommended
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAflSelected(emptyAflSelected())}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                  Clear All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAflPanelOpen(false)}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                >
+                  Hide
+                </button>
+              </div>
+            </div>
+            <div className="mt-4 max-h-[min(70vh,520px)] space-y-5 overflow-y-auto pr-1">
+              {AFL_PHASE_GROUPS.map((group) => (
+                <fieldset key={group.phase} className="rounded-xl border border-slate-200 bg-white/90 p-3">
+                  <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-violet-800">
+                    {group.title}
+                  </legend>
+                  <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {group.tools.map((t) => {
+                      const checked = (aflSelected[group.phase] ?? []).includes(t.id);
+                      return (
+                        <li key={t.id} className="flex items-start gap-2">
+                          <input
+                            id={`afl-${t.id}`}
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const on = e.target.checked;
+                              setAflSelected((prev) => {
+                                const cur = prev[group.phase] ?? [];
+                                const next = on
+                                  ? [...new Set([...cur, t.id])]
+                                  : cur.filter((id) => id !== t.id);
+                                return { ...prev, [group.phase]: next };
+                              });
+                            }}
+                            className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500"
+                          />
+                          <label htmlFor={`afl-${t.id}`} className="min-w-0 text-sm leading-snug text-slate-800">
+                            <span className="font-medium">{t.label}</span>
+                            <span className="mt-0.5 block text-[11px] text-slate-500">{t.purpose}</span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </fieldset>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Teaching & Learning Strategy selector ──────────────────── */}
         {!strategyPanelOpen ? (
           <div className="mt-6">
@@ -1490,6 +1480,16 @@ export function LessonPlanGenerator() {
           )}
         </p>
 
+        <div className="mt-6 flex justify-between">
+          <button
+            type="button"
+            onClick={goToPrevStep}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+          >
+            Back
+          </button>
+        </div>
+
         <button
           type="submit"
           disabled={
@@ -1497,7 +1497,7 @@ export function LessonPlanGenerator() {
             uploadExtracting ||
             TEACHER_PACKAGE_SECTIONS.every((k) => !sectionSelection[k])
           }
-          className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A8F7A] disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0A8F7A] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? "Generating..." : "Generate Lesson Plan"}
         </button>
@@ -1515,220 +1515,39 @@ export function LessonPlanGenerator() {
             ) : null}
           </p>
         ) : null}
-        </form>
-
-        {/* ── RIGHT COLUMN wrapper — keeps banner + content as one grid item ── */}
-        <div className="flex min-w-0 flex-col gap-4">
-
-          {/* Pack-ready success banner */}
-          <div
-            role="status"
-            aria-live="polite"
-            style={{
-              transition: "opacity 0.4s ease, transform 0.4s ease",
-              opacity: packReady ? 1 : 0,
-              transform: packReady ? "translateY(0)" : "translateY(-8px)",
-              pointerEvents: packReady ? "auto" : "none",
+            </fieldset>
+          </form>
+        </div>
+      ) : (
+        <section ref={resultsRef} className="animate-slide-up">
+          <TeacherPackageViewer
+            lessonPlan={lessonPlan}
+            sectionImages={sectionImages ?? undefined}
+            subject={form.subject}
+            grade={form.grade}
+            topic={form.topic}
+            curriculumFramework={form.curriculumFramework.trim() || undefined}
+            pptThemeId={pptThemeId}
+            onPptThemeChange={setPptThemeId}
+            learningObjectives={form.learningObjectives}
+            aflSelections={hasAflForExport ? aflSelectionsPayload : undefined}
+            pptSlideImageUrls={pptSlideImageUrls ?? undefined}
+            teacherName={
+              typeof user?.user_metadata?.full_name === "string"
+                ? user.user_metadata.full_name.trim()
+                : user?.email?.split("@")[0]
+            }
+            parseNotice={parseNotice}
+            onRegenerate={() => {
+              setLessonPlan(null);
+              setStep(1);
             }}
-            className="flex items-center gap-3 rounded-2xl border border-[#00C6A7]/40 bg-[#00C6A7]/10 px-4 py-3 text-sm font-medium text-[#007a66] shadow-sm"
-          >
-            <span className="text-lg">✅</span>
-            <span>Your lesson pack is ready! Scroll down to view and download.</span>
-          </div>
-
-          {!lessonPlan ? (
-            <>
-              {/* ── Quick Tips ──────────────────────────────────────────── */}
-              <FadeIn delay={0.05}>
-              <div
-                className="card-hover rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-                style={{ borderRadius: 12 }}
-              >
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="text-[#00C6A7] text-lg">💡</span>
-                  <h4 className="text-base font-semibold" style={{ color: "#0A1628" }}>
-                    Tips for Best Results
-                  </h4>
-                </div>
-                <ul className="space-y-2.5">
-                  {QUICK_TIPS.map((tip, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600">
-                      <span
-                        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                        style={{ background: "#00C6A7" }}
-                      >
-                        {i + 1}
-                      </span>
-                      {tip}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              </FadeIn>
-
-              {/* ── AFL Tool Spotlight ──────────────────────────────────── */}
-              {spotlight && (
-              <FadeIn delay={0.12}>
-                <div
-                  className="card-hover rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-                  style={{ borderRadius: 12 }}
-                >
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">🎯</span>
-                      <h4 className="text-base font-semibold" style={{ color: "#0A1628" }}>
-                        AFL Tool Spotlight
-                      </h4>
-                    </div>
-                    <span
-                      className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white"
-                      style={{ background: "#0A1628" }}
-                    >
-                      {spotlight.phaseLabel}
-                    </span>
-                  </div>
-
-                  <p className="mb-1 text-xl font-bold" style={{ color: "#00C6A7" }}>
-                    {spotlight.label}
-                  </p>
-                  <p className="mb-3 text-sm text-slate-500">{spotlight.purpose}</p>
-
-                  <div className="mb-3 rounded-lg p-3" style={{ background: "#F7F9FC" }}>
-                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                      How to Use in Class
-                    </p>
-                    <p className="text-sm text-slate-700">{spotlight.howItWorks}</p>
-                    <p className="mt-1 text-sm text-slate-600">{spotlight.classroomUse}</p>
-                  </div>
-
-                  <div>
-                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                      21st Century Skills
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {spotlight.skills.map((skill) => (
-                        <span
-                          key={skill}
-                          className="rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
-                          style={{
-                            borderColor: "#00C6A7",
-                            color: "#007a66",
-                            background: "rgba(0,198,167,0.08)",
-                          }}
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <p className="mt-3 text-[10px] text-slate-400">
-                    Refreshes with a new tool each time you visit this page.
-                  </p>
-                </div>
-              </FadeIn>
-              )}
-            </>
-          ) : (
-          <section
-            ref={resultsRef}
-            className="animate-slide-up min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
-          >
-            <h3 className="text-xl font-semibold text-slate-900">Generated teacher package</h3>
-            <p className="mt-2 text-sm text-slate-600">
-              Preview and download only the sections you generated (lesson plan, slides, worksheet, and more).
-            </p>
-          <div className="mt-6 space-y-5">
-            {parseNotice ? (
-              <p
-                role="status"
-                className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
-              >
-                {parseNotice}
-              </p>
-            ) : null}
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <button
-              type="button"
-              onClick={onSaveLessonPlan}
-              disabled={saving}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A8F7A] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-            >
-              {saving ? "Saving..." : "Save Lesson Plan"}
-            </button>
-            <button
-              type="button"
-              onClick={onSendToDifferentiatedPack}
-              className="inline-flex w-full items-center justify-center rounded-xl border-2 border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-100 sm:w-auto"
-            >
-              Generate Differentiated Worksheet Pack
-            </button>
-            </div>
-            {typeof lessonPlan["PPT Slide Content"] === "string" &&
-            lessonPlan["PPT Slide Content"].trim().length > 0 ? (
-              <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4 shadow-inner md:p-5">
-                <p className="text-sm font-semibold text-slate-900">Presentation template</p>
-                <p className="mt-1 text-xs text-slate-600">
-                  Pick a template for your PowerPoint, then use Download PPT. Classic is selected by default.
-                </p>
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5" role="list">
-                  {PPT_THEME_CARDS.map((t) => {
-                    const selected = pptThemeId === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        role="listitem"
-                        onClick={() => setPptThemeId(t.id)}
-                        aria-pressed={selected}
-                        className={`rounded-xl border-2 bg-white p-3 text-left shadow-sm transition hover:shadow-md ${
-                          selected
-                            ? "border-[#00C6A7] ring-2 ring-[#00C6A7]/30 ring-offset-2 ring-offset-slate-50"
-                            : "border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        <div className="mb-2 flex gap-1 overflow-hidden rounded-lg" aria-hidden>
-                          {t.preview.map((hex) => (
-                            <span
-                              key={hex}
-                              className="h-7 min-w-0 flex-1"
-                              style={{ backgroundColor: `#${hex}` }}
-                            />
-                          ))}
-                        </div>
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                          Template {t.themeNumber}
-                        </p>
-                        <p className="text-sm font-semibold text-slate-900">{t.name}</p>
-                        <p className="mt-0.5 text-xs leading-snug text-slate-600">{t.description}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-            <TeacherPackageViewer
-              lessonPlan={lessonPlan}
-              sectionImages={sectionImages ?? undefined}
-              subject={form.subject}
-              grade={form.grade}
-              topic={form.topic}
-              curriculumFramework={form.curriculumFramework.trim() || undefined}
-              pptThemeId={pptThemeId}
-              learningObjectives={form.learningObjectives}
-              aflSelections={hasAflForExport ? aflSelectionsPayload : undefined}
-              pptSlideImageUrls={pptSlideImageUrls ?? undefined}
-              teacherName={
-                typeof user?.user_metadata?.full_name === "string"
-                  ? user.user_metadata.full_name.trim()
-                  : user?.email?.split("@")[0]
-              }
-            />
-          </div>
-          </section>
-        )}
-        </div>{/* end right column */}
-      </div>{/* end grid */}
+            onSave={onSaveLessonPlan}
+            saving={saving}
+            onSendToDifferentiatedPack={onSendToDifferentiatedPack}
+          />
+        </section>
+      )}
 
       {successMessage ? (
         <div className="animate-slide-up rounded-xl border border-[#00C6A7]/30 bg-[#00C6A7]/5 px-4 py-3 text-sm text-[#00C6A7]">

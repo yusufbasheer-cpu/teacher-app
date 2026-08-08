@@ -3,7 +3,7 @@ import { Caveat, IBM_Plex_Mono, Plus_Jakarta_Sans, Poppins, Space_Grotesk } from
 import { SoundProvider } from "@/components/effects/sound-provider";
 import { ActiveSessionGuard } from "@/components/auth/active-session-guard";
 import { CookieBanner } from "@/components/layout/cookie-banner";
-import { NavbarWrapper } from "@/components/layout/navbar-wrapper";
+import { AppShell } from "@/components/layout/app-shell";
 import { PageTransitionWrapper } from "@/components/layout/page-transition-wrapper";
 import { SentryProvider } from "@/components/sentry-provider";
 import { PostHogProvider } from "@/providers/posthog-provider";
@@ -139,10 +139,11 @@ export default function RootLayout({
         <SentryProvider />
         <PostHogProvider>
           <SoundProvider>
-            <NavbarWrapper />
-            <ActiveSessionGuard>
-              <PageTransitionWrapper>{children}</PageTransitionWrapper>
-            </ActiveSessionGuard>
+            <AppShell>
+              <ActiveSessionGuard>
+                <PageTransitionWrapper>{children}</PageTransitionWrapper>
+              </ActiveSessionGuard>
+            </AppShell>
             <CookieBanner />
           </SoundProvider>
         </PostHogProvider>

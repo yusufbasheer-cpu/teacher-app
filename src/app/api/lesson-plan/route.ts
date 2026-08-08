@@ -52,6 +52,7 @@ import {
   formatAflForSinglePptSlidePrompt,
   sanitizeAflSelections,
   buildAflActivitySheetsUserMessage,
+  buildAutoAflSelections,
 } from "@/lib/afl-tools";
 import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
@@ -414,6 +415,19 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
       const sourceMaterialBlock = sourceMaterial
         ? `### Source material\n${sourceMaterial.slice(0, 6_000)}`
         : undefined;
+      // If the teacher didn't pick specific tools, fall back to the same
+      // deterministic per-slide picks the PPT auto-select prompt is given —
+      // otherwise these sheets would go blank even though the PPT still
+      // used AFL tools on slides 2/6/7/9/11/12.
+      const hasTeacherAflPicks = Object.values(aflSelections).some((ids) => (ids?.length ?? 0) > 0);
+      const effectiveAflSelections = hasTeacherAflPicks
+        ? aflSelections
+        : buildAutoAflSelections({
+            subject: input.subject,
+            grade: input.grade,
+            topic: input.topic,
+            learningObjectives: input.learningObjectives,
+          });
       const userMsg = buildAflActivitySheetsUserMessage({
         input: {
           subject: input.subject,
@@ -422,7 +436,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
           chapter: input.chapter,
           curriculumType: input.curriculumType,
         },
-        selections: aflSelections,
+        selections: effectiveAflSelections,
         sourceMaterialBlock,
       });
       if (!userMsg) {

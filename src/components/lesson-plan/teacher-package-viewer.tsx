@@ -1,6 +1,18 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import {
+  BookOpen,
+  CheckCircle2,
+  ClipboardCheck,
+  FileStack,
+  PencilLine,
+  Presentation as PresentationIcon,
+  StickyNote,
+  type LucideIcon,
+} from "lucide-react";
 import {
   getLessonPlanDisplayOrder,
   getPptSourceLessonText,
@@ -10,11 +22,11 @@ import {
   mergePptSlideImageUrlsIntoPlan,
   type LessonPlanResult,
   type SectionImageMap,
-  type TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
 import { AFL_PHASE_IDS, type AflSelectionsPayload } from "@/lib/afl-tools";
 import {
   DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
+  TEMPLATE_CARDS as PPT_THEME_CARDS,
   type TemplateId as PptThemeId,
 } from "@/lib/ppt-template-config";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
@@ -37,6 +49,8 @@ type TeacherPackageViewerProps = {
   curriculumFramework?: string;
   /** PowerPoint template from the generator; defaults to Classic. */
   pptThemeId?: PptThemeId;
+  /** Called when the teacher picks a different PPT template card. */
+  onPptThemeChange?: (id: PptThemeId) => void;
   /** Shown on title slide and sent to export API. */
   teacherName?: string;
   /** Learning objectives line from the generator form (enriches PPT objectives slide). */
@@ -45,6 +59,15 @@ type TeacherPackageViewerProps = {
   aflSelections?: AflSelectionsPayload;
   /** Pre-generated PPT slide URLs from lesson generation (embedded at download time). */
   pptSlideImageUrls?: (string | null)[] | null;
+  /** Any parse notice from generation, surfaced under the success header. */
+  parseNotice?: string | null;
+  /** Resets the wizard so the teacher can change inputs and generate again. */
+  onRegenerate?: () => void;
+  /** Persists this package to My Lessons. */
+  onSave?: () => void;
+  saving?: boolean;
+  /** Sends this lesson to the Differentiated Worksheet Pack tool. */
+  onSendToDifferentiatedPack?: () => void;
 };
 
 type ExportKey =
@@ -237,6 +260,15 @@ function safeFilenamePart(value: string, fallback: string) {
   return s || fallback;
 }
 
+type OverviewCard = {
+  key: ExportKey;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  accent: "teal" | "violet";
+  onDownload: () => void | Promise<void>;
+};
+
 export function TeacherPackageViewer({
   lessonPlan,
   sectionImages,
@@ -245,10 +277,16 @@ export function TeacherPackageViewer({
   topic,
   curriculumFramework,
   pptThemeId = DEFAULT_PPT_THEME_ID,
+  onPptThemeChange,
   teacherName,
   learningObjectives,
   aflSelections,
   pptSlideImageUrls,
+  parseNotice,
+  onRegenerate,
+  onSave,
+  saving,
+  onSendToDifferentiatedPack,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
@@ -336,14 +374,6 @@ export function TeacherPackageViewer({
     const pptContent = getPptSourceSlideOutline(lessonPlan);
     const lo = learningObjectives?.trim() || "";
     const hw = typeof lessonPlan["Homework Task"] === "string" ? lessonPlan["Homework Task"].trim() : "";
-
-    console.log("[PPT export] Download clicked:", {
-      fullLessonPlanChars: fullLessonPlan.length,
-      pptContentChars: pptContent.length,
-      subject,
-      grade,
-      topicPreview: topic.slice(0, 80),
-    });
 
     const urls =
       Array.isArray(pptSlideImageUrls) && pptSlideImageUrls.length >= STRUCTURED_LESSON_DECK_SLIDE_COUNT
@@ -460,202 +490,325 @@ export function TeacherPackageViewer({
     });
   };
 
+  const rawOverviewCards: (OverviewCard | null)[] = [
+    hasPpt
+      ? ({
+          key: "ppt",
+          title: "PPT- Presentation",
+          description: "Structured slide deck · Layah theme",
+          icon: PresentationIcon,
+          accent: "teal",
+          onDownload: onDownloadPpt,
+        } as OverviewCard)
+      : null,
+    hasAflSheets
+      ? ({
+          key: "afl-sheets",
+          title: "Activity Sheet AFL",
+          description: "Printable student handouts · Word (.docx)",
+          icon: FileStack,
+          accent: "violet",
+          onDownload: onDownloadAflSheets,
+        } as OverviewCard)
+      : null,
+    hasLesson
+      ? ({
+          key: "lesson",
+          title: "Lesson Plan",
+          description: "Full write-up · Word (.docx)",
+          icon: BookOpen,
+          accent: "teal",
+          onDownload: onDownloadLessonPlan,
+        } as OverviewCard)
+      : null,
+    hasWorksheet
+      ? ({
+          key: "worksheet",
+          title: "Worksheet Pack",
+          description: "Student practice · Word (.docx)",
+          icon: FileStack,
+          accent: "teal",
+          onDownload: onDownloadWorksheet,
+        } as OverviewCard)
+      : null,
+    hasAssessment
+      ? ({
+          key: "assessment",
+          title: "Assessment Questions",
+          description: "Graded checks · Word (.docx)",
+          icon: ClipboardCheck,
+          accent: "teal",
+          onDownload: onDownloadAssessment,
+        } as OverviewCard)
+      : null,
+    hasHomework
+      ? ({
+          key: "homework",
+          title: "Homework Tasks",
+          description: "Take-home practice · Word (.docx)",
+          icon: PencilLine,
+          accent: "teal",
+          onDownload: onDownloadHomework,
+        } as OverviewCard)
+      : null,
+    hasNotes
+      ? ({
+          key: "notes",
+          title: "Teacher Notes",
+          description: "Delivery guidance · Word (.docx)",
+          icon: StickyNote,
+          accent: "teal",
+          onDownload: onDownloadTeacherNotes,
+        } as OverviewCard)
+      : null,
+  ];
+  const overviewCards = rawOverviewCards.filter((c): c is OverviewCard => c !== null);
+
   return (
-    <div className="space-y-5">
-      {showTeacherDownloads ? (
-        <>
+    <div className="mx-auto w-full max-w-7xl px-4 py-6">
+      {/* ══════════ SUCCESS HEADER ══════════ */}
+      <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-teal-100 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-600">
+            <CheckCircle2 size={22} />
+          </span>
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Downloads
+            <h2 className="text-lg font-bold text-slate-900 sm:text-xl">Teacher Package Ready</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Your lesson plan, PPT, worksheets, homework, assessment, and teacher notes have been
+              generated successfully.
             </p>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {hasPpt ? (
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={onDownloadPpt}
-                className="animate-slide-up stagger-1 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
-              >
-                {busy === "ppt" ? (pptSlideImageUrls?.some(Boolean) ? "Preparing file…" : "Generating images…") : "Download PPT"}
-                <span className="mt-0.5 block text-xs font-normal text-slate-500">
-                  Structured deck · Layah theme
-                </span>
-              </button>
-              ) : null}
-              {hasLesson ? (
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={onDownloadLessonPlan}
-                className="animate-slide-up stagger-2 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
-              >
-                {busy === "lesson" ? "Preparing…" : "Download Lesson Plan"}
-                <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
-              </button>
-              ) : null}
-              {hasWorksheet ? (
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={onDownloadWorksheet}
-                className="animate-slide-up stagger-3 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
-              >
-                {busy === "worksheet" ? "Preparing…" : "Download Worksheet"}
-                <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
-              </button>
-              ) : null}
-              {hasAssessment ? (
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={onDownloadAssessment}
-                className="animate-slide-up stagger-4 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
-              >
-                {busy === "assessment" ? "Preparing…" : "Download Assessment"}
-                <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
-              </button>
-              ) : null}
-              {hasHomework ? (
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={onDownloadHomework}
-                className="animate-slide-up stagger-5 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
-              >
-                {busy === "homework" ? "Preparing…" : "Download Homework"}
-                <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
-              </button>
-              ) : null}
-              {hasNotes ? (
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={onDownloadTeacherNotes}
-                className="animate-slide-up stagger-6 flex min-h-[3rem] flex-col justify-center rounded-xl border border-[#00C6A7]/30 bg-white px-3 py-2.5 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10 hover:shadow-md disabled:opacity-50"
-              >
-                {busy === "notes" ? "Preparing…" : "Download Teacher Notes"}
-                <span className="mt-0.5 block text-xs font-normal text-slate-500">Word (.docx)</span>
-              </button>
-              ) : null}
-              {hasAflSheets ? (
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={onDownloadAflSheets}
-                className="animate-slide-up stagger-7 flex min-h-[3rem] flex-col justify-center rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-violet-900 shadow-sm transition hover:bg-violet-50 hover:shadow-md disabled:opacity-50"
-              >
-                {busy === "afl-sheets" ? "Preparing…" : "Download Activity Sheet AFL"}
-                <span className="mt-0.5 block text-xs font-normal text-slate-500">
-                  Printable student handouts · Word (.docx)
-                </span>
-              </button>
-              ) : null}
-            </div>
-            <PptImageProgressCard
-              active={busy === "ppt"}
-              packagingOnly={Boolean(pptSlideImageUrls?.some(Boolean))}
-            />
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          {onRegenerate ? (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              Regenerate
+            </button>
+          ) : null}
+          {showTeacherDownloads ? (
             <button
               type="button"
               disabled={busy !== null}
               onClick={onDownloadZip}
-              className="animate-slide-up stagger-8 mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0A8F7A] hover:shadow-lg disabled:opacity-50 sm:w-auto"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-50"
             >
-              {busy === "zip" ? "Building ZIP…" : "Download ZIP package"}
+              {busy === "zip" ? "Building ZIP…" : "Download ZIP"}
             </button>
-            <p className="mt-1.5 text-xs text-slate-500">
-              ZIP includes only the materials present in this package.
-            </p>
-          </div>
-        </>
-      ) : (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          ) : null}
+        </div>
+      </div>
+
+      {exportError ? (
+        <p className="animate-shake mb-4 text-sm text-red-600">{exportError}</p>
+      ) : null}
+      {parseNotice ? (
+        <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          {parseNotice}
+        </p>
+      ) : null}
+
+      {!showTeacherDownloads ? (
+        <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           File downloads (PPT, Word, and ZIP) are available when your plan includes at least one
           teacher-package section (lesson plan, slides, worksheet, and so on). Legacy-format plans
           cannot be exported here — generate a new package to unlock downloads.
         </p>
-      )}
+      ) : null}
 
-      {exportError ? <p className="animate-shake text-sm text-red-600">{exportError}</p> : null}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* ══════════ SIDEBAR ══════════ */}
+        <aside className="space-y-6 lg:col-span-4">
+          {overviewCards.length > 0 ? (
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Package overview
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                {overviewCards.map((card) => {
+                  const Icon = card.icon;
+                  const isViolet = card.accent === "violet";
+                  return (
+                    <div
+                      key={card.key}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                            isViolet ? "bg-violet-50 text-violet-600" : "bg-teal-50 text-teal-600"
+                          }`}
+                        >
+                          <Icon size={18} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900">{card.title}</p>
+                          <p className="mt-0.5 text-xs text-slate-600">{card.description}</p>
+                          <button
+                            type="button"
+                            disabled={busy !== null}
+                            onClick={card.onDownload}
+                            className={`mt-3 inline-flex min-h-8 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition disabled:opacity-50 ${
+                              isViolet
+                                ? "border-violet-300 text-violet-700 hover:bg-violet-50"
+                                : "border-teal-600 text-teal-700 hover:bg-teal-50"
+                            }`}
+                          >
+                            {busy === card.key ? "Preparing…" : "Download"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <PptImageProgressCard
+                active={busy === "ppt"}
+                packagingOnly={Boolean(pptSlideImageUrls?.some(Boolean))}
+              />
+            </div>
+          ) : null}
 
-      <div className="overflow-x-auto pb-1">
-        <div
-          className="flex min-w-0 gap-2 border-b border-[#00C6A7]/20 pb-3"
-          role="tablist"
-          aria-label="Teacher package sections"
-        >
-          {sectionKeys.map((key) => {
-            const selected = key === activeKey;
-            return (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => setActiveKey(key)}
-                className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C6A7] focus-visible:ring-offset-2 min-h-10 ${
-                  selected
-                    ? "bg-[#00C6A7] text-white shadow-md"
-                    : "border border-[#00C6A7]/30 bg-white text-[#0A1628] hover:bg-[#00C6A7]/10"
-                }`}
-              >
-                {getSectionTabLabel(key)}
-              </button>
-            );
-          })}
+          {onSave || onSendToDifferentiatedPack ? (
+            <div className="space-y-2">
+              {onSave ? (
+                <button
+                  type="button"
+                  onClick={onSave}
+                  disabled={saving}
+                  className="inline-flex w-full min-h-10 items-center justify-center rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {saving ? "Saving..." : "Save Lesson Plan"}
+                </button>
+              ) : null}
+              {onSendToDifferentiatedPack ? (
+                <button
+                  type="button"
+                  onClick={onSendToDifferentiatedPack}
+                  className="inline-flex w-full min-h-10 items-center justify-center rounded-xl border-2 border-emerald-600 bg-emerald-50 px-4 text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-100"
+                >
+                  Generate Differentiated Worksheet Pack
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </aside>
+
+        {/* ══════════ MAIN PREVIEW ══════════ */}
+        <div className="lg:col-span-8">
+          <div className="overflow-x-auto pb-1">
+            <div
+              className="flex min-w-0 gap-2 border-b border-slate-200 pb-3"
+              role="tablist"
+              aria-label="Teacher package sections"
+            >
+              {sectionKeys.map((key) => {
+                const selected = key === activeKey;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    onClick={() => setActiveKey(key)}
+                    className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 min-h-10 ${
+                      selected
+                        ? "bg-teal-600 text-white shadow-md"
+                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {getSectionTabLabel(key)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <article
+            className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6"
+            role="tabpanel"
+          >
+            <div className="flex flex-col gap-1 border-b border-slate-200 pb-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h4 className="text-lg font-bold text-slate-900">
+                  {activeKey ? getSectionTabLabel(activeKey) : "Section"}
+                </h4>
+              </div>
+            </div>
+
+            {activeKey === "PPT Slide Content" && hasPpt ? (
+              <div className="mt-4 border-b border-slate-200 pb-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Presentation template
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  {PPT_THEME_CARDS.map((t) => {
+                    const selected = pptThemeId === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => onPptThemeChange?.(t.id)}
+                        aria-pressed={selected}
+                        className={`rounded-xl border-2 bg-white p-2.5 text-left shadow-sm transition hover:shadow-md ${
+                          selected ? "border-teal-500 ring-2 ring-teal-100" : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="mb-2 flex h-12 gap-1 overflow-hidden rounded-lg" aria-hidden>
+                          {t.preview.map((hex) => (
+                            <span key={hex} className="h-full min-w-0 flex-1" style={{ backgroundColor: `#${hex}` }} />
+                          ))}
+                        </div>
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                          Template {t.themeNumber}
+                        </p>
+                        <p className="text-xs font-semibold text-slate-900">{t.name}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-4 grid max-h-[min(70vh,780px)] gap-4 overflow-y-auto lg:grid-cols-[1fr_min(280px,32%)]">
+              <div className="min-h-0 min-w-0 overflow-y-auto">
+                <div className="prose prose-slate prose-sm max-w-none prose-headings:font-bold prose-headings:text-slate-900 prose-p:text-slate-600 prose-li:text-slate-600 prose-strong:text-slate-900 sm:prose-base">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{activeContent}</ReactMarkdown>
+                </div>
+              </div>
+              {activeImageList.length > 0 ? (
+                <aside className="flex min-h-0 flex-col gap-3 border-t border-slate-100 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Section illustration
+                  </p>
+                  <div className="space-y-3 overflow-y-auto">
+                    {activeImageList.map((src) => (
+                      <a
+                        key={src}
+                        href={src}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-sm ring-teal-500 transition hover:ring-2"
+                      >
+                        <img
+                          src={src}
+                          alt="Educational illustration generated for this section"
+                          className="h-auto w-full object-contain"
+                          loading="lazy"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </aside>
+              ) : null}
+            </div>
+          </article>
         </div>
       </div>
-
-      <article
-        className="rounded-2xl border border-[#00C6A7]/20 bg-gradient-to-b from-[#00C6A7]/5 to-white p-5 shadow-sm md:p-6"
-        role="tabpanel"
-      >
-        <div className="flex flex-col gap-1 border-b border-[#00C6A7]/20 pb-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h4 className="text-lg font-bold text-slate-900">
-              {activeKey ? getSectionTabLabel(activeKey) : "Section"}
-            </h4>
-            {activeKey ? (
-              <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-[#00C6A7]">
-                {activeKey}
-              </p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="mt-4 grid max-h-[min(70vh,780px)] gap-4 overflow-y-auto rounded-xl border border-slate-100 bg-white p-4 shadow-inner lg:grid-cols-[1fr_min(280px,32%)] md:p-5">
-          <div className="min-h-0 min-w-0 overflow-y-auto">
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-800">
-              {activeContent}
-            </pre>
-          </div>
-          {activeImageList.length > 0 ? (
-            <aside className="flex min-h-0 flex-col gap-3 border-t border-slate-100 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Section illustration
-              </p>
-              <div className="space-y-3 overflow-y-auto">
-                {activeImageList.map((src) => (
-                  <a
-                    key={src}
-                    href={src}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-sm ring-[#00C6A7] transition hover:ring-2"
-                  >
-                    <img
-                      src={src}
-                      alt="Educational illustration generated for this section"
-                      className="h-auto w-full object-contain"
-                      loading="lazy"
-                    />
-                  </a>
-                ))}
-              </div>
-            </aside>
-          ) : null}
-        </div>
-      </article>
     </div>
   );
 }

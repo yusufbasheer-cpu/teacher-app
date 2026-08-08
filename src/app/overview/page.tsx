@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
-import { QuestionPaperGenerator } from "@/components/question-paper/question-paper-generator";
+import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { Container } from "@/components/ui/container";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export default async function QuestionPaperPage() {
+export default async function OverviewPage() {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -19,8 +19,7 @@ export default async function QuestionPaperPage() {
   return (
     <main className="min-h-screen pb-16 pt-8">
       <Container>
-        <h1 className="sr-only">Question Paper Generator</h1>
-        <QuestionPaperGenerator />
+        <DashboardOverview />
       </Container>
     </main>
   );

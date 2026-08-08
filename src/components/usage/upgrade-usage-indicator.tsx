@@ -14,7 +14,7 @@ type Props = {
   loading?: boolean;
 };
 
-function getUpgradePlan(usage: UserUsageSnapshot | null): UpgradePlanKey | null {
+export function getUpgradePlan(usage: UserUsageSnapshot | null): UpgradePlanKey | null {
   if (!usage) return null;
   if (usage.unlimited) return null;
   if (usage.planType === "free") return "pro";
@@ -22,7 +22,7 @@ function getUpgradePlan(usage: UserUsageSnapshot | null): UpgradePlanKey | null 
   return null;
 }
 
-const UPGRADE_COPY: Record<UpgradePlanKey, { label: string; sub: string }> = {
+export const UPGRADE_COPY: Record<UpgradePlanKey, { label: string; sub: string }> = {
   pro: { label: "Upgrade to Pro", sub: "30 generations/month · All themes · Q-Paper generator" },
   proPlus: { label: "Upgrade to Pro Plus", sub: "60 generations/month · Advanced analytics · Early access" },
 };
