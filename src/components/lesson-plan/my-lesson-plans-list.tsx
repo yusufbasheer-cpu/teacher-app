@@ -113,7 +113,7 @@ export function MyLessonPlansList() {
           Please login to access your saved lesson plans.
         </p>
         <Link
-          href="/auth"
+          href="/login"
           className="mt-5 inline-flex rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
         >
           Go to Login

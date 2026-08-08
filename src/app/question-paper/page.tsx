@@ -24,7 +24,7 @@ export default async function QuestionPaperPage() {
           headline="Generate question papers with AI"
           subtext="Create curriculum-aligned question papers with a custom blueprint, mark distribution, and answer key."
           ctaLabel="Start Generating"
-          ctaHref="/auth"
+          ctaHref="/signup"
         />
       )}
       <Container>

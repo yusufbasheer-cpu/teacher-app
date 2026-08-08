@@ -14,7 +14,7 @@ export default async function SuperAdminPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user?.email) {
-    redirect("/auth");
+    redirect("/login");
   }
 
   // Fast email pre-check before the async DB lookup

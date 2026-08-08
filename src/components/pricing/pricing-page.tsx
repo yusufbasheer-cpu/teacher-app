@@ -41,7 +41,7 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
       "Standard Themes",
       "Email Support",
     ],
-    cta: { label: "Get Started Free", href: "/auth" },
+    cta: { label: "Get Started Free", href: "/signup" },
     variant: "light",
   },
   {
@@ -62,7 +62,7 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
       "Global Curriculum Framework Alignment",
       "Priority Support",
     ],
-    cta: { label: "Join Waitlist", href: "/auth" },
+    cta: { label: "Join Waitlist", href: "/signup" },
     variant: "featured",
   },
   {
@@ -78,7 +78,7 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
       "Advanced Analytics",
       "Early Access to New Features",
     ],
-    cta: { label: "Join Waitlist", href: "/auth" },
+    cta: { label: "Join Waitlist", href: "/signup" },
     variant: "light",
   },
 ];

@@ -15,7 +15,7 @@ export default async function HodDashboardPage() {
   } = await supabase.auth.getUser();
 
   if (!user?.id) {
-    redirect("/auth");
+    redirect("/login");
   }
 
   const hodRow = await getHodTeacherRow(user.id);

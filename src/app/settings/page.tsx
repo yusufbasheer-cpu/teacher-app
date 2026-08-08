@@ -185,7 +185,7 @@ export default function SettingsPage() {
       } = await supabase.auth.getSession();
 
       if (!session?.user) {
-        router.replace("/auth");
+        router.replace("/login");
         return;
       }
 

@@ -78,7 +78,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
 
     const session = await getSession();
     if (!session?.access_token) {
-      window.location.href = "/auth";
+      window.location.href = "/login";
       return;
     }
 

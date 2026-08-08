@@ -13,7 +13,7 @@ export default async function OverviewPage() {
   } = await supabase.auth.getUser();
 
   if (!user?.id) {
-    redirect("/auth");
+    redirect("/login");
   }
 
   return (

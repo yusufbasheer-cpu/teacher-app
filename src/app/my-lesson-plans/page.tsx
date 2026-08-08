@@ -14,7 +14,7 @@ export default async function MyLessonPlansPage() {
   } = await supabase.auth.getUser();
 
   if (!user?.id) {
-    redirect("/auth");
+    redirect("/login");
   }
 
   return (

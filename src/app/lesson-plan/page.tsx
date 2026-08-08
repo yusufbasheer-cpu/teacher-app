@@ -38,7 +38,7 @@ export default async function LessonPlanPage() {
           headline="Generate curriculum-aligned lesson plans in minutes"
           subtext="Create structured lesson plans with objectives, activities, differentiation and assessments."
           ctaLabel="Start Generating"
-          ctaHref="/auth"
+          ctaHref="/signup"
         />
       )}
       <div className="px-4 sm:px-6 lg:px-8">

@@ -37,7 +37,7 @@ export function ActiveSessionGuard({ children }: { children: ReactNode }) {
       if (!result.ok && result.revoked) {
         setRevokedMessage(SESSION_REVOKED_MESSAGE);
         await forceLogoutSessionRevoked();
-        router.replace("/auth?revoked=1");
+        router.replace("/login?revoked=1");
         router.refresh();
       }
     } finally {

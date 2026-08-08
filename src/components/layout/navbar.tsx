@@ -68,7 +68,7 @@ export function Navbar() {
 
         <div className="hidden shrink-0 items-center gap-2 lg:flex">
           <Link
-            href="/auth"
+            href="/login"
             className="rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-70"
             style={{ color: "#374151" }}
           >
@@ -117,7 +117,7 @@ export function Navbar() {
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t pt-3" style={{ borderColor: BORDER }}>
               <Link
-                href="/auth"
+                href="/login"
                 className="rounded-lg px-3 py-2.5 text-center text-sm font-semibold"
                 style={{ color: "#374151", border: `1px solid ${BORDER}` }}
               >

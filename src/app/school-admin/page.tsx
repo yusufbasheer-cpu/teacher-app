@@ -43,7 +43,7 @@ export default async function SchoolAdminPage() {
   } = await supabase.auth.getUser();
 
   if (!user?.email) {
-    redirect("/auth");
+    redirect("/login");
   }
 
   const bypass = isAdminBypassEnabled();

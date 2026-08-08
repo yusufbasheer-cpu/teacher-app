@@ -24,7 +24,7 @@ export default async function DifferentiatedWorksheetsPage() {
           headline="Create differentiated worksheets instantly"
           subtext="Generate foundation, core, and extension worksheets with answer keys and rubrics from one lesson topic."
           ctaLabel="Start Generating"
-          ctaHref="/auth"
+          ctaHref="/signup"
         />
       )}
       <Container>

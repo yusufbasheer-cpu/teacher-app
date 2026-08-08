@@ -168,7 +168,7 @@ export default async function BlogPostPage({ params }: Props) {
             <p className="mt-3 text-sm leading-relaxed text-chalk/65">
               Generate your first complete lesson plan, PPT, and worksheet pack in under 5 minutes.
             </p>
-            <Link href="/auth" className={buttonVariants({ size: "lg", className: "mt-6 h-11 rounded-lg px-8" })}>
+            <Link href="/signup" className={buttonVariants({ size: "lg", className: "mt-6 h-11 rounded-lg px-8" })}>
               Try Layah free →
             </Link>
           </div>

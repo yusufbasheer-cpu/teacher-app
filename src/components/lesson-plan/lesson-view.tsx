@@ -98,7 +98,7 @@ export function LessonView({ id }: { id: string }) {
           <h2 className="text-xl font-semibold text-slate-900">Login Required</h2>
           <p className="mt-2 text-sm text-slate-600">Please login to view your saved lesson plans.</p>
           <Link
-            href="/auth"
+            href="/login"
             className="mt-5 inline-flex rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
           >
             Go to Login

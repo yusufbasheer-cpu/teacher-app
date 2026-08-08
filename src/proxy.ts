@@ -77,7 +77,12 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user && pathname.startsWith("/auth") && pathname !== "/auth/callback") {
+  const isAuthPage =
+    (pathname.startsWith("/auth") && pathname !== "/auth/callback") ||
+    pathname === "/login" ||
+    pathname === "/signup";
+
+  if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     response = NextResponse.redirect(url);

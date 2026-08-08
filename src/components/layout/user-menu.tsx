@@ -53,7 +53,7 @@ export function UserMenu({ user, collapsed = false }: Props) {
   const onLogout = async () => {
     await clearActiveSession(user.id);
     await supabase.auth.signOut();
-    router.push("/auth");
+    router.push("/login");
     router.refresh();
   };
 
