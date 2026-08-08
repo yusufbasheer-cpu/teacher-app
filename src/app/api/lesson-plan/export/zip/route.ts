@@ -3,6 +3,7 @@ import { sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildTeacherPackageZipBuffer, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import { hasTeacherPackageContent } from "@/lib/lesson-plan";
 import type { LessonPlanResult } from "@/lib/lesson-plan";
+import { authenticateRequest } from "@/lib/user-usage-server";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,11 @@ type Body = {
 };
 
 export async function POST(req: Request) {
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
   let body: Body;
   try {
     body = (await req.json()) as Body;

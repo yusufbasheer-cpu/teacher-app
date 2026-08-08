@@ -51,6 +51,9 @@ function DashboardContent() {
       // "show the welcome banner" bookkeeping is still needed here.
       const schoolCheck = params?.get("school_check") === "1";
       if (schoolCheck) {
+        // Applying the school plan onto user_usage happens server-side in /auth/callback
+        // (via the service-role client, see applySchoolPlanForEmail) before this page ever
+        // loads -- the client no longer has a write path to user_usage to duplicate that here.
         const welcome = params?.get("school_welcome");
         if (welcome) {
           try {

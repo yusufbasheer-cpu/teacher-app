@@ -77,10 +77,10 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     decimals: 0,
     prices: p(
       { monthly: 349, annual: 3490 },
-      { monthly: 579, annual: 5790 },
-      { monthly: 3499, annual: 23990 },
-      { monthly: 8199, annual: 57990 },
-      { monthly: 13999, annual: 99990 },
+      { monthly: 1249, annual: 12490 },
+      { monthly: 7499, annual: 74990 },
+      { monthly: 17499, annual: 174990 },
+      { monthly: 29999, annual: 299990 },
     ),
   },
   pakistan: {

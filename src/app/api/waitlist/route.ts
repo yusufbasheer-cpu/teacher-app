@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
+import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  const ipLimit = checkRateLimit(`waitlist:ip:${getClientIp(req)}`, 10, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
   let body: { email?: string; plan_interested?: string | null };
   try {
     body = (await req.json()) as { email?: string; plan_interested?: string | null };

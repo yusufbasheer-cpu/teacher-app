@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Caveat, IBM_Plex_Mono, Plus_Jakarta_Sans, Poppins, Space_Grotesk } from "next/font/google";
 import { SoundProvider } from "@/components/effects/sound-provider";
 import { ActiveSessionGuard } from "@/components/auth/active-session-guard";
@@ -147,6 +148,7 @@ export default function RootLayout({
             <CookieBanner />
           </SoundProvider>
         </PostHogProvider>
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       </body>
     </html>
   );

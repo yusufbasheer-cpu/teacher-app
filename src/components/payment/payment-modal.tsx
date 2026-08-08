@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { getAuthHeaders } from "@/lib/auth-headers";
 import { usePricingRegion } from "@/hooks/use-pricing-region";
-import { formatRegionalPrice, type PaidPlanKey } from "@/lib/pricing-regions";
+import { PRICING_REGIONS, formatRegionalPrice, type PaidPlanKey } from "@/lib/pricing-regions";
 
 const NAVY = "#0A1628";
 const TEAL = "#00C6A7";
@@ -16,6 +18,8 @@ type PaymentModalProps = {
   planKey: UpgradePlanKey;
   initialBilling?: Billing;
   onClose: () => void;
+  /** Called once a payment has been verified and the plan upgraded server-side. */
+  onSuccess?: () => void;
 };
 
 const PLAN_INFO: Record<UpgradePlanKey, { name: string; priceKey: PaidPlanKey; generations: string; features: string[] }> = {
@@ -45,6 +49,45 @@ const PLAN_INFO: Record<UpgradePlanKey, { name: string; priceKey: PaidPlanKey; g
   },
 };
 
+// Razorpay checkout only supports charging in INR today, so this modal always prices and
+// charges off the India region regardless of the visitor's own (now geo-detected) pricing region.
+const INR_REGION = PRICING_REGIONS.india;
+
+const RAZORPAY_PLAN_TYPE: Record<UpgradePlanKey, "pro" | "pro_plus"> = {
+  pro: "pro",
+  proPlus: "pro_plus",
+};
+
+type RazorpayResponse = {
+  razorpay_order_id?: string;
+  razorpay_subscription_id?: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayOptions = {
+  key: string;
+  amount?: number;
+  currency?: string;
+  name: string;
+  description: string;
+  image?: string;
+  order_id?: string;
+  subscription_id?: string;
+  prefill?: { email?: string; contact?: string; method?: "card" | "upi" };
+  theme?: { color: string };
+  handler: (response: RazorpayResponse) => void;
+  modal?: { ondismiss?: () => void };
+};
+
+const LAYAH_LOGO_URL = "https://layah.in/Logo.png";
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => { open: () => void };
+  }
+}
+
 function CheckIcon() {
   return (
     <svg className="size-4 shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden>
@@ -70,20 +113,139 @@ function UpiIcon() {
   );
 }
 
-export function PaymentModal({ open, planKey, initialBilling = "monthly", onClose }: PaymentModalProps) {
+export function PaymentModal({ open, planKey, initialBilling = "monthly", onClose, onSuccess }: PaymentModalProps) {
   const [billing, setBilling] = useState<Billing>(initialBilling);
-  const [payClicked, setPayClicked] = useState(false);
-  const { region, regionId } = usePricingRegion();
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { regionId } = usePricingRegion();
 
   if (!open) return null;
 
   const plan = PLAN_INFO[planKey];
-  const prices = region.prices[plan.priceKey];
+  const prices = INR_REGION.prices[plan.priceKey];
   const amount = billing === "annual" ? prices.annual : prices.monthly;
   const period = billing === "annual" ? "year" : "month";
   const isIndia = regionId === "india";
+  const isProMonthlySubscription = planKey === "pro" && billing === "monthly";
 
-  const handlePayClick = () => setPayClicked(true);
+  const handlePayClick = async (method: "card" | "upi") => {
+    if (typeof window === "undefined" || !window.Razorpay) {
+      setStatus("error");
+      setErrorMessage("Payment is still loading. Please try again in a moment.");
+      return;
+    }
+
+    setStatus("loading");
+    setErrorMessage(null);
+
+    try {
+      const headers = await getAuthHeaders();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (isProMonthlySubscription) {
+        const subRes = await fetch("/api/razorpay/create-subscription", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ planType: "pro" }),
+        });
+        const subData = await subRes.json();
+        if (!subRes.ok) {
+          throw new Error(subData.error ?? "Could not start checkout.");
+        }
+
+        const razorpay = new window.Razorpay({
+          key: subData.keyId,
+          name: "Layah",
+          description: "Pro — Monthly (auto-renews every 30 days)",
+          image: LAYAH_LOGO_URL,
+          subscription_id: subData.subscriptionId,
+          prefill: { email: user?.email ?? undefined, method },
+          theme: { color: NAVY },
+          handler: async (response) => {
+            try {
+              const verifyHeaders = await getAuthHeaders();
+              const verifyRes = await fetch("/api/razorpay/verify-subscription", {
+                method: "POST",
+                headers: verifyHeaders,
+                body: JSON.stringify(response),
+              });
+              const verifyData = await verifyRes.json();
+              if (!verifyRes.ok) {
+                throw new Error(verifyData.error ?? "Subscription verification failed.");
+              }
+              setStatus("success");
+              onSuccess?.();
+            } catch (err) {
+              setStatus("error");
+              setErrorMessage(err instanceof Error ? err.message : "Subscription verification failed.");
+            }
+          },
+          modal: {
+            ondismiss: () => setStatus("idle"),
+          },
+        });
+
+        razorpay.open();
+        setStatus("idle");
+        return;
+      }
+
+      const orderRes = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          planType: RAZORPAY_PLAN_TYPE[planKey],
+          billingPeriod: billing === "annual" ? "yearly" : "monthly",
+        }),
+      });
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) {
+        throw new Error(orderData.error ?? "Could not start checkout.");
+      }
+
+      const razorpay = new window.Razorpay({
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Layah",
+        description: `${plan.name} — ${billing === "annual" ? "Annual" : "Monthly"}`,
+        image: LAYAH_LOGO_URL,
+        order_id: orderData.orderId,
+        prefill: { email: user?.email ?? undefined, method },
+        theme: { color: NAVY },
+        handler: async (response) => {
+          try {
+            const verifyHeaders = await getAuthHeaders();
+            const verifyRes = await fetch("/api/razorpay/verify-payment", {
+              method: "POST",
+              headers: verifyHeaders,
+              body: JSON.stringify(response),
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) {
+              throw new Error(verifyData.error ?? "Payment verification failed.");
+            }
+            setStatus("success");
+            onSuccess?.();
+          } catch (err) {
+            setStatus("error");
+            setErrorMessage(err instanceof Error ? err.message : "Payment verification failed.");
+          }
+        },
+        modal: {
+          ondismiss: () => setStatus("idle"),
+        },
+      });
+
+      razorpay.open();
+      setStatus("idle");
+    } catch (err) {
+      setStatus("error");
+      setErrorMessage(err instanceof Error ? err.message : "Could not start checkout.");
+    }
+  };
 
   return (
     <div
@@ -175,7 +337,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
             <div className="flex items-end justify-between">
               <div>
                 <p className="text-3xl font-extrabold tracking-tight" style={{ color: NAVY }}>
-                  {formatRegionalPrice(region, amount, period)}
+                  {formatRegionalPrice(INR_REGION, amount, period)}
                 </p>
                 <p className="mt-1 text-xs font-medium" style={{ color: "#64748b" }}>
                   {plan.generations}
@@ -187,6 +349,16 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
                 </p>
               )}
             </div>
+            {!isIndia && (
+              <p className="mt-2 text-[11px]" style={{ color: "#94a3b8" }}>
+                Billed in Indian Rupees (INR) via Razorpay, regardless of your local currency shown elsewhere.
+              </p>
+            )}
+            {isProMonthlySubscription && (
+              <p className="mt-2 text-[11px]" style={{ color: "#94a3b8" }}>
+                Auto-renews every 30 days until cancelled. Manage or cancel anytime from Settings.
+              </p>
+            )}
           </div>
 
           {/* Features */}
@@ -199,8 +371,8 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
             ))}
           </ul>
 
-          {/* Payment buttons / Coming soon */}
-          {payClicked ? (
+          {/* Payment buttons / status */}
+          {status === "success" ? (
             <div
               className="rounded-2xl p-5 text-center"
               style={{ background: "rgba(0,198,167,0.08)", border: "1px solid rgba(0,198,167,0.3)" }}
@@ -209,15 +381,15 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
                 className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl"
                 style={{ background: "rgba(0,198,167,0.15)" }}
               >
-                <svg className="size-6" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke={TEAL} strokeWidth="2" strokeLinecap="round" />
-                </svg>
+                <CheckIcon />
               </div>
               <p className="font-bold" style={{ color: NAVY }}>
-                Payments Launching Soon!
+                {isProMonthlySubscription
+                  ? "Your Pro subscription is active!"
+                  : "Your plan has been upgraded successfully!"}
               </p>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
-                We are finalising our payment system and will be live within 24 hours. You will receive an email notification as soon as payments are ready.
+                Refresh the page to see your new limits and unlocked features.
               </p>
               <button
                 type="button"
@@ -230,21 +402,26 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
             </div>
           ) : (
             <div className="space-y-3">
+              {status === "error" && errorMessage && (
+                <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
+              )}
               <button
                 type="button"
-                onClick={handlePayClick}
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white transition hover:opacity-90"
+                onClick={() => handlePayClick("card")}
+                disabled={status === "loading"}
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
                 style={{ background: NAVY }}
               >
                 <LockIcon />
-                Pay with Card
+                {status === "loading" ? "Starting checkout…" : "Pay with Card"}
               </button>
 
               {isIndia && (
                 <button
                   type="button"
-                  onClick={handlePayClick}
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold transition hover:bg-slate-50"
+                  onClick={() => handlePayClick("upi")}
+                  disabled={status === "loading"}
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold transition hover:bg-slate-50 disabled:opacity-60"
                   style={{ borderColor: "#5F259F", color: "#5F259F" }}
                 >
                   <UpiIcon />

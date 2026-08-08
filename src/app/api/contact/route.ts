@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/send-email";
+import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
+
+export const runtime = "nodejs";
 
 interface ContactBody {
   name: string;
@@ -9,6 +12,9 @@ interface ContactBody {
 }
 
 export async function POST(request: Request) {
+  const ipLimit = checkRateLimit(`contact:ip:${getClientIp(request)}`, 10, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
   try {
     const body = (await request.json()) as ContactBody;
 

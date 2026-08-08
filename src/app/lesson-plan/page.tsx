@@ -1,4 +1,4 @@
-﻿import { Suspense } from "react";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 import { LessonPlanGenerator } from "@/components/lesson-plan/lesson-plan-generator";

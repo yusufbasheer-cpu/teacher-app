@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing userId or planType" }, { status: 400 });
   }
   if (!isPlanId(planType)) {
-    return NextResponse.json({ error: "Invalid planType." }, { status: 400 });
+    return NextResponse.json({ error: `Invalid planType: ${planType}` }, { status: 400 });
   }
 
   const admin = getSupabaseServiceRole();
