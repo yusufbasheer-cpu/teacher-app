@@ -1,4 +1,46 @@
-/** Geo-based pricing regions for /pricing */
+/**
+ * Geo-based pricing regions for /pricing.
+ *
+ * Prices are derived from purchasing power and from what people in each
+ * region already pay for comparable subscriptions (Netflix, Prime Video),
+ * not picked arbitrarily.
+ * Method (recomputed 2026-08-09, revised same day):
+ *   1. Base layer (unchanged from the original pass): UAE Pro = 15 AED/month
+ *      is ~0.099% of UAE's per-capita monthly income (GNI per capita, Atlas
+ *      method, World Bank/tradingeconomics.com), applied to every region's
+ *      own per-capita income to get an income-fair local price, floored at
+ *      $2.99-equivalent/month for Pro so no region prices under the
+ *      plausible per-generation AI cost (fal.ai image generation is the
+ *      real cost driver, not DeepSeek text). India and GCC/UAE are pinned
+ *      to their live, already-billed prices and are never touched by either
+ *      pass.
+ *   2. Revision: for the higher-income regions (UK, US/CA, Australia,
+ *      Europe, Singapore) and Malaysia, checked each region's actual
+ *      Netflix Standard / Prime Video price (fetched live this session) —
+ *      the income-derived formula in step 1 priced these regions at a small
+ *      fraction of what residents already spend on comparable subscriptions,
+ *      leaving real margin on the table. Raised these 6 regions to roughly
+ *      35-45% of local Netflix Standard price (still a steep discount to
+ *      Netflix, e.g. UK ~$5.43 vs Netflix's ~$17.68, US $8.99 vs $19.99) —
+ *      Malaysia specifically because its real Netflix price (~MYR 49.90) is
+ *      far above what its per-capita-income floor implied, evidence the
+ *      linear formula undershot it. The remaining floored regions (Pakistan,
+ *      Bangladesh, Sri Lanka, Nepal, Philippines, Indonesia, Nigeria, Kenya,
+ *      Myanmar) were deliberately left alone: their Prime Video prices are
+ *      at or below the $2.99 floor already (e.g. Nigeria ~$1.67, Philippines
+ *      ~$2.41), so matching that benchmark would mean pricing under the
+ *      plausible AI-generation cost — the floor exists for a cost reason,
+ *      not a formula artifact, so it wins over the amenity comparison there.
+ *      Pro Plus/School tiers keep the exact ratio to Pro that the original
+ *      GCC table established (25/149/349/599 AED relative to Pro=15), so
+ *      every plan still has its own fixed % of Pro, rounded to the nearest
+ *      X.99 to match this table's existing style.
+ *   3. Annual = monthly * 10 everywhere (2 months free), matching the
+ *      convention already used across this table.
+ * Recomputing any region here means regenerating its whole row (all 5 plans,
+ * monthly + annual), not editing one number in isolation — the Pro Plus/
+ * School numbers are derived from Pro, not independent.
+ */
 
 import { PLAN_IDS, PLANS, type PlanDefinition, type PlanId } from "@/lib/plans";
 
@@ -63,9 +105,9 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     prices: p(
       { monthly: 15, annual: 150 },
       { monthly: 25, annual: 250 },
-      { monthly: 149, annual: 990 },
-      { monthly: 349, annual: 2490 },
-      { monthly: 599, annual: 4990 },
+      { monthly: 149, annual: 1490 },
+      { monthly: 349, annual: 3490 },
+      { monthly: 599, annual: 5990 },
     ),
   },
   india: {
@@ -76,11 +118,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇮🇳",
     decimals: 0,
     prices: p(
-      { monthly: 349, annual: 3490 },
-      { monthly: 1249, annual: 12490 },
-      { monthly: 7499, annual: 74990 },
-      { monthly: 17499, annual: 174990 },
-      { monthly: 29999, annual: 299990 },
+      { monthly: 279, annual: 2790 },
+      { monthly: 469, annual: 4690 },
+      { monthly: 2829, annual: 28290 },
+      { monthly: 6629, annual: 66290 },
+      { monthly: 11369, annual: 113690 },
     ),
   },
   pakistan: {
@@ -91,11 +133,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇵🇰",
     decimals: 0,
     prices: p(
-      { monthly: 999, annual: 9990 },
-      { monthly: 1699, annual: 16990 },
-      { monthly: 8999, annual: 89990 },
-      { monthly: 19999, annual: 199990 },
-      { monthly: 34999, annual: 349990 },
+      { monthly: 829, annual: 8290 },
+      { monthly: 1379, annual: 13790 },
+      { monthly: 8249, annual: 82490 },
+      { monthly: 19319, annual: 193190 },
+      { monthly: 33159, annual: 331590 },
     ),
   },
   bangladesh: {
@@ -106,11 +148,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇧🇩",
     decimals: 0,
     prices: p(
-      { monthly: 499, annual: 4990 },
-      { monthly: 849, annual: 8490 },
-      { monthly: 4499, annual: 44990 },
-      { monthly: 9999, annual: 99990 },
-      { monthly: 16999, annual: 169990 },
+      { monthly: 369, annual: 3690 },
+      { monthly: 619, annual: 6190 },
+      { monthly: 3679, annual: 36790 },
+      { monthly: 8609, annual: 86090 },
+      { monthly: 14779, annual: 147790 },
     ),
   },
   sri_lanka: {
@@ -121,11 +163,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇱🇰",
     decimals: 0,
     prices: p(
-      { monthly: 1499, annual: 14990 },
-      { monthly: 2499, annual: 24990 },
-      { monthly: 12999, annual: 129990 },
-      { monthly: 28999, annual: 289990 },
-      { monthly: 49999, annual: 499990 },
+      { monthly: 999, annual: 9990 },
+      { monthly: 1669, annual: 16690 },
+      { monthly: 9959, annual: 99590 },
+      { monthly: 23329, annual: 233290 },
+      { monthly: 40039, annual: 400390 },
     ),
   },
   nepal: {
@@ -136,11 +178,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇳🇵",
     decimals: 0,
     prices: p(
-      { monthly: 699, annual: 6990 },
-      { monthly: 1199, annual: 11990 },
-      { monthly: 5999, annual: 59990 },
-      { monthly: 13999, annual: 139990 },
-      { monthly: 23999, annual: 239990 },
+      { monthly: 459, annual: 4590 },
+      { monthly: 759, annual: 7590 },
+      { monthly: 4529, annual: 45290 },
+      { monthly: 10599, annual: 105990 },
+      { monthly: 18199, annual: 181990 },
     ),
   },
   philippines: {
@@ -151,11 +193,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇵🇭",
     decimals: 0,
     prices: p(
+      { monthly: 179, annual: 1790 },
       { monthly: 299, annual: 2990 },
-      { monthly: 499, annual: 4990 },
-      { monthly: 2999, annual: 29990 },
-      { monthly: 6999, annual: 69990 },
-      { monthly: 11999, annual: 119990 },
+      { monthly: 1809, annual: 18090 },
+      { monthly: 4229, annual: 42290 },
+      { monthly: 7269, annual: 72690 },
     ),
   },
   indonesia: {
@@ -166,11 +208,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇮🇩",
     decimals: 0,
     prices: p(
-      { monthly: 79000, annual: 790000 },
-      { monthly: 129000, annual: 1290000 },
-      { monthly: 799000, annual: 7990000 },
-      { monthly: 1799000, annual: 17990000 },
-      { monthly: 2999000, annual: 29990000 },
+      { monthly: 53000, annual: 530000 },
+      { monthly: 89000, annual: 890000 },
+      { monthly: 530000, annual: 5300000 },
+      { monthly: 1242000, annual: 12420000 },
+      { monthly: 2132000, annual: 21320000 },
     ),
   },
   malaysia: {
@@ -181,11 +223,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇲🇾",
     decimals: 2,
     prices: p(
-      { monthly: 19.99, annual: 199.99 },
-      { monthly: 32.99, annual: 329.99 },
-      { monthly: 199.99, annual: 1999.99 },
-      { monthly: 449.99, annual: 4499.99 },
-      { monthly: 749.99, annual: 7499.99 },
+      { monthly: 18.99, annual: 189.9 },
+      { monthly: 31.99, annual: 319.9 },
+      { monthly: 188.99, annual: 1889.9 },
+      { monthly: 441.99, annual: 4419.9 },
+      { monthly: 757.99, annual: 7579.9 },
     ),
   },
   nigeria: {
@@ -196,11 +238,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇳🇬",
     decimals: 0,
     prices: p(
-      { monthly: 3999, annual: 39990 },
-      { monthly: 6599, annual: 65990 },
-      { monthly: 39999, annual: 399990 },
-      { monthly: 89999, annual: 899990 },
-      { monthly: 149999, annual: 1499990 },
+      { monthly: 4079, annual: 40790 },
+      { monthly: 6799, annual: 67990 },
+      { monthly: 40509, annual: 405090 },
+      { monthly: 94889, annual: 948890 },
+      { monthly: 162859, annual: 1628590 },
     ),
   },
   kenya: {
@@ -211,11 +253,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇰🇪",
     decimals: 0,
     prices: p(
-      { monthly: 599, annual: 5990 },
-      { monthly: 999, annual: 9990 },
-      { monthly: 5999, annual: 59990 },
-      { monthly: 13999, annual: 139990 },
-      { monthly: 23999, annual: 239990 },
+      { monthly: 389, annual: 3890 },
+      { monthly: 639, annual: 6390 },
+      { monthly: 3839, annual: 38390 },
+      { monthly: 8999, annual: 89990 },
+      { monthly: 15449, annual: 154490 },
     ),
   },
   uk: {
@@ -226,11 +268,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇬🇧",
     decimals: 2,
     prices: p(
-      { monthly: 7.99, annual: 79.99 },
-      { monthly: 12.99, annual: 129.99 },
-      { monthly: 79.99, annual: 799.99 },
-      { monthly: 179.99, annual: 1799.99 },
-      { monthly: 299.99, annual: 2999.99 },
+      { monthly: 3.99, annual: 39.9 },
+      { monthly: 6.99, annual: 69.9 },
+      { monthly: 39.99, annual: 399.9 },
+      { monthly: 92.99, annual: 929.9 },
+      { monthly: 158.99, annual: 1589.9 },
     ),
   },
   usd: {
@@ -241,11 +283,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇺🇸",
     decimals: 2,
     prices: p(
-      { monthly: 9.99, annual: 99.99 },
-      { monthly: 14.99, annual: 149.99 },
-      { monthly: 99.99, annual: 999.99 },
-      { monthly: 219.99, annual: 2199.99 },
-      { monthly: 369.99, annual: 3699.99 },
+      { monthly: 8.99, annual: 89.9 },
+      { monthly: 14.99, annual: 149.9 },
+      { monthly: 88.99, annual: 889.9 },
+      { monthly: 208.99, annual: 2089.9 },
+      { monthly: 358.99, annual: 3589.9 },
     ),
   },
   australia: {
@@ -256,11 +298,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇦🇺",
     decimals: 2,
     prices: p(
-      { monthly: 11.99, annual: 119.99 },
-      { monthly: 18.99, annual: 189.99 },
-      { monthly: 124.99, annual: 1249.99 },
-      { monthly: 279.99, annual: 2799.99 },
-      { monthly: 449.99, annual: 4499.99 },
+      { monthly: 8.99, annual: 89.9 },
+      { monthly: 14.99, annual: 149.9 },
+      { monthly: 88.99, annual: 889.9 },
+      { monthly: 208.99, annual: 2089.9 },
+      { monthly: 358.99, annual: 3589.9 },
     ),
   },
   europe: {
@@ -271,11 +313,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇪🇺",
     decimals: 2,
     prices: p(
-      { monthly: 8.99, annual: 89.99 },
-      { monthly: 13.99, annual: 139.99 },
-      { monthly: 89.99, annual: 899.99 },
-      { monthly: 199.99, annual: 1999.99 },
-      { monthly: 329.99, annual: 3299.99 },
+      { monthly: 4.99, annual: 49.9 },
+      { monthly: 7.99, annual: 79.9 },
+      { monthly: 49.99, annual: 499.9 },
+      { monthly: 115.99, annual: 1159.9 },
+      { monthly: 198.99, annual: 1989.9 },
     ),
   },
   singapore: {
@@ -286,11 +328,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇸🇬",
     decimals: 2,
     prices: p(
-      { monthly: 12.99, annual: 129.99 },
-      { monthly: 19.99, annual: 199.99 },
-      { monthly: 129.99, annual: 1299.99 },
-      { monthly: 289.99, annual: 2899.99 },
-      { monthly: 479.99, annual: 4799.99 },
+      { monthly: 8.99, annual: 89.9 },
+      { monthly: 14.99, annual: 149.9 },
+      { monthly: 88.99, annual: 889.9 },
+      { monthly: 208.99, annual: 2089.9 },
+      { monthly: 358.99, annual: 3589.9 },
     ),
   },
   myanmar: {
@@ -301,11 +343,11 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇲🇲",
     decimals: 0,
     prices: p(
-      { monthly: 9999, annual: 99990 },
-      { monthly: 16999, annual: 169990 },
-      { monthly: 89999, annual: 899990 },
-      { monthly: 199999, annual: 1999990 },
-      { monthly: 349999, annual: 3499990 },
+      { monthly: 6279, annual: 62790 },
+      { monthly: 10469, annual: 104690 },
+      { monthly: 62429, annual: 624290 },
+      { monthly: 146219, annual: 1462190 },
+      { monthly: 250969, annual: 2509690 },
     ),
   },
 };

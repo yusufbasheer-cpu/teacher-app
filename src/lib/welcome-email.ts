@@ -123,7 +123,13 @@ export async function sendWelcomeEmailIfNew(
       .maybeSingle();
 
     if (readErr) {
-      console.error("[welcome-email] Failed to read user_usage:", readErr.message);
+      // Fail safe, not open: if we can't confirm whether this user already
+      // got the email, don't guess "new user" and send again. This is the
+      // exact failure mode that caused every login to re-send the welcome
+      // email in production — the welcome_email_sent column was missing, so
+      // this read always errored and fell through to the "new user" path.
+      console.error("[welcome-email] Failed to read user_usage, skipping send:", readErr.message);
+      return;
     }
 
     if (row?.welcome_email_sent) {
