@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -308,6 +309,12 @@ export function TeacherPackageViewer({
   }, [lessonPlan]);
 
   const activeContent = activeKey ? (lessonPlan[activeKey] ?? "") : "";
+  // Memoized so flipping back to a previously-viewed tab reuses the parsed
+  // markdown instead of re-parsing on every click.
+  const renderedActiveContent = useMemo(
+    () => <ReactMarkdown remarkPlugins={[remarkGfm]}>{activeContent}</ReactMarkdown>,
+    [activeContent],
+  );
   const activeIllustrationUrls =
     activeKey && sectionImages?.[activeKey as keyof SectionImageMap];
   const activeImageList = Array.isArray(activeIllustrationUrls) ? activeIllustrationUrls : [];
@@ -715,13 +722,20 @@ export function TeacherPackageViewer({
                     role="tab"
                     aria-selected={selected}
                     onClick={() => setActiveKey(key)}
-                    className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 min-h-10 ${
+                    className={`relative shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 min-h-10 ${
                       selected
-                        ? "bg-teal-600 text-white shadow-md"
+                        ? "text-white"
                         : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                     }`}
                   >
-                    {getSectionTabLabel(key)}
+                    {selected ? (
+                      <motion.span
+                        layoutId="teacher-package-active-tab"
+                        className="absolute inset-0 rounded-full bg-teal-600 shadow-md"
+                        transition={{ type: "spring", stiffness: 500, damping: 34 }}
+                      />
+                    ) : null}
+                    <span className="relative">{getSectionTabLabel(key)}</span>
                   </button>
                 );
               })}
@@ -729,83 +743,93 @@ export function TeacherPackageViewer({
           </div>
 
           <article
-            className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6"
+            className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6"
             role="tabpanel"
           >
-            <div className="flex flex-col gap-1 border-b border-slate-200 pb-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h4 className="text-lg font-bold text-slate-900">
-                  {activeKey ? getSectionTabLabel(activeKey) : "Section"}
-                </h4>
-              </div>
-            </div>
-
-            {activeKey === "PPT Slide Content" && hasPpt ? (
-              <div className="mt-4 border-b border-slate-200 pb-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Presentation template
-                </p>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                  {PPT_THEME_CARDS.map((t) => {
-                    const selected = pptThemeId === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => onPptThemeChange?.(t.id)}
-                        aria-pressed={selected}
-                        className={`rounded-xl border-2 bg-white p-2.5 text-left shadow-sm transition hover:shadow-md ${
-                          selected ? "border-teal-500 ring-2 ring-teal-100" : "border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        <div className="mb-2 flex h-12 gap-1 overflow-hidden rounded-lg" aria-hidden>
-                          {t.preview.map((hex) => (
-                            <span key={hex} className="h-full min-w-0 flex-1" style={{ backgroundColor: `#${hex}` }} />
-                          ))}
-                        </div>
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                          Template {t.themeNumber}
-                        </p>
-                        <p className="text-xs font-semibold text-slate-900">{t.name}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="mt-4 grid max-h-[min(70vh,780px)] gap-4 overflow-y-auto lg:grid-cols-[1fr_min(280px,32%)]">
-              <div className="min-h-0 min-w-0 overflow-y-auto">
-                <div className="prose prose-slate prose-sm max-w-none prose-headings:font-bold prose-headings:text-slate-900 prose-p:text-slate-600 prose-li:text-slate-600 prose-strong:text-slate-900 sm:prose-base">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{activeContent}</ReactMarkdown>
-                </div>
-              </div>
-              {activeImageList.length > 0 ? (
-                <aside className="flex min-h-0 flex-col gap-3 border-t border-slate-100 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Section illustration
-                  </p>
-                  <div className="space-y-3 overflow-y-auto">
-                    {activeImageList.map((src) => (
-                      <a
-                        key={src}
-                        href={src}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-sm ring-teal-500 transition hover:ring-2"
-                      >
-                        <img
-                          src={src}
-                          alt="Educational illustration generated for this section"
-                          className="h-auto w-full object-contain"
-                          loading="lazy"
-                        />
-                      </a>
-                    ))}
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.div
+                key={activeKey}
+                initial={{ opacity: 0, x: 28 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -28 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+              >
+                <div className="flex flex-col gap-1 border-b border-slate-200 pb-3 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <h4 className="text-lg font-bold text-slate-900">
+                      {activeKey ? getSectionTabLabel(activeKey) : "Section"}
+                    </h4>
                   </div>
-                </aside>
-              ) : null}
-            </div>
+                </div>
+
+                {activeKey === "PPT Slide Content" && hasPpt ? (
+                  <div className="mt-4 border-b border-slate-200 pb-4">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Presentation template
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                      {PPT_THEME_CARDS.map((t) => {
+                        const selected = pptThemeId === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => onPptThemeChange?.(t.id)}
+                            aria-pressed={selected}
+                            className={`rounded-xl border-2 bg-white p-2.5 text-left shadow-sm transition hover:shadow-md ${
+                              selected ? "border-teal-500 ring-2 ring-teal-100" : "border-slate-200 hover:border-slate-300"
+                            }`}
+                          >
+                            <div className="mb-2 flex h-12 gap-1 overflow-hidden rounded-lg" aria-hidden>
+                              {t.preview.map((hex) => (
+                                <span key={hex} className="h-full min-w-0 flex-1" style={{ backgroundColor: `#${hex}` }} />
+                              ))}
+                            </div>
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                              Template {t.themeNumber}
+                            </p>
+                            <p className="text-xs font-semibold text-slate-900">{t.name}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="mt-4 grid max-h-[min(70vh,780px)] gap-4 overflow-y-auto lg:grid-cols-[1fr_min(280px,32%)]">
+                  <div className="min-h-0 min-w-0 overflow-y-auto">
+                    <div className="prose prose-slate prose-sm max-w-none prose-headings:font-bold prose-headings:text-slate-900 prose-p:text-slate-600 prose-li:text-slate-600 prose-strong:text-slate-900 sm:prose-base">
+                      {renderedActiveContent}
+                    </div>
+                  </div>
+                  {activeImageList.length > 0 ? (
+                    <aside className="flex min-h-0 flex-col gap-3 border-t border-slate-100 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Section illustration
+                      </p>
+                      <div className="space-y-3 overflow-y-auto">
+                        {activeImageList.map((src) => (
+                          <a
+                            key={src}
+                            href={src}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-sm ring-teal-500 transition hover:ring-2"
+                          >
+                            <img
+                              src={src}
+                              alt="Educational illustration generated for this section"
+                              className="h-auto w-full object-contain"
+                              loading="lazy"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    </aside>
+                  ) : null}
+                </div>
+              </motion.div>
+            </AnimatePresence>
           </article>
         </div>
       </div>
