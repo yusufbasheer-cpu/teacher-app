@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { getVerifiedUser } from "@/lib/verified-user";
 import { LessonPlanGenerator } from "@/components/lesson-plan/lesson-plan-generator";
 import { SchoolWelcomeBanner } from "@/components/school/school-welcome-banner";
 import { SecondaryPageHero } from "@/components/layout/secondary-page-hero";
@@ -23,10 +23,7 @@ function LessonPlanFallback() {
 }
 
 export default async function LessonPlanPage() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getVerifiedUser();
 
   return (
     <main className="min-h-screen w-full pb-16 pt-8">

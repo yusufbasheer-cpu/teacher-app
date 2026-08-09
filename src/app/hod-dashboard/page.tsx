@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { getVerifiedUser } from "@/lib/verified-user";
 import { getHodTeacherRow, getHodDashboard } from "@/lib/hod-server";
 import { HodDashboard } from "@/components/hod/hod-dashboard";
 import { Container } from "@/components/ui/container";
@@ -9,10 +9,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export default async function HodDashboardPage() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getVerifiedUser();
 
   if (!user?.id) {
     redirect("/login");

@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { getVerifiedUser } from "@/lib/verified-user";
 import { QuestionPaperGenerator } from "@/components/question-paper/question-paper-generator";
 import { SecondaryPageHero } from "@/components/layout/secondary-page-hero";
 import { Container } from "@/components/ui/container";
@@ -7,10 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export default async function QuestionPaperPage() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getVerifiedUser();
 
   return (
     <main className="min-h-screen pb-16 pt-8">

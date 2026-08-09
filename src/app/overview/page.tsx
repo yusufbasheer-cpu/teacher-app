@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { getVerifiedUser } from "@/lib/verified-user";
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { Container } from "@/components/ui/container";
 
@@ -7,10 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export default async function OverviewPage() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getVerifiedUser();
 
   if (!user?.id) {
     redirect("/login");

@@ -7,7 +7,7 @@ import {
   getSchoolAdminDashboard,
   type SchoolAdminDashboardData,
 } from "@/lib/school-admin-server";
-import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { getVerifiedUser } from "@/lib/verified-user";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,10 +37,7 @@ function bypassPlaceholderDashboard(email: string): SchoolAdminDashboardData {
 }
 
 export default async function SchoolAdminPage() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getVerifiedUser();
 
   if (!user?.email) {
     redirect("/login");

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { getVerifiedUser } from "@/lib/verified-user";
 import { LessonView } from "@/components/lesson-plan/lesson-view";
 
 export const dynamic = "force-dynamic";
@@ -12,10 +12,7 @@ export default async function LessonViewPage({
 }) {
   const { id } = await params;
 
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getVerifiedUser();
 
   if (!user?.id) {
     redirect("/login");

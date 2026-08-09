@@ -4,14 +4,13 @@ import { FadeIn } from "@/components/ui/animate";
 import { SuperAdminDashboard } from "@/components/admin/super-admin-dashboard";
 import { SuperAdminPinGate } from "@/components/admin/super-admin-pin-gate";
 import { isSuperAdmin, isSuperAdminEmail } from "@/lib/super-admin";
-import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { getVerifiedUser } from "@/lib/verified-user";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export default async function SuperAdminPage() {
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getVerifiedUser();
 
   if (!user?.email) {
     redirect("/login");

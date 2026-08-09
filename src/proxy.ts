@@ -1,5 +1,7 @@
 import { createMiddlewareSupabaseClient } from "@/lib/supabase-ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { USER_EMAIL_HEADER, USER_ID_HEADER } from "@/lib/auth-header-names";
+import type { User } from "@supabase/supabase-js";
 
 const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const ALLOWED_ORIGINS = new Set([
@@ -9,6 +11,28 @@ const ALLOWED_ORIGINS = new Set([
   "http://localhost:3001",
   ...(process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : []),
 ]);
+
+/**
+ * Rebuilds `response` so the given user identity is visible to downstream
+ * Server Components via request headers (read back in src/lib/auth-headers.ts)
+ * — this is what lets pages skip a second supabase.auth.getUser() network
+ * round-trip. Carries over any Set-Cookie headers Supabase's session refresh
+ * already added onto `response` (getUser() can rotate the session token),
+ * since building the header-carrying response requires a new object.
+ */
+function withUserHeaders(
+  request: NextRequest,
+  response: NextResponse,
+  user: User | null,
+): NextResponse {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(USER_ID_HEADER, user?.id ?? "");
+  requestHeaders.set(USER_EMAIL_HEADER, user?.email ?? "");
+
+  const next = NextResponse.next({ request: { headers: requestHeaders } });
+  response.cookies.getAll().forEach((cookie) => next.cookies.set(cookie));
+  return next;
+}
 
 function csrfGuard(request: NextRequest): NextResponse | null {
   if (!MUTATION_METHODS.has(request.method)) return null;
@@ -41,8 +65,10 @@ export async function proxy(request: NextRequest) {
   if (pathname === "/school-admin" || pathname === "/super-admin") {
     const response = NextResponse.next({ request });
     const supabase = createMiddlewareSupabaseClient(request, response);
-    await supabase.auth.getUser();
-    return response;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return withUserHeaders(request, response, user);
   }
 
   // /school-register with ?code= should exchange via /auth/callback then return to the register page.
@@ -69,7 +95,7 @@ export async function proxy(request: NextRequest) {
     return redirectResponse;
   }
 
-  let response = NextResponse.next({ request });
+  const response = NextResponse.next({ request });
 
   const supabase = createMiddlewareSupabaseClient(request, response);
 
@@ -85,12 +111,13 @@ export async function proxy(request: NextRequest) {
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
-    response = NextResponse.redirect(url);
-    const redirectSupabase = createMiddlewareSupabaseClient(request, response);
+    const redirectResponse = NextResponse.redirect(url);
+    const redirectSupabase = createMiddlewareSupabaseClient(request, redirectResponse);
     await redirectSupabase.auth.getUser();
+    return redirectResponse;
   }
 
-  return response;
+  return withUserHeaders(request, response, user);
 }
 
 export const config = {

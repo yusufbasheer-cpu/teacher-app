@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { getVerifiedUser } from "@/lib/verified-user";
 import { MyLessonPlansList } from "@/components/lesson-plan/my-lesson-plans-list";
 import { Container } from "@/components/ui/container";
 import { FadeIn } from "@/components/ui/animate";
@@ -8,10 +8,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export default async function MyLessonPlansPage() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getVerifiedUser();
 
   if (!user?.id) {
     redirect("/login");
