@@ -47,6 +47,9 @@ export function AuthLayout({ badge, headline, subtext, children }: AuthLayoutPro
               </li>
             ))}
           </ul>
+          <p className="mt-3 text-xs font-semibold" style={{ color: TEAL }}>
+            + 15 more curriculums supported
+          </p>
 
           {/* Subtle decorative illustration — a few soft rounded shapes, no imagery */}
           <div className="relative mt-16 h-40" aria-hidden>

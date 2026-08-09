@@ -112,12 +112,7 @@ export function AppSidebar({ user }: Props) {
     >
       <div className="flex items-center justify-between gap-2 px-3 py-4">
         <Link href="/overview" aria-label="Layah dashboard" className="shrink-0">
-          <span
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-extrabold text-white"
-            style={{ background: "#0A1628" }}
-          >
-            L
-          </span>
+          <img src="/logo-mark.png" alt="Layah" className="h-9 w-9 rounded-xl object-cover" />
         </Link>
         {!collapsed ? (
           <div className="flex shrink-0 items-center gap-1">

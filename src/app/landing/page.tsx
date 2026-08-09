@@ -87,7 +87,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: TEXT_MUTED }}>
-            Generate curriculum-aligned teaching resources for <strong style={{ color: NAVY }}>CBSE, ICSE, IB, and Cambridge</strong> from
+            Generate curriculum-aligned teaching resources for <strong style={{ color: NAVY }}>CBSE, ICSE, IB, Cambridge, and 15+ more curriculums</strong> from
             a topic, chapter, or textbook page.
           </p>
 
@@ -118,6 +118,12 @@ export default function LandingPage() {
                 {badge}
               </span>
             ))}
+            <span
+              className="rounded-full px-3.5 py-1.5 text-xs font-bold"
+              style={{ background: "rgba(0,198,167,0.1)", border: `1px solid ${BORDER}`, color: TEAL_DARK }}
+            >
+              +15 more
+            </span>
           </div>
         </section>
 

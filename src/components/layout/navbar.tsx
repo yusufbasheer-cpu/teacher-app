@@ -32,12 +32,7 @@ export function Navbar() {
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/landing" className="flex shrink-0 items-center gap-2.5">
-          <span
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-extrabold text-white"
-            style={{ background: NAVY }}
-          >
-            L
-          </span>
+          <img src="/logo-mark.png" alt="Layah" className="h-9 w-9 rounded-xl object-cover" />
           <span className="leading-tight">
             <span className="block text-[15px] font-extrabold" style={{ color: NAVY }}>
               Layah
