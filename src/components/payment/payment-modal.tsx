@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { getAuthHeaders } from "@/lib/auth-headers";
 import { usePricingRegion } from "@/hooks/use-pricing-region";
 import { PRICING_REGIONS, formatRegionalPrice, type PaidPlanKey } from "@/lib/pricing-regions";
+import { PLANS } from "@/lib/plans";
 
 const NAVY = "#0A1628";
 const TEAL = "#00C6A7";
@@ -26,7 +27,7 @@ const PLAN_INFO: Record<UpgradePlanKey, { name: string; priceKey: PaidPlanKey; g
   pro: {
     name: "Pro",
     priceKey: "pro",
-    generations: "30 generations / month",
+    generations: `${PLANS.pro.generationsLimit} generations / month`,
     features: [
       "All 5 PPT themes",
       "Question Paper Generator",
@@ -39,10 +40,10 @@ const PLAN_INFO: Record<UpgradePlanKey, { name: string; priceKey: PaidPlanKey; g
   proPlus: {
     name: "Pro Plus",
     priceKey: "proPlus",
-    generations: "60 generations / month",
+    generations: `${PLANS.pro_plus.generationsLimit} generations / month`,
     features: [
       "Everything in Pro",
-      "60 generations per month",
+      `${PLANS.pro_plus.generationsLimit} generations per month`,
       "Advanced Analytics",
       "Early Access to New Features",
     ],

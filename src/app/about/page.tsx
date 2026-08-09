@@ -173,7 +173,7 @@ export default function AboutPage() {
               <h3 className="mt-5 text-lg font-semibold text-navy">Mohammed Yusuf</h3>
               <p className="mt-1 text-sm text-primary">Founder &amp; Teacher</p>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                A passionate educator who built Layah to solve the planning challenges he faced every day in the classroom.
+                A working teacher who got tired of losing evenings to lesson planning — so he built the tool he wished existed, now used by educators around the world.
               </p>
               <a
                 href="https://www.linkedin.com/company/layah-ai/"

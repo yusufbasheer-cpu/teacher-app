@@ -4,6 +4,7 @@ import { useState } from "react";
 import { GenerationUsageIndicator } from "@/components/usage/generation-usage-indicator";
 import { PaymentModal, type UpgradePlanKey } from "@/components/payment/payment-modal";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
+import { PLANS } from "@/lib/plans";
 
 const TEAL = "#00C6A7";
 const NAVY = "#0A1628";
@@ -22,8 +23,8 @@ export function getUpgradePlan(usage: UserUsageSnapshot | null): UpgradePlanKey 
 }
 
 export const UPGRADE_COPY: Record<UpgradePlanKey, { label: string; sub: string }> = {
-  pro: { label: "Upgrade to Pro", sub: "30 generations/month · All themes · Q-Paper generator" },
-  proPlus: { label: "Upgrade to Pro Plus", sub: "60 generations/month · Advanced analytics · Early access" },
+  pro: { label: "Upgrade to Pro", sub: `${PLANS.pro.generationsLimit} generations/month · All themes · Q-Paper generator` },
+  proPlus: { label: "Upgrade to Pro Plus", sub: `${PLANS.pro_plus.generationsLimit} generations/month · Advanced analytics · Early access` },
 };
 
 export function UpgradeUsageIndicator({ usage, loading }: Props) {

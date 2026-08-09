@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/footer";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SectionLabel } from "@/components/marketing/section-label";
+import { PLANS } from "@/lib/plans";
 
 type FaqItem = { q: string; a: string };
 type FaqCategory = { title: string; items: FaqItem[] };
@@ -34,7 +35,7 @@ const FAQ_DATA: FaqCategory[] = [
     items: [
       {
         q: "Is there a free plan?",
-        a: "Yes! Our free plan gives you 15 lesson plan generations per month forever. No credit card required.",
+        a: `Yes! Our free plan gives you ${PLANS.free.generationsLimit} lesson plan generations per month forever. No credit card required.`,
       },
       {
         q: "Can I cancel anytime?",

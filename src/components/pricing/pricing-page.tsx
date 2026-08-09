@@ -11,6 +11,7 @@ import {
   type PricingRegion,
 } from "@/lib/pricing-regions";
 import { NAVY, TEAL, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
+import { PLANS } from "@/lib/plans";
 
 type Billing = "monthly" | "annual";
 
@@ -32,11 +33,11 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
     id: "free",
     name: "Free",
     priceKey: null,
-    generations: "15 per month",
+    generations: `${PLANS.free.generationsLimit} per month`,
     features: [
-      "15 Lesson Plans",
-      "15 PPT Downloads",
-      "15 Worksheets",
+      `${PLANS.free.generationsLimit} Lesson Plans`,
+      `${PLANS.free.generationsLimit} PPT Downloads`,
+      `${PLANS.free.generationsLimit} Worksheets`,
       "Basic Activity Sheet AFL",
       "Standard Themes",
       "Email Support",
@@ -50,10 +51,10 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
     badge: "Most Popular",
     priceKey: "pro",
     upgradeKey: "pro",
-    generations: "30 per month",
+    generations: `${PLANS.pro.generationsLimit} per month`,
     features: [
       "Everything in Free",
-      "Unlimited within 30 generations",
+      `Unlimited within ${PLANS.pro.generationsLimit} generations`,
       "All Activity Sheet AFL Tools",
       "All 5 Themes",
       "Question Paper Generator",
@@ -71,10 +72,10 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
     badge: "Best Value",
     priceKey: "proPlus",
     upgradeKey: "proPlus",
-    generations: "60 per month",
+    generations: `${PLANS.pro_plus.generationsLimit} per month`,
     features: [
       "Everything in Pro",
-      "60 generations per month",
+      `${PLANS.pro_plus.generationsLimit} generations per month`,
       "Advanced Analytics",
       "Early Access to New Features",
     ],
