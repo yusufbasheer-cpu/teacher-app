@@ -38,3 +38,6 @@ obsidian-vault/
 # Tesseract OCR model — not read from a local langPath in code (tesseract.js
 # fetches its own copy at runtime); keeping it out of git saves 5MB+ per clone
 eng.traineddata
+
+# vercel CLI project link (local machine state, not shared)
+.vercel
