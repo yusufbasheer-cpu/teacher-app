@@ -12,8 +12,8 @@ import { PLANS } from "@/lib/plans";
 import { getUpgradePlan, UPGRADE_COPY } from "@/components/usage/upgrade-usage-indicator";
 import { WaitlistModal } from "@/components/payment/waitlist-modal";
 
-const TEAL = "#00C6A7";
-const NAVY = "#0A1628";
+const TEAL = "#0E9484";
+const NAVY = "#241A12";
 
 function initialsFor(user: User): string {
   const name = (user.user_metadata?.full_name as string | undefined)?.trim();
@@ -73,7 +73,7 @@ export function UserMenu({ user, collapsed = false }: Props) {
         onClick={() => setOpen((prev) => !prev)}
         aria-label="Account menu"
         aria-expanded={open}
-        className="flex w-full items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-left transition hover:bg-slate-50"
+        className="flex w-full items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-left transition hover:bg-stone-50"
       >
         <span
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
@@ -87,13 +87,13 @@ export function UserMenu({ user, collapsed = false }: Props) {
               <span className="block truncate text-sm font-semibold" style={{ color: NAVY }}>
                 {displayName}
               </span>
-              <span className="block truncate text-xs" style={{ color: "#94A3B8" }}>
+              <span className="block truncate text-xs" style={{ color: "#A79A87" }}>
                 {usageLine}
               </span>
             </span>
             <ChevronUp
               size={16}
-              className="shrink-0 text-slate-400 transition-transform"
+              className="shrink-0 text-stone-400 transition-transform"
               style={{ transform: open ? "none" : "rotate(180deg)" }}
             />
           </>
@@ -102,19 +102,19 @@ export function UserMenu({ user, collapsed = false }: Props) {
 
       {open ? (
         <div
-          className="absolute bottom-full z-50 mb-2 w-64 rounded-2xl border bg-white p-4 shadow-lg"
-          style={{ borderColor: "rgba(0,198,167,0.2)", left: collapsed ? "calc(100% + 8px)" : 0 }}
+          className="absolute bottom-full z-50 mb-2 w-64 rounded-2xl border bg-[#FAF6EF] p-4 shadow-lg"
+          style={{ borderColor: "rgba(14, 148, 132,0.2)", left: collapsed ? "calc(100% + 8px)" : 0 }}
         >
           <p className="truncate text-sm font-semibold" style={{ color: NAVY }}>
             {displayName}
           </p>
-          <p className="mt-0.5 truncate text-xs" style={{ color: "#64748b" }}>
+          <p className="mt-0.5 truncate text-xs" style={{ color: "#7a6e5f" }}>
             {user.email}
           </p>
 
           <div
             className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-            style={{ background: "rgba(0,198,167,0.1)", color: "#0A8F7A" }}
+            style={{ background: "rgba(14, 148, 132,0.1)", color: "#0B6B5F" }}
           >
             {planLabel ?? "—"} plan
           </div>
@@ -137,7 +137,7 @@ export function UserMenu({ user, collapsed = false }: Props) {
             href="/pricing"
             onClick={() => setOpen(false)}
             className="mt-2 flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition hover:opacity-70"
-            style={{ color: "#374151", border: "1px solid #E5E7EB" }}
+            style={{ color: "#2b2118", border: "1px solid #E5E7EB" }}
           >
             View plans
           </Link>

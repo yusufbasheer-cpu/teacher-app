@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Subtle canvas behind the white cards — without this, a centered
           narrow form on an identically-white background reads as broken
           empty space rather than an intentional layout on large screens. */}
-      <div className="min-h-screen min-w-0 flex-1 bg-slate-50">{children}</div>
+      <div className="min-h-screen min-w-0 flex-1 bg-stone-50">{children}</div>
     </div>
   );
 }

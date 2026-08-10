@@ -3,7 +3,7 @@
 import { formatLimitMessage } from "@/lib/user-usage";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 
-const TEAL = "#00C6A7";
+const TEAL = "#0E9484";
 
 type GenerationUsageIndicatorProps = {
   usage: UserUsageSnapshot | null;
@@ -14,10 +14,10 @@ export function GenerationUsageIndicator({ usage, loading }: GenerationUsageIndi
   if (loading) {
     return (
       <div
-        className="rounded-2xl border bg-white/90 px-4 py-3 text-sm shadow-sm"
-        style={{ borderColor: "rgba(0,198,167,0.25)" }}
+        className="rounded-2xl border bg-[#FAF6EF]/90 px-4 py-3 text-sm shadow-sm"
+        style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
       >
-        <span style={{ color: "#64748b" }}>Loading usage…</span>
+        <span style={{ color: "#7a6e5f" }}>Loading usage…</span>
       </div>
     );
   }
@@ -37,11 +37,11 @@ export function GenerationUsageIndicator({ usage, loading }: GenerationUsageIndi
 
   return (
     <div
-      className="rounded-2xl border bg-white/90 px-4 py-3 shadow-sm"
-      style={{ borderColor: "rgba(0,198,167,0.25)" }}
+      className="rounded-2xl border bg-[#FAF6EF]/90 px-4 py-3 shadow-sm"
+      style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium" style={{ color: "#0A1628" }}>
+        <p className="text-sm font-medium" style={{ color: "#241A12" }}>
           {label}
         </p>
         {!usage.unlimited && usage.generationsLimit != null ? (
@@ -57,7 +57,7 @@ export function GenerationUsageIndicator({ usage, loading }: GenerationUsageIndi
       {!usage.unlimited && usage.generationsLimit != null ? (
         <div
           className="mt-2 h-2 overflow-hidden rounded-full"
-          style={{ background: "rgba(0,198,167,0.12)" }}
+          style={{ background: "rgba(14, 148, 132,0.12)" }}
           role="progressbar"
           aria-valuenow={usage.generationsUsed}
           aria-valuemin={0}

@@ -24,7 +24,7 @@ export default async function HodDashboardPage() {
   const dashboardData = await getHodDashboard(hodRow);
 
   return (
-    <main className="min-h-screen pb-16 pt-10" style={{ background: "#F7F9FC" }}>
+    <main className="min-h-screen pb-16 pt-10" style={{ background: "#F1E9DC" }}>
       <Container>
         <FadeIn>
           <HodDashboard data={dashboardData} />

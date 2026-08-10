@@ -84,7 +84,7 @@ export function LessonView({ id }: { id: string }) {
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 text-sm text-slate-600 shadow-sm">
+        <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
           Loading lesson…
         </div>
       </div>
@@ -94,12 +94,12 @@ export function LessonView({ id }: { id: string }) {
   if (!user) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Login Required</h2>
-          <p className="mt-2 text-sm text-slate-600">Please login to view your saved lesson plans.</p>
+        <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-stone-900">Login Required</h2>
+          <p className="mt-2 text-sm text-stone-600">Please login to view your saved lesson plans.</p>
           <Link
             href="/login"
-            className="mt-5 inline-flex rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
+            className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
           >
             Go to Login
           </Link>
@@ -111,7 +111,7 @@ export function LessonView({ id }: { id: string }) {
   if (error || !lesson || !lessonPlan) {
     return (
       <div className="mx-auto w-full max-w-7xl space-y-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/my-lesson-plans" className="text-sm font-medium text-[#00C6A7] hover:underline">
+        <Link href="/my-lesson-plans" className="text-sm font-medium text-[#0E9484] hover:underline">
           ← Back to My Lessons
         </Link>
         <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 shadow-sm">
@@ -205,41 +205,41 @@ export function LessonView({ id }: { id: string }) {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link
             href="/my-lesson-plans"
-            className="text-sm font-medium text-[#00C6A7] hover:underline"
+            className="text-sm font-medium text-[#0E9484] hover:underline"
           >
             ← Back to My Lessons
           </Link>
           <Link
             href={regenerateUrl}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
           >
             Regenerate Lesson
           </Link>
         </div>
 
         {/* Metadata card */}
-        <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-bold text-slate-900">{lesson.topic}</h2>
-          <p className="mt-1 text-sm text-slate-500">Saved {dateStr}</p>
+        <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+          <h2 className="text-2xl font-bold text-stone-900">{lesson.topic}</h2>
+          <p className="mt-1 text-sm text-stone-500">Saved {dateStr}</p>
           <dl className="mt-5 grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</dt>
-              <dd className="mt-1 text-sm font-medium text-slate-900">{lesson.subject}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-500">Subject</dt>
+              <dd className="mt-1 text-sm font-medium text-stone-900">{lesson.subject}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Grade</dt>
-              <dd className="mt-1 text-sm font-medium text-slate-900">{lesson.grade}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-500">Grade</dt>
+              <dd className="mt-1 text-sm font-medium text-stone-900">{lesson.grade}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Curriculum</dt>
-              <dd className="mt-1 text-sm font-medium text-slate-900">{lesson.curriculum || "—"}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-500">Curriculum</dt>
+              <dd className="mt-1 text-sm font-medium text-stone-900">{lesson.curriculum || "—"}</dd>
             </div>
             {lesson.learning_objectives ? (
               <div className="sm:col-span-2">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-stone-500">
                   Learning Objectives
                 </dt>
-                <dd className="mt-1 whitespace-pre-wrap text-sm text-slate-900">
+                <dd className="mt-1 whitespace-pre-wrap text-sm text-stone-900">
                   {lesson.learning_objectives}
                 </dd>
               </div>
@@ -248,7 +248,7 @@ export function LessonView({ id }: { id: string }) {
         </div>
 
         {successMessage ? (
-          <div className="rounded-xl border border-[#00C6A7]/30 bg-[#00C6A7]/5 px-4 py-3 text-sm text-[#00C6A7]">
+          <div className="rounded-xl border border-[#0E9484]/30 bg-[#0E9484]/5 px-4 py-3 text-sm text-[#0E9484]">
             {successMessage}
           </div>
         ) : null}

@@ -16,7 +16,7 @@ export function StepWizardProgress({ steps, currentStep }: Props) {
     <div className="relative mx-auto max-w-[560px] px-2">
       <div
         className="absolute left-2 right-2 top-4 h-0.5"
-        style={{ background: "#E2E8F0" }}
+        style={{ background: "#E3D9C8" }}
         aria-hidden="true"
       />
       <ol className="relative flex justify-between">
@@ -28,9 +28,9 @@ export function StepWizardProgress({ steps, currentStep }: Props) {
               <span
                 className="flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-bold transition"
                 style={{
-                  borderColor: isActive || isDone ? "#00C6A7" : "#E2E8F0",
-                  background: isActive ? "#00C6A7" : isDone ? "#0A8F7A" : "#fff",
-                  color: isActive || isDone ? "#fff" : "#94A3B8",
+                  borderColor: isActive || isDone ? "#0E9484" : "#E3D9C8",
+                  background: isActive ? "#0E9484" : isDone ? "#0B6B5F" : "#fff",
+                  color: isActive || isDone ? "#fff" : "#A79A87",
                 }}
                 aria-current={isActive ? "step" : undefined}
               >
@@ -38,7 +38,7 @@ export function StepWizardProgress({ steps, currentStep }: Props) {
               </span>
               <span
                 className="text-center text-xs font-semibold"
-                style={{ color: isActive ? "#0A1628" : isDone ? "#0A8F7A" : "#94A3B8" }}
+                style={{ color: isActive ? "#241A12" : isDone ? "#0B6B5F" : "#A79A87" }}
               >
                 {label}
               </span>

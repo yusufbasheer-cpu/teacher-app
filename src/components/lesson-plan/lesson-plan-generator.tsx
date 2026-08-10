@@ -782,7 +782,7 @@ export function LessonPlanGenerator() {
 
   if (checkingAuth) {
     return (
-      <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 text-sm text-slate-600 shadow-sm">
+      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
         Checking your account...
       </div>
     );
@@ -790,14 +790,14 @@ export function LessonPlanGenerator() {
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-[#00C6A7]/20 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">Login Required</h2>
-        <p className="mt-2 text-sm text-slate-600">
+      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+        <h2 className="text-xl font-semibold text-stone-900">Login Required</h2>
+        <p className="mt-2 text-sm text-stone-600">
           Please login to generate and save your personal lesson plans.
         </p>
         <Link
           href="/login"
-          className="mt-5 inline-flex rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
+          className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
         >
           Go to Login
         </Link>
@@ -840,16 +840,16 @@ export function LessonPlanGenerator() {
             {/* ══════════ STEP 1 — CLASS DETAILS ══════════ */}
             <fieldset
               hidden={step !== 1}
-              className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
+              className="min-w-0 rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-5 shadow-sm sm:p-6 md:p-7"
             >
-              <legend className="text-xl font-semibold text-slate-900">Class details</legend>
-              <p className="mt-2 text-sm text-slate-600">
+              <legend className="text-xl font-semibold text-stone-900">Class details</legend>
+              <p className="mt-2 text-sm text-stone-600">
                 Tell us who this lesson is for. This is the only step required to get started.
               </p>
 
         <div className="mt-6 space-y-4">
           <div>
-            <label htmlFor="curriculum" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="curriculum" className="mb-1 block text-sm font-medium text-stone-700">
               Curriculum type
             </label>
             <select
@@ -858,7 +858,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, curriculumType: e.target.value }))
               }
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 bg-[#FAF6EF] px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
               required
             >
               {CURRICULUM_TYPE_GROUPS.map((group) => (
@@ -874,12 +874,12 @@ export function LessonPlanGenerator() {
           </div>
 
           <div>
-            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-stone-500">
               Curriculum Framework
             </p>
             <label
               htmlFor="curriculum-framework"
-              className="mb-1 block text-sm font-medium text-slate-700"
+              className="mb-1 block text-sm font-medium text-stone-700"
             >
               Select Educational Framework (Optional)
             </label>
@@ -889,7 +889,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, curriculumFramework: e.target.value }))
               }
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[#00C6A7] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 bg-[#FAF6EF] px-3 py-2.5 text-sm text-stone-900 outline-none ring-[#0E9484] focus:ring-2"
             >
               {CURRICULUM_FRAMEWORK_OPTIONS.map((opt) => (
                 <option key={opt.value === "" ? "none" : opt.value} value={opt.value}>
@@ -897,7 +897,7 @@ export function LessonPlanGenerator() {
                 </option>
               ))}
             </select>
-            <p className="mt-1.5 text-xs text-slate-500">
+            <p className="mt-1.5 text-xs text-stone-500">
               Leave as &quot;None&quot; for a standard plan. Choosing a framework aligns lesson plan,
               slides, worksheet, assessment, homework, and teacher notes with that system&apos;s
               expectations.
@@ -905,14 +905,14 @@ export function LessonPlanGenerator() {
           </div>
 
           <div>
-            <label htmlFor="grade-year" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="grade-year" className="mb-1 block text-sm font-medium text-stone-700">
               Grade / year group
             </label>
             <select
               id="grade-year"
               value={form.grade}
               onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 bg-[#FAF6EF] px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
               required
             >
               {GRADE_YEAR_OPTIONS.map((opt) => (
@@ -924,14 +924,14 @@ export function LessonPlanGenerator() {
           </div>
 
           <div>
-            <label htmlFor="subject" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="subject" className="mb-1 block text-sm font-medium text-stone-700">
               Subject
             </label>
             <select
               id="subject"
               value={form.subject}
               onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 bg-[#FAF6EF] px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
               required
             >
               <optgroup label="Subjects">
@@ -961,7 +961,7 @@ export function LessonPlanGenerator() {
           </div>
 
           <div>
-            <label htmlFor="chapter" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="chapter" className="mb-1 block text-sm font-medium text-stone-700">
               Chapter name
             </label>
             <input
@@ -969,13 +969,13 @@ export function LessonPlanGenerator() {
               type="text"
               value={form.chapter}
               onChange={(e) => setForm((prev) => ({ ...prev, chapter: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
               placeholder="e.g. Chapter 5 - Photosynthesis"
             />
           </div>
 
           <div>
-            <label htmlFor="topic" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="topic" className="mb-1 block text-sm font-medium text-stone-700">
               Topic
             </label>
             <input
@@ -983,7 +983,7 @@ export function LessonPlanGenerator() {
               type="text"
               value={form.topic}
               onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
               placeholder="Specific topic within the chapter"
               required
             />
@@ -992,7 +992,7 @@ export function LessonPlanGenerator() {
           <div>
             <label
               htmlFor="objectives"
-              className="mb-1 block text-sm font-medium text-slate-700"
+              className="mb-1 block text-sm font-medium text-stone-700"
             >
               Learning objectives
             </label>
@@ -1002,7 +1002,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, learningObjectives: e.target.value }))
               }
-              className="min-h-28 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+              className="min-h-28 w-full rounded-xl border border-stone-300 px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
               placeholder="List key outcomes students should achieve."
               required
             />
@@ -1013,7 +1013,7 @@ export function LessonPlanGenerator() {
                 <button
                   type="button"
                   onClick={goToNextStep}
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#00C6A7] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A8F7A]"
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0E9484] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B6B5F]"
                 >
                   Continue
                 </button>
@@ -1023,28 +1023,28 @@ export function LessonPlanGenerator() {
             {/* ══════════ STEP 2 — SOURCE CONTENT (OPTIONAL) ══════════ */}
             <fieldset
               hidden={step !== 2}
-              className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
+              className="min-w-0 rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-5 shadow-sm sm:p-6 md:p-7"
             >
-              <legend className="text-xl font-semibold text-slate-900">Source content</legend>
-              <p className="mt-2 text-sm text-slate-600">
+              <legend className="text-xl font-semibold text-stone-900">Source content</legend>
+              <p className="mt-2 text-sm text-stone-600">
                 Add textbook pages, notes, or chapter content to generate a more accurate lesson plan.
                 This step is entirely optional — skip it and Layah will generate content from the topic
                 and objectives alone.
               </p>
 
-        <div className="mt-6 rounded-2xl border border-dashed border-[#00C6A7]/30 bg-[#00C6A7]/5 p-4 space-y-5">
+        <div className="mt-6 rounded-2xl border border-dashed border-[#0E9484]/30 bg-[#0E9484]/5 p-4 space-y-5">
           <div>
-            <p className="text-sm font-semibold text-[#0A1628]">
+            <p className="text-sm font-semibold text-[#241A12]">
               Provide your own teaching content (optional)
             </p>
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-stone-600">
               Use any combination of PDF upload, image upload, or pasted text. Pasted content is
               treated as the <strong>primary</strong> source when present.
             </p>
           </div>
 
-          <div className="rounded-xl border border-[#00C6A7]/20 bg-white/80 p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
+          <div className="rounded-xl border border-[#0E9484]/20 bg-[#FAF6EF]/80 p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
               Option 1 — Upload PDF
             </p>
             <input
@@ -1054,12 +1054,12 @@ export function LessonPlanGenerator() {
               accept=".pdf,application/pdf"
               onChange={(e) => onUploadFileChange(e, "pdf")}
               disabled={uploadExtracting || loading}
-              className="mt-2 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-[#00C6A7] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#0A8F7A] disabled:opacity-60"
+              className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border-0 file:bg-[#0E9484] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#0B6B5F] disabled:opacity-60"
             />
           </div>
 
-          <div className="rounded-xl border border-[#00C6A7]/20 bg-white/80 p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
+          <div className="rounded-xl border border-[#0E9484]/20 bg-[#FAF6EF]/80 p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
               Option 2 — Upload Image
             </p>
             <input
@@ -1069,13 +1069,13 @@ export function LessonPlanGenerator() {
               accept=".jpg,.jpeg,.png,image/jpeg,image/png"
               onChange={(e) => onUploadFileChange(e, "image")}
               disabled={uploadExtracting || loading}
-              className="mt-2 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-[#00C6A7] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#0A8F7A] disabled:opacity-60"
+              className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border-0 file:bg-[#0E9484] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#0B6B5F] disabled:opacity-60"
             />
           </div>
 
-          <div className="rounded-xl border border-[#00C6A7]/20 bg-white/80 p-3">
+          <div className="rounded-xl border border-[#0E9484]/20 bg-[#FAF6EF]/80 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-600">
+              <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
                 Option 3 — Paste Your Content
               </p>
               {pastedContent.trim().length > 0 ? (
@@ -1083,13 +1083,13 @@ export function LessonPlanGenerator() {
                   type="button"
                   onClick={clearPastedContent}
                   disabled={uploadExtracting || loading}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+                  className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
                 >
                   Clear pasted content
                 </button>
               ) : null}
             </div>
-            <label htmlFor="pasted-content" className="mt-2 block text-sm font-medium text-slate-800">
+            <label htmlFor="pasted-content" className="mt-2 block text-sm font-medium text-stone-800">
               Paste Your Own Content Here (Optional)
             </label>
             <textarea
@@ -1099,7 +1099,7 @@ export function LessonPlanGenerator() {
               disabled={uploadExtracting || loading}
               rows={8}
               placeholder="Paste your textbook content, notes, chapter text, or any material here and the AI will generate all resources based on your content."
-              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[#00C6A7] focus:ring-2 disabled:opacity-60"
+              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-stone-300 bg-[#FAF6EF] px-3 py-2.5 text-sm text-stone-900 outline-none ring-[#0E9484] focus:ring-2 disabled:opacity-60"
             />
           </div>
 
@@ -1108,13 +1108,13 @@ export function LessonPlanGenerator() {
               type="button"
               onClick={clearUploadedSource}
               disabled={uploadExtracting || loading}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+              className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
             >
               Clear all uploads
             </button>
           ) : null}
           {uploadExtracting ? (
-            <p className="mt-2 text-xs font-medium text-[#0A1628]">
+            <p className="mt-2 text-xs font-medium text-[#241A12]">
               Extracting text from your files…
             </p>
           ) : null}
@@ -1137,15 +1137,15 @@ export function LessonPlanGenerator() {
             </ul>
           ) : null}
           {uploadedChunks.length > 0 ? (
-            <ul className="mt-3 divide-y divide-[#00C6A7]/20 rounded-lg border border-[#00C6A7]/20 bg-white/90">
+            <ul className="mt-3 divide-y divide-[#0E9484]/20 rounded-lg border border-[#0E9484]/20 bg-[#FAF6EF]/90">
               {uploadedChunks.map((chunk) => (
                 <li
                   key={chunk.id}
                   className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-slate-900">{chunk.fileName}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="truncate font-medium text-stone-900">{chunk.fileName}</p>
+                    <p className="text-xs text-stone-500">
                       {chunk.kind === "pdf" ? "PDF" : "Image"} ·{" "}
                       {chunk.text.length.toLocaleString()} characters
                     </p>
@@ -1154,7 +1154,7 @@ export function LessonPlanGenerator() {
                     type="button"
                     onClick={() => removeUploadedChunk(chunk.id)}
                     disabled={uploadExtracting || loading}
-                    className="shrink-0 rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    className="shrink-0 rounded-lg border border-red-200 bg-[#FAF6EF] px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
                   >
                     Remove
                   </button>
@@ -1163,7 +1163,7 @@ export function LessonPlanGenerator() {
             </ul>
           ) : null}
           {uploadedChunks.length > 0 ? (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-stone-500">
               Uploads: {extractedMaterialPreview.length.toLocaleString()} characters across{" "}
               {uploadedChunks.length} file(s).
             </p>
@@ -1172,7 +1172,7 @@ export function LessonPlanGenerator() {
             <div className="mt-2">
               <label
                 htmlFor="combined-source-preview"
-                className="mb-1 block text-xs font-semibold text-slate-800"
+                className="mb-1 block text-xs font-semibold text-stone-800"
               >
                 Combined source preview (review before generating)
               </label>
@@ -1182,9 +1182,9 @@ export function LessonPlanGenerator() {
                 value={combinedSourcePreview}
                 rows={12}
                 spellCheck={false}
-                className="max-h-80 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-xs leading-relaxed text-slate-800 outline-none ring-[#00C6A7] focus:ring-2"
+                className="max-h-80 w-full resize-y rounded-xl border border-stone-200 bg-[#FAF6EF] px-3 py-2.5 font-mono text-xs leading-relaxed text-stone-800 outline-none ring-[#0E9484] focus:ring-2"
               />
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-stone-500">
                 {pastedContent.trim().length > 0
                   ? "Pasted content is sent as the primary source; uploads are included as supplementary context."
                   : "Uploaded extract text sent to the AI when you click Generate."}
@@ -1197,14 +1197,14 @@ export function LessonPlanGenerator() {
                 <button
                   type="button"
                   onClick={goToPrevStep}
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-200 bg-[#FAF6EF] px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-stone-300 hover:text-stone-900"
                 >
                   Back
                 </button>
                 <button
                   type="button"
                   onClick={goToNextStep}
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#00C6A7] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0A8F7A]"
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0E9484] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B6B5F]"
                 >
                   Continue
                 </button>
@@ -1214,10 +1214,10 @@ export function LessonPlanGenerator() {
             {/* ══════════ STEP 3 — GENERATE PACKAGE ══════════ */}
             <fieldset
               hidden={step !== 3}
-              className="min-w-0 rounded-3xl border border-[#00C6A7]/20 bg-white p-5 shadow-sm sm:p-6 md:p-7"
+              className="min-w-0 rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-5 shadow-sm sm:p-6 md:p-7"
             >
-              <legend className="text-xl font-semibold text-slate-900">Generate package</legend>
-              <p className="mt-2 text-sm text-slate-600">
+              <legend className="text-xl font-semibold text-stone-900">Generate package</legend>
+              <p className="mt-2 text-sm text-stone-600">
                 Choose what to include, then generate your teacher package.
               </p>
 
@@ -1239,10 +1239,10 @@ export function LessonPlanGenerator() {
           <div className="mt-6 rounded-2xl border border-violet-200 bg-gradient-to-b from-violet-50/80 to-white p-4 shadow-sm md:p-5">
             <div className="flex flex-col gap-3 border-b border-violet-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-stone-900">
                   Select Activity Sheet AFL Tools for Your Lesson
                 </h3>
-                <p className="mt-1 text-xs text-slate-600">
+                <p className="mt-1 text-xs text-stone-600">
                   Tick the tools you want in each phase. They are woven into the written plan and
                   matched slides when you generate.
                 </p>
@@ -1264,21 +1264,21 @@ export function LessonPlanGenerator() {
                       ) as Record<AflPhaseId, string[]>,
                     );
                   }}
-                  className="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-900 shadow-sm hover:bg-violet-50"
+                  className="rounded-lg border border-violet-300 bg-[#FAF6EF] px-3 py-1.5 text-xs font-semibold text-violet-900 shadow-sm hover:bg-violet-50"
                 >
                   Select Recommended
                 </button>
                 <button
                   type="button"
                   onClick={() => setAflSelected(emptyAflSelected())}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                  className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
                 >
                   Clear All
                 </button>
                 <button
                   type="button"
                   onClick={() => setAflPanelOpen(false)}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100"
                 >
                   Hide
                 </button>
@@ -1286,7 +1286,7 @@ export function LessonPlanGenerator() {
             </div>
             <div className="mt-4 max-h-[min(70vh,520px)] space-y-5 overflow-y-auto pr-1">
               {AFL_PHASE_GROUPS.map((group) => (
-                <fieldset key={group.phase} className="rounded-xl border border-slate-200 bg-white/90 p-3">
+                <fieldset key={group.phase} className="rounded-xl border border-stone-200 bg-[#FAF6EF]/90 p-3">
                   <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-violet-800">
                     {group.title}
                   </legend>
@@ -1309,11 +1309,11 @@ export function LessonPlanGenerator() {
                                 return { ...prev, [group.phase]: next };
                               });
                             }}
-                            className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500"
+                            className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-violet-700 focus:ring-violet-500"
                           />
-                          <label htmlFor={`afl-${t.id}`} className="min-w-0 text-sm leading-snug text-slate-800">
+                          <label htmlFor={`afl-${t.id}`} className="min-w-0 text-sm leading-snug text-stone-800">
                             <span className="font-medium">{t.label}</span>
-                            <span className="mt-0.5 block text-[11px] text-slate-500">{t.purpose}</span>
+                            <span className="mt-0.5 block text-[11px] text-stone-500">{t.purpose}</span>
                           </label>
                         </li>
                       );
@@ -1331,27 +1331,27 @@ export function LessonPlanGenerator() {
             <button
               type="button"
               onClick={() => setStrategyPanelOpen(true)}
-              className="w-full rounded-xl border border-[#00C6A7]/30 bg-[#00C6A7]/5 px-4 py-3 text-left text-sm font-semibold text-[#0A1628] shadow-sm transition hover:bg-[#00C6A7]/10"
+              className="w-full rounded-xl border border-[#0E9484]/30 bg-[#0E9484]/5 px-4 py-3 text-left text-sm font-semibold text-[#241A12] shadow-sm transition hover:bg-[#0E9484]/10"
             >
               {teachingStrategy ? (
                 <span className="flex items-center gap-2">
-                  <span className="inline-block size-2 rounded-full bg-[#00C6A7]" />
-                  Teaching Strategy: <span className="font-bold text-[#00C6A7]">{TEACHING_STRATEGIES.find((s) => s.name === teachingStrategy)?.name ?? teachingStrategy}</span>
+                  <span className="inline-block size-2 rounded-full bg-[#0E9484]" />
+                  Teaching Strategy: <span className="font-bold text-[#0E9484]">{TEACHING_STRATEGIES.find((s) => s.name === teachingStrategy)?.name ?? teachingStrategy}</span>
                 </span>
               ) : (
                 "Teaching and Learning Strategy"
               )}
-              <span className="mt-1 block text-xs font-normal text-slate-600">
+              <span className="mt-1 block text-xs font-normal text-stone-600">
                 Optional: select a strategy to shape how activities are delivered. The lesson structure will remain unchanged.
               </span>
             </button>
           </div>
         ) : (
-          <div className="mt-6 rounded-2xl border border-[#00C6A7]/30 bg-gradient-to-b from-[#00C6A7]/5 to-white p-4 shadow-sm md:p-5">
+          <div className="mt-6 rounded-2xl border border-[#0E9484]/30 bg-gradient-to-b from-[#0E9484]/5 to-white p-4 shadow-sm md:p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">Teaching and Learning Strategy <span className="ml-1 text-xs font-normal text-slate-500">(Optional)</span></h3>
-                <p className="mt-1 text-xs text-slate-500">
+                <h3 className="text-sm font-semibold text-stone-900">Teaching and Learning Strategy <span className="ml-1 text-xs font-normal text-stone-500">(Optional)</span></h3>
+                <p className="mt-1 text-xs text-stone-500">
                   Select a strategy to shape how activities are delivered. The lesson structure will remain unchanged.
                 </p>
               </div>
@@ -1360,7 +1360,7 @@ export function LessonPlanGenerator() {
                   <button
                     type="button"
                     onClick={() => setTeachingStrategy("")}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
                   >
                     Clear
                   </button>
@@ -1368,7 +1368,7 @@ export function LessonPlanGenerator() {
                 <button
                   type="button"
                   onClick={() => setStrategyPanelOpen(false)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                  className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
                 >
                   Collapse ↑
                 </button>
@@ -1386,23 +1386,23 @@ export function LessonPlanGenerator() {
                     aria-pressed={isSelected}
                     className={`group flex flex-col rounded-xl border-2 p-3.5 text-left transition ${
                       isSelected
-                        ? "border-[#00C6A7] bg-[#00C6A7]/8 shadow-md ring-2 ring-[#00C6A7]/20"
-                        : "border-slate-200 bg-white hover:border-[#00C6A7]/50 hover:bg-[#00C6A7]/5"
+                        ? "border-[#0E9484] bg-[#0E9484]/8 shadow-md ring-2 ring-[#0E9484]/20"
+                        : "border-stone-200 bg-[#FAF6EF] hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className={`text-sm font-semibold leading-snug ${isSelected ? "text-[#0A8F7A]" : "text-slate-900"}`}>
+                      <span className={`text-sm font-semibold leading-snug ${isSelected ? "text-[#0B6B5F]" : "text-stone-900"}`}>
                         {strategy.name}
                       </span>
                       {isSelected ? (
-                        <span className="shrink-0 rounded-full bg-[#00C6A7] p-0.5">
+                        <span className="shrink-0 rounded-full bg-[#0E9484] p-0.5">
                           <svg className="size-3 text-white" viewBox="0 0 12 12" fill="currentColor">
                             <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
                           </svg>
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-500 group-hover:text-slate-600">
+                    <p className="mt-1 text-xs leading-relaxed text-stone-500 group-hover:text-stone-600">
                       {strategy.description}
                     </p>
                   </button>
@@ -1413,9 +1413,9 @@ export function LessonPlanGenerator() {
         )}
         {/* ── End Teaching Strategy ──────────────────────────────────── */}
 
-        <fieldset className="mt-6 rounded-2xl border border-[#00C6A7]/20 bg-[#00C6A7]/5 p-4">
-          <legend className="px-1 text-sm font-semibold text-slate-900">What to generate</legend>
-          <p className="mt-1 text-xs text-slate-600">
+        <fieldset className="mt-6 rounded-2xl border border-[#0E9484]/20 bg-[#0E9484]/5 p-4">
+          <legend className="px-1 text-sm font-semibold text-stone-900">What to generate</legend>
+          <p className="mt-1 text-xs text-stone-600">
             Only checked sections are sent to the AI — fewer selections usually means a quicker response.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -1429,7 +1429,7 @@ export function LessonPlanGenerator() {
                   >,
                 )
               }
-              className="rounded-lg border border-[#00C6A7]/30 bg-white px-3 py-1.5 text-xs font-semibold text-[#0A1628] shadow-sm hover:bg-[#00C6A7]/10"
+              className="rounded-lg border border-[#0E9484]/30 bg-[#FAF6EF] px-3 py-1.5 text-xs font-semibold text-[#241A12] shadow-sm hover:bg-[#0E9484]/10"
             >
               Select All
             </button>
@@ -1443,7 +1443,7 @@ export function LessonPlanGenerator() {
                   >,
                 )
               }
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+              className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
             >
               Deselect All
             </button>
@@ -1458,9 +1458,9 @@ export function LessonPlanGenerator() {
                   onChange={() =>
                     setSectionSelection((prev) => ({ ...prev, [key]: !prev[key] }))
                   }
-                  className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-[#00C6A7] focus:ring-[#00C6A7]"
+                  className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-[#0E9484] focus:ring-[#0E9484]"
                 />
-                <label htmlFor={`gen-${key}`} className="text-sm text-slate-800">
+                <label htmlFor={`gen-${key}`} className="text-sm text-stone-800">
                   {GENERATION_CHECKBOX_LABELS[key]}
                 </label>
               </li>
@@ -1468,8 +1468,8 @@ export function LessonPlanGenerator() {
           </ul>
         </fieldset>
 
-        <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-          <span className="font-semibold text-slate-900">Estimated time: </span>
+        <p className="mt-4 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-700">
+          <span className="font-semibold text-stone-900">Estimated time: </span>
           {generationEta.selectedCount === 0 ? (
             generationEta.detail
           ) : (
@@ -1484,7 +1484,7 @@ export function LessonPlanGenerator() {
           <button
             type="button"
             onClick={goToPrevStep}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-200 bg-[#FAF6EF] px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-stone-300 hover:text-stone-900"
           >
             Back
           </button>
@@ -1497,7 +1497,7 @@ export function LessonPlanGenerator() {
             uploadExtracting ||
             TEACHER_PACKAGE_SECTIONS.every((k) => !sectionSelection[k])
           }
-          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#00C6A7] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0A8F7A] disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#0E9484] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0B6B5F] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? "Generating..." : "Generate Lesson Plan"}
         </button>
@@ -1550,7 +1550,7 @@ export function LessonPlanGenerator() {
       )}
 
       {successMessage ? (
-        <div className="animate-slide-up rounded-xl border border-[#00C6A7]/30 bg-[#00C6A7]/5 px-4 py-3 text-sm text-[#00C6A7]">
+        <div className="animate-slide-up rounded-xl border border-[#0E9484]/30 bg-[#0E9484]/5 px-4 py-3 text-sm text-[#0E9484]">
           {successMessage}
         </div>
       ) : null}

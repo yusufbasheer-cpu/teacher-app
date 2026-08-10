@@ -3,8 +3,8 @@ import { Container } from "@/components/ui/container";
 import { Footer } from "@/components/layout/footer";
 import type { ReactNode } from "react";
 
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
+const NAVY = "#241A12";
+const TEAL = "#0E9484";
 
 type LegalPageLayoutProps = {
   title: string;
@@ -15,8 +15,8 @@ type LegalPageLayoutProps = {
 export function LegalPageLayout({ title, lastUpdated, children }: LegalPageLayoutProps) {
   return (
     <>
-      <main className="min-h-screen pb-20" style={{ background: "#F7F9FC" }}>
-        <div className="border-b bg-white" style={{ borderColor: "rgba(0,198,167,0.2)" }}>
+      <main className="min-h-screen pb-20" style={{ background: "#F1E9DC" }}>
+        <div className="border-b bg-[#FAF6EF]" style={{ borderColor: "rgba(14, 148, 132,0.2)" }}>
           <Container className="py-8">
             <Link
               href="/"
@@ -31,7 +31,7 @@ export function LegalPageLayout({ title, lastUpdated, children }: LegalPageLayou
             >
               {title}
             </h1>
-            <p className="mt-2 text-sm" style={{ color: "#4A5568" }}>
+            <p className="mt-2 text-sm" style={{ color: "#6B5D4F" }}>
               Last updated: {lastUpdated}
             </p>
           </Container>
@@ -39,12 +39,12 @@ export function LegalPageLayout({ title, lastUpdated, children }: LegalPageLayou
 
         <Container className="mt-10 max-w-3xl">
           <article
-            className="rounded-3xl border bg-white p-6 shadow-sm sm:p-10"
-            style={{ borderColor: "rgba(0,198,167,0.2)" }}
+            className="rounded-3xl border bg-[#FAF6EF] p-6 shadow-sm sm:p-10"
+            style={{ borderColor: "rgba(14, 148, 132,0.2)" }}
           >
             <div
               className="legal-prose space-y-8 text-sm leading-relaxed sm:text-base"
-              style={{ color: "#334155" }}
+              style={{ color: "#2b2118" }}
             >
               {children}
             </div>
@@ -67,7 +67,7 @@ export function LegalSection({
     <section>
       <h2
         className="mb-3 text-lg font-bold sm:text-xl"
-        style={{ color: "#0A1628" }}
+        style={{ color: "#241A12" }}
       >
         {title}
       </h2>

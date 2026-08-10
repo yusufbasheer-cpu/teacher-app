@@ -22,7 +22,7 @@ export function AuthLayout({ badge, headline, subtext, children }: AuthLayoutPro
         <div className="mx-auto max-w-md">
           <span
             className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-            style={{ background: "rgba(0,198,167,0.15)", color: TEAL }}
+            style={{ background: "rgba(14, 148, 132,0.15)", color: TEAL }}
           >
             {badge}
           </span>
@@ -55,11 +55,11 @@ export function AuthLayout({ badge, headline, subtext, children }: AuthLayoutPro
           <div className="relative mt-16 h-40" aria-hidden>
             <div
               className="absolute left-0 top-0 h-24 w-24 rounded-3xl"
-              style={{ background: "rgba(0,198,167,0.12)" }}
+              style={{ background: "rgba(14, 148, 132,0.12)" }}
             />
             <div
               className="absolute left-16 top-10 h-28 w-28 rounded-full"
-              style={{ background: "rgba(0,198,167,0.08)" }}
+              style={{ background: "rgba(14, 148, 132,0.08)" }}
             />
             <div
               className="absolute left-8 top-24 h-16 w-16 rounded-2xl border"
@@ -73,7 +73,7 @@ export function AuthLayout({ badge, headline, subtext, children }: AuthLayoutPro
         <div className="mx-auto w-full max-w-md lg:hidden">
           <span
             className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-            style={{ background: "rgba(0,198,167,0.1)", color: TEAL_DARK }}
+            style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL_DARK }}
           >
             {badge}
           </span>

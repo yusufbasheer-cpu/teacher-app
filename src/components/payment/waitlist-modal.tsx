@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
+const NAVY = "#241A12";
+const TEAL = "#0E9484";
 
 type WaitlistModalProps = {
   open: boolean;
@@ -69,19 +69,19 @@ export function WaitlistModal({ open, onClose, plan, initialEmail = "" }: Waitli
     >
       <button
         type="button"
-        className="absolute inset-0 bg-[#0A1628]/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#241A12]/70 backdrop-blur-sm"
         aria-label="Close"
         onClick={handleClose}
       />
 
       <div
-        className="relative w-full max-w-sm rounded-3xl border bg-white shadow-2xl"
-        style={{ borderColor: "rgba(0,198,167,0.3)" }}
+        className="relative w-full max-w-sm rounded-3xl border bg-[#FAF6EF] shadow-2xl"
+        style={{ borderColor: "rgba(14, 148, 132,0.3)" }}
       >
         <button
           type="button"
           onClick={handleClose}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-stone-400 transition hover:bg-stone-100 hover:text-stone-700"
           aria-label="Close"
         >
           <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -96,10 +96,10 @@ export function WaitlistModal({ open, onClose, plan, initialEmail = "" }: Waitli
               <h2 className="mt-4 text-xl font-bold" style={{ color: NAVY }}>
                 You&apos;re on the list!
               </h2>
-              <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+              <p className="mt-3 text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
                 We&apos;ll email you as soon as Pro plans launch.
               </p>
-              <p className="mt-2 text-xs" style={{ color: "#94a3b8" }}>
+              <p className="mt-2 text-xs" style={{ color: "#a79a87" }}>
                 Closing automatically…
               </p>
             </div>
@@ -107,7 +107,7 @@ export function WaitlistModal({ open, onClose, plan, initialEmail = "" }: Waitli
             <>
               <div
                 className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
-                style={{ background: "rgba(0,198,167,0.12)" }}
+                style={{ background: "rgba(14, 148, 132,0.12)" }}
               >
                 <svg className="size-7" viewBox="0 0 24 24" fill="none" aria-hidden>
                   <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke={TEAL} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -121,7 +121,7 @@ export function WaitlistModal({ open, onClose, plan, initialEmail = "" }: Waitli
               >
                 Payment System Coming Soon! 🚀
               </h2>
-              <p className="mt-2 text-center text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+              <p className="mt-2 text-center text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
                 We are putting the final touches on our payment system. Join the waitlist and we will notify you the moment Pro plans are available.
               </p>
 
@@ -132,7 +132,7 @@ export function WaitlistModal({ open, onClose, plan, initialEmail = "" }: Waitli
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   required
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-[#00C6A7] focus:ring-2"
+                  className="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none ring-[#0E9484] focus:ring-2"
                   autoFocus
                 />
 
@@ -150,7 +150,7 @@ export function WaitlistModal({ open, onClose, plan, initialEmail = "" }: Waitli
                 </button>
               </form>
 
-              <p className="mt-4 text-center text-xs" style={{ color: "#94a3b8" }}>
+              <p className="mt-4 text-center text-xs" style={{ color: "#a79a87" }}>
                 No spam. We&apos;ll only email you when payments are ready.
               </p>
             </>

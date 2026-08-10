@@ -35,8 +35,8 @@ export function CookieBanner() {
       <div
         className="mx-auto flex max-w-4xl flex-col gap-4 rounded-2xl p-5 shadow-2xl sm:flex-row sm:items-center sm:justify-between"
         style={{
-          background: "#0A1628",
-          border: "1px solid rgba(0,198,167,0.3)",
+          background: "#241A12",
+          border: "1px solid rgba(14, 148, 132,0.3)",
           boxShadow: "0 -4px 32px rgba(0,0,0,0.35)",
         }}
       >
@@ -46,7 +46,7 @@ export function CookieBanner() {
           </p>
           <p className="mt-1 text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>
             We use essential cookies to keep you signed in and remember your preferences.{" "}
-            <Link href="/privacy" className="underline hover:opacity-80" style={{ color: "#00C6A7" }}>
+            <Link href="/privacy" className="underline hover:opacity-80" style={{ color: "#0E9484" }}>
               Privacy Policy
             </Link>
           </p>
@@ -65,7 +65,7 @@ export function CookieBanner() {
             type="button"
             onClick={accept}
             className="inline-flex min-h-9 items-center rounded-xl px-5 text-sm font-bold transition hover:opacity-90"
-            style={{ background: "#00C6A7", color: "#0A1628" }}
+            style={{ background: "#0E9484", color: "#241A12" }}
           >
             Accept All
           </button>

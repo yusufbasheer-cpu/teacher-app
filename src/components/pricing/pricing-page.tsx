@@ -208,7 +208,7 @@ function PlanPrice({
       {showStrike ? (
         <p
           className="text-sm line-through"
-          style={{ color: lightText ? "rgba(255,255,255,0.5)" : "#94a3b8" }}
+          style={{ color: lightText ? "rgba(255,255,255,0.5)" : "#a79a87" }}
         >
           {formatRegionalPrice(region, prices.monthly * 12, "year")}
         </p>
@@ -222,7 +222,7 @@ function PlanPrice({
       {billing === "annual" ? (
         <span
           className="mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide"
-          style={{ background: "rgba(0,198,167,0.2)", color: TEAL }}
+          style={{ background: "rgba(14, 148, 132,0.2)", color: TEAL }}
         >
           Save 2 months
         </span>
@@ -230,7 +230,7 @@ function PlanPrice({
       {billing === "monthly" ? (
         <p
           className="mt-2 text-sm"
-          style={{ color: lightText ? "rgba(255,255,255,0.65)" : "#4A5568" }}
+          style={{ color: lightText ? "rgba(255,255,255,0.65)" : "#6B5D4F" }}
         >
           Or {formatRegionalPrice(region, prices.annual, "year")}
         </p>
@@ -270,13 +270,13 @@ function PricingCard({
       style={
         isFeatured
           ? {
-              background: `linear-gradient(160deg, ${NAVY} 0%, #132a4a 55%, ${NAVY} 100%)`,
+              background: `linear-gradient(160deg, ${NAVY} 0%, #3a2a1e 55%, ${NAVY} 100%)`,
               border: `2px solid ${TEAL}`,
-              boxShadow: `0 20px 50px rgba(0,198,167,0.18)`,
+              boxShadow: `0 20px 50px rgba(14, 148, 132,0.18)`,
             }
           : isSchool
-            ? { background: "#fff", border: `2px solid ${NAVY}` }
-            : { background: "#fff", border: `1px solid rgba(10,22,40,0.12)` }
+            ? { background: "#FFFCF7", border: `2px solid ${NAVY}` }
+            : { background: "#FFFCF7", border: `1px solid rgba(36, 26, 18,0.12)` }
       }
     >
       {plan.badge ? (
@@ -299,11 +299,11 @@ function PricingCard({
         <PlanPrice plan={plan} region={region} billing={billing} lightText={lightText} />
       </div>
 
-      <p className="mt-4 text-sm font-semibold" style={{ color: lightText ? TEAL : "#0A8F7A" }}>
+      <p className="mt-4 text-sm font-semibold" style={{ color: lightText ? TEAL : "#0B6B5F" }}>
         {plan.generations}
       </p>
       {plan.teachers ? (
-        <p className="mt-1 text-sm" style={{ color: lightText ? "rgba(255,255,255,0.75)" : "#4A5568" }}>
+        <p className="mt-1 text-sm" style={{ color: lightText ? "rgba(255,255,255,0.75)" : "#6B5D4F" }}>
           {plan.teachers}
         </p>
       ) : null}
@@ -313,9 +313,9 @@ function PricingCard({
           <li
             key={item}
             className="flex items-start gap-2.5 text-sm leading-snug"
-            style={{ color: lightText ? "rgba(255,255,255,0.9)" : "#334155" }}
+            style={{ color: lightText ? "rgba(255,255,255,0.9)" : "#2b2118" }}
           >
-            <CheckIcon className={lightText ? "text-[#00C6A7]" : "text-[#0A8F7A]"} />
+            <CheckIcon className={lightText ? "text-[#0E9484]" : "text-[#0B6B5F]"} />
             <span>{item}</span>
           </li>
         ))}
@@ -353,14 +353,14 @@ export function PricingPage() {
   const openPayment = (planKey: UpgradePlanKey) => { setPaymentPlan(planKey); setPaymentOpen(true); };
 
   return (
-    <main className="min-h-screen bg-white pb-24">
+    <main className="min-h-screen bg-[#FAF6EF] pb-24">
       <Container>
         {/* Standard secondary-page hero: badge + headline + subtext, matching
             the landing page's hero pattern. */}
         <section className="mx-auto max-w-[820px] px-4 pb-4 pt-14 text-center sm:px-6">
           <span
             className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-            style={{ background: "rgba(0,198,167,0.1)", color: TEAL_DARK }}
+            style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL_DARK }}
           >
             Pricing
           </span>
@@ -378,7 +378,7 @@ export function PricingPage() {
         <div className="mx-auto mt-6 flex justify-center">
           <p
             className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm"
-            style={{ background: "#fff", border: `1px solid rgba(0,198,167,0.3)`, color: NAVY }}
+            style={{ background: "#FFFCF7", border: `1px solid rgba(14, 148, 132,0.3)`, color: NAVY }}
           >
             <span className="text-lg leading-none" aria-hidden>{region.flag}</span>
             <span>
@@ -390,7 +390,7 @@ export function PricingPage() {
         <div className="mx-auto mt-10 flex flex-col items-center gap-3">
           <div
             className="inline-flex rounded-full p-1 shadow-sm"
-            style={{ background: "#fff", border: `1px solid rgba(10,22,40,0.12)` }}
+            style={{ background: "#FFFCF7", border: `1px solid rgba(36, 26, 18,0.12)` }}
             role="group"
             aria-label="Billing period"
           >
@@ -400,7 +400,7 @@ export function PricingPage() {
               className="rounded-full px-6 py-3 text-sm font-semibold transition"
               style={{
                 background: !isAnnual ? NAVY : "transparent",
-                color: !isAnnual ? "#fff" : "#4A5568",
+                color: !isAnnual ? "#fff" : "#6B5D4F",
               }}
             >
               Monthly
@@ -411,7 +411,7 @@ export function PricingPage() {
               className="rounded-full px-6 py-3 text-sm font-semibold transition"
               style={{
                 background: isAnnual ? NAVY : "transparent",
-                color: isAnnual ? "#fff" : "#4A5568",
+                color: isAnnual ? "#fff" : "#6B5D4F",
               }}
             >
               Annual
@@ -420,7 +420,7 @@ export function PricingPage() {
           {isAnnual ? (
             <p
               className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold"
-              style={{ background: "rgba(0,198,167,0.12)", color: "#0A8F7A" }}
+              style={{ background: "rgba(14, 148, 132,0.12)", color: "#0B6B5F" }}
             >
               <span className="inline-block h-2 w-2 rounded-full" style={{ background: TEAL }} aria-hidden />
               Save 2 months on all annual plans
@@ -445,11 +445,11 @@ export function PricingPage() {
         <section
           className="mt-20 rounded-3xl p-6 sm:p-10"
           style={{
-            background: `linear-gradient(135deg, ${NAVY} 0%, #132a4a 100%)`,
-            border: `1px solid rgba(0,198,167,0.25)`,
+            background: `linear-gradient(135deg, ${NAVY} 0%, #3a2a1e 100%)`,
+            border: `1px solid rgba(14, 148, 132,0.25)`,
           }}
         >
-          <h2 className="text-center text-sm font-bold uppercase tracking-widest text-[#00C6A7]">
+          <h2 className="text-center text-sm font-bold uppercase tracking-widest text-[#0E9484]">
             For schools
           </h2>
           <p className="mt-2 text-center text-lg font-semibold text-white sm:text-xl">
@@ -497,8 +497,8 @@ export function PricingPage() {
             {FAQ.map((item) => (
               <details
                 key={item.q}
-                className="group rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md open:shadow-md"
-                style={{ borderColor: "rgba(0,198,167,0.25)" }}
+                className="group rounded-2xl border bg-[#FAF6EF] p-5 shadow-sm transition hover:shadow-md open:shadow-md"
+                style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
               >
                 <summary
                   className="cursor-pointer list-none text-base font-semibold marker:content-none"
@@ -515,7 +515,7 @@ export function PricingPage() {
                     </span>
                   </span>
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+                <p className="mt-3 text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
                   {item.a}
                 </p>
               </details>

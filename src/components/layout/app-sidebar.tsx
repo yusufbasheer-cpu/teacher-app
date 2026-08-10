@@ -107,8 +107,8 @@ export function AppSidebar({ user }: Props) {
 
   return (
     <aside
-      className="sticky top-0 flex h-screen shrink-0 flex-col bg-white transition-[width] duration-200"
-      style={{ width: collapsed ? 72 : 248, borderRight: "1px solid #E2E8F0" }}
+      className="sticky top-0 flex h-screen shrink-0 flex-col bg-[#FAF6EF] transition-[width] duration-200"
+      style={{ width: collapsed ? 72 : 248, borderRight: "1px solid #E3D9C8" }}
     >
       <div className="flex items-center justify-between gap-2 px-3 py-4">
         <Link href="/overview" aria-label="Layah dashboard" className="shrink-0">
@@ -120,7 +120,7 @@ export function AppSidebar({ user }: Props) {
               type="button"
               onClick={toggleCollapsed}
               aria-label="Collapse sidebar"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-stone-400 transition hover:bg-stone-50 hover:text-stone-700"
             >
               <PanelLeftClose size={18} />
             </button>
@@ -134,7 +134,7 @@ export function AppSidebar({ user }: Props) {
             type="button"
             onClick={toggleCollapsed}
             aria-label="Expand sidebar"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-stone-400 transition hover:bg-stone-50 hover:text-stone-700"
           >
             <PanelLeft size={18} />
           </button>
@@ -152,8 +152,8 @@ export function AppSidebar({ user }: Props) {
               title={collapsed ? item.label : undefined}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition"
               style={{
-                color: active ? "#00C6A7" : "#475569",
-                background: active ? "rgba(0,198,167,0.08)" : "transparent",
+                color: active ? "#0E9484" : "#6b5d4f",
+                background: active ? "rgba(14, 148, 132,0.08)" : "transparent",
                 fontWeight: active ? 600 : 500,
                 justifyContent: collapsed ? "center" : "flex-start",
               }}
@@ -165,7 +165,7 @@ export function AppSidebar({ user }: Props) {
         })}
       </nav>
 
-      <div className="px-3 py-3" style={{ borderTop: "1px solid #E2E8F0" }}>
+      <div className="px-3 py-3" style={{ borderTop: "1px solid #E3D9C8" }}>
         <UserMenu user={user} collapsed={collapsed} />
       </div>
     </aside>

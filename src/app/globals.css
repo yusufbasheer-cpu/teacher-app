@@ -16,39 +16,39 @@
 }
 
 :root {
-  --accent: oklch(0.97 0 0);
-  --navy: #0A1628;
-  --background: oklch(1 0 0);
-  --foreground: #0A1628;
-  --card: oklch(1 0 0);
-  --card-foreground: #0A1628;
-  --popover: oklch(1 0 0);
-  --popover-foreground: #0A1628;
-  --primary: #00C6A7;
+  --accent: oklch(0.94 0.014 70);
+  --navy: #241A12;
+  --background: oklch(0.975 0.015 75);
+  --foreground: #241A12;
+  --card: oklch(0.99 0.006 75);
+  --card-foreground: #241A12;
+  --popover: oklch(0.99 0.006 75);
+  --popover-foreground: #241A12;
+  --primary: #0E9484;
   --primary-foreground: #FFFFFF;
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: #0A1628;
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent-foreground: #0A1628;
+  --secondary: oklch(0.94 0.014 70);
+  --secondary-foreground: #241A12;
+  --muted: oklch(0.94 0.014 70);
+  --muted-foreground: oklch(0.52 0.02 60);
+  --accent-foreground: #241A12;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: #00C6A7;
+  --border: oklch(0.88 0.02 70);
+  --input: oklch(0.88 0.02 70);
+  --ring: #0E9484;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.75rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.97 0.012 75);
+  --sidebar-foreground: oklch(0.2 0.02 55);
+  --sidebar-primary: oklch(0.22 0.02 55);
+  --sidebar-primary-foreground: oklch(0.97 0.01 75);
+  --sidebar-accent: oklch(0.94 0.014 70);
+  --sidebar-accent-foreground: oklch(0.22 0.02 55);
+  --sidebar-border: oklch(0.88 0.02 70);
+  --sidebar-ring: oklch(0.65 0.02 65);
 }
 
 /* Layah wordmark only — body uses Inter via --font-inter from next/font */
@@ -67,17 +67,17 @@
   /* --navy already exists above (fixed brand-navy fill, independent of
      --foreground which is a text-color token that would flip in dark mode).
      Use `bg-navy`/`text-navy` for the navy hero-band pattern instead of
-     hardcoding #0A1628. These two are new, for the same pattern family. */
-  --navy-rule: #1E3A52;
-  --chalk: #F5F5F0;
+     hardcoding #241A12. These two are new, for the same pattern family. */
+  --navy-rule: #3A2A1E;
+  --chalk: #F6F1E8;
 }
 
 .site-editorial {
-  --background: #FAFAF8;
-  --card: #FFFFFF;
-  --border: #DCE2E6;
-  --muted: #EFF1EC;
-  --muted-foreground: #5B6570;
+  --background: #FAF6EF;
+  --card: #FFFCF7;
+  --border: #E3D9C8;
+  --muted: #F1E9DC;
+  --muted-foreground: #7A6E5F;
 }
 
 @theme inline {
@@ -93,8 +93,8 @@ html {
 
 body {
   min-height: 100vh;
-  background: #FFFFFF;
-  color: #374151;
+  background: #FAF6EF;
+  color: #2b2118;
   font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   overscroll-behavior: none;
 }
@@ -143,9 +143,9 @@ canvas {
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    #e8edf2 25%,
-    #f4f6f9 50%,
-    #e8edf2 75%
+    #ede4d6 25%,
+    #f5efe4 50%,
+    #ede4d6 75%
   );
   background-size: 800px 100%;
   animation: shimmer 1.6s ease-in-out infinite;
@@ -153,7 +153,7 @@ canvas {
 
 /* ── Keyboard focus states — WCAG AA (Fix 4) ──────────────────────────────── */
 :focus-visible {
-  outline: 2px solid #00C6A7;
+  outline: 2px solid #0E9484;
   outline-offset: 2px;
 }
 
@@ -169,8 +169,8 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(0, 198, 167, 0.22);
-  border-color: #00C6A7 !important;
+  box-shadow: 0 0 0 3px rgba(14, 148, 132, 0.22);
+  border-color: #0E9484 !important;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
@@ -199,7 +199,7 @@ button:active:not(:disabled), [role="button"]:active:not([aria-disabled="true"])
 
 /* ── Progress bar teal glow ────────────────────────────────────────────────── */
 .progress-bar-glow {
-  box-shadow: 0 0 8px 2px rgba(0, 198, 167, 0.55);
+  box-shadow: 0 0 8px 2px rgba(14, 148, 132, 0.55);
 }
 
 /* ── Smooth dropdown open ──────────────────────────────────────────────────── */
@@ -228,7 +228,7 @@ input[type="checkbox"]:checked {
 }
 
 .card-hover:hover {
-  box-shadow: 0 8px 28px rgba(0, 198, 167, 0.14), 0 2px 8px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 8px 28px rgba(14, 148, 132, 0.14), 0 2px 8px rgba(0, 0, 0, 0.07);
 }
 
 /* ── Slide-in from bottom (results reveal) ─────────────────────────────────── */
@@ -258,8 +258,8 @@ input[type="checkbox"]:checked {
 
 /* CTA pulse glow */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0,198,167,0.45); }
-  50%       { box-shadow: 0 0 0 14px rgba(0,198,167,0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(14, 148, 132,0.45); }
+  50%       { box-shadow: 0 0 0 14px rgba(14, 148, 132,0); }
 }
 
 .btn-pulse {
@@ -316,7 +316,7 @@ input[type="checkbox"]:checked {
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: #00C6A7;
+  --primary: #0E9484;
   --primary-foreground: #FFFFFF;
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -327,7 +327,7 @@ input[type="checkbox"]:checked {
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: #00C6A7;
+  --ring: #0E9484;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

@@ -86,16 +86,16 @@ function DashboardContent() {
     return (
       <main
         className="flex min-h-screen items-center justify-center px-4"
-        style={{ background: "#F7F9FC" }}
+        style={{ background: "#F1E9DC" }}
       >
         <div
-          className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm"
-          style={{ borderColor: "rgba(0,198,167,0.25)" }}
+          className="max-w-md rounded-2xl border bg-[#FAF6EF] p-8 text-center shadow-sm"
+          style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
         >
-          <p className="text-lg font-semibold" style={{ color: "#0A1628" }}>
+          <p className="text-lg font-semibold" style={{ color: "#241A12" }}>
             {hodDeniedState ? "Access restricted to Department Heads" : "You do not have admin access"}
           </p>
-          <p className="mt-2 text-sm" style={{ color: "#4A5568" }}>
+          <p className="mt-2 text-sm" style={{ color: "#6B5D4F" }}>
             {hodDeniedState
               ? "Only teachers with the HOD role can access the HOD Dashboard."
               : "Your account is not listed as a school administrator."}
@@ -103,7 +103,7 @@ function DashboardContent() {
           <Link
             href="/lesson-plan"
             className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold text-white"
-            style={{ background: "#00C6A7" }}
+            style={{ background: "#0E9484" }}
           >
             Go to lesson plan generator
           </Link>
@@ -113,8 +113,8 @@ function DashboardContent() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center" style={{ background: "#F7F9FC" }}>
-      <p className="text-sm font-medium" style={{ color: "#4A5568" }}>
+    <main className="flex min-h-screen items-center justify-center" style={{ background: "#F1E9DC" }}>
+      <p className="text-sm font-medium" style={{ color: "#6B5D4F" }}>
         Signing you in…
       </p>
     </main>
@@ -125,8 +125,8 @@ export default function DashboardPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center" style={{ background: "#F7F9FC" }}>
-          <p className="text-sm font-medium" style={{ color: "#4A5568" }}>
+        <main className="flex min-h-screen items-center justify-center" style={{ background: "#F1E9DC" }}>
+          <p className="text-sm font-medium" style={{ color: "#6B5D4F" }}>
             Signing you in…
           </p>
         </main>

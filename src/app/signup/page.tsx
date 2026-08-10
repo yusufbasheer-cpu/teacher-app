@@ -17,7 +17,7 @@ export default function SignupPage() {
     >
       <Suspense
         fallback={
-          <div className="mx-auto w-full max-w-md rounded-3xl border bg-white p-8 text-sm text-slate-600">
+          <div className="mx-auto w-full max-w-md rounded-3xl border bg-[#FAF6EF] p-8 text-sm text-stone-600">
             Loading…
           </div>
         }

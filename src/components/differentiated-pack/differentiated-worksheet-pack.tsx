@@ -389,7 +389,7 @@ export function DifferentiatedWorksheetPack() {
 
   if (checkingAuth) {
     return (
-      <div className="mx-auto w-full max-w-[820px] rounded-3xl border border-[#00C6A7]/20 bg-white p-6 text-sm text-slate-600 shadow-sm">
+      <div className="mx-auto w-full max-w-[820px] rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
         Checking your account…
       </div>
     );
@@ -397,14 +397,14 @@ export function DifferentiatedWorksheetPack() {
 
   if (!user) {
     return (
-      <div className="mx-auto w-full max-w-[820px] rounded-3xl border border-[#00C6A7]/20 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">Login required</h2>
-        <p className="mt-2 text-sm text-slate-600">
+      <div className="mx-auto w-full max-w-[820px] rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+        <h2 className="text-xl font-semibold text-stone-900">Login required</h2>
+        <p className="mt-2 text-sm text-stone-600">
           Please log in to generate differentiated worksheet packs and track your monthly generation limit.
         </p>
         <Link
           href="/login"
-          className="mt-5 inline-flex rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
+          className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
         >
           Go to Login
         </Link>
@@ -414,16 +414,16 @@ export function DifferentiatedWorksheetPack() {
 
   return (
     <div className="mx-auto w-full max-w-[820px] space-y-8">
-      <div className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm sm:p-6">
-        <h2 className="text-xl font-bold text-slate-900">How to use this pack</h2>
-        <ul className="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
+      <div className="rounded-2xl border border-stone-200 bg-[#FAF6EF]/90 p-5 shadow-sm sm:p-6">
+        <h2 className="text-xl font-bold text-stone-900">How to use this pack</h2>
+        <ul className="mt-3 list-inside list-disc space-y-1.5 text-sm text-stone-600">
           <li>
             <strong className="text-emerald-800">Way 1:</strong> After generating a lesson in{" "}
             <em>Generate Lesson Plan</em>, use the button there to send your plan here, then click{" "}
             <strong>Generate differentiated pack</strong> below.
           </li>
           <li>
-            <strong className="text-[#0A1628]">Way 2:</strong> Upload a PDF or Word (.docx) lesson plan,
+            <strong className="text-[#241A12]">Way 2:</strong> Upload a PDF or Word (.docx) lesson plan,
             extract text, optionally <strong>Auto-fill form</strong>, edit fields, then generate.
           </li>
         </ul>
@@ -438,94 +438,94 @@ export function DifferentiatedWorksheetPack() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
           <h3 className="text-sm font-bold uppercase tracking-wide text-emerald-900">Way 1</h3>
-          <p className="mt-1 text-sm text-slate-700">Generate from the lesson you just built in EduPlan.</p>
-          <p className="mt-3 text-xs text-slate-600">
+          <p className="mt-1 text-sm text-stone-700">Generate from the lesson you just built in EduPlan.</p>
+          <p className="mt-3 text-xs text-stone-600">
             Use the <strong>Generate Differentiated Worksheet Pack</strong> button on the lesson
             generator page after a successful run. It fills this page automatically.
           </p>
         </section>
-        <section className="rounded-2xl border-2 border-[#00C6A7]/30 bg-[#00C6A7]/5 p-5 shadow-sm">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-[#0A1628]">Way 2</h3>
-          <p className="mt-1 text-sm text-slate-700">Upload an existing lesson plan (PDF or .docx).</p>
+        <section className="rounded-2xl border-2 border-[#0E9484]/30 bg-[#0E9484]/5 p-5 shadow-sm">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-[#241A12]">Way 2</h3>
+          <p className="mt-1 text-sm text-stone-700">Upload an existing lesson plan (PDF or .docx).</p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <input
               type="file"
               accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               disabled={extracting}
               onChange={(e) => void onExtractUpload(e.target.files)}
-              className="block w-full min-w-0 text-sm text-slate-800 file:mr-2 file:rounded-lg file:border-0 file:bg-[#00C6A7] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white"
+              className="block w-full min-w-0 text-sm text-stone-800 file:mr-2 file:rounded-lg file:border-0 file:bg-[#0E9484] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white"
             />
           </div>
           {extracting ? (
-            <p className="mt-2 text-xs font-medium text-[#0A1628]">Extracting text…</p>
+            <p className="mt-2 text-xs font-medium text-[#241A12]">Extracting text…</p>
           ) : null}
           <button
             type="button"
             disabled={inferring || !lessonSourceText.trim()}
             onClick={() => void onInferMeta()}
-            className="mt-4 rounded-lg border border-[#00C6A7]/40 bg-white px-3 py-2 text-xs font-semibold text-[#0A1628] shadow-sm hover:bg-[#00C6A7]/10 disabled:opacity-50"
+            className="mt-4 rounded-lg border border-[#0E9484]/40 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-[#241A12] shadow-sm hover:bg-[#0E9484]/10 disabled:opacity-50"
           >
             {inferring ? "Inferring…" : "Auto-fill form from document"}
           </button>
         </section>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h3 className="text-lg font-semibold text-slate-900">Class details &amp; lesson source</h3>
+      <section className="rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm sm:p-6">
+        <h3 className="text-lg font-semibold text-stone-900">Class details &amp; lesson source</h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-slate-700">Topic</label>
+            <label className="mb-1 block text-xs font-medium text-stone-700">Topic</label>
             <input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Subject</label>
+            <label className="mb-1 block text-xs font-medium text-stone-700">Subject</label>
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Grade / year</label>
+            <label className="mb-1 block text-xs font-medium text-stone-700">Grade / year</label>
             <input
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-slate-700">Learning objectives</label>
+            <label className="mb-1 block text-xs font-medium text-stone-700">Learning objectives</label>
             <textarea
               value={learningObjectives}
               onChange={(e) => setLearningObjectives(e.target.value)}
               rows={3}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Curriculum type (optional)</label>
+            <label className="mb-1 block text-xs font-medium text-stone-700">Curriculum type (optional)</label>
             <input
               value={curriculumType}
               onChange={(e) => setCurriculumType(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
               placeholder="e.g. CBSE/NCERT"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Framework (optional)</label>
+            <label className="mb-1 block text-xs font-medium text-stone-700">Framework (optional)</label>
             <input
               value={curriculumFramework}
               onChange={(e) => setCurriculumFramework(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
               placeholder="Framework id or leave blank"
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-slate-700">
+            <label className="mb-1 block text-xs font-medium text-stone-700">
               Lesson source (full lesson plan text)
             </label>
             <textarea
@@ -533,7 +533,7 @@ export function DifferentiatedWorksheetPack() {
               onChange={(e) => setLessonSourceText(e.target.value)}
               rows={14}
               spellCheck={false}
-              className="max-h-96 w-full resize-y rounded-xl border border-slate-300 px-3 py-2 font-mono text-xs leading-relaxed"
+              className="max-h-96 w-full resize-y rounded-xl border border-stone-300 px-3 py-2 font-mono text-xs leading-relaxed"
               placeholder="Paste lesson plan text, or upload a PDF / Word file (Way 2)."
             />
           </div>
@@ -544,7 +544,7 @@ export function DifferentiatedWorksheetPack() {
             type="button"
             disabled={loading}
             onClick={() => void onGenerate()}
-            className="inline-flex min-h-11 items-center rounded-xl bg-[#00C6A7] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0A8F7A] disabled:opacity-60"
+            className="inline-flex min-h-11 items-center rounded-xl bg-[#0E9484] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0B6B5F] disabled:opacity-60"
           >
             {loading ? "Generating…" : "Generate differentiated pack"}
           </button>
@@ -554,13 +554,13 @@ export function DifferentiatedWorksheetPack() {
               clearDiffPackSession();
               setFromLessonNotice(null);
             }}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
           >
             Clear “from lesson” session
           </button>
         </div>
         <div className="mt-3 space-y-1 text-xs">
-          <p className="text-slate-700">
+          <p className="text-stone-700">
             Generating Foundation worksheet…{" "}
             {levelProgress.foundation === "loading"
               ? "⏳"
@@ -570,7 +570,7 @@ export function DifferentiatedWorksheetPack() {
                   ? "❌"
                   : "—"}
           </p>
-          <p className="text-slate-700">
+          <p className="text-stone-700">
             Generating Core worksheet…{" "}
             {levelProgress.core === "loading"
               ? "⏳"
@@ -580,7 +580,7 @@ export function DifferentiatedWorksheetPack() {
                   ? "❌"
                   : "—"}
           </p>
-          <p className="text-slate-700">
+          <p className="text-stone-700">
             Generating Extension worksheet…{" "}
             {levelProgress.extension === "loading"
               ? "⏳"
@@ -607,21 +607,21 @@ export function DifferentiatedWorksheetPack() {
       {pack ? (
         <>
           <section>
-            <h3 className="mb-3 text-lg font-semibold text-slate-900">Preview</h3>
+            <h3 className="mb-3 text-lg font-semibold text-stone-900">Preview</h3>
             <div className="grid gap-4 lg:grid-cols-3">
               <div className="flex min-h-[14rem] flex-col rounded-2xl border-2 border-emerald-400 bg-emerald-50/50 shadow-sm">
                 <div className="rounded-t-xl bg-emerald-600 px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-white">
                   Foundation
                 </div>
-                <pre className="max-h-80 min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-3 font-sans text-xs leading-relaxed text-slate-800">
+                <pre className="max-h-80 min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-3 font-sans text-xs leading-relaxed text-stone-800">
                   {pack.foundation.trim() || "(Empty)"}
                 </pre>
               </div>
-              <div className="flex min-h-[14rem] flex-col rounded-2xl border-2 border-[#00C6A7] bg-[#00C6A7]/5 shadow-sm">
-                <div className="rounded-t-xl bg-[#00C6A7] px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-white">
+              <div className="flex min-h-[14rem] flex-col rounded-2xl border-2 border-[#0E9484] bg-[#0E9484]/5 shadow-sm">
+                <div className="rounded-t-xl bg-[#0E9484] px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-white">
                   Core
                 </div>
-                <pre className="max-h-80 min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-3 font-sans text-xs leading-relaxed text-slate-800">
+                <pre className="max-h-80 min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-3 font-sans text-xs leading-relaxed text-stone-800">
                   {pack.core.trim() || "(Empty)"}
                 </pre>
               </div>
@@ -629,16 +629,16 @@ export function DifferentiatedWorksheetPack() {
                 <div className="rounded-t-xl bg-violet-600 px-3 py-2 text-center text-xs font-bold uppercase tracking-wide text-white">
                   Extension
                 </div>
-                <pre className="max-h-80 min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-3 font-sans text-xs leading-relaxed text-slate-800">
+                <pre className="max-h-80 min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-3 font-sans text-xs leading-relaxed text-stone-800">
                   {pack.extension.trim() || "(Empty)"}
                 </pre>
               </div>
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
-            <h3 className="text-lg font-semibold text-slate-900">Downloads</h3>
-            <p className="mt-1 text-xs text-slate-600">
+          <section className="rounded-2xl border border-stone-200 bg-stone-50/80 p-5">
+            <h3 className="text-lg font-semibold text-stone-900">Downloads</h3>
+            <p className="mt-1 text-xs text-stone-600">
               Main worksheets and answer key download individually; rubrics, teacher notes, and
               assessment sheets download below or inside the ZIP.
             </p>
@@ -650,7 +650,7 @@ export function DifferentiatedWorksheetPack() {
                   onClick={() =>
                     void downloadDocx("f", "Foundation Worksheet", "foundation", pack.foundation)
                   }
-                  className="rounded-lg border border-emerald-600 bg-white px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-50 disabled:opacity-50"
+                  className="rounded-lg border border-emerald-600 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-50 disabled:opacity-50"
                 >
                   {busyDownload === "f" ? "…" : "Foundation (.docx)"}
                 </button>
@@ -660,7 +660,7 @@ export function DifferentiatedWorksheetPack() {
                   type="button"
                   disabled={busyDownload !== null}
                   onClick={() => void downloadDocx("c", "Core Worksheet", "core", pack.core)}
-                  className="rounded-lg border border-[#00C6A7] bg-white px-3 py-2 text-xs font-semibold text-[#0A1628] hover:bg-[#00C6A7]/10 disabled:opacity-50"
+                  className="rounded-lg border border-[#0E9484] bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-[#241A12] hover:bg-[#0E9484]/10 disabled:opacity-50"
                 >
                   {busyDownload === "c" ? "…" : "Core (.docx)"}
                 </button>
@@ -672,7 +672,7 @@ export function DifferentiatedWorksheetPack() {
                   onClick={() =>
                     void downloadDocx("e", "Extension Worksheet", "extension", pack.extension)
                   }
-                  className="rounded-lg border border-violet-600 bg-white px-3 py-2 text-xs font-semibold text-violet-900 hover:bg-violet-50 disabled:opacity-50"
+                  className="rounded-lg border border-violet-600 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-violet-900 hover:bg-violet-50 disabled:opacity-50"
                 >
                   {busyDownload === "e" ? "…" : "Extension (.docx)"}
                 </button>
@@ -684,7 +684,7 @@ export function DifferentiatedWorksheetPack() {
                   onClick={() =>
                     void downloadDocx("a", "Answer Key (all levels)", "answer-key", pack.answerKey)
                   }
-                  className="rounded-lg border border-slate-400 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                  className="rounded-lg border border-stone-400 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-50"
                 >
                   {busyDownload === "a" ? "…" : "Answer key (.docx)"}
                 </button>
@@ -693,12 +693,12 @@ export function DifferentiatedWorksheetPack() {
                 type="button"
                 disabled={busyDownload !== null}
                 onClick={() => void downloadZip()}
-                className="rounded-lg bg-[#00C6A7] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0A8F7A] disabled:opacity-50"
+                className="rounded-lg bg-[#0E9484] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0B6B5F] disabled:opacity-50"
               >
                 {busyDownload === "zip" ? "Building…" : "Complete pack (.zip)"}
               </button>
             </div>
-            <p className="mt-4 text-xs font-medium text-slate-700">Teacher resources (.docx)</p>
+            <p className="mt-4 text-xs font-medium text-stone-700">Teacher resources (.docx)</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {pack.rubrics.trim() ? (
                 <button
@@ -707,7 +707,7 @@ export function DifferentiatedWorksheetPack() {
                   onClick={() =>
                     void downloadDocx("r", "Marking rubrics (all levels)", "rubrics", pack.rubrics)
                   }
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                  className="rounded-lg border border-stone-300 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-50"
                 >
                   {busyDownload === "r" ? "…" : "Rubrics"}
                 </button>
@@ -719,7 +719,7 @@ export function DifferentiatedWorksheetPack() {
                   onClick={() =>
                     void downloadDocx("t", "Teacher notes", "teacher-notes", pack.teacherNotes)
                   }
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                  className="rounded-lg border border-stone-300 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-50"
                 >
                   {busyDownload === "t" ? "…" : "Teacher notes"}
                 </button>
@@ -736,7 +736,7 @@ export function DifferentiatedWorksheetPack() {
                       pack.selfAssessment,
                     )
                   }
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                  className="rounded-lg border border-stone-300 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-50"
                 >
                   {busyDownload === "s" ? "…" : "Self-assessment"}
                 </button>
@@ -748,7 +748,7 @@ export function DifferentiatedWorksheetPack() {
                   onClick={() =>
                     void downloadDocx("p", "Peer assessment sheet", "peer-assessment", pack.peerAssessment)
                   }
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                  className="rounded-lg border border-stone-300 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-stone-800 hover:bg-stone-50 disabled:opacity-50"
                 >
                   {busyDownload === "p" ? "…" : "Peer assessment"}
                 </button>

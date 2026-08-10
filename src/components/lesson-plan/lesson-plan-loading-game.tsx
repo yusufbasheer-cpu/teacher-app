@@ -136,7 +136,7 @@ function computeProgress(
 }
 
 // ── Confetti helper ───────────────────────────────────────────────────────────
-const CONFETTI_COLORS = ["#00C6A7", "#0A1628", "#FFD700", "#FFFFFF"];
+const CONFETTI_COLORS = ["#0E9484", "#241A12", "#FFD700", "#FFFFFF"];
 
 function fireConfetti() {
   console.log("Celebration triggered");
@@ -220,7 +220,7 @@ function StatusIcon({ status }: { status: SectionStatus }) {
     return (
       <span
         className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full"
-        style={{ background: "#00C6A7" }}
+        style={{ background: "#0E9484" }}
         aria-label="Done"
       >
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
@@ -233,10 +233,10 @@ function StatusIcon({ status }: { status: SectionStatus }) {
     return (
       <span
         className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2"
-        style={{ borderColor: "#00C6A7" }}
+        style={{ borderColor: "#0E9484" }}
         aria-label="Generating"
       >
-        <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: "#00C6A7" }} />
+        <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: "#0E9484" }} />
       </span>
     );
   }
@@ -465,8 +465,8 @@ export function LessonPlanLoadingGame({
       50%      { opacity:0.6; }
     }
     @keyframes ldGlowRing {
-      0%,100% { box-shadow:0 0 20px 4px rgba(0,198,167,0.5); }
-      50%      { box-shadow:0 0 36px 10px rgba(0,198,167,0.85); }
+      0%,100% { box-shadow:0 0 20px 4px rgba(14, 148, 132,0.5); }
+      50%      { box-shadow:0 0 36px 10px rgba(14, 148, 132,0.85); }
     }
   `;
 
@@ -488,7 +488,7 @@ export function LessonPlanLoadingGame({
           alignItems: "center",
           justifyContent: "center",
           padding: 16,
-          backgroundColor: "#0A1628",
+          backgroundColor: "#241A12",
         }}
         role="dialog"
         aria-modal="true"
@@ -500,8 +500,8 @@ export function LessonPlanLoadingGame({
             style={{
               width: "100%",
               maxWidth: 460,
-              backgroundColor: "#112240",
-              border: "1px solid rgba(0,198,167,0.4)",
+              backgroundColor: "#3a2a1e",
+              border: "1px solid rgba(14, 148, 132,0.4)",
               borderRadius: 20,
               padding: 28,
               boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
@@ -516,13 +516,13 @@ export function LessonPlanLoadingGame({
             <p style={{ textAlign: "center", fontSize: 17, fontWeight: 700, color: "#FFFFFF", marginBottom: 4 }}>
               {copy.title}
             </p>
-            <p style={{ textAlign: "center", fontSize: 13, color: "#94a3b8", marginBottom: 20 }}>
+            <p style={{ textAlign: "center", fontSize: 13, color: "#a79a87", marginBottom: 20 }}>
               {currentLabel}
             </p>
 
             {/* Progress bar label */}
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#00C6A7" }}>Progress</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#0E9484" }}>Progress</span>
               <span style={{ fontSize: 20, fontWeight: 800, color: "#FFFFFF" }}>{pct}%</span>
             </div>
 
@@ -541,9 +541,9 @@ export function LessonPlanLoadingGame({
                 style={{
                   height: "100%",
                   width: `${smoothProgress}%`,
-                  background: "linear-gradient(90deg,#00C6A7,#00e8c3)",
+                  background: "linear-gradient(90deg,#0E9484,#00e8c3)",
                   borderRadius: 99,
-                  boxShadow: "0 0 10px rgba(0,198,167,0.7)",
+                  boxShadow: "0 0 10px rgba(14, 148, 132,0.7)",
                   transition: "width 0.5s ease",
                 }}
               />
@@ -554,8 +554,8 @@ export function LessonPlanLoadingGame({
               style={{
                 marginBottom: 20,
                 borderRadius: 12,
-                background: "rgba(0,198,167,0.07)",
-                border: "1px solid rgba(0,198,167,0.2)",
+                background: "rgba(14, 148, 132,0.07)",
+                border: "1px solid rgba(14, 148, 132,0.2)",
                 padding: "14px 16px",
               }}
             >
@@ -572,7 +572,7 @@ export function LessonPlanLoadingGame({
                 /* Done (possibly early) */
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 18 }}>🎉</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#00C6A7" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#0E9484" }}>
                     {isDoneEarly ? copy.doneEarly : copy.doneAll}
                   </span>
                 </div>
@@ -580,7 +580,7 @@ export function LessonPlanLoadingGame({
                 /* Took longer than estimate */
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 16, animation: "ldPulse 1.2s ease infinite" }}>⏳</span>
-                  <span style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic" }}>
+                  <span style={{ fontSize: 13, color: "#a79a87", fontStyle: "italic" }}>
                     Almost there… just a few more seconds
                   </span>
                 </div>
@@ -594,7 +594,7 @@ export function LessonPlanLoadingGame({
                     style={{
                       fontSize: 32,
                       fontWeight: 800,
-                      color: "#00C6A7",
+                      color: "#0E9484",
                       fontVariantNumeric: "tabular-nums",
                       letterSpacing: "-1px",
                       lineHeight: 1,
@@ -627,12 +627,12 @@ export function LessonPlanLoadingGame({
                       {s.label}
                     </span>
                     {isActive && (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "#00C6A7", animation: "ldPulse 1.2s ease infinite" }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#0E9484", animation: "ldPulse 1.2s ease infinite" }}>
                         Generating…
                       </span>
                     )}
                     {isDone && (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "#00C6A7" }}>Done ✓</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#0E9484" }}>Done ✓</span>
                     )}
                     {status === "waiting" && (
                       <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Waiting</span>
@@ -648,7 +648,7 @@ export function LessonPlanLoadingGame({
             {/* Fun fact */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
               <span style={{ fontSize: 16, flexShrink: 0 }} aria-hidden>💡</span>
-              <p style={{ fontSize: 13, lineHeight: 1.6, color: "#E2E8F0", margin: 0 }}>
+              <p style={{ fontSize: 13, lineHeight: 1.6, color: "#E3D9C8", margin: 0 }}>
                 <span style={{ fontWeight: 700, color: "#FFFFFF" }}>Did you know?&nbsp;</span>
                 {FUN_FACTS[factIdx]}
               </p>
@@ -662,12 +662,12 @@ export function LessonPlanLoadingGame({
             style={{
               width: "90%",
               maxWidth: 400,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: "#FFFCF7",
               borderRadius: 24,
               padding: "40px 36px",
               textAlign: "center",
-              border: "2px solid rgba(0,198,167,0.5)",
-              boxShadow: "0 0 60px 16px rgba(0,198,167,0.35), 0 8px 40px rgba(0,0,0,0.5)",
+              border: "2px solid rgba(14, 148, 132,0.5)",
+              boxShadow: "0 0 60px 16px rgba(14, 148, 132,0.35), 0 8px 40px rgba(0,0,0,0.5)",
             }}
           >
             {/* Glowing checkmark */}
@@ -676,7 +676,7 @@ export function LessonPlanLoadingGame({
                 width: 88,
                 height: 88,
                 borderRadius: "50%",
-                backgroundColor: "#00C6A7",
+                backgroundColor: "#0E9484",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -689,7 +689,7 @@ export function LessonPlanLoadingGame({
               </svg>
             </div>
 
-            <p style={{ fontSize: 22, fontWeight: 800, color: "#0A1628", marginBottom: 8 }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: "#241A12", marginBottom: 8 }}>
               {copy.celebrateTitle}
             </p>
             <p style={{ fontSize: 14, color: "#6b7280" }}>

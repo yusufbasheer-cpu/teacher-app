@@ -61,14 +61,14 @@ export async function POST(req: Request) {
       ].join("\n"),
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: #0A1628; padding: 24px; border-radius: 12px 12px 0 0;">
+          <div style="background: #241A12; padding: 24px; border-radius: 12px 12px 0 0;">
             <h1 style="color: #f87171; margin: 0; font-size: 20px;">Registration Update</h1>
           </div>
-          <div style="background: #ffffff; border: 1px solid #E2E8F0; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
+          <div style="background: #FFFCF7; border: 1px solid #E3D9C8; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
             <p>Dear School Administrator,</p>
             <p>Thank you for your interest in Layah.ai for <strong>${reg.school_name}</strong>.</p>
             <p>After reviewing your registration, we are unable to approve your school account at this time.</p>
-            <p>If you believe this is an error or would like to discuss further, please contact us at <a href="mailto:info@layah.in" style="color: #00C6A7;">info@layah.in</a>.</p>
+            <p>If you believe this is an error or would like to discuss further, please contact us at <a href="mailto:info@layah.in" style="color: #0E9484;">info@layah.in</a>.</p>
           </div>
         </div>
       `.trim(),

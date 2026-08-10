@@ -64,7 +64,7 @@ const FOOTER_COMPANY_LINKS = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#FAF6EF]">
       <Navbar />
 
       <main>
@@ -74,7 +74,7 @@ export default function LandingPage() {
         <section className="mx-auto max-w-[820px] px-4 pb-10 pt-14 text-center sm:px-6">
           <span
             className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-            style={{ background: "rgba(0,198,167,0.1)", color: TEAL_DARK }}
+            style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL_DARK }}
           >
             AI for Teachers
           </span>
@@ -101,7 +101,7 @@ export default function LandingPage() {
             </Link>
             <a
               href="#preview"
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold transition hover:bg-slate-50 sm:w-auto"
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold transition hover:bg-stone-50 sm:w-auto"
               style={{ border: `1px solid ${BORDER}`, color: NAVY }}
             >
               View Sample Package
@@ -113,14 +113,14 @@ export default function LandingPage() {
               <span
                 key={badge}
                 className="rounded-full px-3.5 py-1.5 text-xs font-bold"
-                style={{ background: "#fff", border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
+                style={{ background: "#FFFCF7", border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
               >
                 {badge}
               </span>
             ))}
             <span
               className="rounded-full px-3.5 py-1.5 text-xs font-bold"
-              style={{ background: "rgba(0,198,167,0.1)", border: `1px solid ${BORDER}`, color: TEAL_DARK }}
+              style={{ background: "rgba(14, 148, 132,0.1)", border: `1px solid ${BORDER}`, color: TEAL_DARK }}
             >
               +15 more
             </span>
@@ -146,12 +146,12 @@ export default function LandingPage() {
               return (
                 <div
                   key={card.title}
-                  className="rounded-[20px] bg-white p-7 shadow-sm transition-shadow hover:shadow-md"
+                  className="rounded-[20px] bg-[#FAF6EF] p-7 shadow-sm transition-shadow hover:shadow-md"
                   style={{ border: `1px solid ${BORDER}` }}
                 >
                   <span
                     className="flex h-11 w-11 items-center justify-center rounded-xl"
-                    style={{ background: "rgba(0,198,167,0.1)", color: TEAL_DARK }}
+                    style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL_DARK }}
                   >
                     <Icon size={20} />
                   </span>
@@ -232,7 +232,7 @@ export default function LandingPage() {
               <ul className="mt-4 space-y-2.5">
                 {FOOTER_PRODUCT_LINKS.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="text-sm transition hover:opacity-70" style={{ color: "#374151" }}>
+                    <Link href={link.href} className="text-sm transition hover:opacity-70" style={{ color: "#2b2118" }}>
                       {link.label}
                     </Link>
                   </li>
@@ -246,7 +246,7 @@ export default function LandingPage() {
               <ul className="mt-4 space-y-2.5">
                 {FOOTER_COMPANY_LINKS.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="text-sm transition hover:opacity-70" style={{ color: "#374151" }}>
+                    <Link href={link.href} className="text-sm transition hover:opacity-70" style={{ color: "#2b2118" }}>
                       {link.label}
                     </Link>
                   </li>

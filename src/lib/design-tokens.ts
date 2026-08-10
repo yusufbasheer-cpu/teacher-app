@@ -3,12 +3,12 @@
  * footer, marketing/hero sections, auth pages). Single source of truth so
  * every page uses the same hex values instead of re-declaring them locally.
  */
-export const TEAL = "#00C6A7";
-export const TEAL_DARK = "#0A8F7A";
-export const NAVY = "#0A1628";
-export const BG = "#FFFFFF";
-export const BG_SOFT = "#F8FAFC";
-export const BORDER = "#E2E8F0";
-export const TEXT = "#0F172A";
-export const TEXT_MUTED = "#64748B";
+export const TEAL = "#0E9484";
+export const TEAL_DARK = "#0B6B5F";
+export const NAVY = "#241A12";
+export const BG = "#FAF6EF";
+export const BG_SOFT = "#F1E9DC";
+export const BORDER = "#E3D9C8";
+export const TEXT = "#2B2118";
+export const TEXT_MUTED = "#7A6E5F";
 export const RADIUS = 20;

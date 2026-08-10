@@ -165,8 +165,8 @@ function PptImageProgressCard({
       style={{
         marginTop: 16,
         borderRadius: 14,
-        border: "1px solid rgba(0,198,167,0.3)",
-        background: "linear-gradient(135deg, #0A1628 0%, #112240 100%)",
+        border: "1px solid rgba(14, 148, 132,0.3)",
+        background: "linear-gradient(135deg, #241A12 0%, #3a2a1e 100%)",
         padding: "20px 24px",
         color: "#fff",
       }}
@@ -196,14 +196,14 @@ function PptImageProgressCard({
             style={{
               height: "100%",
               width: `${(imgCount / TOTAL_IMAGES) * 100}%`,
-              background: "linear-gradient(90deg,#00C6A7,#00e8c3)",
+              background: "linear-gradient(90deg,#0E9484,#00e8c3)",
               borderRadius: 99,
-              boxShadow: "0 0 8px rgba(0,198,167,0.6)",
+              boxShadow: "0 0 8px rgba(14, 148, 132,0.6)",
               transition: "width 0.8s ease",
             }}
           />
         </div>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#00C6A7", minWidth: 52, textAlign: "right" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#0E9484", minWidth: 52, textAlign: "right" }}>
           {imgCount}/{TOTAL_IMAGES}
         </span>
       </div>
@@ -228,7 +228,7 @@ function PptImageProgressCard({
             style={{
               fontSize: 22,
               fontWeight: 800,
-              color: "#00C6A7",
+              color: "#0E9484",
               fontVariantNumeric: "tabular-nums",
               letterSpacing: "-0.5px",
             }}
@@ -239,7 +239,7 @@ function PptImageProgressCard({
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 18 }}>✅</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#00C6A7" }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#0E9484" }}>
             0 seconds — all done!
           </span>
         </div>
@@ -574,14 +574,14 @@ export function TeacherPackageViewer({
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6">
       {/* ══════════ SUCCESS HEADER ══════════ */}
-      <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-teal-100 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-teal-100 bg-[#FAF6EF] p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-600">
             <CheckCircle2 size={22} />
           </span>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 sm:text-xl">Teacher Package Ready</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <h2 className="text-lg font-bold text-stone-900 sm:text-xl">Teacher Package Ready</h2>
+            <p className="mt-1 text-sm text-stone-600">
               Your lesson plan, PPT, worksheets, homework, assessment, and teacher notes have been
               generated successfully.
             </p>
@@ -592,7 +592,7 @@ export function TeacherPackageViewer({
             <button
               type="button"
               onClick={onRegenerate}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-stone-200 bg-[#FAF6EF] px-4 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:bg-stone-50"
             >
               Regenerate
             </button>
@@ -632,7 +632,7 @@ export function TeacherPackageViewer({
         <aside className="space-y-6 lg:col-span-4">
           {overviewCards.length > 0 ? (
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">
                 Package overview
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -642,7 +642,7 @@ export function TeacherPackageViewer({
                   return (
                     <div
                       key={card.key}
-                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                      className="rounded-xl border border-stone-200 bg-[#FAF6EF] p-4 shadow-sm transition-shadow hover:shadow-md"
                     >
                       <div className="flex items-start gap-3">
                         <span
@@ -653,8 +653,8 @@ export function TeacherPackageViewer({
                           <Icon size={18} />
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-slate-900">{card.title}</p>
-                          <p className="mt-0.5 text-xs text-slate-600">{card.description}</p>
+                          <p className="text-sm font-semibold text-stone-900">{card.title}</p>
+                          <p className="mt-0.5 text-xs text-stone-600">{card.description}</p>
                           <button
                             type="button"
                             disabled={busy !== null}
@@ -709,7 +709,7 @@ export function TeacherPackageViewer({
         <div className="lg:col-span-8">
           <div className="overflow-x-auto pb-1">
             <div
-              className="flex min-w-0 gap-2 border-b border-slate-200 pb-3"
+              className="flex min-w-0 gap-2 border-b border-stone-200 pb-3"
               role="tablist"
               aria-label="Teacher package sections"
             >
@@ -725,7 +725,7 @@ export function TeacherPackageViewer({
                     className={`relative shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 min-h-10 ${
                       selected
                         ? "text-white"
-                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        : "border border-stone-200 bg-[#FAF6EF] text-stone-700 hover:bg-stone-50"
                     }`}
                   >
                     {selected ? (
@@ -743,7 +743,7 @@ export function TeacherPackageViewer({
           </div>
 
           <article
-            className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6"
+            className="mt-4 overflow-hidden rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm md:p-6"
             role="tabpanel"
           >
             <AnimatePresence mode="popLayout" initial={false}>
@@ -754,17 +754,17 @@ export function TeacherPackageViewer({
                 exit={{ opacity: 0, x: -28 }}
                 transition={{ duration: 0.22, ease: "easeOut" }}
               >
-                <div className="flex flex-col gap-1 border-b border-slate-200 pb-3 md:flex-row md:items-end md:justify-between">
+                <div className="flex flex-col gap-1 border-b border-stone-200 pb-3 md:flex-row md:items-end md:justify-between">
                   <div>
-                    <h4 className="text-lg font-bold text-slate-900">
+                    <h4 className="text-lg font-bold text-stone-900">
                       {activeKey ? getSectionTabLabel(activeKey) : "Section"}
                     </h4>
                   </div>
                 </div>
 
                 {activeKey === "PPT Slide Content" && hasPpt ? (
-                  <div className="mt-4 border-b border-slate-200 pb-4">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="mt-4 border-b border-stone-200 pb-4">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">
                       Presentation template
                     </p>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -776,8 +776,8 @@ export function TeacherPackageViewer({
                             type="button"
                             onClick={() => onPptThemeChange?.(t.id)}
                             aria-pressed={selected}
-                            className={`rounded-xl border-2 bg-white p-2.5 text-left shadow-sm transition hover:shadow-md ${
-                              selected ? "border-teal-500 ring-2 ring-teal-100" : "border-slate-200 hover:border-slate-300"
+                            className={`rounded-xl border-2 bg-[#FAF6EF] p-2.5 text-left shadow-sm transition hover:shadow-md ${
+                              selected ? "border-teal-500 ring-2 ring-teal-100" : "border-stone-200 hover:border-stone-300"
                             }`}
                           >
                             <div className="mb-2 flex h-12 gap-1 overflow-hidden rounded-lg" aria-hidden>
@@ -785,10 +785,10 @@ export function TeacherPackageViewer({
                                 <span key={hex} className="h-full min-w-0 flex-1" style={{ backgroundColor: `#${hex}` }} />
                               ))}
                             </div>
-                            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
                               Template {t.themeNumber}
                             </p>
-                            <p className="text-xs font-semibold text-slate-900">{t.name}</p>
+                            <p className="text-xs font-semibold text-stone-900">{t.name}</p>
                           </button>
                         );
                       })}
@@ -798,13 +798,13 @@ export function TeacherPackageViewer({
 
                 <div className="mt-4 grid max-h-[min(70vh,780px)] gap-4 overflow-y-auto lg:grid-cols-[1fr_min(280px,32%)]">
                   <div className="min-h-0 min-w-0 overflow-y-auto">
-                    <div className="prose prose-slate prose-sm max-w-none prose-headings:font-bold prose-headings:text-slate-900 prose-p:text-slate-600 prose-li:text-slate-600 prose-strong:text-slate-900 sm:prose-base">
+                    <div className="prose prose-slate prose-sm max-w-none prose-headings:font-bold prose-headings:text-stone-900 prose-p:text-stone-600 prose-li:text-stone-600 prose-strong:text-stone-900 sm:prose-base">
                       {renderedActiveContent}
                     </div>
                   </div>
                   {activeImageList.length > 0 ? (
-                    <aside className="flex min-h-0 flex-col gap-3 border-t border-slate-100 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <aside className="flex min-h-0 flex-col gap-3 border-t border-stone-100 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
                         Section illustration
                       </p>
                       <div className="space-y-3 overflow-y-auto">
@@ -814,7 +814,7 @@ export function TeacherPackageViewer({
                             href={src}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-sm ring-teal-500 transition hover:ring-2"
+                            className="block overflow-hidden rounded-lg border border-stone-200 bg-stone-50 shadow-sm ring-teal-500 transition hover:ring-2"
                           >
                             <img
                               src={src}

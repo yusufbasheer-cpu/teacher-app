@@ -26,7 +26,7 @@ export const posts: BlogPost[] = [
     author: "Mohammed Yusuf",
     publishedAt: "2026-06-20",
     readTime: 5,
-    coverGradient: "linear-gradient(135deg, #0A1628 0%, #0891b2 100%)",
+    coverGradient: "linear-gradient(135deg, #241A12 0%, #0891b2 100%)",
     content: [
       {
         type: "p",
@@ -162,7 +162,7 @@ export const posts: BlogPost[] = [
     author: "Mohammed Yusuf",
     publishedAt: "2026-06-20",
     readTime: 7,
-    coverGradient: "linear-gradient(135deg, #0f2d1a 0%, #00C6A7 100%)",
+    coverGradient: "linear-gradient(135deg, #0f2d1a 0%, #0E9484 100%)",
     content: [
       {
         type: "p",
@@ -278,7 +278,7 @@ export const posts: BlogPost[] = [
     author: "Mohammed Yusuf",
     publishedAt: "2026-06-20",
     readTime: 6,
-    coverGradient: "linear-gradient(135deg, #0A1628 0%, #7c3aed 100%)",
+    coverGradient: "linear-gradient(135deg, #241A12 0%, #7c3aed 100%)",
     content: [
       {
         type: "p",
@@ -392,7 +392,7 @@ export const posts: BlogPost[] = [
     author: "Mohammed Yusuf",
     publishedAt: "2026-06-20",
     readTime: 6,
-    coverGradient: "linear-gradient(135deg, #1a0a28 0%, #00C6A7 100%)",
+    coverGradient: "linear-gradient(135deg, #1a0a28 0%, #0E9484 100%)",
     content: [
       {
         type: "p",
@@ -513,7 +513,7 @@ export const posts: BlogPost[] = [
     author: "Mohammed Yusuf",
     publishedAt: "2026-06-10",
     readTime: 5,
-    coverGradient: "linear-gradient(135deg, #0A1628 0%, #00C6A7 100%)",
+    coverGradient: "linear-gradient(135deg, #241A12 0%, #0E9484 100%)",
     content: [
       {
         type: "p",
@@ -648,7 +648,7 @@ export const posts: BlogPost[] = [
     author: "Mohammed Yusuf",
     publishedAt: "2026-06-18",
     readTime: 6,
-    coverGradient: "linear-gradient(135deg, #0A1628 0%, #2563eb 100%)",
+    coverGradient: "linear-gradient(135deg, #241A12 0%, #2563eb 100%)",
     content: [
       {
         type: "p",

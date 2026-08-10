@@ -38,7 +38,7 @@ function GoogleLogo() {
 function GoogleSpinner() {
   return (
     <svg
-      className="size-5 animate-spin text-slate-500"
+      className="size-5 animate-spin text-stone-500"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden
@@ -211,20 +211,20 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
 
   return (
     <div
-      className="mx-auto w-full max-w-md rounded-3xl border bg-white p-6 shadow-sm md:p-8"
-      style={{ borderColor: "rgba(0,198,167,0.2)" }}
+      className="mx-auto w-full max-w-md rounded-3xl border bg-[#FAF6EF] p-6 shadow-sm md:p-8"
+      style={{ borderColor: "rgba(14, 148, 132,0.2)" }}
     >
       <p
         className="mb-3 inline-flex rounded-full border px-3 py-1 text-xs font-semibold"
-        style={{ borderColor: "#00C6A7", color: "#00C6A7", background: "rgba(0,198,167,0.08)" }}
+        style={{ borderColor: "#0E9484", color: "#0E9484", background: "rgba(14, 148, 132,0.08)" }}
       >
         <span>Welcome to </span>
         <span className="font-layah-logo">Layah.ai</span>
       </p>
-      <h1 className="text-2xl font-bold" style={{ color: "#0A1628" }}>
+      <h1 className="text-2xl font-bold" style={{ color: "#241A12" }}>
         {mode === "login" ? "Teacher Login" : "Create Teacher Account"}
       </h1>
-      <p className="mt-2 text-sm" style={{ color: "#4A5568" }}>
+      <p className="mt-2 text-sm" style={{ color: "#6B5D4F" }}>
         {mode === "login"
           ? "Login to access your lesson plans."
           : "Sign up with email and password."}
@@ -234,8 +234,8 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
         type="button"
         onClick={() => void onGoogleSignIn()}
         disabled={loading || googleLoading}
-        className="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-3 rounded-xl border bg-white px-4 py-2.5 text-sm font-semibold transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
-        style={{ borderColor: "#dadce0", color: "#0A1628" }}
+        className="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-3 rounded-xl border bg-[#FAF6EF] px-4 py-2.5 text-sm font-semibold transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-70"
+        style={{ borderColor: "#dadce0", color: "#241A12" }}
       >
         {googleLoading ? (
           <GoogleSpinner />
@@ -245,7 +245,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
         <span>{googleLoading ? "Connecting…" : "Continue with Google"}</span>
       </button>
 
-      <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: "#64748b" }}>
+      <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: "#7a6e5f" }}>
         School teachers: Sign in with your school Google account to access your school plan
       </p>
 
@@ -254,10 +254,10 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           className="absolute inset-0 flex items-center"
           aria-hidden
         >
-          <div className="w-full border-t" style={{ borderColor: "#E2E8F0" }} />
+          <div className="w-full border-t" style={{ borderColor: "#E3D9C8" }} />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="bg-white px-3 font-medium" style={{ color: "#94a3b8" }}>
+          <span className="bg-[#FAF6EF] px-3 font-medium" style={{ color: "#a79a87" }}>
             OR
           </span>
         </div>
@@ -277,7 +277,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
         </div>
 
         <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium" style={{ color: "#0A1628" }}>
+          <label htmlFor="email" className="mb-1 block text-sm font-medium" style={{ color: "#241A12" }}>
             Email
           </label>
           <input
@@ -287,15 +287,15 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition"
-            style={{ borderColor: "#CBD5E0", color: "#0A1628" }}
-            onFocus={(e) => (e.target.style.borderColor = "#00C6A7")}
-            onBlur={(e) => (e.target.style.borderColor = "#CBD5E0")}
+            style={{ borderColor: "#D9CCB8", color: "#241A12" }}
+            onFocus={(e) => (e.target.style.borderColor = "#0E9484")}
+            onBlur={(e) => (e.target.style.borderColor = "#D9CCB8")}
             required
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="mb-1 block text-sm font-medium" style={{ color: "#0A1628" }}>
+          <label htmlFor="password" className="mb-1 block text-sm font-medium" style={{ color: "#241A12" }}>
             Password
           </label>
           <input
@@ -306,9 +306,9 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             onChange={(e) => setPassword(e.target.value)}
             minLength={6}
             className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition"
-            style={{ borderColor: "#CBD5E0", color: "#0A1628" }}
-            onFocus={(e) => (e.target.style.borderColor = "#00C6A7")}
-            onBlur={(e) => (e.target.style.borderColor = "#CBD5E0")}
+            style={{ borderColor: "#D9CCB8", color: "#241A12" }}
+            onFocus={(e) => (e.target.style.borderColor = "#0E9484")}
+            onBlur={(e) => (e.target.style.borderColor = "#D9CCB8")}
             required
           />
         </div>
@@ -324,7 +324,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           type="submit"
           disabled={loading || googleLoading}
           className="inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
-          style={{ background: "#00C6A7" }}
+          style={{ background: "#0E9484" }}
         >
           {loading
             ? "Please wait..."
@@ -335,13 +335,13 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       </form>
 
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-      {message ? <p className="mt-3 text-sm" style={{ color: "#0A8F7A" }}>{message}</p> : null}
+      {message ? <p className="mt-3 text-sm" style={{ color: "#0B6B5F" }}>{message}</p> : null}
 
       {linkMode ? (
         <Link
           href={mode === "login" ? "/signup" : "/login"}
           className="mt-4 inline-block text-sm font-medium transition hover:opacity-80"
-          style={{ color: "#00C6A7" }}
+          style={{ color: "#0E9484" }}
         >
           {mode === "login"
             ? "Need an account? Sign up"
@@ -362,7 +362,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             setMessage(null);
           }}
           className="mt-4 text-sm font-medium transition hover:opacity-80"
-          style={{ color: "#00C6A7" }}
+          style={{ color: "#0E9484" }}
         >
           {mode === "login"
             ? "Need an account? Sign up"

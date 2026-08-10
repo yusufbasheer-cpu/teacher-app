@@ -7,8 +7,8 @@ import { getAuthHeaders } from "@/lib/auth-headers";
 import { supabase } from "@/lib/supabase";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
+const NAVY = "#241A12";
+const TEAL = "#0E9484";
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
@@ -38,13 +38,13 @@ function CancelConfirmModal({
     <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-[#0A1628]/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#241A12]/70 backdrop-blur-sm"
         aria-label="Close"
         onClick={onCancel}
       />
       <div
-        className="relative w-full max-w-sm rounded-3xl border bg-white p-8 shadow-2xl"
-        style={{ borderColor: "rgba(0,198,167,0.3)" }}
+        className="relative w-full max-w-sm rounded-3xl border bg-[#FAF6EF] p-8 shadow-2xl"
+        style={{ borderColor: "rgba(14, 148, 132,0.3)" }}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="cancel-sub-title"
@@ -52,7 +52,7 @@ function CancelConfirmModal({
         <h2 id="cancel-sub-title" className="text-center text-xl font-bold" style={{ color: NAVY }}>
           Cancel auto-renewal?
         </h2>
-        <p className="mt-3 text-center text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+        <p className="mt-3 text-center text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
           You&apos;ll keep Pro access until the end of your current billing period. No further
           payments will be taken after that.
         </p>
@@ -70,8 +70,8 @@ function CancelConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={cancelling}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border text-sm font-semibold transition hover:bg-slate-50 disabled:opacity-60"
-            style={{ borderColor: "#CBD5E0", color: "#4A5568" }}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border text-sm font-semibold transition hover:bg-stone-50 disabled:opacity-60"
+            style={{ borderColor: "#D9CCB8", color: "#6B5D4F" }}
           >
             Keep Subscription
           </button>
@@ -94,12 +94,12 @@ function DeleteConfirmModal({
     <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-[#0A1628]/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#241A12]/70 backdrop-blur-sm"
         aria-label="Cancel"
         onClick={onCancel}
       />
       <div
-        className="relative w-full max-w-sm rounded-3xl border bg-white p-8 shadow-2xl"
+        className="relative w-full max-w-sm rounded-3xl border bg-[#FAF6EF] p-8 shadow-2xl"
         style={{ borderColor: "rgba(239,68,68,0.3)" }}
         role="alertdialog"
         aria-modal="true"
@@ -117,7 +117,7 @@ function DeleteConfirmModal({
         <h2 id="delete-confirm-title" className="text-center text-xl font-bold" style={{ color: NAVY }}>
           Are you sure?
         </h2>
-        <p className="mt-3 text-center text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+        <p className="mt-3 text-center text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
           This will permanently delete your account and all your lesson plans, question papers, and worksheets.
           <strong className="block mt-1 text-red-600">This action cannot be undone.</strong>
         </p>
@@ -135,8 +135,8 @@ function DeleteConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={deleting}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border text-sm font-semibold transition hover:bg-slate-50 disabled:opacity-60"
-            style={{ borderColor: "#CBD5E0", color: "#4A5568" }}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border text-sm font-semibold transition hover:bg-stone-50 disabled:opacity-60"
+            style={{ borderColor: "#D9CCB8", color: "#6B5D4F" }}
           >
             Cancel
           </button>
@@ -286,8 +286,8 @@ export default function SettingsPage() {
 
   if (loadingPage) {
     return (
-      <main className="flex min-h-screen items-center justify-center" style={{ background: "#F7F9FC" }}>
-        <p className="text-sm font-medium" style={{ color: "#64748b" }}>Loading…</p>
+      <main className="flex min-h-screen items-center justify-center" style={{ background: "#F1E9DC" }}>
+        <p className="text-sm font-medium" style={{ color: "#7a6e5f" }}>Loading…</p>
       </main>
     );
   }
@@ -300,35 +300,35 @@ export default function SettingsPage() {
     : "—";
 
   return (
-    <main className="min-h-screen pb-16 pt-10" style={{ background: "#F7F9FC" }}>
+    <main className="min-h-screen pb-16 pt-10" style={{ background: "#F1E9DC" }}>
       <Container>
         <div className="mx-auto max-w-xl">
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" style={{ color: NAVY }}>
             Account Settings
           </h1>
-          <p className="mt-2 text-sm" style={{ color: "#4A5568" }}>
+          <p className="mt-2 text-sm" style={{ color: "#6B5D4F" }}>
             Manage your Layah account and data.
           </p>
 
           {/* Account details */}
           <section
-            className="mt-8 rounded-3xl border bg-white p-6 shadow-sm"
-            style={{ borderColor: "rgba(0,198,167,0.2)" }}
+            className="mt-8 rounded-3xl border bg-[#FAF6EF] p-6 shadow-sm"
+            style={{ borderColor: "rgba(14, 148, 132,0.2)" }}
           >
             <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
               Account Details
             </h2>
             <dl className="mt-4 space-y-4">
-              <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "#F7F9FC" }}>
-                <dt className="text-sm font-medium" style={{ color: "#64748b" }}>Email</dt>
+              <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "#F1E9DC" }}>
+                <dt className="text-sm font-medium" style={{ color: "#7a6e5f" }}>Email</dt>
                 <dd className="text-sm font-semibold" style={{ color: NAVY }}>{email ?? "—"}</dd>
               </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "#F7F9FC" }}>
-                <dt className="text-sm font-medium" style={{ color: "#64748b" }}>Plan</dt>
+              <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "#F1E9DC" }}>
+                <dt className="text-sm font-medium" style={{ color: "#7a6e5f" }}>Plan</dt>
                 <dd className="text-sm font-semibold" style={{ color: NAVY }}>{planLabel}</dd>
               </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "#F7F9FC" }}>
-                <dt className="text-sm font-medium" style={{ color: "#64748b" }}>Generations</dt>
+              <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "#F1E9DC" }}>
+                <dt className="text-sm font-medium" style={{ color: "#7a6e5f" }}>Generations</dt>
                 <dd className="text-sm font-semibold" style={{ color: NAVY }}>{generationsText}</dd>
               </div>
             </dl>
@@ -337,13 +337,13 @@ export default function SettingsPage() {
           {/* Manage subscription */}
           {subscription && (subscription.status === "active" || subscription.status === "pending") && (
             <section
-              className="mt-6 rounded-3xl border bg-white p-6 shadow-sm"
-              style={{ borderColor: "rgba(0,198,167,0.2)" }}
+              className="mt-6 rounded-3xl border bg-[#FAF6EF] p-6 shadow-sm"
+              style={{ borderColor: "rgba(14, 148, 132,0.2)" }}
             >
               <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
                 Manage Subscription
               </h2>
-              <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+              <p className="mt-3 text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
                 Pro Monthly · Billed ₹349 every 30 days via Razorpay
                 {subscription.status === "pending" && (
                   <span className="mt-1 block font-semibold text-amber-600">
@@ -361,7 +361,7 @@ export default function SettingsPage() {
               ) : (
                 <>
                   {subscription.current_period_end && (
-                    <p className="mt-1 text-sm" style={{ color: "#64748b" }}>
+                    <p className="mt-1 text-sm" style={{ color: "#7a6e5f" }}>
                       Next billing date: {subscription.current_period_end}
                     </p>
                   )}
@@ -379,20 +379,20 @@ export default function SettingsPage() {
 
           {/* Download my data */}
           <section
-            className="mt-6 rounded-3xl border bg-white p-6 shadow-sm"
-            style={{ borderColor: "rgba(0,198,167,0.2)" }}
+            className="mt-6 rounded-3xl border bg-[#FAF6EF] p-6 shadow-sm"
+            style={{ borderColor: "rgba(14, 148, 132,0.2)" }}
           >
             <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
               My Data
             </h2>
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+            <p className="mt-3 text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
               Download a copy of all your Layah data including your account info, usage stats, and all saved lesson plans as a JSON file.
             </p>
 
             {downloadSuccess && (
               <div
                 className="mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold"
-                style={{ background: "rgba(0,198,167,0.1)", color: "#0A8F7A" }}
+                style={{ background: "rgba(14, 148, 132,0.1)", color: "#0B6B5F" }}
               >
                 <svg className="size-4 shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden>
                   <path d="M5 10l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -431,13 +431,13 @@ export default function SettingsPage() {
 
           {/* Cookie preferences */}
           <section
-            className="mt-6 rounded-3xl border bg-white p-6 shadow-sm"
-            style={{ borderColor: "rgba(0,198,167,0.2)" }}
+            className="mt-6 rounded-3xl border bg-[#FAF6EF] p-6 shadow-sm"
+            style={{ borderColor: "rgba(14, 148, 132,0.2)" }}
           >
             <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
               Cookie Preferences
             </h2>
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+            <p className="mt-3 text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
               We only use essential cookies required for authentication and your session. You can reset your cookie choice at any time.
             </p>
             <button
@@ -446,8 +446,8 @@ export default function SettingsPage() {
                 localStorage.removeItem("layah_cookie_consent");
                 window.location.reload();
               }}
-              className="mt-4 inline-flex min-h-9 items-center rounded-xl border px-4 text-sm font-semibold transition hover:bg-slate-50"
-              style={{ borderColor: "#CBD5E0", color: "#4A5568" }}
+              className="mt-4 inline-flex min-h-9 items-center rounded-xl border px-4 text-sm font-semibold transition hover:bg-stone-50"
+              style={{ borderColor: "#D9CCB8", color: "#6B5D4F" }}
             >
               Reset Cookie Choice
             </button>
@@ -455,13 +455,13 @@ export default function SettingsPage() {
 
           {/* Danger zone */}
           <section
-            className="mt-6 rounded-3xl border bg-white p-6 shadow-sm"
+            className="mt-6 rounded-3xl border bg-[#FAF6EF] p-6 shadow-sm"
             style={{ borderColor: "rgba(239,68,68,0.2)" }}
           >
             <h2 className="text-sm font-bold uppercase tracking-widest text-red-500">
               Danger Zone
             </h2>
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: "#4A5568" }}>
+            <p className="mt-3 text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
               Deleting your account is permanent and cannot be undone. All your lesson plans, question papers, and worksheets will be removed.
             </p>
             {deleteError && (

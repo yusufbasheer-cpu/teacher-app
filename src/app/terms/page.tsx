@@ -13,7 +13,7 @@ export default function TermsPage() {
       <p>
         These Terms of Service (&quot;Terms&quot;) govern your access to and use of Layah.ai
         (&quot;Layah,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) at{" "}
-        <a href="https://layah.in" className="font-medium underline" style={{ color: "#00C6A7" }}>
+        <a href="https://layah.in" className="font-medium underline" style={{ color: "#0E9484" }}>
           layah.in
         </a>{" "}
         and related services (the &quot;Service&quot;). By creating an account or using the Service, you
@@ -121,7 +121,7 @@ export default function TermsPage() {
       <LegalSection title="7. Privacy">
         <p>
           Our collection and use of personal information is described in our{" "}
-          <a href="/privacy" className="font-medium underline" style={{ color: "#00C6A7" }}>
+          <a href="/privacy" className="font-medium underline" style={{ color: "#0E9484" }}>
             Privacy Policy
           </a>
           , which is incorporated into these Terms by reference.
@@ -186,7 +186,7 @@ export default function TermsPage() {
           <a
             href="mailto:support@layah.in"
             className="font-medium underline"
-            style={{ color: "#00C6A7" }}
+            style={{ color: "#0E9484" }}
           >
             support@layah.in
           </a>

@@ -137,50 +137,50 @@ async function sendNotificationEmail(data: Omit<RegistrationBody, "adminUserId">
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: #0A1628; padding: 24px; border-radius: 12px 12px 0 0;">
-        <h1 style="color: #00C6A7; margin: 0; font-size: 20px;">New School Registration</h1>
+      <div style="background: #241A12; padding: 24px; border-radius: 12px 12px 0 0;">
+        <h1 style="color: #0E9484; margin: 0; font-size: 20px;">New School Registration</h1>
         <p style="color: rgba(255,255,255,0.7); margin: 8px 0 0; font-size: 14px;">A new school has registered on Layah.ai</p>
       </div>
-      <div style="background: #ffffff; border: 1px solid #E2E8F0; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
+      <div style="background: #FFFCF7; border: 1px solid #E3D9C8; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
         <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-          <tr style="border-bottom: 1px solid #F1F5F9;">
-            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">School Name</td>
-            <td style="padding: 12px 8px; color: #0A1628; font-weight: 700;">${data.schoolName}</td>
+          <tr style="border-bottom: 1px solid #F1E9DC;">
+            <td style="padding: 12px 8px; color: #7a6e5f; font-weight: 600;">School Name</td>
+            <td style="padding: 12px 8px; color: #241A12; font-weight: 700;">${data.schoolName}</td>
           </tr>
-          <tr style="border-bottom: 1px solid #F1F5F9;">
-            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Email Domain</td>
-            <td style="padding: 12px 8px; color: #0A1628;">@${data.emailDomain}</td>
+          <tr style="border-bottom: 1px solid #F1E9DC;">
+            <td style="padding: 12px 8px; color: #7a6e5f; font-weight: 600;">Email Domain</td>
+            <td style="padding: 12px 8px; color: #241A12;">@${data.emailDomain}</td>
           </tr>
-          <tr style="border-bottom: 1px solid #F1F5F9;">
-            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Plan Selected</td>
-            <td style="padding: 12px 8px; color: #00C6A7; font-weight: 700;">${data.planSelected}</td>
+          <tr style="border-bottom: 1px solid #F1E9DC;">
+            <td style="padding: 12px 8px; color: #7a6e5f; font-weight: 600;">Plan Selected</td>
+            <td style="padding: 12px 8px; color: #0E9484; font-weight: 700;">${data.planSelected}</td>
           </tr>
-          <tr style="border-bottom: 1px solid #F1F5F9;">
-            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Price</td>
-            <td style="padding: 12px 8px; color: #0A1628;">${data.planPrice || "N/A"}</td>
+          <tr style="border-bottom: 1px solid #F1E9DC;">
+            <td style="padding: 12px 8px; color: #7a6e5f; font-weight: 600;">Price</td>
+            <td style="padding: 12px 8px; color: #241A12;">${data.planPrice || "N/A"}</td>
           </tr>
-          <tr style="border-bottom: 1px solid #F1F5F9;">
-            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Number of Teachers</td>
-            <td style="padding: 12px 8px; color: #0A1628;">${data.numTeachers}</td>
+          <tr style="border-bottom: 1px solid #F1E9DC;">
+            <td style="padding: 12px 8px; color: #7a6e5f; font-weight: 600;">Number of Teachers</td>
+            <td style="padding: 12px 8px; color: #241A12;">${data.numTeachers}</td>
           </tr>
-          <tr style="border-bottom: 1px solid #F1F5F9;">
-            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Country</td>
-            <td style="padding: 12px 8px; color: #0A1628;">${data.country}</td>
+          <tr style="border-bottom: 1px solid #F1E9DC;">
+            <td style="padding: 12px 8px; color: #7a6e5f; font-weight: 600;">Country</td>
+            <td style="padding: 12px 8px; color: #241A12;">${data.country}</td>
           </tr>
-          <tr style="border-bottom: 1px solid #F1F5F9;">
-            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Phone</td>
-            <td style="padding: 12px 8px; color: #0A1628;">${data.phone || "Not provided"}</td>
+          <tr style="border-bottom: 1px solid #F1E9DC;">
+            <td style="padding: 12px 8px; color: #7a6e5f; font-weight: 600;">Phone</td>
+            <td style="padding: 12px 8px; color: #241A12;">${data.phone || "Not provided"}</td>
           </tr>
-          <tr style="border-bottom: 1px solid #F1F5F9;">
-            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">Admin Email</td>
-            <td style="padding: 12px 8px; color: #0A1628;">${data.adminEmail}</td>
+          <tr style="border-bottom: 1px solid #F1E9DC;">
+            <td style="padding: 12px 8px; color: #7a6e5f; font-weight: 600;">Admin Email</td>
+            <td style="padding: 12px 8px; color: #241A12;">${data.adminEmail}</td>
           </tr>
           <tr>
-            <td style="padding: 12px 8px; color: #64748b; font-weight: 600;">How They Heard</td>
-            <td style="padding: 12px 8px; color: #0A1628;">${data.howHeard || "Not provided"}</td>
+            <td style="padding: 12px 8px; color: #7a6e5f; font-weight: 600;">How They Heard</td>
+            <td style="padding: 12px 8px; color: #241A12;">${data.howHeard || "Not provided"}</td>
           </tr>
         </table>
-        <p style="margin: 20px 0 0; font-size: 12px; color: #94a3b8;">
+        <p style="margin: 20px 0 0; font-size: 12px; color: #a79a87;">
           Submitted at ${new Date().toISOString()}
         </p>
       </div>

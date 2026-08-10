@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
-const MUTED = "#4A5568";
+const NAVY = "#241A12";
+const TEAL = "#0E9484";
+const MUTED = "#6B5D4F";
 
 type Stats = {
   totalUsers: number;
@@ -60,10 +60,10 @@ function formatPlan(plan: string) {
 function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
   return (
     <div
-      className="rounded-2xl border bg-white p-5 shadow-sm"
-      style={{ borderColor: "rgba(0,198,167,0.25)" }}
+      className="rounded-2xl border bg-[#FAF6EF] p-5 shadow-sm"
+      style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
     >
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">{label}</p>
       <p className="mt-2 text-3xl font-bold" style={{ color: accent ? TEAL : NAVY }}>
         {value}
       </p>
@@ -80,7 +80,7 @@ function TabButton({ active, label, onClick }: { active: boolean; label: string;
       style={{
         background: active ? NAVY : "transparent",
         color: active ? "#fff" : MUTED,
-        border: active ? "none" : "1px solid #E2E8F0",
+        border: active ? "none" : "1px solid #E3D9C8",
       }}
     >
       {label}
@@ -212,7 +212,7 @@ export function SuperAdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center rounded-2xl border bg-white" style={{ borderColor: "rgba(0,198,167,0.25)" }}>
+      <div className="flex min-h-[40vh] items-center justify-center rounded-2xl border bg-[#FAF6EF]" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
         <p className="text-sm font-medium" style={{ color: MUTED }}>Loading super admin dashboard...</p>
       </div>
     );
@@ -222,7 +222,7 @@ export function SuperAdminDashboard() {
     <div className="space-y-8 pb-8">
       <header
         className="rounded-2xl p-6 sm:p-8"
-        style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #0d2040 55%, rgba(0,198,167,0.15) 100%)`, color: "white" }}
+        style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #3a2a1e 55%, rgba(14, 148, 132,0.15) 100%)`, color: "white" }}
       >
         <p
           className="mb-3 inline-flex rounded-full border px-3 py-1 text-xs font-semibold"
@@ -269,15 +269,15 @@ export function SuperAdminDashboard() {
             Pending School Registrations
           </h2>
           {pending.length === 0 ? (
-            <div className="rounded-2xl border bg-white p-6 text-sm" style={{ borderColor: "rgba(0,198,167,0.25)", color: MUTED }}>
+            <div className="rounded-2xl border bg-[#FAF6EF] p-6 text-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)", color: MUTED }}>
               No pending registrations.
             </div>
           ) : (
             <>
-              <div className="hidden overflow-x-auto rounded-2xl border bg-white shadow-sm md:block" style={{ borderColor: "rgba(0,198,167,0.25)" }}>
+              <div className="hidden overflow-x-auto rounded-2xl border bg-[#FAF6EF] shadow-sm md:block" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
                 <table className="min-w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b bg-slate-50" style={{ borderColor: "#E2E8F0" }}>
+                    <tr className="border-b bg-stone-50" style={{ borderColor: "#E3D9C8" }}>
                       <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>School Name</th>
                       <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Email Domain</th>
                       <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Plan</th>
@@ -289,7 +289,7 @@ export function SuperAdminDashboard() {
                   </thead>
                   <tbody>
                     {pending.map((reg) => (
-                      <tr key={reg.id} className="border-b last:border-b-0" style={{ borderColor: "#E2E8F0" }}>
+                      <tr key={reg.id} className="border-b last:border-b-0" style={{ borderColor: "#E3D9C8" }}>
                         <td className="px-4 py-3 font-medium" style={{ color: NAVY }}>{reg.school_name}</td>
                         <td className="px-4 py-3" style={{ color: MUTED }}>@{reg.email_domain}</td>
                         <td className="px-4 py-3" style={{ color: TEAL }}>{reg.plan_selected}</td>
@@ -325,7 +325,7 @@ export function SuperAdminDashboard() {
 
               <div className="space-y-3 md:hidden">
                 {pending.map((reg) => (
-                  <div key={reg.id} className="rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(0,198,167,0.25)" }}>
+                  <div key={reg.id} className="rounded-2xl border bg-[#FAF6EF] p-4 shadow-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
                     <p className="font-semibold" style={{ color: NAVY }}>{reg.school_name}</p>
                     <p className="mt-1 text-sm" style={{ color: MUTED }}>@{reg.email_domain}</p>
                     <div className="mt-2 flex flex-wrap gap-2 text-xs" style={{ color: MUTED }}>
@@ -365,15 +365,15 @@ export function SuperAdminDashboard() {
         <section>
           <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>All Schools</h2>
           {schools.length === 0 ? (
-            <div className="rounded-2xl border bg-white p-6 text-sm" style={{ borderColor: "rgba(0,198,167,0.25)", color: MUTED }}>
+            <div className="rounded-2xl border bg-[#FAF6EF] p-6 text-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)", color: MUTED }}>
               No schools registered yet.
             </div>
           ) : (
             <>
-              <div className="hidden overflow-x-auto rounded-2xl border bg-white shadow-sm md:block" style={{ borderColor: "rgba(0,198,167,0.25)" }}>
+              <div className="hidden overflow-x-auto rounded-2xl border bg-[#FAF6EF] shadow-sm md:block" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
                 <table className="min-w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b bg-slate-50" style={{ borderColor: "#E2E8F0" }}>
+                    <tr className="border-b bg-stone-50" style={{ borderColor: "#E3D9C8" }}>
                       <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>School Name</th>
                       <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Domain</th>
                       <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Plan</th>
@@ -385,7 +385,7 @@ export function SuperAdminDashboard() {
                   </thead>
                   <tbody>
                     {schools.map((s) => (
-                      <tr key={s.id} className="border-b last:border-b-0" style={{ borderColor: "#E2E8F0" }}>
+                      <tr key={s.id} className="border-b last:border-b-0" style={{ borderColor: "#E3D9C8" }}>
                         <td className="px-4 py-3 font-medium" style={{ color: NAVY }}>{s.school_name}</td>
                         <td className="px-4 py-3" style={{ color: MUTED }}>@{s.email_domain}</td>
                         <td className="px-4 py-3" style={{ color: TEAL }}>{formatPlan(s.plan_type)}</td>
@@ -410,7 +410,7 @@ export function SuperAdminDashboard() {
 
               <div className="space-y-3 md:hidden">
                 {schools.map((s) => (
-                  <div key={s.id} className="rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(0,198,167,0.25)" }}>
+                  <div key={s.id} className="rounded-2xl border bg-[#FAF6EF] p-4 shadow-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
                     <p className="font-semibold" style={{ color: NAVY }}>{s.school_name}</p>
                     <p className="mt-1 text-sm" style={{ color: MUTED }}>@{s.email_domain}</p>
                     <div className="mt-2 flex flex-wrap gap-3 text-xs" style={{ color: MUTED }}>
@@ -440,15 +440,15 @@ export function SuperAdminDashboard() {
             All Users ({users.length})
           </h2>
           {users.length === 0 ? (
-            <div className="rounded-2xl border bg-white p-6 text-sm" style={{ borderColor: "rgba(0,198,167,0.25)", color: MUTED }}>
+            <div className="rounded-2xl border bg-[#FAF6EF] p-6 text-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)", color: MUTED }}>
               No users found.
             </div>
           ) : (
             <>
-              <div className="hidden overflow-x-auto rounded-2xl border bg-white shadow-sm md:block" style={{ borderColor: "rgba(0,198,167,0.25)" }}>
+              <div className="hidden overflow-x-auto rounded-2xl border bg-[#FAF6EF] shadow-sm md:block" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
                 <table className="min-w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b bg-slate-50" style={{ borderColor: "#E2E8F0" }}>
+                    <tr className="border-b bg-stone-50" style={{ borderColor: "#E3D9C8" }}>
                       <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Email</th>
                       <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Plan</th>
                       <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Generations</th>
@@ -458,7 +458,7 @@ export function SuperAdminDashboard() {
                   </thead>
                   <tbody>
                     {users.map((u) => (
-                      <tr key={u.id} className="border-b last:border-b-0" style={{ borderColor: "#E2E8F0" }}>
+                      <tr key={u.id} className="border-b last:border-b-0" style={{ borderColor: "#E3D9C8" }}>
                         <td className="px-4 py-3 break-all font-medium" style={{ color: NAVY }}>{u.email}</td>
                         <td className="px-4 py-3" style={{ color: TEAL }}>{formatPlan(u.planType)}</td>
                         <td className="px-4 py-3" style={{ color: MUTED }}>
@@ -470,8 +470,8 @@ export function SuperAdminDashboard() {
                             value={u.planType}
                             disabled={actionLoading === u.id}
                             onChange={(e) => void handleChangePlan(u.id, e.target.value)}
-                            className="rounded-lg border bg-white px-2 py-1 text-xs font-medium outline-none"
-                            style={{ borderColor: "#CBD5E0", color: NAVY }}
+                            className="rounded-lg border bg-[#FAF6EF] px-2 py-1 text-xs font-medium outline-none"
+                            style={{ borderColor: "#D9CCB8", color: NAVY }}
                           >
                             <option value="free">Free</option>
                             <option value="pro">Pro</option>
@@ -489,7 +489,7 @@ export function SuperAdminDashboard() {
 
               <div className="space-y-3 md:hidden">
                 {users.map((u) => (
-                  <div key={u.id} className="rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: "rgba(0,198,167,0.25)" }}>
+                  <div key={u.id} className="rounded-2xl border bg-[#FAF6EF] p-4 shadow-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
                     <p className="break-all font-semibold" style={{ color: NAVY }}>{u.email}</p>
                     <div className="mt-2 flex flex-wrap gap-3 text-xs" style={{ color: MUTED }}>
                       <span style={{ color: TEAL }}>{formatPlan(u.planType)}</span>
@@ -500,8 +500,8 @@ export function SuperAdminDashboard() {
                       value={u.planType}
                       disabled={actionLoading === u.id}
                       onChange={(e) => void handleChangePlan(u.id, e.target.value)}
-                      className="mt-3 w-full rounded-lg border bg-white px-3 py-2 text-sm font-medium outline-none"
-                      style={{ borderColor: "#CBD5E0", color: NAVY }}
+                      className="mt-3 w-full rounded-lg border bg-[#FAF6EF] px-3 py-2 text-sm font-medium outline-none"
+                      style={{ borderColor: "#D9CCB8", color: NAVY }}
                     >
                       <option value="free">Free</option>
                       <option value="pro">Pro</option>

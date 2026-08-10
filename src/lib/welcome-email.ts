@@ -10,81 +10,81 @@ function buildWelcomeHtml(name: string): string {
 <!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#F7F9FC;font-family:Arial,Helvetica,sans-serif;">
-  <div style="max-width:600px;margin:0 auto;background:#ffffff;">
+<body style="margin:0;padding:0;background:#F1E9DC;font-family:Arial,Helvetica,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;background:#FFFCF7;">
 
     <!-- Header -->
-    <div style="background:#0A1628;padding:32px 40px;text-align:center;">
+    <div style="background:#241A12;padding:32px 40px;text-align:center;">
       <img src="${LAYAH_URL}/Logo.png" alt="Layah" height="40" style="height:40px;width:auto;" />
     </div>
 
     <!-- Body -->
     <div style="padding:40px;">
-      <h1 style="color:#0A1628;font-size:24px;font-weight:700;margin:0 0 16px;">
+      <h1 style="color:#241A12;font-size:24px;font-weight:700;margin:0 0 16px;">
         Welcome to Layah${name ? `, ${name}` : ""}! 🎓
       </h1>
-      <p style="color:#4A5568;font-size:15px;line-height:1.6;margin:0 0 24px;">
+      <p style="color:#6B5D4F;font-size:15px;line-height:1.6;margin:0 0 24px;">
         We are so excited to have you on board. You now have access to AI-powered lesson plans, PPTs, worksheets, question papers and more — all designed to save you time and make your lessons shine.
       </p>
 
       <!-- What you can do -->
-      <div style="background:#F7F9FC;border-radius:12px;padding:24px;margin-bottom:28px;">
-        <p style="color:#0A1628;font-size:14px;font-weight:700;margin:0 0 16px;">What you can do with Layah:</p>
+      <div style="background:#F1E9DC;border-radius:12px;padding:24px;margin-bottom:28px;">
+        <p style="color:#241A12;font-size:14px;font-weight:700;margin:0 0 16px;">What you can do with Layah:</p>
         <table style="width:100%;border-collapse:collapse;">
           <tr>
             <td style="padding:8px 0;vertical-align:top;width:28px;">
-              <div style="width:24px;height:24px;border-radius:50%;background:rgba(0,198,167,0.15);text-align:center;line-height:24px;font-size:12px;color:#00C6A7;">✓</div>
+              <div style="width:24px;height:24px;border-radius:50%;background:rgba(14, 148, 132,0.15);text-align:center;line-height:24px;font-size:12px;color:#0E9484;">✓</div>
             </td>
-            <td style="padding:8px 0;color:#374151;font-size:14px;">Generate complete lesson plans in seconds</td>
+            <td style="padding:8px 0;color:#2b2118;font-size:14px;">Generate complete lesson plans in seconds</td>
           </tr>
           <tr>
             <td style="padding:8px 0;vertical-align:top;width:28px;">
-              <div style="width:24px;height:24px;border-radius:50%;background:rgba(0,198,167,0.15);text-align:center;line-height:24px;font-size:12px;color:#00C6A7;">✓</div>
+              <div style="width:24px;height:24px;border-radius:50%;background:rgba(14, 148, 132,0.15);text-align:center;line-height:24px;font-size:12px;color:#0E9484;">✓</div>
             </td>
-            <td style="padding:8px 0;color:#374151;font-size:14px;">Create professional PPT presentations</td>
+            <td style="padding:8px 0;color:#2b2118;font-size:14px;">Create professional PPT presentations</td>
           </tr>
           <tr>
             <td style="padding:8px 0;vertical-align:top;width:28px;">
-              <div style="width:24px;height:24px;border-radius:50%;background:rgba(0,198,167,0.15);text-align:center;line-height:24px;font-size:12px;color:#00C6A7;">✓</div>
+              <div style="width:24px;height:24px;border-radius:50%;background:rgba(14, 148, 132,0.15);text-align:center;line-height:24px;font-size:12px;color:#0E9484;">✓</div>
             </td>
-            <td style="padding:8px 0;color:#374151;font-size:14px;">Build worksheets and question papers</td>
+            <td style="padding:8px 0;color:#2b2118;font-size:14px;">Build worksheets and question papers</td>
           </tr>
         </table>
       </div>
 
       <!-- CTA Button -->
       <div style="text-align:center;margin-bottom:28px;">
-        <a href="${LAYAH_URL}/lesson-plan" style="display:inline-block;background:#00C6A7;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;">
+        <a href="${LAYAH_URL}/lesson-plan" style="display:inline-block;background:#0E9484;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:8px;">
           Start Creating Now
         </a>
       </div>
 
       <!-- Free plan details -->
-      <div style="border:1px solid #E2E8F0;border-radius:12px;padding:20px;margin-bottom:24px;">
-        <p style="color:#0A1628;font-size:14px;font-weight:700;margin:0 0 8px;">Your Free Plan</p>
-        <p style="color:#4A5568;font-size:14px;line-height:1.5;margin:0;">
-          You have <strong style="color:#00C6A7;">${PLANS.free.generationsLimit} free generations</strong> this month. Each generation creates a complete lesson plan with PPT, worksheets, and more.
+      <div style="border:1px solid #E3D9C8;border-radius:12px;padding:20px;margin-bottom:24px;">
+        <p style="color:#241A12;font-size:14px;font-weight:700;margin:0 0 8px;">Your Free Plan</p>
+        <p style="color:#6B5D4F;font-size:14px;line-height:1.5;margin:0;">
+          You have <strong style="color:#0E9484;">${PLANS.free.generationsLimit} free generations</strong> this month. Each generation creates a complete lesson plan with PPT, worksheets, and more.
         </p>
       </div>
 
       <!-- Upgrade -->
-      <div style="background:linear-gradient(135deg,#0A1628,#0e2647);border-radius:12px;padding:20px;text-align:center;">
+      <div style="background:linear-gradient(135deg,#241A12,#0e2647);border-radius:12px;padding:20px;text-align:center;">
         <p style="color:#ffffff;font-size:14px;font-weight:700;margin:0 0 8px;">Want unlimited access?</p>
         <p style="color:rgba(255,255,255,0.7);font-size:13px;margin:0 0 16px;">
-          Upgrade to Pro for just <strong style="color:#00C6A7;">15 AED/month</strong> — get ${PLANS.pro.generationsLimit} generations, all themes, and priority support.
+          Upgrade to Pro for just <strong style="color:#0E9484;">15 AED/month</strong> — get ${PLANS.pro.generationsLimit} generations, all themes, and priority support.
         </p>
-        <a href="${LAYAH_URL}/pricing" style="display:inline-block;border:1px solid #00C6A7;color:#00C6A7;font-size:13px;font-weight:600;text-decoration:none;padding:10px 28px;border-radius:8px;">
+        <a href="${LAYAH_URL}/pricing" style="display:inline-block;border:1px solid #0E9484;color:#0E9484;font-size:13px;font-weight:600;text-decoration:none;padding:10px 28px;border-radius:8px;">
           View Plans
         </a>
       </div>
     </div>
 
     <!-- Footer -->
-    <div style="background:#0A1628;padding:24px 40px;text-align:center;">
+    <div style="background:#241A12;padding:24px 40px;text-align:center;">
       <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:0 0 8px;">
-        <a href="mailto:info@layah.in" style="color:#00C6A7;text-decoration:none;">info@layah.in</a>
+        <a href="mailto:info@layah.in" style="color:#0E9484;text-decoration:none;">info@layah.in</a>
         &nbsp;&middot;&nbsp;
-        <a href="${LAYAH_URL}" style="color:#00C6A7;text-decoration:none;">layah.in</a>
+        <a href="${LAYAH_URL}" style="color:#0E9484;text-decoration:none;">layah.in</a>
       </p>
       <p style="color:rgba(255,255,255,0.3);font-size:11px;margin:0;">
         &copy; 2026 Layah. All rights reserved.

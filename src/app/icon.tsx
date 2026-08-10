@@ -24,7 +24,7 @@ export default function Icon() {
         style={{
           width: "100%",
           height: "100%",
-          background: "#0A1628",
+          background: "#241A12",
           borderRadius: "6px",
           display: "flex",
           position: "relative",
@@ -32,11 +32,11 @@ export default function Icon() {
         }}
       >
         {/* Bottom diamond (back layer, darkest) */}
-        <div style={diamond(15, 7, "#009E85")} />
+        <div style={{ ...diamond(15, 7, "#0B6B5F"), boxShadow: "0 0 3px #0E9484" }} />
         {/* Middle diamond */}
-        <div style={diamond(9, 9, "#00C6A7")} />
+        <div style={{ ...diamond(9, 9, "#0E9484"), boxShadow: "0 0 3px #0E9484" }} />
         {/* Top diamond (front layer, lightest) */}
-        <div style={diamond(4, 11, "#3DDBC8")} />
+        <div style={{ ...diamond(4, 11, "#5FC4B3"), boxShadow: "0 0 4px #5FC4B3" }} />
       </div>
     ),
     { ...size }

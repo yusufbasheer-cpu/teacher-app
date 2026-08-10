@@ -4,9 +4,9 @@ import { useCallback, useState } from "react";
 import type { SchoolAdminDashboardData, SchoolAdminTeacher } from "@/lib/school-admin-server";
 import { supabase } from "@/lib/supabase";
 
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
-const MUTED = "#4A5568";
+const NAVY = "#241A12";
+const TEAL = "#0E9484";
+const MUTED = "#6B5D4F";
 
 const ROLE_OPTIONS: { value: SchoolAdminTeacher["role"]; label: string }[] = [
   { value: "teacher", label: "Teacher" },
@@ -190,7 +190,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
     return (
       <div
         className="flex min-h-[40vh] items-center justify-center rounded-2xl border"
-        style={{ borderColor: "rgba(0,198,167,0.25)", background: "white" }}
+        style={{ borderColor: "rgba(14, 148, 132,0.25)", background: "#FFFCF7" }}
       >
         <p className="text-sm font-medium" style={{ color: MUTED }}>
           Loading school admin…
@@ -207,13 +207,13 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
       <header
         className="rounded-2xl p-6 sm:p-8"
         style={{
-          background: `linear-gradient(135deg, ${NAVY} 0%, #0d2040 55%, rgba(0,198,167,0.15) 100%)`,
+          background: `linear-gradient(135deg, ${NAVY} 0%, #3a2a1e 55%, rgba(14, 148, 132,0.15) 100%)`,
           color: "white",
         }}
       >
         <p
           className="mb-3 inline-flex rounded-full border px-3 py-1 text-xs font-semibold"
-          style={{ borderColor: TEAL, color: TEAL, background: "rgba(0,198,167,0.12)" }}
+          style={{ borderColor: TEAL, color: TEAL, background: "rgba(14, 148, 132,0.12)" }}
         >
           School Admin
         </p>
@@ -238,12 +238,12 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
           School overview
         </h2>
         <div
-          className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6"
-          style={{ borderColor: "rgba(0,198,167,0.25)" }}
+          className="rounded-2xl border bg-[#FAF6EF] p-5 shadow-sm sm:p-6"
+          style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
         >
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-400">
                 School name
               </dt>
               <dd className="mt-1 text-base font-semibold" style={{ color: NAVY }}>
@@ -251,7 +251,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-400">
                 Plan type
               </dt>
               <dd className="mt-1 text-base font-semibold" style={{ color: TEAL }}>
@@ -259,7 +259,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-400">
                 Active teachers (of max)
               </dt>
               <dd className="mt-1 text-base font-semibold" style={{ color: NAVY }}>
@@ -267,7 +267,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-400">
                 Email domain
               </dt>
               <dd className="mt-1 text-base font-semibold" style={{ color: NAVY }}>
@@ -284,8 +284,8 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
         </h2>
         {teachers.length === 0 ? (
           <div
-            className="rounded-2xl border bg-white p-6 text-sm"
-            style={{ borderColor: "rgba(0,198,167,0.25)", color: MUTED }}
+            className="rounded-2xl border bg-[#FAF6EF] p-6 text-sm"
+            style={{ borderColor: "rgba(14, 148, 132,0.25)", color: MUTED }}
           >
             No teachers have joined yet. Teachers with a{" "}
             <strong>@{school.emailDomain}</strong> Google account will appear here after they sign
@@ -294,10 +294,10 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden overflow-x-auto rounded-2xl border bg-white shadow-sm md:block" style={{ borderColor: "rgba(0,198,167,0.25)" }}>
+            <div className="hidden overflow-x-auto rounded-2xl border bg-[#FAF6EF] shadow-sm md:block" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
               <table className="min-w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b bg-slate-50" style={{ borderColor: "#E2E8F0" }}>
+                  <tr className="border-b bg-stone-50" style={{ borderColor: "#E3D9C8" }}>
                     <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Teacher name</th>
                     <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Email</th>
                     <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Join date</th>
@@ -315,14 +315,14 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                     const isSuccess = roleSuccessId === teacher.userId;
 
                     return (
-                      <tr key={teacher.userId} className="border-b last:border-b-0" style={{ borderColor: "#E2E8F0" }}>
+                      <tr key={teacher.userId} className="border-b last:border-b-0" style={{ borderColor: "#E3D9C8" }}>
                         <td className="px-4 py-3 font-medium" style={{ color: NAVY }}>
                           {teacher.name}
                           {teacher.role === "hod" && (
-                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "rgba(0,198,167,0.12)", color: TEAL }}>HOD</span>
+                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "rgba(14, 148, 132,0.12)", color: TEAL }}>HOD</span>
                           )}
                           {teacher.role === "admin" && (
-                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "rgba(10,22,40,0.08)", color: NAVY }}>Admin</span>
+                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "rgba(36, 26, 18,0.08)", color: NAVY }}>Admin</span>
                           )}
                         </td>
                         <td className="px-4 py-3" style={{ color: MUTED }}>{teacher.email}</td>
@@ -337,7 +337,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                                 department: pendingEdits[teacher.userId]?.department ?? teacher.department,
                               })
                             }
-                            className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:ring-2"
+                            className="rounded-lg border border-stone-300 px-2 py-1.5 text-xs outline-none focus:ring-2"
                             style={{ color: NAVY, minWidth: 90 }}
                           >
                             {ROLE_OPTIONS.map((opt) => (
@@ -354,7 +354,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                                 department: e.target.value || null,
                               })
                             }
-                            className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:ring-2"
+                            className="rounded-lg border border-stone-300 px-2 py-1.5 text-xs outline-none focus:ring-2"
                             style={{ color: NAVY, minWidth: 130 }}
                           >
                             <option value="">— None —</option>
@@ -377,8 +377,8 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                                 className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-40"
                                 style={
                                   isDirty && !isSaving
-                                    ? { borderColor: TEAL, color: TEAL, background: "rgba(0,198,167,0.07)" }
-                                    : { borderColor: "#CBD5E0", color: "#94a3b8" }
+                                    ? { borderColor: TEAL, color: TEAL, background: "rgba(14, 148, 132,0.07)" }
+                                    : { borderColor: "#D9CCB8", color: "#a79a87" }
                                 }
                               >
                                 {isSaving ? "Saving…" : "Save"}
@@ -412,8 +412,8 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                 return (
                   <div
                     key={teacher.userId}
-                    className="rounded-2xl border bg-white p-4 shadow-sm"
-                    style={{ borderColor: "rgba(0,198,167,0.25)" }}
+                    className="rounded-2xl border bg-[#FAF6EF] p-4 shadow-sm"
+                    style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -423,8 +423,8 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                             className="mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold"
                             style={
                               teacher.role === "hod"
-                                ? { background: "rgba(0,198,167,0.12)", color: TEAL }
-                                : { background: "rgba(10,22,40,0.08)", color: NAVY }
+                                ? { background: "rgba(14, 148, 132,0.12)", color: TEAL }
+                                : { background: "rgba(36, 26, 18,0.08)", color: NAVY }
                             }
                           >
                             {teacher.role === "hod" ? "HOD" : "Admin"}
@@ -451,7 +451,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                               department: pendingEdits[teacher.userId]?.department ?? teacher.department,
                             })
                           }
-                          className="w-full rounded-lg border border-slate-300 px-2 py-2 text-xs outline-none"
+                          className="w-full rounded-lg border border-stone-300 px-2 py-2 text-xs outline-none"
                           style={{ color: NAVY }}
                         >
                           {ROLE_OPTIONS.map((opt) => (
@@ -469,7 +469,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                               department: e.target.value || null,
                             })
                           }
-                          className="w-full rounded-lg border border-slate-300 px-2 py-2 text-xs outline-none"
+                          className="w-full rounded-lg border border-stone-300 px-2 py-2 text-xs outline-none"
                           style={{ color: NAVY }}
                         >
                           <option value="">— None —</option>
@@ -492,8 +492,8 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                         className="mt-3 w-full rounded-lg border py-2 text-sm font-semibold transition disabled:opacity-40"
                         style={
                           isDirty && !isSaving
-                            ? { borderColor: TEAL, color: TEAL, background: "rgba(0,198,167,0.07)" }
-                            : { borderColor: "#CBD5E0", color: "#94a3b8" }
+                            ? { borderColor: TEAL, color: TEAL, background: "rgba(14, 148, 132,0.07)" }
+                            : { borderColor: "#D9CCB8", color: "#a79a87" }
                         }
                       >
                         {isSaving ? "Saving…" : "Save Role"}
@@ -522,10 +522,10 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div
-            className="rounded-2xl border bg-white p-5 shadow-sm"
-            style={{ borderColor: "rgba(0,198,167,0.25)" }}
+            className="rounded-2xl border bg-[#FAF6EF] p-5 shadow-sm"
+            style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
           >
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">
               Total generations used this month
             </p>
             <p className="mt-2 text-3xl font-bold" style={{ color: NAVY }}>
@@ -536,10 +536,10 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
             </p>
           </div>
           <div
-            className="rounded-2xl border bg-white p-5 shadow-sm"
-            style={{ borderColor: "rgba(0,198,167,0.25)" }}
+            className="rounded-2xl border bg-[#FAF6EF] p-5 shadow-sm"
+            style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
           >
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">
               Most active teacher
             </p>
             {usage.mostActiveTeacher ? (

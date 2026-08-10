@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
+const NAVY = "#241A12";
+const TEAL = "#0E9484";
 
 function InstagramIcon() {
   return (

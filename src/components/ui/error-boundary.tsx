@@ -49,17 +49,17 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="flex min-h-[200px] flex-col items-center justify-center rounded-2xl border border-red-100 bg-red-50 p-8 text-center">
         <p className="text-xl">⚠️</p>
-        <h2 className="mt-3 text-base font-semibold text-slate-900">
+        <h2 className="mt-3 text-base font-semibold text-stone-900">
           Something went wrong
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-stone-600">
           This section encountered an unexpected error.
         </p>
         <div className="mt-4 flex gap-3">
           <button
             type="button"
             onClick={this.handleRetry}
-            className="rounded-xl bg-[#00C6A7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0A8F7A]"
+            className="rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
           >
             Try again
           </button>
@@ -69,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
               onClick={() =>
                 Sentry.showReportDialog({ eventId: this.state.eventId! })
               }
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-xl border border-stone-200 bg-[#FAF6EF] px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
             >
               Report issue
             </button>

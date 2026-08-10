@@ -2,8 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
+const NAVY = "#241A12";
+const TEAL = "#0E9484";
 const SESSION_KEY = "layah_super_admin_verified";
 
 type Props = { children: React.ReactNode };
@@ -50,12 +50,12 @@ export function SuperAdminPinGate({ children }: Props) {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <div
-        className="w-full max-w-sm rounded-3xl border bg-white p-8 shadow-xl"
-        style={{ borderColor: "rgba(0,198,167,0.3)" }}
+        className="w-full max-w-sm rounded-3xl border bg-[#FAF6EF] p-8 shadow-xl"
+        style={{ borderColor: "rgba(14, 148, 132,0.3)" }}
       >
         <div
           className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
-          style={{ background: "rgba(0,198,167,0.12)" }}
+          style={{ background: "rgba(14, 148, 132,0.12)" }}
         >
           <svg className="size-7" viewBox="0 0 24 24" fill="none" aria-hidden>
             <rect x="3" y="11" width="18" height="11" rx="2" stroke={TEAL} strokeWidth="2" />
@@ -65,7 +65,7 @@ export function SuperAdminPinGate({ children }: Props) {
         <h1 className="text-center text-xl font-bold" style={{ color: NAVY }}>
           Admin Verification
         </h1>
-        <p className="mt-2 text-center text-sm" style={{ color: "#64748b" }}>
+        <p className="mt-2 text-center text-sm" style={{ color: "#7a6e5f" }}>
           Enter your 6-digit admin PIN to access the dashboard.
         </p>
 
@@ -81,13 +81,13 @@ export function SuperAdminPinGate({ children }: Props) {
             onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
             autoComplete="current-password"
             className="w-full rounded-xl border px-4 py-3 text-center text-2xl tracking-[0.5em] outline-none transition"
-            style={{ borderColor: "#CBD5E0", color: NAVY }}
+            style={{ borderColor: "#D9CCB8", color: NAVY }}
             onFocus={(e) => (e.target.style.borderColor = TEAL)}
-            onBlur={(e) => (e.target.style.borderColor = "#CBD5E0")}
+            onBlur={(e) => (e.target.style.borderColor = "#D9CCB8")}
             required
             disabled={loading}
           />
-          <p className="text-center text-xs" style={{ color: "#94a3b8" }}>
+          <p className="text-center text-xs" style={{ color: "#a79a87" }}>
             {pin.length}/6 digits entered
           </p>
           {error && <p className="text-center text-sm text-red-600">{error}</p>}

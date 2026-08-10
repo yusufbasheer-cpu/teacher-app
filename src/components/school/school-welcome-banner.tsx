@@ -24,9 +24,9 @@ export function SchoolWelcomeBanner() {
     <div
       className="mb-6 rounded-2xl border px-4 py-3 text-sm font-medium"
       style={{
-        borderColor: "rgba(0,198,167,0.35)",
-        background: "rgba(0,198,167,0.08)",
-        color: "#0A8F7A",
+        borderColor: "rgba(14, 148, 132,0.35)",
+        background: "rgba(14, 148, 132,0.08)",
+        color: "#0B6B5F",
       }}
       role="status"
     >

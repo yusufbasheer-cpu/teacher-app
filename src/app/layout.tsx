@@ -83,7 +83,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0A1628",
+  themeColor: "#241A12",
 };
 
 export default function RootLayout({
@@ -134,7 +134,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${plusJakartaSans.variable} ${caveat.variable} ${poppins.variable} ${spaceGrotesk.variable} ${plexMono.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
-        style={{ color: "#0A1628" }}
+        style={{ color: "#241A12" }}
       >
         <SentryProvider />
         <PostHogProvider>

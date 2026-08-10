@@ -11,9 +11,9 @@ import {
   type PricingRegionId,
 } from "@/lib/pricing-regions";
 
-const NAVY = "#0A1628";
-const TEAL = "#00C6A7";
-const MUTED = "#4A5568";
+const NAVY = "#241A12";
+const TEAL = "#0E9484";
+const MUTED = "#6B5D4F";
 
 type Step = 1 | 2 | 3 | 4 | "done";
 
@@ -172,8 +172,8 @@ function StepIndicator({ current }: { current: Step }) {
               <div
                 className="flex size-8 items-center justify-center rounded-full text-xs font-bold transition-all"
                 style={{
-                  background: done ? TEAL : active ? NAVY : "#E2E8F0",
-                  color: done || active ? "#fff" : "#94a3b8",
+                  background: done ? TEAL : active ? NAVY : "#E3D9C8",
+                  color: done || active ? "#fff" : "#a79a87",
                 }}
               >
                 {done ? (
@@ -184,7 +184,7 @@ function StepIndicator({ current }: { current: Step }) {
               </div>
               <span
                 className="hidden text-xs font-semibold sm:inline"
-                style={{ color: active ? NAVY : done ? TEAL : "#94a3b8" }}
+                style={{ color: active ? NAVY : done ? TEAL : "#a79a87" }}
               >
                 {s.label}
               </span>
@@ -192,7 +192,7 @@ function StepIndicator({ current }: { current: Step }) {
             {i < steps.length - 1 && (
               <div
                 className="h-0.5 w-6 sm:w-10"
-                style={{ background: done ? TEAL : "#E2E8F0" }}
+                style={{ background: done ? TEAL : "#E3D9C8" }}
               />
             )}
           </div>
@@ -219,9 +219,9 @@ function PlanCard({
     <article
       className="relative flex flex-col rounded-2xl border p-6 shadow-sm transition hover:shadow-md"
       style={{
-        borderColor: plan.highlight ? TEAL : "rgba(10,22,40,0.12)",
+        borderColor: plan.highlight ? TEAL : "rgba(36, 26, 18,0.12)",
         borderWidth: plan.highlight ? 2 : 1,
-        background: "#fff",
+        background: "#FFFCF7",
       }}
     >
       {plan.highlight && (
@@ -238,7 +238,7 @@ function PlanCard({
       <p className="mt-2 text-2xl font-extrabold" style={{ color: NAVY }}>
         {monthlyLabel}
       </p>
-      <p className="mt-1 text-sm" style={{ color: "#64748b" }}>
+      <p className="mt-1 text-sm" style={{ color: "#7a6e5f" }}>
         Or {annualLabel}
       </p>
       <p className="mt-3 text-sm font-semibold" style={{ color: TEAL }}>
@@ -246,8 +246,8 @@ function PlanCard({
       </p>
       <ul className="mt-4 flex flex-1 flex-col gap-2">
         {plan.features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-sm" style={{ color: "#334155" }}>
-            <CheckIcon className="text-[#0A8F7A]" />
+          <li key={f} className="flex items-start gap-2 text-sm" style={{ color: "#2b2118" }}>
+            <CheckIcon className="text-[#0B6B5F]" />
             <span>{f}</span>
           </li>
         ))}
@@ -399,7 +399,7 @@ export function SchoolRegisterForm() {
   };
 
   const inputClasses =
-    "w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-[#00C6A7]/40";
+    "w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-[#0E9484]/40";
   const labelClasses = "mb-1.5 block text-sm font-semibold";
 
   return (
@@ -419,13 +419,13 @@ export function SchoolRegisterForm() {
       {step === 1 && (
         <div className="mx-auto max-w-md">
           <div
-            className="rounded-3xl border bg-white p-8 shadow-sm"
-            style={{ borderColor: "rgba(0,198,167,0.2)" }}
+            className="rounded-3xl border bg-[#FAF6EF] p-8 shadow-sm"
+            style={{ borderColor: "rgba(14, 148, 132,0.2)" }}
           >
             <div className="text-center">
               <div
                 className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl"
-                style={{ background: "rgba(0,198,167,0.1)" }}
+                style={{ background: "rgba(14, 148, 132,0.1)" }}
               >
                 <svg
                   className="size-8"
@@ -454,18 +454,18 @@ export function SchoolRegisterForm() {
               type="button"
               onClick={() => void handleGoogleSignIn()}
               disabled={googleLoading}
-              className="mt-8 inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border bg-white px-4 py-3 text-sm font-semibold transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-8 inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border bg-[#FAF6EF] px-4 py-3 text-sm font-semibold transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-70"
               style={{ borderColor: "#dadce0", color: NAVY }}
             >
               {googleLoading ? (
-                <div className="size-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+                <div className="size-5 animate-spin rounded-full border-2 border-stone-300 border-t-slate-600" />
               ) : (
                 <GoogleLogo />
               )}
               <span>{googleLoading ? "Connecting..." : "Continue with Google"}</span>
             </button>
 
-            <p className="mt-4 text-center text-xs" style={{ color: "#94a3b8" }}>
+            <p className="mt-4 text-center text-xs" style={{ color: "#a79a87" }}>
               We will extract your school email domain automatically
             </p>
           </div>
@@ -475,8 +475,8 @@ export function SchoolRegisterForm() {
       {step === 2 && (
         <div className="mx-auto max-w-lg">
           <div
-            className="rounded-3xl border bg-white p-6 shadow-sm sm:p-8"
-            style={{ borderColor: "rgba(0,198,167,0.2)" }}
+            className="rounded-3xl border bg-[#FAF6EF] p-6 shadow-sm sm:p-8"
+            style={{ borderColor: "rgba(14, 148, 132,0.2)" }}
           >
             <h2 className="text-xl font-bold" style={{ color: NAVY }}>
               School Details
@@ -496,7 +496,7 @@ export function SchoolRegisterForm() {
                   onChange={(e) => setForm((f) => ({ ...f, schoolName: e.target.value }))}
                   placeholder="e.g. Greenfield International School"
                   className={inputClasses}
-                  style={{ borderColor: "#CBD5E0", color: NAVY }}
+                  style={{ borderColor: "#D9CCB8", color: NAVY }}
                 />
               </div>
 
@@ -505,13 +505,13 @@ export function SchoolRegisterForm() {
                   School Email Domain
                 </label>
                 <div
-                  className="flex items-center rounded-xl border bg-slate-50 px-4 py-2.5 text-sm"
-                  style={{ borderColor: "#CBD5E0", color: NAVY }}
+                  className="flex items-center rounded-xl border bg-stone-50 px-4 py-2.5 text-sm"
+                  style={{ borderColor: "#D9CCB8", color: NAVY }}
                 >
-                  <span style={{ color: "#94a3b8" }}>@</span>
+                  <span style={{ color: "#a79a87" }}>@</span>
                   <span className="ml-1 font-medium">{form.emailDomain || "—"}</span>
                 </div>
-                <p className="mt-1 text-xs" style={{ color: "#94a3b8" }}>
+                <p className="mt-1 text-xs" style={{ color: "#a79a87" }}>
                   Auto-detected from your Google account
                 </p>
               </div>
@@ -524,7 +524,7 @@ export function SchoolRegisterForm() {
                   value={form.country}
                   onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
                   className={inputClasses}
-                  style={{ borderColor: "#CBD5E0", color: form.country ? NAVY : "#94a3b8" }}
+                  style={{ borderColor: "#D9CCB8", color: form.country ? NAVY : "#a79a87" }}
                 >
                   <option value="">Select your country</option>
                   {COUNTRY_LIST.map((c) => (
@@ -543,7 +543,7 @@ export function SchoolRegisterForm() {
                   value={form.numTeachers}
                   onChange={(e) => setForm((f) => ({ ...f, numTeachers: e.target.value }))}
                   className={inputClasses}
-                  style={{ borderColor: "#CBD5E0", color: form.numTeachers ? NAVY : "#94a3b8" }}
+                  style={{ borderColor: "#D9CCB8", color: form.numTeachers ? NAVY : "#a79a87" }}
                 >
                   <option value="">Select number of teachers</option>
                   {NUM_TEACHER_OPTIONS.map((opt) => (
@@ -564,7 +564,7 @@ export function SchoolRegisterForm() {
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                   placeholder="+971 50 123 4567"
                   className={inputClasses}
-                  style={{ borderColor: "#CBD5E0", color: NAVY }}
+                  style={{ borderColor: "#D9CCB8", color: NAVY }}
                 />
               </div>
 
@@ -576,7 +576,7 @@ export function SchoolRegisterForm() {
                   value={form.howHeard}
                   onChange={(e) => setForm((f) => ({ ...f, howHeard: e.target.value }))}
                   className={inputClasses}
-                  style={{ borderColor: "#CBD5E0", color: form.howHeard ? NAVY : "#94a3b8" }}
+                  style={{ borderColor: "#D9CCB8", color: form.howHeard ? NAVY : "#a79a87" }}
                 >
                   <option value="">Select an option</option>
                   {HOW_HEARD_OPTIONS.map((opt) => (
@@ -592,8 +592,8 @@ export function SchoolRegisterForm() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-slate-50"
-                style={{ borderColor: "#CBD5E0", color: MUTED }}
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-stone-50"
+                style={{ borderColor: "#D9CCB8", color: MUTED }}
               >
                 Back
               </button>
@@ -623,7 +623,7 @@ export function SchoolRegisterForm() {
 
           {!regionLoading && (
             <div className="mx-auto mb-8 flex max-w-xs flex-col items-center gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#64748b" }}>
+              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#7a6e5f" }}>
                 Pricing currency
               </label>
               <select
@@ -632,8 +632,8 @@ export function SchoolRegisterForm() {
                   const v = e.target.value;
                   if (v) setRegionManually(v as PricingRegionId);
                 }}
-                className="w-full rounded-xl border bg-white px-4 py-2.5 text-sm font-medium outline-none transition"
-                style={{ borderColor: "rgba(10,22,40,0.15)", color: NAVY }}
+                className="w-full rounded-xl border bg-[#FAF6EF] px-4 py-2.5 text-sm font-medium outline-none transition"
+                style={{ borderColor: "rgba(36, 26, 18,0.15)", color: NAVY }}
               >
                 {PRICING_REGION_LIST.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -671,8 +671,8 @@ export function SchoolRegisterForm() {
       {step === 4 && selectedPlan && (
         <div className="mx-auto max-w-lg">
           <div
-            className="rounded-3xl border bg-white p-6 shadow-sm sm:p-8"
-            style={{ borderColor: "rgba(0,198,167,0.2)" }}
+            className="rounded-3xl border bg-[#FAF6EF] p-6 shadow-sm sm:p-8"
+            style={{ borderColor: "rgba(14, 148, 132,0.2)" }}
           >
             <h2 className="text-xl font-bold" style={{ color: NAVY }}>
               Confirm Your Registration
@@ -683,7 +683,7 @@ export function SchoolRegisterForm() {
 
             <div
               className="mt-6 rounded-2xl p-5"
-              style={{ background: "rgba(0,198,167,0.06)", border: "1px solid rgba(0,198,167,0.2)" }}
+              style={{ background: "rgba(14, 148, 132,0.06)", border: "1px solid rgba(14, 148, 132,0.2)" }}
             >
               <dl className="space-y-3 text-sm">
                 <div className="flex justify-between">
@@ -694,7 +694,7 @@ export function SchoolRegisterForm() {
                 </div>
                 <div
                   className="border-t"
-                  style={{ borderColor: "rgba(0,198,167,0.15)" }}
+                  style={{ borderColor: "rgba(14, 148, 132,0.15)" }}
                 />
                 <div className="flex justify-between">
                   <dt style={{ color: MUTED }}>Plan Selected</dt>
@@ -704,7 +704,7 @@ export function SchoolRegisterForm() {
                 </div>
                 <div
                   className="border-t"
-                  style={{ borderColor: "rgba(0,198,167,0.15)" }}
+                  style={{ borderColor: "rgba(14, 148, 132,0.15)" }}
                 />
                 <div className="flex justify-between">
                   <dt style={{ color: MUTED }}>Price</dt>
@@ -714,7 +714,7 @@ export function SchoolRegisterForm() {
                 </div>
                 <div
                   className="border-t"
-                  style={{ borderColor: "rgba(0,198,167,0.15)" }}
+                  style={{ borderColor: "rgba(14, 148, 132,0.15)" }}
                 />
                 <div className="flex justify-between">
                   <dt style={{ color: MUTED }}>Number of Teachers</dt>
@@ -724,7 +724,7 @@ export function SchoolRegisterForm() {
                 </div>
                 <div
                   className="border-t"
-                  style={{ borderColor: "rgba(0,198,167,0.15)" }}
+                  style={{ borderColor: "rgba(14, 148, 132,0.15)" }}
                 />
                 <div className="flex justify-between">
                   <dt style={{ color: MUTED }}>Admin Email</dt>
@@ -734,7 +734,7 @@ export function SchoolRegisterForm() {
                 </div>
                 <div
                   className="border-t"
-                  style={{ borderColor: "rgba(0,198,167,0.15)" }}
+                  style={{ borderColor: "rgba(14, 148, 132,0.15)" }}
                 />
                 <div className="flex justify-between">
                   <dt style={{ color: MUTED }}>Email Domain</dt>
@@ -747,7 +747,7 @@ export function SchoolRegisterForm() {
 
             <div
               className="mt-6 rounded-xl p-4 text-sm"
-              style={{ background: "rgba(10,22,40,0.04)", color: MUTED }}
+              style={{ background: "rgba(36, 26, 18,0.04)", color: MUTED }}
             >
               Your school account is being set up. Our team will contact you within 24 hours to
               complete payment and activation.
@@ -757,8 +757,8 @@ export function SchoolRegisterForm() {
               <button
                 type="button"
                 onClick={() => setStep(3)}
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-slate-50"
-                style={{ borderColor: "#CBD5E0", color: MUTED }}
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-stone-50"
+                style={{ borderColor: "#D9CCB8", color: MUTED }}
               >
                 Back
               </button>
@@ -779,14 +779,14 @@ export function SchoolRegisterForm() {
       {step === "done" && (
         <div className="mx-auto max-w-md text-center">
           <div
-            className="rounded-3xl border bg-white p-8 shadow-sm sm:p-10"
-            style={{ borderColor: "rgba(0,198,167,0.2)" }}
+            className="rounded-3xl border bg-[#FAF6EF] p-8 shadow-sm sm:p-10"
+            style={{ borderColor: "rgba(14, 148, 132,0.2)" }}
           >
             <div
               className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full"
-              style={{ background: "rgba(0,198,167,0.12)" }}
+              style={{ background: "rgba(14, 148, 132,0.12)" }}
             >
-              <CheckIcon className="!size-10 text-[#00C6A7]" />
+              <CheckIcon className="!size-10 text-[#0E9484]" />
             </div>
             <h2 className="text-2xl font-bold" style={{ color: NAVY }}>
               Thank You!
@@ -807,8 +807,8 @@ export function SchoolRegisterForm() {
               </a>
               <a
                 href="/pricing"
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-slate-50"
-                style={{ borderColor: "#CBD5E0", color: MUTED }}
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-stone-50"
+                style={{ borderColor: "#D9CCB8", color: MUTED }}
               >
                 View Pricing
               </a>
