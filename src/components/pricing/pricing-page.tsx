@@ -380,8 +380,10 @@ export function PricingPage() {
             className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm"
             style={{ background: "#fff", border: `1px solid rgba(0,198,167,0.3)`, color: NAVY }}
           >
-            <span className="text-lg leading-none" aria-hidden>🇦🇪</span>
-            <span>Prices shown in <strong>AED</strong> (UAE Dirham)</span>
+            <span className="text-lg leading-none" aria-hidden>{region.flag}</span>
+            <span>
+              Prices shown in <strong>{region.currency}</strong> ({region.currencyName})
+            </span>
           </p>
         </div>
 
