@@ -38,7 +38,7 @@ export function Navbar() {
               Layah
             </span>
             <span className="block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>
-              Teacher AI Suite
+              Prep Less. Teach More.
             </span>
           </span>
         </Link>
