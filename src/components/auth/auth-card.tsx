@@ -215,7 +215,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       style={{ borderColor: "rgba(14, 148, 132,0.2)" }}
     >
       <p
-        className="mb-3 inline-flex rounded-full border px-3 py-1 text-xs font-semibold"
+        className="mb-3 inline-flex gap-1 rounded-full border px-3 py-1 text-xs font-semibold"
         style={{ borderColor: "#0E9484", color: "#0E9484", background: "rgba(14, 148, 132,0.08)" }}
       >
         <span>Welcome to </span>
