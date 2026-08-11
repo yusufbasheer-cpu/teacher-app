@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function SignupPage() {
   return (
     <AuthLayout
-      badge="Teacher AI Suite"
+      badge="Prep Less. Teach More."
       headline="Start creating teaching resources in minutes"
       subtext="Generate curriculum-aligned lesson plans, PPTs, worksheets and assessments using AI."
     >
