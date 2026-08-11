@@ -302,7 +302,7 @@ export default function SettingsPage() {
   return (
     <main className="min-h-screen pb-16 pt-10">
       <Container>
-        <div className="mx-auto max-w-xl">
+        <div className="mx-auto max-w-2xl">
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" style={{ color: NAVY }}>
             Account Settings
           </h1>

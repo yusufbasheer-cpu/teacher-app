@@ -1,10 +1,13 @@
 import type { ReactNode } from "react";
 import { NAVY, TEXT_MUTED } from "@/lib/design-tokens";
 
-/** Shared readable-content width for form-like pages (the generator wizards,
- * page headers, steppers) — one column so they align to the same left/right
- * edge instead of each independently centering at a different width. */
-export const FORM_COLUMN_CLASS = "w-full max-w-3xl";
+/** Shared content width for form-like pages (the generator wizards, page
+ * headers, steppers) — one column so they align to the same left/right edge
+ * instead of each independently centering at a different width. Sits inside
+ * the page's `Container` (max-w-6xl / 1152px): wide enough for the 2-column
+ * field grids each wizard uses, with a bit of inset so the form doesn't run
+ * edge-to-edge of the container. */
+export const FORM_COLUMN_CLASS = "w-full max-w-5xl";
 
 type PageHeaderProps = {
   title: string;

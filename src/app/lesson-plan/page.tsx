@@ -48,9 +48,10 @@ export default async function LessonPlanPage() {
       <div className="px-4 sm:px-6 lg:px-8">
         <SchoolWelcomeBanner />
       </div>
-      {/* No outer max-width here — the wizard (820px) and the generated
-          package dashboard (7xl) each set their own width so neither gets
-          silently clipped by an ancestor narrower than it needs. */}
+      {/* No outer max-width here — the wizard (FORM_COLUMN_CLASS, 5xl) and
+          the generated package dashboard (7xl) each set their own width so
+          neither gets silently clipped by an ancestor narrower than it
+          needs. */}
       <Suspense fallback={<div className="px-4 sm:px-6 lg:px-8"><LessonPlanFallback /></div>}>
         <LessonPlanGenerator />
       </Suspense>

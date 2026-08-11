@@ -850,8 +850,8 @@ export function LessonPlanGenerator() {
                 Tell us who this lesson is for. This is the only step required to get started.
               </p>
 
-        <div className="mt-6 space-y-4">
-          <div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
             <label htmlFor="curriculum" className="mb-1 block text-sm font-medium text-stone-700">
               Curriculum type
             </label>
@@ -876,7 +876,7 @@ export function LessonPlanGenerator() {
             </select>
           </div>
 
-          <div>
+          <div className="sm:col-span-2">
             <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-stone-500">
               Curriculum Framework
             </p>
@@ -992,7 +992,7 @@ export function LessonPlanGenerator() {
             />
           </div>
 
-          <div>
+          <div className="sm:col-span-2">
             <label
               htmlFor="objectives"
               className="mb-1 block text-sm font-medium text-stone-700"
