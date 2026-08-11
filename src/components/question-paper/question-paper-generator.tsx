@@ -13,7 +13,11 @@ import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
 import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
+import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
 import { useUserUsage } from "@/hooks/use-user-usage";
+import { PaymentModal } from "@/components/payment/payment-modal";
+import { LockedPageState } from "@/components/premium/locked-page-state";
+import { PLANS } from "@/lib/plans";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
@@ -78,6 +82,7 @@ export function QuestionPaperGenerator() {
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const {
     usage,
     loading: usageLoading,
@@ -512,7 +517,7 @@ export function QuestionPaperGenerator() {
 
   if (checkingAuth) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
+      <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
         Checking your account…
       </div>
     );
@@ -520,7 +525,7 @@ export function QuestionPaperGenerator() {
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+      <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
         <h2 className="text-xl font-semibold text-stone-900">Login required</h2>
         <p className="mt-2 text-sm text-stone-600">
           Please log in to generate question papers and track your monthly generation limit.
@@ -535,16 +540,44 @@ export function QuestionPaperGenerator() {
     );
   }
 
+  if (usageLoading || !usage) {
+    return (
+      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
+        Checking your plan…
+      </div>
+    );
+  }
+
+  if (!PLANS[usage.planType].questionPaper) {
+    return (
+      <>
+        <LockedPageState
+          title="Question Paper"
+          description="Generate curriculum-aligned question papers with a custom blueprint, mark distribution, and answer key — available on Pro and above."
+          onUpgrade={() => setPaymentModalOpen(true)}
+        />
+        <PaymentModal
+          open={paymentModalOpen}
+          planKey="pro"
+          onClose={() => setPaymentModalOpen(false)}
+          onSuccess={() => window.location.reload()}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="space-y-6" ref={wizardRef}>
       {!result ? (
         <>
-          <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
+          <div className={FORM_COLUMN_CLASS}>
+            <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
+          </div>
 
-          <form ref={formRef} onSubmit={onSubmit} noValidate className="mx-auto w-full max-w-[820px] space-y-6">
+          <form ref={formRef} onSubmit={onSubmit} noValidate className={`${FORM_COLUMN_CLASS} space-y-6`}>
         {/* ══════════ STEP 1 — PAPER DETAILS ══════════ */}
-        <fieldset hidden={step !== 1} className={sectionClass} style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
-          <legend className="text-sm font-semibold uppercase tracking-wide" style={{ color: "#241A12" }}>
+        <fieldset hidden={step !== 1} className="min-w-0">
+          <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
             Basic details
           </legend>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -676,11 +709,11 @@ export function QuestionPaperGenerator() {
         ) : null}
 
         {/* ══════════ STEP 2 — SOURCE CONTENT (OPTIONAL) ══════════ */}
-        <fieldset hidden={step !== 2} className={`${sectionClass} border-dashed`} style={{ borderColor: "rgba(14, 148, 132,0.35)" }}>
-          <legend className="text-sm font-semibold" style={{ color: "#241A12" }}>
+        <fieldset hidden={step !== 2} className="min-w-0">
+          <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
             Provide your content
           </legend>
-          <p className="mt-1 text-xs text-stone-600">
+          <p className="mt-3 text-xs text-stone-600">
             Optional — AI will generate based on topic if no content is provided (except in Strict
             mode).
           </p>

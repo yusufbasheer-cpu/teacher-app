@@ -286,7 +286,7 @@ export default function SettingsPage() {
 
   if (loadingPage) {
     return (
-      <main className="flex min-h-screen items-center justify-center" style={{ background: "#F1E9DC" }}>
+      <main className="flex min-h-screen items-center justify-center">
         <p className="text-sm font-medium" style={{ color: "#7a6e5f" }}>Loading…</p>
       </main>
     );
@@ -300,9 +300,9 @@ export default function SettingsPage() {
     : "—";
 
   return (
-    <main className="min-h-screen pb-16 pt-10" style={{ background: "#F1E9DC" }}>
+    <main className="min-h-screen pb-16 pt-10">
       <Container>
-        <div className="mx-auto max-w-xl">
+        <div className="mx-auto max-w-2xl">
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" style={{ color: NAVY }}>
             Account Settings
           </h1>

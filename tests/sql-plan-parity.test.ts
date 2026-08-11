@@ -13,7 +13,13 @@ import { dbLimitValue, PLAN_IDS, PLANS } from "@/lib/plans";
  */
 
 const MIGRATIONS_DIR = join(__dirname, "..", "supabase", "migrations");
-const SOURCE_OF_TRUTH_MIGRATION = "20260728120000_usage_gate_functions.sql";
+// Points at whichever migration most recently redefined
+// plan_generations_limit() via `create or replace function` — never edit an
+// already-shipped migration in place; when the limits change again, add a
+// new migration and repoint this constant at it, same as this file moved
+// from 20260728120000_usage_gate_functions.sql to this one when the Free
+// tier dropped from 15 to 3.
+const SOURCE_OF_TRUTH_MIGRATION = "20260811130000_free_tier_three_generations.sql";
 
 function readMigration(filename: string): string {
   return readFileSync(join(MIGRATIONS_DIR, filename), "utf8");

@@ -3,6 +3,8 @@ import { getVerifiedUser } from "@/lib/verified-user";
 import { LessonPlanGenerator } from "@/components/lesson-plan/lesson-plan-generator";
 import { SchoolWelcomeBanner } from "@/components/school/school-welcome-banner";
 import { SecondaryPageHero } from "@/components/layout/secondary-page-hero";
+import { PageHeader } from "@/components/layout/page-header";
+import { Container } from "@/components/ui/container";
 import { Skeleton } from "@/components/ui/animate";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +30,12 @@ export default async function LessonPlanPage() {
   return (
     <main className="min-h-screen w-full pb-16 pt-8">
       {user?.id ? (
-        <h1 className="sr-only">AI Lesson Plan Generator</h1>
+        <Container className="pt-2">
+          <PageHeader
+            title="Generate Lesson Plan"
+            description="Create a curriculum-aligned lesson plan, PPT, worksheets and assessments in minutes."
+          />
+        </Container>
       ) : (
         <SecondaryPageHero
           badge="AI Teaching Resources"
@@ -41,9 +48,10 @@ export default async function LessonPlanPage() {
       <div className="px-4 sm:px-6 lg:px-8">
         <SchoolWelcomeBanner />
       </div>
-      {/* No outer max-width here — the wizard (820px) and the generated
-          package dashboard (7xl) each set their own width so neither gets
-          silently clipped by an ancestor narrower than it needs. */}
+      {/* No outer max-width here — the wizard (FORM_COLUMN_CLASS, 5xl) and
+          the generated package dashboard (7xl) each set their own width so
+          neither gets silently clipped by an ancestor narrower than it
+          needs. */}
       <Suspense fallback={<div className="px-4 sm:px-6 lg:px-8"><LessonPlanFallback /></div>}>
         <LessonPlanGenerator />
       </Suspense>

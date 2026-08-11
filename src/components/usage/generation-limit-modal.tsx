@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PaymentModal } from "@/components/payment/payment-modal";
 import { getUpgradePlan } from "@/components/usage/upgrade-usage-indicator";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
+import { PLANS } from "@/lib/plans";
 
 const NAVY = "#241A12";
 const TEAL = "#0E9484";
@@ -27,7 +28,7 @@ export function GenerationLimitModal({
 
   if (!open) return null;
 
-  const limit = usage?.generationsLimit ?? 15;
+  const limit = usage?.generationsLimit ?? PLANS.free.generationsLimit ?? 0;
   const used = usage?.generationsUsed ?? 0;
   const upgradePlan = getUpgradePlan(usage);
 

@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PLANS } from "@/lib/plans";
 import { toUserFacingError } from "@/lib/user-facing-errors";
+import { PageHeader } from "@/components/layout/page-header";
 
 type SavedLesson = {
   id: string;
@@ -93,14 +94,10 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight" style={{ color: NAVY }}>
-          Dashboard
-        </h1>
-        <p className="mt-1 text-sm text-stone-600">
-          Your generation activity and saved lessons at a glance.
-        </p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Your generation activity and saved lessons at a glance."
+      />
 
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-3">

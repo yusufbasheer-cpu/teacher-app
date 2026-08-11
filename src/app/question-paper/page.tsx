@@ -1,6 +1,7 @@
 import { getVerifiedUser } from "@/lib/verified-user";
 import { QuestionPaperGenerator } from "@/components/question-paper/question-paper-generator";
 import { SecondaryPageHero } from "@/components/layout/secondary-page-hero";
+import { PageHeader } from "@/components/layout/page-header";
 import { Container } from "@/components/ui/container";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +13,11 @@ export default async function QuestionPaperPage() {
   return (
     <main className="min-h-screen pb-16 pt-8">
       {user?.id ? (
-        <Container>
-          <h1 className="sr-only">Question Paper Generator</h1>
+        <Container className="pt-2">
+          <PageHeader
+            title="Generate Question Paper"
+            description="Create a curriculum-aligned question paper with a custom blueprint, mark distribution, and answer key."
+          />
         </Container>
       ) : (
         <SecondaryPageHero

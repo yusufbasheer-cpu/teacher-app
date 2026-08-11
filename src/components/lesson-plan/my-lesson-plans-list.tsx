@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { toUserFacingError } from "@/lib/user-facing-errors";
+import { PageHeader } from "@/components/layout/page-header";
 
 type SavedLesson = {
   id: string;
@@ -124,44 +125,43 @@ export function MyLessonPlansList() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm md:p-7">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-stone-900">My Lesson Plans</h2>
-            <p className="mt-1 text-sm text-stone-600">
-              {plans.length > 0
-                ? `${plans.length} saved plan${plans.length === 1 ? "" : "s"} — lesson plans are saved automatically after generation.`
-                : "Lesson plans are saved automatically after each generation."}
-            </p>
-          </div>
+      <PageHeader
+        title="My Lesson Plans"
+        description={
+          plans.length > 0
+            ? `${plans.length} saved plan${plans.length === 1 ? "" : "s"} — lesson plans are saved automatically after generation.`
+            : "Lesson plans are saved automatically after each generation."
+        }
+        actions={
           <Link
             href="/lesson-plan"
             className="shrink-0 rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
           >
             + New Lesson
           </Link>
+        }
+      />
+
+      {error ? (
+        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>
+      ) : null}
+
+      {plans.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[#0E9484]/30 bg-[#0E9484]/5 p-6 text-center">
+          <p className="text-2xl">📚</p>
+          <p className="mt-2 text-sm font-medium text-stone-700">No saved lesson plans yet</p>
+          <p className="mt-1 text-xs text-stone-500">
+            Generate a lesson plan and it will appear here automatically.
+          </p>
+          <Link
+            href="/lesson-plan"
+            className="mt-4 inline-flex rounded-xl bg-[#0E9484] px-5 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
+          >
+            Generate your first lesson
+          </Link>
         </div>
-
-        {error ? (
-          <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>
-        ) : null}
-
-        {plans.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-dashed border-[#0E9484]/30 bg-[#0E9484]/5 p-6 text-center">
-            <p className="text-2xl">📚</p>
-            <p className="mt-2 text-sm font-medium text-stone-700">No saved lesson plans yet</p>
-            <p className="mt-1 text-xs text-stone-500">
-              Generate a lesson plan and it will appear here automatically.
-            </p>
-            <Link
-              href="/lesson-plan"
-              className="mt-4 inline-flex rounded-xl bg-[#0E9484] px-5 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
-            >
-              Generate your first lesson
-            </Link>
-          </div>
-        ) : (
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
             {plans.map((plan) => {
               const dateStr = new Date(plan.created_at).toLocaleDateString("en-GB", {
                 day: "numeric",
@@ -233,9 +233,8 @@ export function MyLessonPlansList() {
                 </div>
               );
             })}
-          </div>
-        )}
-      </section>
+        </div>
+      )}
     </div>
   );
 }

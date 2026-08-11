@@ -13,6 +13,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
+import { Container } from "@/components/ui/container";
+import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
 import type {
   LessonPlanInput,
   LessonPlanResult,
@@ -57,12 +59,12 @@ import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import { sanitizeUserMessage, toUserFacingError, USER_FACING_ERROR, GENERATION_FAILED_ERROR } from "@/lib/user-facing-errors";
-import {
-  AFL_PHASE_GROUPS,
-  AFL_PHASE_IDS,
-  AFL_RECOMMENDED_IDS,
-  type AflPhaseId,
-} from "@/lib/afl-tools";
+import { AFL_PHASE_IDS, type AflPhaseId } from "@/lib/afl-tools";
+import { AflSelector } from "@/components/lesson-plan/afl-selector";
+import { PaymentModal } from "@/components/payment/payment-modal";
+import { PLANS } from "@/lib/plans";
+import { LockedFeaturePanel } from "@/components/premium/locked-feature-panel";
+import { ProBadge } from "@/components/premium/pro-badge";
 
 type SourceUploadChunk = {
   id: string;
@@ -180,8 +182,28 @@ export function LessonPlanGenerator() {
   const [pptThemeId, setPptThemeId] = useState<PptThemeId>(DEFAULT_PPT_THEME_ID);
   const [teachingStrategy, setTeachingStrategy] = useState<string>("");
   const [strategyPanelOpen, setStrategyPanelOpen] = useState(false);
-  const [aflPanelOpen, setAflPanelOpen] = useState(false);
   const [aflSelected, setAflSelected] = useState<Record<AflPhaseId, string[]>>(() => emptyAflSelected());
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+
+  /** Fail-closed to Free's entitlements while usage is still loading, so
+   * nothing flashes unlocked before the real plan is known. */
+  const entitlements = usage ? PLANS[usage.planType] : PLANS.free;
+
+  useEffect(() => {
+    if (!usage) return;
+    const allowed = PLANS[usage.planType].allowedSections;
+    setSectionSelection((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const key of TEACHER_PACKAGE_SECTIONS) {
+        if (!allowed.includes(key) && next[key]) {
+          next[key] = false;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [usage]);
 
   const extractedMaterialPreview = useMemo(
     () => combineSourceChunks(uploadedChunks),
@@ -782,26 +804,30 @@ export function LessonPlanGenerator() {
 
   if (checkingAuth) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
-        Checking your account...
-      </div>
+      <Container className="pt-6">
+        <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
+          Checking your account...
+        </div>
+      </Container>
     );
   }
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-stone-900">Login Required</h2>
-        <p className="mt-2 text-sm text-stone-600">
-          Please login to generate and save your personal lesson plans.
-        </p>
-        <Link
-          href="/login"
-          className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
-        >
-          Go to Login
-        </Link>
-      </div>
+      <Container className="pt-6">
+        <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-stone-900">Login Required</h2>
+          <p className="mt-2 text-sm text-stone-600">
+            Please login to generate and save your personal lesson plans.
+          </p>
+          <Link
+            href="/login"
+            className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
+          >
+            Go to Login
+          </Link>
+        </div>
+      </Container>
     );
   }
 
@@ -827,28 +853,29 @@ export function LessonPlanGenerator() {
   return (
     <div className="w-full space-y-6" ref={wizardRef}>
       {!lessonPlan ? (
-        <div className="space-y-6 px-4 pt-6 sm:px-6 lg:px-8">
-          <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
+        <Container className="space-y-6 pt-6">
+          <div className={FORM_COLUMN_CLASS}>
+            <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
+          </div>
 
           <form
             ref={formRef}
             onSubmit={onSubmit}
             aria-busy={loading}
             noValidate
-            className="mx-auto w-full max-w-[820px]"
+            className={FORM_COLUMN_CLASS}
           >
             {/* ══════════ STEP 1 — CLASS DETAILS ══════════ */}
-            <fieldset
-              hidden={step !== 1}
-              className="min-w-0 rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-5 shadow-sm sm:p-6 md:p-7"
-            >
-              <legend className="text-xl font-semibold text-stone-900">Class details</legend>
-              <p className="mt-2 text-sm text-stone-600">
+            <fieldset hidden={step !== 1} className="min-w-0">
+              <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
+                Class details
+              </legend>
+              <p className="mt-3 text-sm text-stone-600">
                 Tell us who this lesson is for. This is the only step required to get started.
               </p>
 
-        <div className="mt-6 space-y-4">
-          <div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
             <label htmlFor="curriculum" className="mb-1 block text-sm font-medium text-stone-700">
               Curriculum type
             </label>
@@ -873,7 +900,7 @@ export function LessonPlanGenerator() {
             </select>
           </div>
 
-          <div>
+          <div className="sm:col-span-2">
             <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-stone-500">
               Curriculum Framework
             </p>
@@ -989,7 +1016,7 @@ export function LessonPlanGenerator() {
             />
           </div>
 
-          <div>
+          <div className="sm:col-span-2">
             <label
               htmlFor="objectives"
               className="mb-1 block text-sm font-medium text-stone-700"
@@ -1021,17 +1048,17 @@ export function LessonPlanGenerator() {
             </fieldset>
 
             {/* ══════════ STEP 2 — SOURCE CONTENT (OPTIONAL) ══════════ */}
-            <fieldset
-              hidden={step !== 2}
-              className="min-w-0 rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-5 shadow-sm sm:p-6 md:p-7"
-            >
-              <legend className="text-xl font-semibold text-stone-900">Source content</legend>
-              <p className="mt-2 text-sm text-stone-600">
+            <fieldset hidden={step !== 2} className="min-w-0">
+              <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
+                Source content
+              </legend>
+              <p className="mt-3 text-sm text-stone-600">
                 Add textbook pages, notes, or chapter content to generate a more accurate lesson plan.
                 This step is entirely optional — skip it and Layah will generate content from the topic
                 and objectives alone.
               </p>
 
+        {entitlements.sourceContent ? (
         <div className="mt-6 rounded-2xl border border-dashed border-[#0E9484]/30 bg-[#0E9484]/5 p-4 space-y-5">
           <div>
             <p className="text-sm font-semibold text-[#241A12]">
@@ -1192,6 +1219,15 @@ export function LessonPlanGenerator() {
             </div>
           ) : null}
         </div>
+        ) : (
+          <div className="mt-6">
+            <LockedFeaturePanel
+              title="Source content"
+              description="Upload your own teaching material — a PDF, images, or pasted text — and let generation use it as the primary source instead of just the topic and objectives."
+              onUpgrade={() => setPaymentModalOpen(true)}
+            />
+          </div>
+        )}
 
               <div className="mt-6 flex justify-between">
                 <button
@@ -1212,121 +1248,44 @@ export function LessonPlanGenerator() {
             </fieldset>
 
             {/* ══════════ STEP 3 — GENERATE PACKAGE ══════════ */}
-            <fieldset
-              hidden={step !== 3}
-              className="min-w-0 rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-5 shadow-sm sm:p-6 md:p-7"
-            >
-              <legend className="text-xl font-semibold text-stone-900">Generate package</legend>
-              <p className="mt-2 text-sm text-stone-600">
+            <fieldset hidden={step !== 3} className="min-w-0">
+              <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
+                Generate package
+              </legend>
+              <p className="mt-3 text-sm text-stone-600">
                 Choose what to include, then generate your teacher package.
               </p>
 
-        {!aflPanelOpen ? (
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={() => setAflPanelOpen(true)}
-              className="w-full rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left text-sm font-semibold text-violet-950 shadow-sm transition hover:bg-violet-100"
-            >
-              Assessment for Learning (Optional)
-              <span className="mt-1 block text-xs font-normal text-violet-800/90">
-                Optional: pick Assessment for Learning tools by lesson phase. They are sent to the AI
-                and appear in your lesson plan and PowerPoint.
-              </span>
-            </button>
-          </div>
-        ) : (
-          <div className="mt-6 rounded-2xl border border-violet-200 bg-gradient-to-b from-violet-50/80 to-white p-4 shadow-sm md:p-5">
-            <div className="flex flex-col gap-3 border-b border-violet-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-stone-900">
-                  Select Activity Sheet AFL Tools for Your Lesson
-                </h3>
-                <p className="mt-1 text-xs text-stone-600">
-                  Tick the tools you want in each phase. They are woven into the written plan and
-                  matched slides when you generate.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAflSelected(
-                      Object.fromEntries(
-                        AFL_PHASE_IDS.map((phase) => {
-                          const allowed = new Set(
-                            AFL_PHASE_GROUPS.find((g) => g.phase === phase)?.tools.map((t) => t.id) ??
-                              [],
-                          );
-                          const ids = AFL_RECOMMENDED_IDS[phase].filter((id) => allowed.has(id));
-                          return [phase, [...ids]];
-                        }),
-                      ) as Record<AflPhaseId, string[]>,
-                    );
-                  }}
-                  className="rounded-lg border border-violet-300 bg-[#FAF6EF] px-3 py-1.5 text-xs font-semibold text-violet-900 shadow-sm hover:bg-violet-50"
-                >
-                  Select Recommended
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAflSelected(emptyAflSelected())}
-                  className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
-                >
-                  Clear All
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAflPanelOpen(false)}
-                  className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100"
-                >
-                  Hide
-                </button>
-              </div>
-            </div>
-            <div className="mt-4 max-h-[min(70vh,520px)] space-y-5 overflow-y-auto pr-1">
-              {AFL_PHASE_GROUPS.map((group) => (
-                <fieldset key={group.phase} className="rounded-xl border border-stone-200 bg-[#FAF6EF]/90 p-3">
-                  <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-violet-800">
-                    {group.title}
-                  </legend>
-                  <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {group.tools.map((t) => {
-                      const checked = (aflSelected[group.phase] ?? []).includes(t.id);
-                      return (
-                        <li key={t.id} className="flex items-start gap-2">
-                          <input
-                            id={`afl-${t.id}`}
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(e) => {
-                              const on = e.target.checked;
-                              setAflSelected((prev) => {
-                                const cur = prev[group.phase] ?? [];
-                                const next = on
-                                  ? [...new Set([...cur, t.id])]
-                                  : cur.filter((id) => id !== t.id);
-                                return { ...prev, [group.phase]: next };
-                              });
-                            }}
-                            className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-violet-700 focus:ring-violet-500"
-                          />
-                          <label htmlFor={`afl-${t.id}`} className="min-w-0 text-sm leading-snug text-stone-800">
-                            <span className="font-medium">{t.label}</span>
-                            <span className="mt-0.5 block text-[11px] text-stone-500">{t.purpose}</span>
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </fieldset>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="mt-6">
+          <AflSelector
+            selected={aflSelected}
+            onChange={(next) => setAflSelected(next as Record<AflPhaseId, string[]>)}
+            locked={!entitlements.afl}
+            onUpgrade={() => setPaymentModalOpen(true)}
+          />
+        </div>
 
         {/* ── Teaching & Learning Strategy selector ──────────────────── */}
-        {!strategyPanelOpen ? (
+        {!entitlements.teachingStrategy ? (
+          <div className="mt-6">
+            <LockedFeaturePanel
+              title="Teaching & Learning Strategy"
+              description="Choose a strategy — Project-Based, Inquiry-Based, Flipped Classroom, and more — to shape how activities are delivered. The lesson structure stays the same either way."
+              onUpgrade={() => setPaymentModalOpen(true)}
+            >
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {TEACHING_STRATEGIES.map((strategy) => (
+                  <li
+                    key={strategy.id}
+                    className="rounded-xl border border-stone-200 bg-[#FAF6EF] px-3 py-2 text-sm text-stone-700"
+                  >
+                    {strategy.name}
+                  </li>
+                ))}
+              </ul>
+            </LockedFeaturePanel>
+          </div>
+        ) : !strategyPanelOpen ? (
           <div className="mt-6">
             <button
               type="button"
@@ -1423,10 +1382,9 @@ export function LessonPlanGenerator() {
               type="button"
               onClick={() =>
                 setSectionSelection(
-                  Object.fromEntries(TEACHER_PACKAGE_SECTIONS.map((k) => [k, true])) as Record<
-                    TeacherPackageSectionKey,
-                    boolean
-                  >,
+                  Object.fromEntries(
+                    TEACHER_PACKAGE_SECTIONS.map((k) => [k, entitlements.allowedSections.includes(k)]),
+                  ) as Record<TeacherPackageSectionKey, boolean>,
                 )
               }
               className="rounded-lg border border-[#0E9484]/30 bg-[#FAF6EF] px-3 py-1.5 text-xs font-semibold text-[#241A12] shadow-sm hover:bg-[#0E9484]/10"
@@ -1449,22 +1407,42 @@ export function LessonPlanGenerator() {
             </button>
           </div>
           <ul className="mt-4 space-y-2.5">
-            {TEACHER_PACKAGE_SECTIONS.map((key) => (
-              <li key={key} className="flex items-start gap-3">
-                <input
-                  id={`gen-${key}`}
-                  type="checkbox"
-                  checked={sectionSelection[key]}
-                  onChange={() =>
-                    setSectionSelection((prev) => ({ ...prev, [key]: !prev[key] }))
-                  }
-                  className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-[#0E9484] focus:ring-[#0E9484]"
-                />
-                <label htmlFor={`gen-${key}`} className="text-sm text-stone-800">
-                  {GENERATION_CHECKBOX_LABELS[key]}
-                </label>
-              </li>
-            ))}
+            {TEACHER_PACKAGE_SECTIONS.map((key) => {
+              const allowed = entitlements.allowedSections.includes(key);
+              if (!allowed) {
+                return (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentModalOpen(true)}
+                      className="flex w-full items-center gap-3 rounded-lg px-1 py-0.5 text-left opacity-60 transition hover:opacity-80"
+                    >
+                      <input type="checkbox" disabled checked={false} readOnly className="mt-0.5 size-4 shrink-0 rounded border-stone-300" />
+                      <span className="flex items-center gap-2 text-sm text-stone-600">
+                        {GENERATION_CHECKBOX_LABELS[key]}
+                        <ProBadge />
+                      </span>
+                    </button>
+                  </li>
+                );
+              }
+              return (
+                <li key={key} className="flex items-start gap-3">
+                  <input
+                    id={`gen-${key}`}
+                    type="checkbox"
+                    checked={sectionSelection[key]}
+                    onChange={() =>
+                      setSectionSelection((prev) => ({ ...prev, [key]: !prev[key] }))
+                    }
+                    className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-[#0E9484] focus:ring-[#0E9484]"
+                  />
+                  <label htmlFor={`gen-${key}`} className="text-sm text-stone-800">
+                    {GENERATION_CHECKBOX_LABELS[key]}
+                  </label>
+                </li>
+              );
+            })}
           </ul>
         </fieldset>
 
@@ -1517,7 +1495,7 @@ export function LessonPlanGenerator() {
         ) : null}
             </fieldset>
           </form>
-        </div>
+        </Container>
       ) : (
         <section ref={resultsRef} className="animate-slide-up">
           <TeacherPackageViewer
@@ -1563,6 +1541,13 @@ export function LessonPlanGenerator() {
         headline={limitHeadline}
         subline={limitSubline}
         onClose={() => setLimitModalOpen(false)}
+      />
+
+      <PaymentModal
+        open={paymentModalOpen}
+        planKey="pro"
+        onClose={() => setPaymentModalOpen(false)}
+        onSuccess={() => window.location.reload()}
       />
     </div>
   );

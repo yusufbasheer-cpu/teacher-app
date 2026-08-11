@@ -69,7 +69,7 @@ export default async function SchoolAdminPage() {
   }
 
   return (
-    <main className="min-h-screen pb-16 pt-10" style={{ background: "#F1E9DC" }}>
+    <main className="min-h-screen pb-16 pt-10">
       <Container>
         <FadeIn>
           <SchoolAdminDashboard initialData={dashboard} />

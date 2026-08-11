@@ -59,7 +59,7 @@ describe("isPlanType", () => {
 
 describe("getGenerationsLimitForPlan / isUnlimitedPlan", () => {
   it("returns the documented limit for each paid consumer plan", () => {
-    expect(getGenerationsLimitForPlan("free")).toBe(15);
+    expect(getGenerationsLimitForPlan("free")).toBe(3);
     expect(getGenerationsLimitForPlan("pro")).toBe(30);
     expect(getGenerationsLimitForPlan("pro_plus")).toBe(60);
   });
@@ -85,7 +85,7 @@ function row(overrides: Partial<UserUsageRow> = {}): UserUsageRow {
     user_id: "u1",
     plan_type: "free",
     generations_used: 0,
-    generations_limit: 15,
+    generations_limit: 3,
     reset_date: "2026-08-01",
     created_at: "2026-07-01T00:00:00Z",
     ...overrides,
@@ -113,21 +113,12 @@ describe("normalizeUsageRow", () => {
     expect(n.generations_used).toBe(7);
   });
 
-  it("self-heals a zero or missing limit on free back to 15", () => {
-    expect(normalizeUsageRow(row({ generations_limit: 0 })).generations_limit).toBe(15);
+  it("self-heals a zero or missing limit on free back to 3", () => {
+    expect(normalizeUsageRow(row({ generations_limit: 0 })).generations_limit).toBe(3);
     expect(
       normalizeUsageRow(row({ generations_limit: undefined as unknown as number }))
         .generations_limit,
-    ).toBe(15);
-  });
-
-  it("self-heals the legacy SQL default of 3 on free back to 15", () => {
-    // This is the 3-vs-15 drift: normalizeUsageRow already treats anything
-    // below 1 as invalid, but a legacy row created with the DB default of 3
-    // is NOT below 1 — so it is NOT currently self-healed. This test pins
-    // today's actual (arguably wrong) behaviour; Phase 3's migration fixes
-    // it at the source instead.
-    expect(normalizeUsageRow(row({ generations_limit: 3 })).generations_limit).toBe(3);
+    ).toBe(3);
   });
 
   it("preserves a custom limit a super-admin set on a paid plan", () => {
@@ -137,8 +128,8 @@ describe("normalizeUsageRow", () => {
 });
 
 describe("toUsageSnapshot", () => {
-  it("blocks a free user who has used all 15", () => {
-    const s = toUsageSnapshot(row({ generations_used: 15, generations_limit: 15 }));
+  it("blocks a free user who has used all 3", () => {
+    const s = toUsageSnapshot(row({ generations_used: 3, generations_limit: 3 }));
     expect(s.canGenerate).toBe(false);
   });
 

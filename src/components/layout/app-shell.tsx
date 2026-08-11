@@ -4,11 +4,13 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { BG_SOFT } from "@/lib/design-tokens";
 import { Navbar } from "./navbar";
 import { AppSidebar } from "./app-sidebar";
 
-/** Chooses the page chrome: no header on /landing, the marketing top nav for
- * signed-out visitors, or the app sidebar once a session is present. */
+/** Chooses the page chrome: no header on the homepage (`/`, which renders
+ * its own Navbar), the marketing top nav for signed-out visitors, or the app
+ * sidebar once a session is present. */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
@@ -32,7 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (pathname === "/landing") {
+  if (pathname === "/") {
     return <>{children}</>;
   }
 
@@ -48,10 +50,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <AppSidebar user={user} />
-      {/* Subtle canvas behind the white cards — without this, a centered
-          narrow form on an identically-white background reads as broken
-          empty space rather than an intentional layout on large screens. */}
-      <div className="min-h-screen min-w-0 flex-1 bg-stone-50">{children}</div>
+      {/* Canvas behind the cards. Same warm-cream family as the sidebar
+          (BG_SOFT is a shade darker than the sidebar/card cream BG) so the
+          two form one continuous surface instead of a cream sidebar sitting
+          next to an unrelated gray page — this is the single source of truth
+          for the authenticated app's background; do not re-override it per
+          page. */}
+      <div className="min-h-screen min-w-0 flex-1" style={{ background: BG_SOFT }}>
+        {children}
+      </div>
     </div>
   );
 }

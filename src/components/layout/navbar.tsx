@@ -8,8 +8,8 @@ import { BORDER, NAVY, TEAL, TEXT_MUTED } from "@/lib/design-tokens";
 
 // Rendered only for signed-out visitors — AppShell swaps to AppSidebar once a
 // user session is present, so this never needs to know about auth or admin
-// roles. Same header markup as /landing (which renders this component too),
-// so there is exactly one public-facing nav bar in the app.
+// roles. Same header markup as `/` (the homepage, which renders this
+// component too), so there is exactly one public-facing nav bar in the app.
 const NAV_LINKS = [
   { href: "/lesson-plan", label: "Lesson Plans" },
   { href: "/differentiated-worksheets", label: "Worksheets" },
@@ -31,7 +31,7 @@ export function Navbar() {
       style={{ borderBottom: `1px solid ${BORDER}` }}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/landing" className="flex shrink-0 items-center gap-2.5">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5">
           <img src="/logo-mark.png" alt="Layah" className="h-9 w-9 rounded-xl object-cover" />
           <span className="leading-tight">
             <span className="block text-[15px] font-extrabold" style={{ color: NAVY }}>

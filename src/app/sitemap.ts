@@ -14,8 +14,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/pricing`,                 lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE}/about`,                   lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE}/blog`,                    lastModified: new Date(), changeFrequency: "weekly",  priority: 0.8 },
-    // Note: `/landing` is intentionally omitted — `/` redirects to it, so
-    // listing both is duplicate content for search engines.
+    // Note: `/landing` is intentionally omitted — it's a legacy alias that
+    // redirects to `/`, so listing both is duplicate content for search engines.
     { url: `${BASE}/faq`,                     lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/contact`,                 lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/auth`,                    lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },

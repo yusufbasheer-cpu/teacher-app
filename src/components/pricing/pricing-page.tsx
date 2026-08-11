@@ -35,10 +35,9 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
     priceKey: null,
     generations: `${PLANS.free.generationsLimit} per month`,
     features: [
-      `${PLANS.free.generationsLimit} Lesson Plans`,
-      `${PLANS.free.generationsLimit} PPT Downloads`,
-      `${PLANS.free.generationsLimit} Worksheets`,
-      "Basic Activity Sheet AFL",
+      `${PLANS.free.generationsLimit} Lesson Plans per month`,
+      "PPT Slides included",
+      "Class details & curriculum setup",
       "Standard Themes",
       "Email Support",
     ],
@@ -54,12 +53,14 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
     generations: `${PLANS.pro.generationsLimit} per month`,
     features: [
       "Everything in Free",
-      `Unlimited within ${PLANS.pro.generationsLimit} generations`,
-      "All Activity Sheet AFL Tools",
-      "All 5 Themes",
-      "Question Paper Generator",
-      "Blueprint Generator",
+      `${PLANS.pro.generationsLimit} generations per month`,
+      "Upload your own source material (PDF, text)",
+      "Full Assessment for Learning library",
+      "Teaching & Learning Strategy selector",
+      "Worksheets, Assessments, Homework & Teacher Notes",
+      "Question Paper Generator + Blueprint Generator",
       "Differentiated Worksheet Pack",
+      "All 5 Themes",
       "Global Curriculum Framework Alignment",
       "Priority Support",
     ],
@@ -86,53 +87,20 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
 
 const SCHOOL_PLAN_DEFS: PlanDef[] = [
   {
-    id: "school-starter",
-    name: "School Starter",
-    priceKey: "schoolStarter",
-    generations: "Unlimited for all teachers",
-    teachers: "Up to 10 teachers",
+    id: "schools-institutes",
+    name: "Schools & Institutes",
+    priceKey: null,
+    generations: "Unlimited generations for every teacher",
     features: [
-      "Everything in Pro Plus",
-      "HOD Dashboard",
-      "Department Groups",
+      "HOD Dashboard & Department Groups",
       "School Branding on PPTs",
       "Usage Analytics",
-      "Priority Support",
-    ],
-    cta: { label: "Contact Sales", href: "mailto:support@layah.in?subject=School%20Starter%20Plan" },
-    variant: "school",
-  },
-  {
-    id: "school-pro",
-    name: "School Pro",
-    priceKey: "schoolPro",
-    generations: "Unlimited for all teachers",
-    teachers: "Up to 30 teachers",
-    features: [
-      "Everything in School Starter",
-      "Lesson Plan Approval System",
-      "Advanced Analytics",
-      "Dedicated Account Manager",
-    ],
-    cta: { label: "Contact Sales", href: "mailto:support@layah.in?subject=School%20Pro%20Plan" },
-    variant: "school",
-  },
-  {
-    id: "school-enterprise",
-    name: "School Enterprise",
-    priceKey: "schoolEnterprise",
-    generations: "Unlimited",
-    teachers: "Unlimited teachers",
-    features: [
-      "Everything in School Pro",
-      "Custom School Branding",
-      "API Access",
-      "Custom Feature Requests",
-      "SLA Support",
+      "Custom Feature Requests & API Access",
+      "Dedicated Account Manager & SLA Support",
     ],
     cta: {
-      label: "Contact Us",
-      href: "mailto:support@layah.in?subject=School%20Enterprise%20Plan",
+      label: "Contact Sales",
+      href: "mailto:info@layah.in?subject=School%2FInstitute%20Plan%20Enquiry",
     },
     variant: "school",
   },
@@ -193,7 +161,7 @@ function PlanPrice({
         className="text-3xl font-extrabold tracking-tight"
         style={{ color: lightText ? "#fff" : NAVY }}
       >
-        Free Forever
+        {plan.variant === "school" ? "Custom Pricing" : "Free Forever"}
       </p>
     );
   }
@@ -258,7 +226,7 @@ function PricingCard({
     "mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 py-3 text-center text-sm font-semibold transition hover:opacity-95";
   const ctaStyle = isFeatured
     ? { background: TEAL, color: NAVY }
-    : plan.id === "school-enterprise"
+    : plan.id === "schools-institutes"
       ? { background: NAVY, color: "#fff", border: `2px solid ${TEAL}` }
       : { background: NAVY, color: "#fff" };
 
@@ -458,15 +426,16 @@ export function PricingPage() {
           <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-white/65">
             Unlimited generations for every teacher on your plan. Enterprise includes custom branding and API access.
           </p>
-          <div className="mt-10 grid gap-6 lg:grid-cols-3 lg:items-stretch">
+          <div className="mx-auto mt-10 max-w-md">
             {SCHOOL_PLAN_DEFS.map((plan) => (
               <PricingCard key={plan.id} plan={plan} region={region} billing={billing} />
             ))}
           </div>
           <div className="mt-10 text-center">
+            <p className="text-sm text-white/50">Prefer to self-serve?</p>
             <Link
               href="/school-register"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold transition hover:opacity-90"
+              className="mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold transition hover:opacity-90"
               style={{ background: TEAL, color: NAVY }}
             >
               <svg
@@ -481,10 +450,10 @@ export function PricingPage() {
                 <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
               </svg>
-              Get School Plan
+              Register Your School
             </Link>
             <p className="mt-3 text-sm text-white/50">
-              Register your school and our team will set you up within 24 hours
+              Set up your own plan and our team will onboard you within 24 hours
             </p>
           </div>
         </section>
