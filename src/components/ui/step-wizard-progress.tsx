@@ -13,7 +13,7 @@ type Props = {
  * show a checkmark. */
 export function StepWizardProgress({ steps, currentStep }: Props) {
   return (
-    <div className="relative mx-auto max-w-[560px] px-2">
+    <div className="relative w-full px-2">
       <div
         className="absolute left-2 right-2 top-4 h-0.5"
         style={{ background: "#E3D9C8" }}

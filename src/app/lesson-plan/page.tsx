@@ -3,6 +3,8 @@ import { getVerifiedUser } from "@/lib/verified-user";
 import { LessonPlanGenerator } from "@/components/lesson-plan/lesson-plan-generator";
 import { SchoolWelcomeBanner } from "@/components/school/school-welcome-banner";
 import { SecondaryPageHero } from "@/components/layout/secondary-page-hero";
+import { PageHeader } from "@/components/layout/page-header";
+import { Container } from "@/components/ui/container";
 import { Skeleton } from "@/components/ui/animate";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +30,12 @@ export default async function LessonPlanPage() {
   return (
     <main className="min-h-screen w-full pb-16 pt-8">
       {user?.id ? (
-        <h1 className="sr-only">AI Lesson Plan Generator</h1>
+        <Container className="pt-2">
+          <PageHeader
+            title="Generate Lesson Plan"
+            description="Create a curriculum-aligned lesson plan, PPT, worksheets and assessments in minutes."
+          />
+        </Container>
       ) : (
         <SecondaryPageHero
           badge="AI Teaching Resources"

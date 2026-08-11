@@ -13,6 +13,7 @@ import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
 import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
+import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
@@ -539,12 +540,14 @@ export function QuestionPaperGenerator() {
     <div className="space-y-6" ref={wizardRef}>
       {!result ? (
         <>
-          <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
+          <div className={FORM_COLUMN_CLASS}>
+            <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
+          </div>
 
-          <form ref={formRef} onSubmit={onSubmit} noValidate className="mx-auto w-full max-w-[820px] space-y-6">
+          <form ref={formRef} onSubmit={onSubmit} noValidate className={`${FORM_COLUMN_CLASS} space-y-6`}>
         {/* ══════════ STEP 1 — PAPER DETAILS ══════════ */}
-        <fieldset hidden={step !== 1} className={sectionClass} style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
-          <legend className="text-sm font-semibold uppercase tracking-wide" style={{ color: "#241A12" }}>
+        <fieldset hidden={step !== 1} className="min-w-0">
+          <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
             Basic details
           </legend>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -676,11 +679,11 @@ export function QuestionPaperGenerator() {
         ) : null}
 
         {/* ══════════ STEP 2 — SOURCE CONTENT (OPTIONAL) ══════════ */}
-        <fieldset hidden={step !== 2} className={`${sectionClass} border-dashed`} style={{ borderColor: "rgba(14, 148, 132,0.35)" }}>
-          <legend className="text-sm font-semibold" style={{ color: "#241A12" }}>
+        <fieldset hidden={step !== 2} className="min-w-0">
+          <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
             Provide your content
           </legend>
-          <p className="mt-1 text-xs text-stone-600">
+          <p className="mt-3 text-xs text-stone-600">
             Optional — AI will generate based on topic if no content is provided (except in Strict
             mode).
           </p>

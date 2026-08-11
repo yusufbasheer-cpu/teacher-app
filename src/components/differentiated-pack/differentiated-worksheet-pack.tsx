@@ -17,6 +17,7 @@ import { filterUserFacingNotices } from "@/lib/image-notices";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
+import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
 
 function safeFilePart(topic: string) {
   return topic
@@ -389,7 +390,7 @@ export function DifferentiatedWorksheetPack() {
 
   if (checkingAuth) {
     return (
-      <div className="mx-auto w-full max-w-[820px] rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
+      <div className={`${FORM_COLUMN_CLASS} rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm`}>
         Checking your account…
       </div>
     );
@@ -397,7 +398,7 @@ export function DifferentiatedWorksheetPack() {
 
   if (!user) {
     return (
-      <div className="mx-auto w-full max-w-[820px] rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+      <div className={`${FORM_COLUMN_CLASS} rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm`}>
         <h2 className="text-xl font-semibold text-stone-900">Login required</h2>
         <p className="mt-2 text-sm text-stone-600">
           Please log in to generate differentiated worksheet packs and track your monthly generation limit.
@@ -413,7 +414,7 @@ export function DifferentiatedWorksheetPack() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[820px] space-y-8">
+    <div className={`${FORM_COLUMN_CLASS} space-y-8`}>
       <div className="rounded-2xl border border-stone-200 bg-[#FAF6EF]/90 p-5 shadow-sm sm:p-6">
         <h2 className="text-xl font-bold text-stone-900">How to use this pack</h2>
         <ul className="mt-3 list-inside list-disc space-y-1.5 text-sm text-stone-600">
@@ -470,8 +471,10 @@ export function DifferentiatedWorksheetPack() {
         </section>
       </div>
 
-      <section className="rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm sm:p-6">
-        <h3 className="text-lg font-semibold text-stone-900">Class details &amp; lesson source</h3>
+      <section>
+        <h3 className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
+          Class details &amp; lesson source
+        </h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-medium text-stone-700">Topic</label>

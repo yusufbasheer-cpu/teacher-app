@@ -13,6 +13,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
+import { Container } from "@/components/ui/container";
+import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
 import type {
   LessonPlanInput,
   LessonPlanResult,
@@ -827,23 +829,24 @@ export function LessonPlanGenerator() {
   return (
     <div className="w-full space-y-6" ref={wizardRef}>
       {!lessonPlan ? (
-        <div className="space-y-6 px-4 pt-6 sm:px-6 lg:px-8">
-          <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
+        <Container className="space-y-6 pt-6">
+          <div className={FORM_COLUMN_CLASS}>
+            <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
+          </div>
 
           <form
             ref={formRef}
             onSubmit={onSubmit}
             aria-busy={loading}
             noValidate
-            className="mx-auto w-full max-w-[820px]"
+            className={FORM_COLUMN_CLASS}
           >
             {/* ══════════ STEP 1 — CLASS DETAILS ══════════ */}
-            <fieldset
-              hidden={step !== 1}
-              className="min-w-0 rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-5 shadow-sm sm:p-6 md:p-7"
-            >
-              <legend className="text-xl font-semibold text-stone-900">Class details</legend>
-              <p className="mt-2 text-sm text-stone-600">
+            <fieldset hidden={step !== 1} className="min-w-0">
+              <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
+                Class details
+              </legend>
+              <p className="mt-3 text-sm text-stone-600">
                 Tell us who this lesson is for. This is the only step required to get started.
               </p>
 
@@ -1021,12 +1024,11 @@ export function LessonPlanGenerator() {
             </fieldset>
 
             {/* ══════════ STEP 2 — SOURCE CONTENT (OPTIONAL) ══════════ */}
-            <fieldset
-              hidden={step !== 2}
-              className="min-w-0 rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-5 shadow-sm sm:p-6 md:p-7"
-            >
-              <legend className="text-xl font-semibold text-stone-900">Source content</legend>
-              <p className="mt-2 text-sm text-stone-600">
+            <fieldset hidden={step !== 2} className="min-w-0">
+              <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
+                Source content
+              </legend>
+              <p className="mt-3 text-sm text-stone-600">
                 Add textbook pages, notes, or chapter content to generate a more accurate lesson plan.
                 This step is entirely optional — skip it and Layah will generate content from the topic
                 and objectives alone.
@@ -1212,12 +1214,11 @@ export function LessonPlanGenerator() {
             </fieldset>
 
             {/* ══════════ STEP 3 — GENERATE PACKAGE ══════════ */}
-            <fieldset
-              hidden={step !== 3}
-              className="min-w-0 rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-5 shadow-sm sm:p-6 md:p-7"
-            >
-              <legend className="text-xl font-semibold text-stone-900">Generate package</legend>
-              <p className="mt-2 text-sm text-stone-600">
+            <fieldset hidden={step !== 3} className="min-w-0">
+              <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
+                Generate package
+              </legend>
+              <p className="mt-3 text-sm text-stone-600">
                 Choose what to include, then generate your teacher package.
               </p>
 
@@ -1517,7 +1518,7 @@ export function LessonPlanGenerator() {
         ) : null}
             </fieldset>
           </form>
-        </div>
+        </Container>
       ) : (
         <section ref={resultsRef} className="animate-slide-up">
           <TeacherPackageViewer
