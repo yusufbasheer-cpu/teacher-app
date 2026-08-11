@@ -25,13 +25,16 @@ import {
 } from "@/lib/app-nav-links";
 import { supabase } from "@/lib/supabase";
 import { UserMenu } from "@/components/layout/user-menu";
+import { useUserUsage } from "@/hooks/use-user-usage";
+import { isFreePlan } from "@/lib/plans";
+import { ProBadge } from "@/components/premium/pro-badge";
 
 const NAV_ITEMS = [
-  { href: "/overview", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/my-lesson-plans", label: "My Lessons", icon: BookOpen },
-  { href: "/lesson-plan", label: "Generate Lesson Plan", icon: NotebookPen },
-  { href: "/question-paper", label: "Question Paper", icon: ClipboardList },
-  { href: "/differentiated-worksheets", label: "Differentiated Worksheet", icon: Layers3 },
+  { href: "/overview", label: "Dashboard", icon: LayoutDashboard, proOnly: false },
+  { href: "/my-lesson-plans", label: "My Lessons", icon: BookOpen, proOnly: false },
+  { href: "/lesson-plan", label: "Generate Lesson Plan", icon: NotebookPen, proOnly: false },
+  { href: "/question-paper", label: "Question Paper", icon: ClipboardList, proOnly: true },
+  { href: "/differentiated-worksheets", label: "Differentiated Worksheet", icon: Layers3, proOnly: true },
 ] as const;
 
 const COLLAPSE_STORAGE_KEY = "layah:sidebar-collapsed";
@@ -44,6 +47,8 @@ export function AppSidebar({ user }: Props) {
   const [isSchoolAdmin, setIsSchoolAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isHod, setIsHod] = useState(false);
+  const { usage } = useUserUsage(true);
+  const callerIsFree = Boolean(usage && isFreePlan(usage.planType));
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(COLLAPSE_STORAGE_KEY) === "1");
@@ -90,7 +95,7 @@ export function AppSidebar({ user }: Props) {
     void checkAdmin();
   }, [user.id]);
 
-  type NavItem = { href: string; label: string; icon: LucideIcon };
+  type NavItem = { href: string; label: string; icon: LucideIcon; proOnly?: boolean };
 
   const rawAdminItems: (NavItem | null)[] = [
     isSchoolAdmin
@@ -159,7 +164,12 @@ export function AppSidebar({ user }: Props) {
               }}
             >
               <Icon size={18} className="shrink-0" />
-              {!collapsed ? <span className="truncate">{item.label}</span> : null}
+              {!collapsed ? (
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <span className="truncate">{item.label}</span>
+                  {item.proOnly && callerIsFree ? <ProBadge /> : null}
+                </span>
+              ) : null}
             </Link>
           );
         })}

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import {
   authenticateRequest,
+  getCallerPlanType,
   refundGeneration,
   reserveGeneration,
 } from "@/lib/user-usage-server";
 import { getUpgradePitch } from "@/lib/user-usage";
+import { PLANS, FEATURE_LOCKED_ERROR_CODE } from "@/lib/plans";
 import {
   checkRateLimit,
   checkSpendingProtection,
@@ -695,6 +697,33 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
   }
 
+  // Entitlement gate — runs before any rate-limit/spend/quota work so a
+  // rejected request never consumes a generation. The frontend disables
+  // these controls for Free users; this is the actual security boundary.
+  const planType = await getCallerPlanType(auth.supabase, auth.userId);
+  const plan = PLANS[planType];
+  const aflSelections = sanitizeAflSelections(body.aflSelections);
+  const wantsAfl = Object.values(aflSelections).some((ids) => (ids?.length ?? 0) > 0);
+  const wantsStrategy =
+    typeof body.teachingStrategy === "string" && body.teachingStrategy.trim().length > 0;
+  const wantsSourceContent = (sourceMaterial ?? "").trim().length > 0;
+  const disallowedSections = sections.filter((s) => !plan.allowedSections.includes(s));
+
+  if (
+    disallowedSections.length > 0 ||
+    (wantsAfl && !plan.afl) ||
+    (wantsStrategy && !plan.teachingStrategy) ||
+    (wantsSourceContent && !plan.sourceContent)
+  ) {
+    return NextResponse.json(
+      {
+        error: "Your plan doesn't include one or more of the requested features. Upgrade to Pro to unlock them.",
+        code: FEATURE_LOCKED_ERROR_CODE,
+      },
+      { status: 403 },
+    );
+  }
+
   const userDayLimit = checkRateLimit(`lesson-plan:user:${auth.userId}`, 30, DAY_MS);
   if (!userDayLimit.ok) return rateLimitResponse(userDayLimit.resetInSeconds);
 
@@ -728,7 +757,6 @@ export async function POST(req: Request) {
 
   const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(input.curriculumFramework);
 
-  const aflSelections = sanitizeAflSelections(body.aflSelections);
   const aflCtx = {
     subject: input.subject.trim(),
     grade: input.grade.trim(),

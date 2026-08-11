@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dbLimitValue, PLAN_IDS, planIdByAdminLabel, PLANS, SCHOOL_PLAN_IDS } from "./plans";
+import { dbLimitValue, isFreePlan, PLAN_IDS, planIdByAdminLabel, PLANS, SCHOOL_PLAN_IDS } from "./plans";
 
 describe("PLANS registry consistency", () => {
   it("every entry's key matches its own id", () => {
@@ -52,6 +52,35 @@ describe("PLANS registry consistency", () => {
   it("free has no slug or priceKey", () => {
     expect(PLANS.free.slug).toBeNull();
     expect(PLANS.free.priceKey).toBeNull();
+  });
+});
+
+describe("Free vs Pro feature entitlements", () => {
+  it("free has every new gate locked and only the 2 free-tier sections allowed", () => {
+    expect(PLANS.free.sourceContent).toBe(false);
+    expect(PLANS.free.afl).toBe(false);
+    expect(PLANS.free.teachingStrategy).toBe(false);
+    expect(PLANS.free.questionPaper).toBe(false);
+    expect(PLANS.free.differentiatedWorksheets).toBe(false);
+    expect(PLANS.free.allowedSections).toEqual(["Full Lesson Plan", "PPT Slide Content"]);
+  });
+
+  it("every plan above free has every new gate unlocked and all 7 sections allowed", () => {
+    for (const id of PLAN_IDS.filter((id) => id !== "free")) {
+      expect(PLANS[id].sourceContent).toBe(true);
+      expect(PLANS[id].afl).toBe(true);
+      expect(PLANS[id].teachingStrategy).toBe(true);
+      expect(PLANS[id].questionPaper).toBe(true);
+      expect(PLANS[id].differentiatedWorksheets).toBe(true);
+      expect(PLANS[id].allowedSections).toHaveLength(7);
+    }
+  });
+
+  it("isFreePlan is true only for free", () => {
+    expect(isFreePlan("free")).toBe(true);
+    for (const id of PLAN_IDS.filter((id) => id !== "free")) {
+      expect(isFreePlan(id)).toBe(false);
+    }
   });
 });
 

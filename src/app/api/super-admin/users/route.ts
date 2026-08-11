@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { isSuperAdmin } from "@/lib/super-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
+import { PLANS } from "@/lib/plans";
 
 export const runtime = "nodejs";
 
@@ -33,7 +34,7 @@ export async function GET() {
       createdAt: u.created_at,
       planType: (usage?.plan_type as string) ?? "free",
       generationsUsed: Number(usage?.generations_used) || 0,
-      generationsLimit: Number(usage?.generations_limit) || 15,
+      generationsLimit: Number(usage?.generations_limit) || PLANS.free.generationsLimit,
     };
   });
 

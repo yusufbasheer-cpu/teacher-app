@@ -81,6 +81,8 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [showResend, setShowResend] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   // Bot protection
   const [honeypot, setHoneypot] = useState("");
@@ -120,10 +122,29 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
     }
   };
 
+  const onResendConfirmation = async () => {
+    setError(null);
+    setMessage(null);
+    setResendLoading(true);
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim(),
+      });
+      if (resendError) throw resendError;
+      setMessage("Confirmation email sent. Check your inbox (and spam folder).");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't resend the confirmation email.");
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setMessage(null);
+    setShowResend(false);
     setLoading(true);
 
     try {
@@ -203,7 +224,15 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
         router.refresh();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed.");
+      const code = typeof err === "object" && err !== null ? (err as { code?: string }).code : undefined;
+      if (mode === "login" && code === "invalid_credentials") {
+        setError(
+          "Invalid email or password. If you just signed up, you'll need to confirm your email first.",
+        );
+        setShowResend(true);
+      } else {
+        setError(err instanceof Error ? err.message : "Authentication failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -335,6 +364,17 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       </form>
 
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {showResend ? (
+        <button
+          type="button"
+          onClick={() => void onResendConfirmation()}
+          disabled={resendLoading}
+          className="mt-2 text-sm font-medium underline transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-70"
+          style={{ color: "#0E9484" }}
+        >
+          {resendLoading ? "Sending…" : "Resend confirmation email"}
+        </button>
+      ) : null}
       {message ? <p className="mt-3 text-sm" style={{ color: "#0B6B5F" }}>{message}</p> : null}
 
       {linkMode ? (
@@ -360,6 +400,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             });
             setError(null);
             setMessage(null);
+            setShowResend(false);
           }}
           className="mt-4 text-sm font-medium transition hover:opacity-80"
           style={{ color: "#0E9484" }}

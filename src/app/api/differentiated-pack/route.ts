@@ -9,7 +9,8 @@ import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 import { countFilledPackSections, parseDifferentiatedPack } from "@/lib/parse-differentiated-pack";
-import { authenticateRequest } from "@/lib/user-usage-server";
+import { authenticateRequest, getCallerPlanType } from "@/lib/user-usage-server";
+import { PLANS, FEATURE_LOCKED_ERROR_CODE } from "@/lib/plans";
 import {
   checkRateLimit,
   checkSpendingProtection,
@@ -59,6 +60,17 @@ export async function POST(req: Request) {
   const auth = await authenticateRequest(req);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
+  const planType = await getCallerPlanType(auth.supabase, auth.userId);
+  if (!PLANS[planType].differentiatedWorksheets) {
+    return NextResponse.json(
+      {
+        error: "Differentiated Worksheets is a Pro feature. Upgrade to Pro to generate worksheet packs.",
+        code: FEATURE_LOCKED_ERROR_CODE,
+      },
+      { status: 403 },
+    );
   }
 
   const userDayLimit = checkRateLimit(`differentiated-pack:user:${auth.userId}`, 30, DAY_MS);

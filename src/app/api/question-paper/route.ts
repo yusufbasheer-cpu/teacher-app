@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { callDeepSeekChat } from "@/lib/question-paper-deepseek";
 import {
   authenticateRequest,
+  getCallerPlanType,
   refundGeneration,
   reserveGeneration,
 } from "@/lib/user-usage-server";
+import { PLANS, FEATURE_LOCKED_ERROR_CODE } from "@/lib/plans";
 import {
   checkRateLimit,
   checkSpendingProtection,
@@ -51,6 +53,17 @@ export async function POST(req: Request) {
   const auth = await authenticateRequest(req);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+
+  const planType = await getCallerPlanType(auth.supabase, auth.userId);
+  if (!PLANS[planType].questionPaper) {
+    return NextResponse.json(
+      {
+        error: "Question Paper is a Pro feature. Upgrade to Pro to generate question papers.",
+        code: FEATURE_LOCKED_ERROR_CODE,
+      },
+      { status: 403 },
+    );
   }
 
   const userDayLimit = checkRateLimit(`question-paper:user:${auth.userId}`, 30, DAY_MS);

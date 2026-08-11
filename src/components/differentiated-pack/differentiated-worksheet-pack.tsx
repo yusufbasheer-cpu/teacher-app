@@ -18,6 +18,10 @@ import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
+import { useUserUsage } from "@/hooks/use-user-usage";
+import { PaymentModal } from "@/components/payment/payment-modal";
+import { LockedPageState } from "@/components/premium/locked-page-state";
+import { PLANS } from "@/lib/plans";
 
 function safeFilePart(topic: string) {
   return topic
@@ -54,6 +58,8 @@ export function DifferentiatedWorksheetPack() {
   const [busyDownload, setBusyDownload] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const { usage, loading: usageLoading } = useUserUsage(Boolean(user));
 
   const mergeLevelResult = (
     current: DifferentiatedPackContent,
@@ -410,6 +416,32 @@ export function DifferentiatedWorksheetPack() {
           Go to Login
         </Link>
       </div>
+    );
+  }
+
+  if (usageLoading || !usage) {
+    return (
+      <div className={`${FORM_COLUMN_CLASS} rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm`}>
+        Checking your plan…
+      </div>
+    );
+  }
+
+  if (!PLANS[usage.planType].differentiatedWorksheets) {
+    return (
+      <>
+        <LockedPageState
+          title="Differentiated Worksheets"
+          description="Generate foundation, core, and extension worksheets with answer keys and rubrics from one lesson topic — available on Pro and above."
+          onUpgrade={() => setPaymentModalOpen(true)}
+        />
+        <PaymentModal
+          open={paymentModalOpen}
+          planKey="pro"
+          onClose={() => setPaymentModalOpen(false)}
+          onSuccess={() => window.location.reload()}
+        />
+      </>
     );
   }
 

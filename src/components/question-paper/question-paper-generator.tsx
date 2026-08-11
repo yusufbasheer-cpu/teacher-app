@@ -15,6 +15,9 @@ import { GenerationLimitModal } from "@/components/usage/generation-limit-modal"
 import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
 import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
 import { useUserUsage } from "@/hooks/use-user-usage";
+import { PaymentModal } from "@/components/payment/payment-modal";
+import { LockedPageState } from "@/components/premium/locked-page-state";
+import { PLANS } from "@/lib/plans";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
@@ -79,6 +82,7 @@ export function QuestionPaperGenerator() {
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const {
     usage,
     loading: usageLoading,
@@ -533,6 +537,32 @@ export function QuestionPaperGenerator() {
           Go to Login
         </Link>
       </div>
+    );
+  }
+
+  if (usageLoading || !usage) {
+    return (
+      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
+        Checking your plan…
+      </div>
+    );
+  }
+
+  if (!PLANS[usage.planType].questionPaper) {
+    return (
+      <>
+        <LockedPageState
+          title="Question Paper"
+          description="Generate curriculum-aligned question papers with a custom blueprint, mark distribution, and answer key — available on Pro and above."
+          onUpgrade={() => setPaymentModalOpen(true)}
+        />
+        <PaymentModal
+          open={paymentModalOpen}
+          planKey="pro"
+          onClose={() => setPaymentModalOpen(false)}
+          onSuccess={() => window.location.reload()}
+        />
+      </>
     );
   }
 

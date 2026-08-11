@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import { firstDayOfNextMonthUtc } from "@/lib/user-usage";
+import { PLANS } from "@/lib/plans";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,7 @@ async function downgradeToFree(admin: ReturnType<typeof getSupabaseServiceRole>,
     .from("user_usage")
     .update({
       plan_type: "free",
-      generations_limit: 15,
+      generations_limit: PLANS.free.generationsLimit,
       generations_used: 0,
       reset_date: firstDayOfNextMonthUtc(),
     })

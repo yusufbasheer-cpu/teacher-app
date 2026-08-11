@@ -3,6 +3,7 @@ import { createClient, type PostgrestError, type SupabaseClient } from "@supabas
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { checkRateLimit, HOUR_MS } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/send-email";
+import type { PlanId } from "@/lib/plans";
 import {
   defaultFreeUsageSnapshot,
   GENERATION_LIMIT_ERROR_CODE,
@@ -152,6 +153,18 @@ export async function getOrCreateUserUsage(
   const snapshot = toUsageSnapshot(row);
   logUsageSnapshot("getOrCreateUserUsage", snapshot);
   return snapshot;
+}
+
+/**
+ * The caller's plan, for entitlement checks that must run BEFORE
+ * reserveGeneration() (so a rejected request never consumes a slot). Fails
+ * closed to "free" on any lookup failure — unlike reserveGeneration's
+ * fail-open break-glass for pure quota counting, a plan lookup failure here
+ * should never accidentally unlock a Pro-only feature.
+ */
+export async function getCallerPlanType(supabase: SupabaseClient, userId: string): Promise<PlanId> {
+  const usage = await getOrCreateUserUsage(supabase, userId);
+  return usage?.planType ?? "free";
 }
 
 /** A held generation slot. Pass to refundGeneration() if the paid AI call afterward fails. */
