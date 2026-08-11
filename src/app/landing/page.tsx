@@ -5,7 +5,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { BG_SOFT, BORDER, NAVY, TEAL, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
 
 export const metadata: Metadata = {
-  title: "Layah.ai — AI Lesson Planning for Teachers",
+  title: "Layah — AI Lesson Planning for Teachers",
   description:
     "Layah generates complete lesson plans, PowerPoint presentations, worksheets, and assessments in seconds. Built specifically for teachers.",
 };
@@ -83,7 +83,7 @@ export default function LandingPage() {
             className="mt-5 font-extrabold leading-[1.1] tracking-tight"
             style={{ color: NAVY, fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
           >
-            Create lesson plans, PPTs, worksheets, and assessments in minutes
+            Layah creates lesson plans, PPTs, worksheets, and assessments in minutes
           </h1>
 
           <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: TEXT_MUTED }}>
