@@ -396,7 +396,7 @@ export function DifferentiatedWorksheetPack() {
 
   if (checkingAuth) {
     return (
-      <div className={`${FORM_COLUMN_CLASS} rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm`}>
+      <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
         Checking your account…
       </div>
     );
@@ -404,7 +404,7 @@ export function DifferentiatedWorksheetPack() {
 
   if (!user) {
     return (
-      <div className={`${FORM_COLUMN_CLASS} rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm`}>
+      <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
         <h2 className="text-xl font-semibold text-stone-900">Login required</h2>
         <p className="mt-2 text-sm text-stone-600">
           Please log in to generate differentiated worksheet packs and track your monthly generation limit.

@@ -29,8 +29,8 @@ const poppins = Poppins({
 
 // Marketing-pages-only typography (see docs/architecture.md §6 — no nested
 // layout.tsx exists, so fonts load globally here but are only applied via
-// font-display/font-mono-editorial classes on the /landing, /about, /pricing,
-// /faq, /blog routes).
+// font-display/font-mono-editorial classes on the `/` homepage, /about,
+// /pricing, /faq, /blog routes).
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   weight: ["500", "600", "700"],

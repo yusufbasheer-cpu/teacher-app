@@ -8,8 +8,9 @@ import { BG_SOFT } from "@/lib/design-tokens";
 import { Navbar } from "./navbar";
 import { AppSidebar } from "./app-sidebar";
 
-/** Chooses the page chrome: no header on /landing, the marketing top nav for
- * signed-out visitors, or the app sidebar once a session is present. */
+/** Chooses the page chrome: no header on the homepage (`/`, which renders
+ * its own Navbar), the marketing top nav for signed-out visitors, or the app
+ * sidebar once a session is present. */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
@@ -33,7 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (pathname === "/landing") {
+  if (pathname === "/") {
     return <>{children}</>;
   }
 

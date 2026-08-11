@@ -804,26 +804,30 @@ export function LessonPlanGenerator() {
 
   if (checkingAuth) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
-        Checking your account...
-      </div>
+      <Container className="pt-6">
+        <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
+          Checking your account...
+        </div>
+      </Container>
     );
   }
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-stone-900">Login Required</h2>
-        <p className="mt-2 text-sm text-stone-600">
-          Please login to generate and save your personal lesson plans.
-        </p>
-        <Link
-          href="/login"
-          className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
-        >
-          Go to Login
-        </Link>
-      </div>
+      <Container className="pt-6">
+        <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-stone-900">Login Required</h2>
+          <p className="mt-2 text-sm text-stone-600">
+            Please login to generate and save your personal lesson plans.
+          </p>
+          <Link
+            href="/login"
+            className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
+          >
+            Go to Login
+          </Link>
+        </div>
+      </Container>
     );
   }
 
