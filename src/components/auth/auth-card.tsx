@@ -75,6 +75,8 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>(defaultMode);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -185,6 +187,12 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
+          options: {
+            data: {
+              full_name: fullName.trim(),
+              phone: phone.trim(),
+            },
+          },
         });
 
         if (signUpError) throw signUpError;
@@ -256,7 +264,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       <p className="mt-2 text-sm" style={{ color: "#6B5D4F" }}>
         {mode === "login"
           ? "Login to access your lesson plans."
-          : "Sign up with email and password."}
+          : "Tell us a bit about yourself to get started."}
       </p>
 
       <button
@@ -305,6 +313,27 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           />
         </div>
 
+        {mode === "signup" && (
+          <div>
+            <label htmlFor="full-name" className="mb-1 block text-sm font-medium" style={{ color: "#241A12" }}>
+              Full name
+            </label>
+            <input
+              id="full-name"
+              type="text"
+              autoComplete="name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="e.g. Priya Sharma"
+              className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition"
+              style={{ borderColor: "#D9CCB8", color: "#241A12" }}
+              onFocus={(e) => (e.target.style.borderColor = "#0E9484")}
+              onBlur={(e) => (e.target.style.borderColor = "#D9CCB8")}
+              required
+            />
+          </div>
+        )}
+
         <div>
           <label htmlFor="email" className="mb-1 block text-sm font-medium" style={{ color: "#241A12" }}>
             Email
@@ -322,6 +351,29 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             required
           />
         </div>
+
+        {mode === "signup" && (
+          <div>
+            <label htmlFor="phone" className="mb-1 block text-sm font-medium" style={{ color: "#241A12" }}>
+              Phone number
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+91 98765 43210"
+              pattern="^\+?[0-9\s\-()]{7,20}$"
+              title="Enter a valid phone number, with country code if possible"
+              className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition"
+              style={{ borderColor: "#D9CCB8", color: "#241A12" }}
+              onFocus={(e) => (e.target.style.borderColor = "#0E9484")}
+              onBlur={(e) => (e.target.style.borderColor = "#D9CCB8")}
+              required
+            />
+          </div>
+        )}
 
         <div>
           <label htmlFor="password" className="mb-1 block text-sm font-medium" style={{ color: "#241A12" }}>
