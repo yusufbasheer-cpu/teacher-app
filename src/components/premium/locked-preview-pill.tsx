@@ -14,12 +14,12 @@ type LockedPreviewPillProps = {
  * of reading as "locked" instead of "broken/disabled". */
 export function LockedPreviewPill({ label, meta }: LockedPreviewPillProps) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl border border-stone-200 bg-[#FAF6EF] px-3 py-2.5">
+    <div className="flex items-center justify-between gap-2 rounded-xl border border-[#0E9484]/25 bg-white px-3 py-2.5 shadow-sm">
       <span className="min-w-0 truncate text-sm font-medium" style={{ color: NAVY }}>
         {label}
         {meta ? <span className="ml-1.5 font-normal text-stone-400">· {meta}</span> : null}
       </span>
-      <Lock size={13} strokeWidth={2.5} className="shrink-0 text-stone-300" aria-hidden />
+      <Lock size={13} strokeWidth={2.5} className="shrink-0 text-stone-400" aria-hidden />
     </div>
   );
 }
