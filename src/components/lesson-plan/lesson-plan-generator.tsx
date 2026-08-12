@@ -64,6 +64,7 @@ import { AflSelector } from "@/components/lesson-plan/afl-selector";
 import { PaymentModal } from "@/components/payment/payment-modal";
 import { PLANS } from "@/lib/plans";
 import { LockedFeaturePanel } from "@/components/premium/locked-feature-panel";
+import { LockedPreviewPill } from "@/components/premium/locked-preview-pill";
 import { ProBadge } from "@/components/premium/pro-badge";
 
 type SourceUploadChunk = {
@@ -1225,7 +1226,13 @@ export function LessonPlanGenerator() {
               title="Source content"
               description="Upload your own teaching material — a PDF, images, or pasted text — and let generation use it as the primary source instead of just the topic and objectives."
               onUpgrade={() => setPaymentModalOpen(true)}
-            />
+            >
+              <div className="grid gap-2 sm:grid-cols-3">
+                <LockedPreviewPill label="Upload PDF" />
+                <LockedPreviewPill label="Upload Image" />
+                <LockedPreviewPill label="Paste content" />
+              </div>
+            </LockedFeaturePanel>
           </div>
         )}
 
@@ -1273,16 +1280,11 @@ export function LessonPlanGenerator() {
               description="Choose a strategy — Project-Based, Inquiry-Based, Flipped Classroom, and more — to shape how activities are delivered. The lesson structure stays the same either way."
               onUpgrade={() => setPaymentModalOpen(true)}
             >
-              <ul className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {TEACHING_STRATEGIES.map((strategy) => (
-                  <li
-                    key={strategy.id}
-                    className="rounded-xl border border-stone-200 bg-[#FAF6EF] px-3 py-2 text-sm text-stone-700"
-                  >
-                    {strategy.name}
-                  </li>
+                  <LockedPreviewPill key={strategy.id} label={strategy.name} />
                 ))}
-              </ul>
+              </div>
             </LockedFeaturePanel>
           </div>
         ) : !strategyPanelOpen ? (
@@ -1415,10 +1417,10 @@ export function LessonPlanGenerator() {
                     <button
                       type="button"
                       onClick={() => setPaymentModalOpen(true)}
-                      className="flex w-full items-center gap-3 rounded-lg px-1 py-0.5 text-left opacity-60 transition hover:opacity-80"
+                      className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-1 py-1 text-left transition hover:bg-[#0E9484]/5"
                     >
                       <input type="checkbox" disabled checked={false} readOnly className="mt-0.5 size-4 shrink-0 rounded border-stone-300" />
-                      <span className="flex items-center gap-2 text-sm text-stone-600">
+                      <span className="flex items-center gap-2 text-sm text-stone-500">
                         {GENERATION_CHECKBOX_LABELS[key]}
                         <ProBadge />
                       </span>
