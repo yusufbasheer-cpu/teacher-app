@@ -67,7 +67,7 @@ type ExtractPayload = {
 };
 
 const inputClass =
-  "w-full rounded-xl border border-stone-300 bg-[#FAF6EF] px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2";
+  "w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2";
 
 const sectionClass =
   "rounded-2xl border bg-[#FAF6EF] p-4 shadow-sm sm:p-5";
@@ -809,7 +809,7 @@ export function QuestionPaperGenerator() {
                   max={50}
                   value={questionCounts[spec.id]}
                   onChange={(e) => setCount(spec.id, Number(e.target.value))}
-                  className="w-14 rounded-lg border border-stone-300 px-2 py-1 text-center text-sm"
+                  className="w-14 rounded-lg border border-stone-300 bg-white px-2 py-1 text-center text-sm shadow-sm"
                   aria-label={`Count for ${spec.label}`}
                 />
               </div>

@@ -886,7 +886,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, curriculumType: e.target.value }))
               }
-              className="w-full rounded-xl border border-stone-300 bg-[#FAF6EF] px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
               required
             >
               {CURRICULUM_TYPE_GROUPS.map((group) => (
@@ -917,7 +917,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, curriculumFramework: e.target.value }))
               }
-              className="w-full rounded-xl border border-stone-300 bg-[#FAF6EF] px-3 py-2.5 text-sm text-stone-900 outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 shadow-sm outline-none ring-[#0E9484] focus:ring-2"
             >
               {CURRICULUM_FRAMEWORK_OPTIONS.map((opt) => (
                 <option key={opt.value === "" ? "none" : opt.value} value={opt.value}>
@@ -940,7 +940,7 @@ export function LessonPlanGenerator() {
               id="grade-year"
               value={form.grade}
               onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
-              className="w-full rounded-xl border border-stone-300 bg-[#FAF6EF] px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
               required
             >
               {GRADE_YEAR_OPTIONS.map((opt) => (
@@ -959,7 +959,7 @@ export function LessonPlanGenerator() {
               id="subject"
               value={form.subject}
               onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
-              className="w-full rounded-xl border border-stone-300 bg-[#FAF6EF] px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
               required
             >
               <optgroup label="Subjects">
@@ -997,7 +997,7 @@ export function LessonPlanGenerator() {
               type="text"
               value={form.chapter}
               onChange={(e) => setForm((prev) => ({ ...prev, chapter: e.target.value }))}
-              className="w-full rounded-xl border border-stone-300 px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
               placeholder="e.g. Chapter 5 - Photosynthesis"
             />
           </div>
@@ -1011,7 +1011,7 @@ export function LessonPlanGenerator() {
               type="text"
               value={form.topic}
               onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
-              className="w-full rounded-xl border border-stone-300 px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
               placeholder="Specific topic within the chapter"
               required
             />
@@ -1030,7 +1030,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, learningObjectives: e.target.value }))
               }
-              className="min-h-28 w-full rounded-xl border border-stone-300 px-3 py-2.5 text-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="min-h-28 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
               placeholder="List key outcomes students should achieve."
               required
             />
@@ -1127,7 +1127,7 @@ export function LessonPlanGenerator() {
               disabled={uploadExtracting || loading}
               rows={8}
               placeholder="Paste your textbook content, notes, chapter text, or any material here and the AI will generate all resources based on your content."
-              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-stone-300 bg-[#FAF6EF] px-3 py-2.5 text-sm text-stone-900 outline-none ring-[#0E9484] focus:ring-2 disabled:opacity-60"
+              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 shadow-sm outline-none ring-[#0E9484] focus:ring-2 disabled:opacity-60"
             />
           </div>
 

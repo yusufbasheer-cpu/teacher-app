@@ -513,7 +513,7 @@ export function DifferentiatedWorksheetPack() {
             <input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm shadow-sm"
             />
           </div>
           <div>
@@ -521,7 +521,7 @@ export function DifferentiatedWorksheetPack() {
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm shadow-sm"
             />
           </div>
           <div>
@@ -529,7 +529,7 @@ export function DifferentiatedWorksheetPack() {
             <input
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
-              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm shadow-sm"
             />
           </div>
           <div className="sm:col-span-2">
@@ -538,7 +538,7 @@ export function DifferentiatedWorksheetPack() {
               value={learningObjectives}
               onChange={(e) => setLearningObjectives(e.target.value)}
               rows={3}
-              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm shadow-sm"
             />
           </div>
           <div>
@@ -546,7 +546,7 @@ export function DifferentiatedWorksheetPack() {
             <input
               value={curriculumType}
               onChange={(e) => setCurriculumType(e.target.value)}
-              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm shadow-sm"
               placeholder="e.g. CBSE/NCERT"
             />
           </div>
@@ -555,7 +555,7 @@ export function DifferentiatedWorksheetPack() {
             <input
               value={curriculumFramework}
               onChange={(e) => setCurriculumFramework(e.target.value)}
-              className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm shadow-sm"
               placeholder="Framework id or leave blank"
             />
           </div>
@@ -568,7 +568,7 @@ export function DifferentiatedWorksheetPack() {
               onChange={(e) => setLessonSourceText(e.target.value)}
               rows={14}
               spellCheck={false}
-              className="max-h-96 w-full resize-y rounded-xl border border-stone-300 px-3 py-2 font-mono text-xs leading-relaxed"
+              className="max-h-96 w-full resize-y rounded-xl border border-stone-300 bg-white px-3 py-2 font-mono text-xs leading-relaxed shadow-sm"
               placeholder="Paste lesson plan text, or upload a PDF / Word file (Way 2)."
             />
           </div>
