@@ -57,10 +57,10 @@ function ToolCheckbox({
 }) {
   return (
     <label
-      className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm transition ${
+      className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm shadow-sm transition ${
         checked
           ? "border-[#0E9484] bg-[#0E9484]/8 ring-1 ring-[#0E9484]/20"
-          : "border-stone-200 bg-[#FAF6EF] hover:border-[#0E9484]/40 hover:bg-[#0E9484]/5"
+          : "border-[#0E9484]/25 bg-white hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
       }`}
     >
       <input
@@ -228,7 +228,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
             const isOpen = expanded.has(group.phase);
             const count = selected[group.phase]?.length ?? 0;
             return (
-              <div key={group.phase} className="rounded-xl border border-stone-200">
+              <div key={group.phase} className="rounded-xl border border-[#0E9484]/25 bg-white shadow-sm">
                 <button
                   type="button"
                   onClick={() => togglePhaseExpanded(group.phase)}
@@ -295,10 +295,10 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
                 return (
                   <label
                     key={t.id}
-                    className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm transition ${
+                    className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm shadow-sm transition ${
                       checked
                         ? "border-[#0E9484] bg-[#0E9484]/8 ring-1 ring-[#0E9484]/20"
-                        : "border-stone-200 bg-[#FAF6EF] hover:border-[#0E9484]/40 hover:bg-[#0E9484]/5"
+                        : "border-[#0E9484]/25 bg-white hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
                     }`}
                   >
                     <input
