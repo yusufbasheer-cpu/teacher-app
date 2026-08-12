@@ -32,7 +32,7 @@ export function LockedFeaturePanel({ title, description, onUpgrade, children }: 
       </p>
 
       {children ? (
-        <div className="mt-4 select-none opacity-60 pointer-events-none" aria-hidden="true">
+        <div className="mt-4 select-none" aria-hidden="true">
           {children}
         </div>
       ) : null}

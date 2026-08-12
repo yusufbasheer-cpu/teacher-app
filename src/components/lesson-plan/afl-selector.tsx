@@ -10,6 +10,7 @@ import {
   type AflSelectionsPayload,
 } from "@/lib/afl-tools";
 import { LockedFeaturePanel } from "@/components/premium/locked-feature-panel";
+import { LockedPreviewPill } from "@/components/premium/locked-preview-pill";
 import { TEAL } from "@/lib/design-tokens";
 
 type Tab = "recommended" | "phase" | "all";
@@ -55,15 +56,21 @@ function ToolCheckbox({
   purpose: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-stone-200 bg-[#FAF6EF] p-3 text-sm transition hover:border-[#0E9484]/40">
+    <label
+      className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm transition ${
+        checked
+          ? "border-[#0E9484] bg-[#0E9484]/8 ring-1 ring-[#0E9484]/20"
+          : "border-stone-200 bg-[#FAF6EF] hover:border-[#0E9484]/40 hover:bg-[#0E9484]/5"
+      }`}
+    >
       <input
         type="checkbox"
         checked={checked}
         onChange={onToggle}
-        className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-[#0E9484] focus:ring-[#0E9484]"
+        className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-[#0E9484] focus:ring-2 focus:ring-[#0E9484] focus:ring-offset-1"
       />
       <span className="min-w-0">
-        <span className="block font-medium text-stone-900">{label}</span>
+        <span className={`block font-medium ${checked ? "text-[#0B6B5F]" : "text-stone-900"}`}>{label}</span>
         <span className="mt-0.5 block text-xs leading-snug text-stone-500">{purpose}</span>
       </span>
     </label>
@@ -146,17 +153,15 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
             description="Pro users can select AFL activities — like Think-Pair-Share, Exit Tickets, and Silent Debate — for each phase of the lesson, woven directly into the plan and slides."
             onUpgrade={onUpgrade}
           >
-            <ul className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               {AFL_PHASE_GROUPS.map((group) => (
-                <li
+                <LockedPreviewPill
                   key={group.phase}
-                  className="rounded-xl border border-stone-200 bg-[#FAF6EF] px-3 py-2 text-sm text-stone-700"
-                >
-                  {group.title.replace(" AFL Tools", "")}{" "}
-                  <span className="text-stone-400">· {group.tools.length} activities</span>
-                </li>
+                  label={group.title.replace(" AFL Tools", "")}
+                  meta={`${group.tools.length} activities`}
+                />
               ))}
-            </ul>
+            </div>
           </LockedFeaturePanel>
         </div>
       </div>
@@ -230,7 +235,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
                   className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
                   aria-expanded={isOpen}
                 >
-                  <span className="flex items-center gap-2 text-sm font-semibold text-stone-900">
+                  <span className="flex items-center gap-2 text-sm font-bold text-stone-900">
                     {group.title.replace(" AFL Tools", "")}
                     {count > 0 ? (
                       <span
@@ -285,25 +290,35 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
             {filteredAllTools.length === 0 ? (
               <p className="py-6 text-center text-sm text-stone-500">No activities match &quot;{search}&quot;.</p>
             ) : (
-              filteredAllTools.map((t) => (
-                <div key={t.id} className="flex items-start gap-2.5 rounded-xl border border-stone-200 bg-[#FAF6EF] p-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={(selected[t.phase] ?? []).includes(t.id)}
-                    onChange={() => onChange(toggleTool(selected, t.phase, t.id))}
-                    className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-[#0E9484] focus:ring-[#0E9484]"
-                  />
-                  <span className="min-w-0">
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-medium text-stone-900">{t.label}</span>
-                      <span className="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-500">
-                        {t.phaseTitle.replace(" AFL Tools", "")}
+              filteredAllTools.map((t) => {
+                const checked = (selected[t.phase] ?? []).includes(t.id);
+                return (
+                  <label
+                    key={t.id}
+                    className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm transition ${
+                      checked
+                        ? "border-[#0E9484] bg-[#0E9484]/8 ring-1 ring-[#0E9484]/20"
+                        : "border-stone-200 bg-[#FAF6EF] hover:border-[#0E9484]/40 hover:bg-[#0E9484]/5"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => onChange(toggleTool(selected, t.phase, t.id))}
+                      className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-[#0E9484] focus:ring-2 focus:ring-[#0E9484] focus:ring-offset-1"
+                    />
+                    <span className="min-w-0">
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className={`font-medium ${checked ? "text-[#0B6B5F]" : "text-stone-900"}`}>{t.label}</span>
+                        <span className="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-500">
+                          {t.phaseTitle.replace(" AFL Tools", "")}
+                        </span>
                       </span>
+                      <span className="mt-0.5 block text-xs leading-snug text-stone-500">{t.purpose}</span>
                     </span>
-                    <span className="mt-0.5 block text-xs leading-snug text-stone-500">{t.purpose}</span>
-                  </span>
-                </div>
-              ))
+                  </label>
+                );
+              })
             )}
           </div>
         </div>
