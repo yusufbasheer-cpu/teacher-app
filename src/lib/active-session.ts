@@ -141,5 +141,11 @@ export async function validateActiveSession(): Promise<ValidateActiveSessionResu
 
 export async function forceLogoutSessionRevoked(): Promise<void> {
   clearLocalSessionToken();
-  await supabase.auth.signOut();
+  try {
+    // scope: "local" — don't let a slow/failed network revoke delay clearing
+    // this device's session (see UserMenu.onLogout for the same fix).
+    await supabase.auth.signOut({ scope: "local" });
+  } catch {
+    /* ignore — caller does a hard redirect regardless */
+  }
 }

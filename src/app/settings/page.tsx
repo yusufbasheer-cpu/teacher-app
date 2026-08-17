@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Container } from "@/components/ui/container";
 import { getAuthHeaders } from "@/lib/auth-headers";
+import { isSyntheticPhoneEmail } from "@/lib/phone";
 import { supabase } from "@/lib/supabase";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 
@@ -148,7 +149,7 @@ function DeleteConfirmModal({
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [email, setEmail] = useState<string | null>(null);
+  const [contact, setContact] = useState<{ label: string; value: string } | null>(null);
   const [usage, setUsage] = useState<UserUsageSnapshot | null>(null);
   const [loadingPage, setLoadingPage] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -189,7 +190,13 @@ export default function SettingsPage() {
         return;
       }
 
-      setEmail(session.user.email ?? null);
+      const rawEmail = session.user.email ?? "";
+      const metaPhone = (session.user.user_metadata as Record<string, unknown> | null)?.phone;
+      if (rawEmail && isSyntheticPhoneEmail(rawEmail) && typeof metaPhone === "string" && metaPhone) {
+        setContact({ label: "Phone", value: metaPhone });
+      } else {
+        setContact({ label: "Email", value: rawEmail || "—" });
+      }
 
       try {
         const res = await fetch("/api/user-usage", {
@@ -320,8 +327,8 @@ export default function SettingsPage() {
             </h2>
             <dl className="mt-4 space-y-4">
               <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "#F1E9DC" }}>
-                <dt className="text-sm font-medium" style={{ color: "#7a6e5f" }}>Email</dt>
-                <dd className="text-sm font-semibold" style={{ color: NAVY }}>{email ?? "—"}</dd>
+                <dt className="text-sm font-medium" style={{ color: "#7a6e5f" }}>{contact?.label ?? "Email"}</dt>
+                <dd className="text-sm font-semibold" style={{ color: NAVY }}>{contact?.value ?? "—"}</dd>
               </div>
               <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "#F1E9DC" }}>
                 <dt className="text-sm font-medium" style={{ color: "#7a6e5f" }}>Plan</dt>

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   forceLogoutSessionRevoked,
@@ -18,7 +18,6 @@ const CHECK_INTERVAL_MS = 5 * 60 * 1000;
  */
 export function ActiveSessionGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [revokedMessage, setRevokedMessage] = useState<string | null>(null);
   const checkingRef = useRef(false);
 
@@ -37,13 +36,14 @@ export function ActiveSessionGuard({ children }: { children: ReactNode }) {
       if (!result.ok && result.revoked) {
         setRevokedMessage(SESSION_REVOKED_MESSAGE);
         await forceLogoutSessionRevoked();
-        router.replace("/login?revoked=1");
-        router.refresh();
+        // Hard navigation — same reasoning as UserMenu.onLogout: guarantees
+        // every client component remounts from a clean auth state.
+        window.location.href = "/login?revoked=1";
       }
     } finally {
       checkingRef.current = false;
     }
-  }, [pathname, router]);
+  }, [pathname]);
 
   useEffect(() => {
     if (!isProtectedAppPath(pathname)) {

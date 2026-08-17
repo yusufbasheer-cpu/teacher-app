@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
-import { completeEmailPostAuthLogin } from "@/lib/auth-post-login";
+import { completeEmailPostAuthLogin, completePhonePostAuthLogin } from "@/lib/auth-post-login";
 import { supabase } from "@/lib/supabase";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
@@ -75,6 +75,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>(defaultMode);
+  const [identifier, setIdentifier] = useState<"email" | "phone">("email");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -184,13 +185,51 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           }
         }
 
+        if (identifier === "phone") {
+          const res = await fetch("/api/auth/signup-with-phone", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fullName: fullName.trim(), phone: phone.trim(), password }),
+          });
+          const data = (await res.json()) as {
+            access_token?: string;
+            refresh_token?: string;
+            error?: string;
+          };
+
+          if (!res.ok || !data.access_token || !data.refresh_token) {
+            setError(data.error ?? "Something went wrong creating your account.");
+            setLoading(false);
+            return;
+          }
+
+          const { error: setSessionError } = await supabase.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+          });
+          if (setSessionError) throw setSessionError;
+
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session?.user) {
+            const postAuth = await completePhonePostAuthLogin(session.user.id);
+            if (!postAuth.ok) {
+              setError(postAuth.message);
+              return;
+            }
+          }
+          router.push("/lesson-plan");
+          router.refresh();
+          return;
+        }
+
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
             data: {
               full_name: fullName.trim(),
-              phone: phone.trim(),
             },
           },
         });
@@ -212,6 +251,42 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           "Account created. If email confirmation is enabled, check your inbox before logging in.",
         );
         setMode("login");
+      } else if (identifier === "phone") {
+        const res = await fetch("/api/auth/login-with-phone", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: phone.trim(), password }),
+        });
+        const data = (await res.json()) as {
+          access_token?: string;
+          refresh_token?: string;
+          error?: string;
+        };
+
+        if (!res.ok || !data.access_token || !data.refresh_token) {
+          setError(data.error ?? "Invalid phone number or password.");
+          setLoading(false);
+          return;
+        }
+
+        const { error: setSessionError } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+        if (setSessionError) throw setSessionError;
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.user) {
+          const postAuth = await completePhonePostAuthLogin(session.user.id);
+          if (!postAuth.ok) {
+            setError(postAuth.message);
+            return;
+          }
+        }
+        router.push("/lesson-plan");
+        router.refresh();
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: email.trim(),
@@ -334,25 +409,43 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           </div>
         )}
 
-        <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium" style={{ color: "#241A12" }}>
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition"
-            style={{ borderColor: "#D9CCB8", color: "#241A12" }}
-            onFocus={(e) => (e.target.style.borderColor = "#0E9484")}
-            onBlur={(e) => (e.target.style.borderColor = "#D9CCB8")}
-            required
-          />
+        <div className="flex gap-1 rounded-xl p-1" style={{ background: "rgba(14, 148, 132,0.06)" }}>
+          {(["email", "phone"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setIdentifier(option)}
+              className="flex-1 rounded-lg py-1.5 text-xs font-semibold capitalize transition"
+              style={{
+                background: identifier === option ? "#FAF6EF" : "transparent",
+                color: identifier === option ? "#0E9484" : "#7a6e5f",
+                boxShadow: identifier === option ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+              }}
+            >
+              {option}
+            </button>
+          ))}
         </div>
 
-        {mode === "signup" && (
+        {identifier === "email" ? (
+          <div>
+            <label htmlFor="email" className="mb-1 block text-sm font-medium" style={{ color: "#241A12" }}>
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition"
+              style={{ borderColor: "#D9CCB8", color: "#241A12" }}
+              onFocus={(e) => (e.target.style.borderColor = "#0E9484")}
+              onBlur={(e) => (e.target.style.borderColor = "#D9CCB8")}
+              required
+            />
+          </div>
+        ) : (
           <div>
             <label htmlFor="phone" className="mb-1 block text-sm font-medium" style={{ color: "#241A12" }}>
               Phone number
