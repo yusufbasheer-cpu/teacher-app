@@ -10,17 +10,9 @@ export const metadata: Metadata = {
 
 export default function SignupPage() {
   return (
-    <AuthLayout
-      badge="Prep Less. Teach More."
-      headline="Start creating teaching resources in minutes"
-      subtext="Generate curriculum-aligned lesson plans, PPTs, worksheets and assessments using AI."
-    >
+    <AuthLayout>
       <Suspense
-        fallback={
-          <div className="mx-auto w-full max-w-md rounded-3xl border bg-[#FAF6EF] p-8 text-sm text-stone-600">
-            Loading…
-          </div>
-        }
+        fallback={<div className="w-full max-w-[400px] text-center text-sm text-stone-600">Loading…</div>}
       >
         <AuthCard defaultMode="signup" linkMode />
       </Suspense>
