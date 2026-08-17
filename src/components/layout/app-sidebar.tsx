@@ -23,6 +23,7 @@ import {
   SUPER_ADMIN_NAV_LINK,
   isNavLinkActive,
 } from "@/lib/app-nav-links";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { UserMenu } from "@/components/layout/user-menu";
 import { useUserUsage } from "@/hooks/use-user-usage";
@@ -112,8 +113,13 @@ export function AppSidebar({ user }: Props) {
 
   return (
     <aside
-      className="sticky top-0 flex h-screen shrink-0 flex-col bg-[#FAF6EF] transition-[width] duration-200"
-      style={{ width: collapsed ? 72 : 248, borderRight: "1px solid #E3D9C8" }}
+      className="sticky top-0 flex h-screen shrink-0 flex-col transition-[width] duration-200"
+      style={{
+        width: collapsed ? 72 : 248,
+        background: "#F1E9DC",
+        borderRight: "1px solid #E3D9C8",
+        boxShadow: "4px 0px 16px rgba(36,26,18,0.04)",
+      }}
     >
       <div className="flex items-center justify-between gap-2 px-3 py-4">
         <Link href="/overview" aria-label="Layah dashboard" className="shrink-0">
@@ -155,15 +161,23 @@ export function AppSidebar({ user }: Props) {
               key={item.href}
               href={item.href}
               title={collapsed ? item.label : undefined}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition"
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-200",
+                !active && "hover:bg-[#F1E9DC]",
+              )}
               style={{
                 color: active ? "#0E9484" : "#6b5d4f",
-                background: active ? "rgba(14, 148, 132,0.08)" : "transparent",
+                background: active ? "rgba(14, 148, 132,0.08)" : undefined,
                 fontWeight: active ? 600 : 500,
                 justifyContent: collapsed ? "center" : "flex-start",
               }}
             >
-              <Icon size={18} className="shrink-0" />
+              <span
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors duration-200"
+                style={{ background: active ? "rgba(14, 148, 132,0.15)" : "transparent" }}
+              >
+                <Icon size={18} className="shrink-0" />
+              </span>
               {!collapsed ? (
                 <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
                   <span className="truncate">{item.label}</span>

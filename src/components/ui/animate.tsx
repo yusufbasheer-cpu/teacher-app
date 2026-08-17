@@ -10,9 +10,9 @@
  *  - Skeleton           — shimmer placeholder for loading states
  */
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, animate } from "framer-motion";
 import { useInView } from "framer-motion";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode, HTMLAttributes } from "react";
 
 // ── Shared easing ─────────────────────────────────────────────────────────────
@@ -176,6 +176,30 @@ export function SlideIn({
       {children}
     </motion.div>
   );
+}
+
+// ── CountUp ───────────────────────────────────────────────────────────────────
+type CountUpProps = {
+  value: number;
+  /** Duration of the count (seconds). Default: 0.6 */
+  duration?: number;
+  className?: string;
+};
+
+/** Animates a number counting up from 0 to `value` on mount / whenever `value` changes. */
+export function CountUp({ value, duration = 0.6, className }: CountUpProps) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    const controls = animate(0, value, {
+      duration,
+      ease: EASE_OUT,
+      onUpdate: (v) => setDisplay(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [value, duration]);
+
+  return <span className={className}>{display}</span>;
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
