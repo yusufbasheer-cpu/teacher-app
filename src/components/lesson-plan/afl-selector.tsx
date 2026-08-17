@@ -11,6 +11,7 @@ import {
 } from "@/lib/afl-tools";
 import { LockedFeaturePanel } from "@/components/premium/locked-feature-panel";
 import { LockedPreviewPill } from "@/components/premium/locked-preview-pill";
+import { Checkbox } from "@/components/ui/checkbox";
 import { TEAL } from "@/lib/design-tokens";
 
 type Tab = "recommended" | "phase" | "all";
@@ -60,15 +61,10 @@ function ToolCheckbox({
       className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm shadow-sm transition ${
         checked
           ? "border-[#0E9484] bg-[#0E9484]/8 ring-1 ring-[#0E9484]/20"
-          : "border-[#0E9484]/25 bg-white hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
+          : "border-[#E8DFD1] bg-white hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
       }`}
     >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onToggle}
-        className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-[#0E9484] focus:ring-2 focus:ring-[#0E9484] focus:ring-offset-1"
-      />
+      <Checkbox checked={checked} onChange={onToggle} className="mt-0.5" />
       <span className="min-w-0">
         <span className={`block font-medium ${checked ? "text-[#0B6B5F]" : "text-stone-900"}`}>{label}</span>
         <span className="mt-0.5 block text-xs leading-snug text-stone-500">{purpose}</span>
@@ -199,7 +195,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
             <button
               type="button"
               onClick={applyRecommended}
-              className="shrink-0 rounded-lg border border-[#0E9484]/30 bg-[#0E9484]/5 px-3 py-1.5 text-xs font-semibold text-[#0B6B5F] hover:bg-[#0E9484]/10"
+              className="shrink-0 rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
             >
               Use Recommended
             </button>
@@ -228,11 +224,11 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
             const isOpen = expanded.has(group.phase);
             const count = selected[group.phase]?.length ?? 0;
             return (
-              <div key={group.phase} className="rounded-xl border border-[#0E9484]/25 bg-white shadow-sm">
+              <div key={group.phase} className="rounded-xl border border-[#E8DFD1] bg-white shadow-sm transition-colors duration-150">
                 <button
                   type="button"
                   onClick={() => togglePhaseExpanded(group.phase)}
-                  className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+                  className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors duration-150 hover:bg-[#0E9484]/5 ${isOpen ? "rounded-t-xl" : "rounded-xl"}`}
                   aria-expanded={isOpen}
                 >
                   <span className="flex items-center gap-2 text-sm font-bold text-stone-900">
@@ -283,7 +279,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search all 82 activities…"
-              className="w-full rounded-xl border border-stone-300 bg-[#FAF6EF] py-2.5 pl-9 pr-3 text-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] py-2.5 pl-9 pr-3 text-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
             />
           </div>
           <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
@@ -298,14 +294,13 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
                     className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm shadow-sm transition ${
                       checked
                         ? "border-[#0E9484] bg-[#0E9484]/8 ring-1 ring-[#0E9484]/20"
-                        : "border-[#0E9484]/25 bg-white hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
+                        : "border-[#E8DFD1] bg-white hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
                     }`}
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={checked}
                       onChange={() => onChange(toggleTool(selected, t.phase, t.id))}
-                      className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-[#0E9484] focus:ring-2 focus:ring-[#0E9484] focus:ring-offset-1"
+                      className="mt-0.5"
                     />
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-1.5">

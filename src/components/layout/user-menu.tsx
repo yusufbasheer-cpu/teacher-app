@@ -93,28 +93,28 @@ export function UserMenu({ user, collapsed = false }: Props) {
         onClick={() => setOpen((prev) => !prev)}
         aria-label="Account menu"
         aria-expanded={open}
-        className="flex w-full items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-left transition hover:bg-stone-50"
+        className="flex w-full items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-left transition hover:bg-white/8"
       >
         <span
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-          style={{ background: NAVY }}
+          style={{ background: TEAL }}
         >
           {initialsFor(user)}
         </span>
         {!collapsed ? (
           <>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold" style={{ color: NAVY }}>
+              <span className="block truncate text-sm font-semibold text-white">
                 {displayName}
               </span>
-              <span className="block truncate text-xs" style={{ color: "#A79A87" }}>
+              <span className="block truncate text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>
                 {usageLine}
               </span>
             </span>
             <ChevronUp
               size={16}
-              className="shrink-0 text-stone-400 transition-transform"
-              style={{ transform: open ? "none" : "rotate(180deg)" }}
+              className="shrink-0 transition-transform"
+              style={{ transform: open ? "none" : "rotate(180deg)", color: "rgba(255,255,255,0.5)" }}
             />
           </>
         ) : null}

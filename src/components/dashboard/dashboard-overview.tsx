@@ -15,7 +15,7 @@ import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
 import { InView } from "@/components/motion-primitives/in-view";
 
 const CARD_CLASS =
-  "rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md";
+  "rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-[0px_4px_20px_rgba(36,26,18,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0px_8px_28px_rgba(36,26,18,0.09)]";
 
 const cardGroupVariants = {
   container: {
@@ -82,7 +82,7 @@ export function DashboardOverview() {
 
   if (checkingAuth) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
+      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 text-sm text-stone-600 shadow-[0px_4px_20px_rgba(36,26,18,0.06)]">
         Loading your dashboard…
       </div>
     );
@@ -90,7 +90,7 @@ export function DashboardOverview() {
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 shadow-[0px_4px_20px_rgba(36,26,18,0.06)]">
         <h2 className="text-xl font-semibold text-stone-900">Login required</h2>
         <p className="mt-2 text-sm text-stone-600">Please log in to see your dashboard.</p>
         <Link
@@ -121,7 +121,7 @@ export function DashboardOverview() {
       <AnimatedGroup variants={cardGroupVariants} className="grid gap-4 sm:grid-cols-3">
         <div className={CARD_CLASS}>
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "rgba(14,148,132,0.1)", color: TEAL }}>
               <Sparkles size={18} />
             </span>
             <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Plan</p>
@@ -133,7 +133,7 @@ export function DashboardOverview() {
 
         <div className={CARD_CLASS}>
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "rgba(14,148,132,0.1)", color: TEAL }}>
               <Sparkles size={18} />
             </span>
             <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
@@ -160,7 +160,7 @@ export function DashboardOverview() {
 
         <div className={CARD_CLASS}>
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "rgba(14,148,132,0.1)", color: TEAL }}>
               <BookOpen size={18} />
             </span>
             <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
@@ -178,8 +178,8 @@ export function DashboardOverview() {
       ) : null}
 
       {/* Lessons table */}
-      <div className="rounded-3xl border border-stone-200 bg-[#FAF6EF] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-5 py-4">
+      <div className="rounded-3xl border border-[#E8DFD1] bg-white shadow-[0px_4px_20px_rgba(36,26,18,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0px_8px_28px_rgba(36,26,18,0.09)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E8DFD1] px-5 py-4">
           <div>
             <h2 className="text-base font-semibold text-stone-900">My Lessons</h2>
             <p className="mt-0.5 text-xs text-stone-500">Your most recently generated lessons.</p>
@@ -187,7 +187,7 @@ export function DashboardOverview() {
           <div className="flex gap-2">
             <Link
               href="/my-lesson-plans"
-              className="rounded-xl border border-stone-200 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+              className="rounded-xl border border-[#E8DFD1] bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
             >
               View all
             </Link>
@@ -256,7 +256,7 @@ export function DashboardOverview() {
                     <td className="px-5 py-3 text-right">
                       <Link
                         href={`/my-lesson-plans/${lesson.id}`}
-                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold hover:bg-teal-50"
+                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors duration-150 hover:bg-[#0E9484]/10"
                         style={{ color: TEAL }}
                       >
                         View →
