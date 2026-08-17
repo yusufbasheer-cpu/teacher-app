@@ -38,79 +38,81 @@ export default function Home() {
 
       <main>
         {/* ══════════════════════════════════════════════════════════════
-            HERO — compact, centered, single column, max-width 820px
+            HERO — full-bleed background, content column capped at 820px
             ══════════════════════════════════════════════════════════════ */}
-        <section className="relative isolate mx-auto max-w-[820px] overflow-hidden px-4 pb-10 pt-14 text-center sm:px-6">
+        <section className="relative isolate overflow-hidden">
           <img
-            src="/hero-bg.svg"
+            src="/hero-blob.svg"
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-20"
+            className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover"
           />
-          <span
-            className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-            style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL_DARK }}
-          >
-            AI for Teachers
-          </span>
-
-          <TextEffect
-            as="h1"
-            preset="fade-in-blur"
-            speedReveal={1.1}
-            speedSegment={0.3}
-            className="mt-5 font-extrabold leading-[1.1] tracking-tight"
-            style={{ color: NAVY, fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
-          >
-            Layah creates lesson plans, PPTs, worksheets, and assessments in minutes
-          </TextEffect>
-
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: TEXT_MUTED }}>
-            Generate curriculum-aligned teaching resources for <strong style={{ color: NAVY }}>CBSE, ICSE, IB, Cambridge, and 15+ more curriculums</strong> from
-            a topic, chapter, or textbook page.
-          </p>
-
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/lesson-plan"
-              className="relative inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-sm transition hover:opacity-90 sm:w-auto"
-              style={{ background: TEAL }}
-            >
-              <BorderTrail
-                className="bg-[#241A12]"
-                size={50}
-                style={{
-                  boxShadow:
-                    "0 0 10px 2px rgba(36,26,18,0.55), 0 0 20px 6px rgba(36,26,18,0.25)",
-                }}
-              />
-              Start Generating
-            </Link>
-            <a
-              href="#preview"
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold transition hover:bg-stone-50 sm:w-auto"
-              style={{ border: `1px solid ${BORDER}`, color: NAVY }}
-            >
-              View Sample Package
-            </a>
-          </div>
-
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
-            {TRUST_BADGES.map((badge) => (
-              <span
-                key={badge}
-                className="rounded-full px-3.5 py-1.5 text-xs font-bold"
-                style={{ background: "#FFFCF7", border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
-              >
-                {badge}
-              </span>
-            ))}
+          <div className="mx-auto max-w-[820px] px-4 pb-10 pt-14 text-center sm:px-6">
             <span
-              className="rounded-full px-3.5 py-1.5 text-xs font-bold"
-              style={{ background: "rgba(14, 148, 132,0.1)", border: `1px solid ${BORDER}`, color: TEAL_DARK }}
+              className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
+              style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL_DARK }}
             >
-              +15 more
+              AI for Teachers
             </span>
+
+            <TextEffect
+              as="h1"
+              preset="fade-in-blur"
+              speedReveal={1.1}
+              speedSegment={0.3}
+              className="mt-5 font-extrabold leading-[1.1] tracking-tight"
+              style={{ color: NAVY, fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
+            >
+              Layah creates lesson plans, PPTs, worksheets, and assessments in minutes
+            </TextEffect>
+
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: TEXT_MUTED }}>
+              Generate curriculum-aligned teaching resources for <strong style={{ color: NAVY }}>CBSE, ICSE, IB, Cambridge, and 15+ more curriculums</strong> from
+              a topic, chapter, or textbook page.
+            </p>
+
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/lesson-plan"
+                className="relative inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-sm transition hover:opacity-90 sm:w-auto"
+                style={{ background: TEAL }}
+              >
+                <BorderTrail
+                  className="bg-[#241A12]"
+                  size={50}
+                  style={{
+                    boxShadow:
+                      "0 0 10px 2px rgba(36,26,18,0.55), 0 0 20px 6px rgba(36,26,18,0.25)",
+                  }}
+                />
+                Start Generating
+              </Link>
+              <a
+                href="#preview"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold transition hover:bg-stone-50 sm:w-auto"
+                style={{ border: `1px solid ${BORDER}`, color: NAVY }}
+              >
+                View Sample Package
+              </a>
+            </div>
+
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
+              {TRUST_BADGES.map((badge) => (
+                <span
+                  key={badge}
+                  className="rounded-full px-3.5 py-1.5 text-xs font-bold"
+                  style={{ background: "#FFFCF7", border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
+                >
+                  {badge}
+                </span>
+              ))}
+              <span
+                className="rounded-full px-3.5 py-1.5 text-xs font-bold"
+                style={{ background: "rgba(14, 148, 132,0.1)", border: `1px solid ${BORDER}`, color: TEAL_DARK }}
+              >
+                +15 more
+              </span>
+            </div>
           </div>
         </section>
 
