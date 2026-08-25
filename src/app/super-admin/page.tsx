@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation";
-import { Container } from "@/components/ui/container";
-import { FadeIn } from "@/components/ui/animate";
 import { SuperAdminDashboard } from "@/components/admin/super-admin-dashboard";
 import { SuperAdminPinGate } from "@/components/admin/super-admin-pin-gate";
-import { isSuperAdmin, isSuperAdminEmail } from "@/lib/super-admin";
+import { isAdminUser } from "@/lib/super-admin";
 import { getVerifiedUser } from "@/lib/verified-user";
 
 export const dynamic = "force-dynamic";
@@ -16,26 +14,17 @@ export default async function SuperAdminPage() {
     redirect("/login");
   }
 
-  // Fast email pre-check before the async DB lookup
-  if (!isSuperAdminEmail(user.email)) {
-    redirect("/dashboard?access_denied=1");
-  }
-
-  // Authoritative DB role check
-  const isAdmin = await isSuperAdmin(user.id, user.email);
-  if (!isAdmin) {
+  // DB-driven: any admin_roles row (super_admin or the narrower admin
+  // role) may reach this page. No email pre-filter here — a future
+  // narrower-role hire won't be in the hardcoded founder allowlist.
+  const role = await isAdminUser(user.id);
+  if (!role) {
     redirect("/dashboard?access_denied=1");
   }
 
   return (
-    <main className="min-h-screen pb-16 pt-10">
-      <Container>
-        <FadeIn>
-          <SuperAdminPinGate>
-            <SuperAdminDashboard />
-          </SuperAdminPinGate>
-        </FadeIn>
-      </Container>
-    </main>
+    <SuperAdminPinGate>
+      <SuperAdminDashboard role={role} email={user.email} />
+    </SuperAdminPinGate>
   );
 }

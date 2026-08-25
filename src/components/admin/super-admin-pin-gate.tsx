@@ -1,9 +1,9 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { ShieldCheck } from "lucide-react";
+import { ACCENT, ACCENT_SOFT, AdminButton, AdminInput, BORDER, FONT_DISPLAY, INK, INK_MUTED, PAPER } from "@/components/admin/ui/admin-kit";
 
-const NAVY = "#241A12";
-const TEAL = "#0E9484";
 const SESSION_KEY = "layah_super_admin_verified";
 
 type Props = { children: React.ReactNode };
@@ -48,29 +48,20 @@ export function SuperAdminPinGate({ children }: Props) {
   };
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div
-        className="w-full max-w-sm rounded-3xl border bg-[#FAF6EF] p-8 shadow-xl"
-        style={{ borderColor: "rgba(14, 148, 132,0.3)" }}
-      >
-        <div
-          className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
-          style={{ background: "rgba(14, 148, 132,0.12)" }}
-        >
-          <svg className="size-7" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <rect x="3" y="11" width="18" height="11" rx="2" stroke={TEAL} strokeWidth="2" />
-            <path d="M7 11V7a5 5 0 0110 0v4" stroke={TEAL} strokeWidth="2" strokeLinecap="round" />
-          </svg>
+    <div className="flex min-h-screen items-center justify-center px-4" style={{ background: PAPER }}>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl" style={{ border: `1px solid ${BORDER}` }}>
+        <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl" style={{ background: ACCENT_SOFT }}>
+          <ShieldCheck className="size-7" style={{ color: ACCENT }} />
         </div>
-        <h1 className="text-center text-xl font-bold" style={{ color: NAVY }}>
+        <h1 className={`text-center text-xl font-semibold ${FONT_DISPLAY}`} style={{ color: INK }}>
           Admin Verification
         </h1>
-        <p className="mt-2 text-center text-sm" style={{ color: "#7a6e5f" }}>
-          Enter your 6-digit admin PIN to access the dashboard.
+        <p className="mt-2 text-center text-sm" style={{ color: INK_MUTED }}>
+          Enter your 6-digit admin PIN to access the console.
         </p>
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
-          <input
+          <AdminInput
             type="password"
             inputMode="numeric"
             pattern="\d{6}"
@@ -80,25 +71,15 @@ export function SuperAdminPinGate({ children }: Props) {
             value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
             autoComplete="current-password"
-            className="w-full rounded-xl border px-4 py-3 text-center text-2xl tracking-[0.5em] outline-none transition"
-            style={{ borderColor: "#D9CCB8", color: NAVY }}
-            onFocus={(e) => (e.target.style.borderColor = TEAL)}
-            onBlur={(e) => (e.target.style.borderColor = "#D9CCB8")}
+            className="text-center text-2xl tracking-[0.5em]"
             required
             disabled={loading}
           />
-          <p className="text-center text-xs" style={{ color: "#a79a87" }}>
-            {pin.length}/6 digits entered
-          </p>
-          {error && <p className="text-center text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading || pin.length !== 6}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
-            style={{ background: NAVY }}
-          >
-            {loading ? "Verifying…" : "Confirm"}
-          </button>
+          <p className="text-center text-xs" style={{ color: INK_MUTED }}>{pin.length}/6 digits entered</p>
+          {error && <p className="text-center text-sm font-medium" style={{ color: "#B3261E" }}>{error}</p>}
+          <AdminButton type="submit" tone="primary" disabled={pin.length !== 6} loading={loading} className="w-full">
+            Confirm
+          </AdminButton>
         </form>
       </div>
     </div>

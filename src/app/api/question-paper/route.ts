@@ -27,6 +27,8 @@ import {
   type QuestionPaperGenerateBody,
 } from "@/lib/question-paper";
 import { USER_FACING_ERROR } from "@/lib/user-facing-errors";
+import { logGenerationEvent } from "@/lib/generation-events";
+import { saveQuestionPaperGeneration } from "@/lib/content-persistence";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -89,6 +91,8 @@ export async function POST(req: Request) {
     );
   }
 
+  const genStartedAt = Date.now();
+
   const sourceMaterial = buildQuestionPaperSourceMaterial({
     pastedContent: body.pastedContent,
     uploadedExtractedText: body.sourceMaterial,
@@ -125,6 +129,14 @@ export async function POST(req: Request) {
   if ("error" in ds) {
     console.error("[question-paper]", ds.error);
     await refundGeneration(gate.reservation);
+    void logGenerationEvent({
+      userId: auth.userId,
+      generationType: "question_paper",
+      status: "failed",
+      planType,
+      errorMessage: String(ds.error).slice(0, 2000),
+      durationMs: Date.now() - genStartedAt,
+    });
     return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
@@ -133,8 +145,36 @@ export async function POST(req: Request) {
   if (!parsed.questionPaper?.trim()) {
     console.error("[question-paper] empty question paper from model");
     await refundGeneration(gate.reservation);
+    void logGenerationEvent({
+      userId: auth.userId,
+      generationType: "question_paper",
+      status: "failed",
+      planType,
+      errorMessage: "Empty question paper returned from model.",
+      durationMs: Date.now() - genStartedAt,
+    });
     return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
+
+  void logGenerationEvent({
+    userId: auth.userId,
+    generationType: "question_paper",
+    status: "success",
+    planType,
+    durationMs: Date.now() - genStartedAt,
+  });
+  void saveQuestionPaperGeneration({
+    userId: auth.userId,
+    subject: body.subject,
+    grade: body.grade,
+    topic: body.topic,
+    curriculum: body.curriculumType,
+    content: {
+      questionPaper: parsed.questionPaper,
+      answerKey: parsed.answerKey ?? null,
+      markingScheme: parsed.markingScheme ?? null,
+    },
+  });
 
   return NextResponse.json({
     questionPaper: parsed.questionPaper,

@@ -1,10 +1,46 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { UsersPanel } from "@/components/admin/users-panel";
+import { BillingPanel } from "@/components/admin/billing-panel";
+import { AnalyticsPanel } from "@/components/admin/analytics-panel";
+import { AnnouncementsPanel } from "@/components/admin/announcements-panel";
+import { AdminShell, type AdminTab } from "@/components/admin/ui/admin-shell";
+import {
+  AdminButton,
+  AdminCard,
+  AdminInput,
+  AdminProviders,
+  AdminSelect,
+  Badge,
+  EmptyState,
+  INK,
+  INK_FAINT,
+  INK_MUTED,
+  BORDER,
+  FONT_MONO,
+  SectionHeader,
+  StatCard,
+  formatAdminDate,
+  formatPlanLabel,
+  useActionDialog,
+  useToast,
+} from "@/components/admin/ui/admin-kit";
 
-const NAVY = "#241A12";
-const TEAL = "#0E9484";
-const MUTED = "#6B5D4F";
+// Mirrors ADMIN_PERMISSIONS in src/lib/super-admin.ts — kept as a plain
+// local list (not imported) since that file also exports server-only
+// helpers backed by the service-role key and must never enter a client bundle.
+const ADMIN_PERMISSIONS = [
+  "billing.refund",
+  "billing.subscription_manage",
+  "billing.retry_notify",
+  "user.suspend",
+  "user.delete",
+  "user.impersonate",
+  "school.manage",
+  "content.moderate",
+  "notifications.broadcast",
+] as const;
 
 type Stats = {
   totalUsers: number;
@@ -36,6 +72,7 @@ type School = {
   max_teachers: number;
   admin_email: string;
   created_at: string;
+  status: "active" | "inactive";
 };
 
 type UserRow = {
@@ -47,476 +84,657 @@ type UserRow = {
   generationsLimit: number;
 };
 
-type Tab = "overview" | "pending" | "schools" | "users";
+type AdminRow = {
+  userId: string;
+  email: string;
+  role: "super_admin" | "admin";
+  grantedAt: string;
+  permissions: string[];
+};
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+type ContentType = "lesson_plan" | "question_paper" | "differentiated_pack";
+
+type ContentItem = {
+  id: string;
+  user_id: string;
+  userEmail: string;
+  subject: string | null;
+  grade: string | null;
+  topic: string | null;
+  curriculum: string | null;
+  flagged: boolean;
+  flagged_reason: string | null;
+  created_at: string;
+};
+
+type SchoolTeacher = {
+  id: string;
+  user_id: string;
+  email: string;
+  role: "teacher" | "hod" | "admin";
+  department: string | null;
+  joined_at: string;
+  generations_used_this_month: number;
+};
+
+const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
+  lesson_plan: "Lesson Plans",
+  question_paper: "Question Papers",
+  differentiated_pack: "Differentiated Packs",
+};
+
+async function postJson(url: string, body?: unknown, method: "POST" | "DELETE" = "POST") {
+  const res = await fetch(url, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = (await res.json().catch(() => ({}))) as { error?: string; [k: string]: unknown };
+  if (!res.ok) return { ok: false as const, error: data.error ?? "Something went wrong." };
+  return { ok: true as const, data };
 }
 
-function formatPlan(plan: string) {
-  return plan.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
-  return (
-    <div
-      className="rounded-2xl border bg-[#FAF6EF] p-5 shadow-sm"
-      style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
-    >
-      <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">{label}</p>
-      <p className="mt-2 text-3xl font-bold" style={{ color: accent ? TEAL : NAVY }}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function TabButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-lg px-4 py-2 text-sm font-semibold transition"
-      style={{
-        background: active ? NAVY : "transparent",
-        color: active ? "#fff" : MUTED,
-        border: active ? "none" : "1px solid #E3D9C8",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-export function SuperAdminDashboard() {
-  const [tab, setTab] = useState<Tab>("overview");
+function DashboardBody({ role, email }: { role: "super_admin" | "admin"; email: string }) {
+  const [tab, setTab] = useState<AdminTab>("overview");
   const [stats, setStats] = useState<Stats | null>(null);
   const [pending, setPending] = useState<PendingReg[]>([]);
   const [schools, setSchools] = useState<School[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [grantEmail, setGrantEmail] = useState("");
+  const [grantRole, setGrantRole] = useState<"admin" | "super_admin">("admin");
+  const [grantPermissions, setGrantPermissions] = useState<Set<string>>(new Set());
+  const [contentType, setContentType] = useState<ContentType>("lesson_plan");
+  const [contentSearch, setContentSearch] = useState("");
+  const [contentFlaggedOnly, setContentFlaggedOnly] = useState(false);
+  const [contentItems, setContentItems] = useState<ContentItem[]>([]);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [expandedSchoolId, setExpandedSchoolId] = useState<string | null>(null);
+  const [schoolTeachers, setSchoolTeachers] = useState<SchoolTeacher[]>([]);
+  const [schoolDetailLoading, setSchoolDetailLoading] = useState(false);
+
+  const actionDialog = useActionDialog();
+  const toast = useToast();
 
   const fetchStats = useCallback(async () => {
     const res = await fetch("/api/super-admin/stats");
-    if (res.ok) {
-      const data = (await res.json()) as Stats;
-      setStats(data);
-    }
+    if (res.ok) setStats((await res.json()) as Stats);
   }, []);
 
   const fetchPending = useCallback(async () => {
     const res = await fetch("/api/super-admin/pending");
-    if (res.ok) {
-      const data = (await res.json()) as { registrations: PendingReg[] };
-      setPending(data.registrations);
-    }
+    if (res.ok) setPending(((await res.json()) as { registrations: PendingReg[] }).registrations);
   }, []);
 
   const fetchSchools = useCallback(async () => {
     const res = await fetch("/api/super-admin/schools");
-    if (res.ok) {
-      const data = (await res.json()) as { schools: School[] };
-      setSchools(data.schools);
-    }
+    if (res.ok) setSchools(((await res.json()) as { schools: School[] }).schools);
   }, []);
 
   const fetchUsers = useCallback(async () => {
     const res = await fetch("/api/super-admin/users");
-    if (res.ok) {
-      const data = (await res.json()) as { users: UserRow[] };
-      setUsers(data.users);
-    }
+    if (res.ok) setUsers(((await res.json()) as { users: UserRow[] }).users);
+  }, []);
+
+  const fetchAdmins = useCallback(async () => {
+    const res = await fetch("/api/super-admin/admins");
+    if (res.ok) setAdmins(((await res.json()) as { admins: AdminRow[] }).admins);
   }, []);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      await Promise.all([fetchStats(), fetchPending(), fetchSchools(), fetchUsers()]);
+      await Promise.all([fetchStats(), fetchPending(), fetchSchools(), fetchUsers(), fetchAdmins()]);
       setLoading(false);
     };
     void load();
-  }, [fetchStats, fetchPending, fetchSchools, fetchUsers]);
+  }, [fetchStats, fetchPending, fetchSchools, fetchUsers, fetchAdmins]);
 
-  const handleApprove = async (id: string) => {
-    if (!window.confirm("Approve this school registration? This will create the school account and send an activation email.")) return;
-    setActionLoading(id);
-    setError(null);
-    const res = await fetch("/api/super-admin/approve", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ registrationId: id }),
-    });
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error ?? "Approval failed");
-    } else {
-      await Promise.all([fetchPending(), fetchSchools(), fetchStats()]);
-    }
-    setActionLoading(null);
+  const fetchContent = useCallback(async () => {
+    setContentLoading(true);
+    const params = new URLSearchParams({ type: contentType });
+    if (contentSearch.trim()) params.set("search", contentSearch.trim());
+    if (contentFlaggedOnly) params.set("flagged", "1");
+    const res = await fetch(`/api/super-admin/content?${params.toString()}`);
+    if (res.ok) setContentItems(((await res.json()) as { items: ContentItem[] }).items);
+    setContentLoading(false);
+  }, [contentType, contentSearch, contentFlaggedOnly]);
+
+  useEffect(() => {
+    if (tab === "content") void fetchContent();
+  }, [tab, fetchContent]);
+
+  const fetchSchoolTeachers = async (schoolId: string) => {
+    setSchoolDetailLoading(true);
+    const res = await fetch(`/api/super-admin/schools/${schoolId}`);
+    if (res.ok) setSchoolTeachers(((await res.json()) as { teachers: SchoolTeacher[] }).teachers);
+    setSchoolDetailLoading(false);
   };
 
-  const handleReject = async (id: string) => {
-    if (!window.confirm("Reject this school registration? A rejection email will be sent.")) return;
-    setActionLoading(id);
-    setError(null);
-    const res = await fetch("/api/super-admin/reject", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ registrationId: id }),
-    });
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error ?? "Rejection failed");
-    } else {
-      await Promise.all([fetchPending(), fetchStats()]);
+  const toggleSchoolExpanded = async (schoolId: string) => {
+    if (expandedSchoolId === schoolId) {
+      setExpandedSchoolId(null);
+      setSchoolTeachers([]);
+      return;
     }
-    setActionLoading(null);
+    setExpandedSchoolId(schoolId);
+    setSchoolTeachers([]);
+    await fetchSchoolTeachers(schoolId);
   };
 
-  const handleDeactivate = async (schoolId: string, schoolName: string) => {
-    if (!window.confirm(`Deactivate ${schoolName}? This will remove the school and all teacher memberships.`)) return;
-    setActionLoading(schoolId);
-    setError(null);
-    const res = await fetch("/api/super-admin/deactivate-school", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ schoolId }),
+  // ---- Pending school registrations -------------------------------------
+
+  const openApprove = (reg: PendingReg) => {
+    actionDialog.open({
+      title: "Approve school registration",
+      description: "Creates the school account and sends an activation email.",
+      confirmLabel: "Approve school",
+      summary: [
+        { label: "School", value: reg.school_name },
+        { label: "Domain", value: `@${reg.email_domain}` },
+        { label: "Plan", value: reg.plan_selected },
+      ],
+      run: async () => {
+        setActionLoading(reg.id);
+        const result = await postJson("/api/super-admin/approve", { registrationId: reg.id });
+        setActionLoading(null);
+        if (!result.ok) return result;
+        await Promise.all([fetchPending(), fetchSchools(), fetchStats()]);
+        return { ok: true, message: `${reg.school_name} approved.` };
+      },
     });
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error ?? "Deactivation failed");
-    } else {
-      await Promise.all([fetchSchools(), fetchStats()]);
-    }
-    setActionLoading(null);
   };
 
-  const handleChangePlan = async (userId: string, planType: string) => {
+  const openReject = (reg: PendingReg) => {
+    actionDialog.open({
+      title: "Reject school registration",
+      tone: "danger",
+      confirmLabel: "Reject",
+      summary: [{ label: "School", value: reg.school_name }, { label: "Domain", value: `@${reg.email_domain}` }],
+      fields: [{ kind: "reason", label: "Reason (sent to the applicant)" }],
+      run: async (values) => {
+        setActionLoading(reg.id);
+        const result = await postJson("/api/super-admin/reject", { registrationId: reg.id, reason: values.reason });
+        setActionLoading(null);
+        if (!result.ok) return result;
+        await Promise.all([fetchPending(), fetchStats()]);
+        return { ok: true, message: "Registration rejected." };
+      },
+    });
+  };
+
+  // ---- Schools ------------------------------------------------------------
+
+  const openDeactivate = (s: School) => {
+    actionDialog.open({
+      title: "Deactivate school",
+      tone: "danger",
+      description: "Teachers stop getting this school's plan synced on login until reactivated.",
+      confirmLabel: "Deactivate",
+      summary: [{ label: "School", value: s.school_name }],
+      fields: [{ kind: "reason" }],
+      run: async (values) => {
+        setActionLoading(s.id);
+        const result = await postJson("/api/super-admin/deactivate-school", { schoolId: s.id, reason: values.reason });
+        setActionLoading(null);
+        if (!result.ok) return result;
+        await Promise.all([fetchSchools(), fetchStats()]);
+        return { ok: true, message: `${s.school_name} deactivated.` };
+      },
+    });
+  };
+
+  const openReactivate = (s: School) => {
+    actionDialog.open({
+      title: "Reactivate school",
+      description: "Teachers will start getting this school's plan synced again on login.",
+      confirmLabel: "Reactivate",
+      summary: [{ label: "School", value: s.school_name }],
+      run: async () => {
+        setActionLoading(s.id);
+        const result = await postJson("/api/super-admin/reactivate-school", { schoolId: s.id });
+        setActionLoading(null);
+        if (!result.ok) return result;
+        await Promise.all([fetchSchools(), fetchStats()]);
+        return { ok: true, message: `${s.school_name} reactivated.` };
+      },
+    });
+  };
+
+  const handleAssignSchoolAdmin = async (schoolId: string, userId: string) => {
     setActionLoading(userId);
-    setError(null);
-    const res = await fetch("/api/super-admin/change-plan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, planType }),
-    });
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error ?? "Plan change failed");
-    } else {
-      await fetchUsers();
-    }
+    const result = await postJson(`/api/super-admin/schools/${schoolId}/admins`, { userId });
     setActionLoading(null);
+    if (!result.ok) toast.error(result.error);
+    else await fetchSchoolTeachers(schoolId);
+  };
+
+  const openRemoveSchoolAdmin = (schoolId: string, t: SchoolTeacher) => {
+    actionDialog.open({
+      title: "Remove school-admin status",
+      tone: "danger",
+      confirmLabel: "Remove",
+      summary: [{ label: "Teacher", value: t.email }],
+      run: async () => {
+        setActionLoading(t.user_id);
+        const result = await postJson(`/api/super-admin/schools/${schoolId}/admins/${t.user_id}`, undefined, "DELETE");
+        setActionLoading(null);
+        if (!result.ok) return result;
+        await fetchSchoolTeachers(schoolId);
+        return { ok: true, message: "School-admin status removed." };
+      },
+    });
+  };
+
+  // ---- Admins ---------------------------------------------------------------
+
+  const togglePermission = (permission: string) => {
+    setGrantPermissions((prev) => {
+      const next = new Set(prev);
+      if (next.has(permission)) next.delete(permission);
+      else next.add(permission);
+      return next;
+    });
+  };
+
+  const openGrantAdmin = () => {
+    const email = grantEmail.trim().toLowerCase();
+    if (!email) {
+      toast.error("Enter the person's email first.");
+      return;
+    }
+    const match = users.find((u) => u.email.toLowerCase() === email);
+    if (!match) {
+      toast.error("No signed-up user found with that email — they need to create a Layah account first.");
+      return;
+    }
+    actionDialog.open({
+      title: "Grant admin access",
+      confirmLabel: "Grant access",
+      summary: [
+        { label: "Email", value: email },
+        { label: "Role", value: grantRole === "super_admin" ? "Super Admin" : "Admin" },
+        ...(grantRole === "admin" ? [{ label: "Permissions", value: grantPermissions.size ? Array.from(grantPermissions).join(", ") : "None" }] : []),
+      ],
+      run: async () => {
+        setActionLoading("grant");
+        const result = await postJson("/api/super-admin/admins/grant", {
+          userId: match.id,
+          role: grantRole,
+          permissions: Array.from(grantPermissions),
+        });
+        setActionLoading(null);
+        if (!result.ok) return result;
+        setGrantEmail("");
+        setGrantPermissions(new Set());
+        await fetchAdmins();
+        return { ok: true, message: `Access granted to ${email}.` };
+      },
+    });
+  };
+
+  const openRevokeAdmin = (a: AdminRow) => {
+    actionDialog.open({
+      title: "Revoke admin access",
+      tone: "danger",
+      confirmLabel: "Revoke",
+      summary: [{ label: "Email", value: a.email }],
+      run: async () => {
+        setActionLoading(a.userId);
+        const result = await postJson("/api/super-admin/admins/revoke", { userId: a.userId });
+        setActionLoading(null);
+        if (!result.ok) return result;
+        await fetchAdmins();
+        return { ok: true, message: `Access revoked for ${a.email}.` };
+      },
+    });
+  };
+
+  // ---- Content moderation -----------------------------------------------
+
+  const openUnflag = (item: ContentItem) => {
+    actionDialog.open({
+      title: "Remove flag",
+      confirmLabel: "Unflag",
+      summary: [{ label: "Item", value: item.topic || item.subject || "(untitled)" }],
+      run: async () => {
+        setActionLoading(item.id);
+        const result = await postJson("/api/super-admin/content/flag", { type: contentType, id: item.id, flagged: false });
+        setActionLoading(null);
+        if (!result.ok) return result;
+        await fetchContent();
+        return { ok: true, message: "Flag removed." };
+      },
+    });
+  };
+
+  const openFlag = (item: ContentItem) => {
+    actionDialog.open({
+      title: "Flag content",
+      tone: "danger",
+      confirmLabel: "Flag",
+      summary: [{ label: "Item", value: item.topic || item.subject || "(untitled)" }, { label: "Owner", value: item.userEmail }],
+      fields: [{ kind: "reason" }],
+      run: async (values) => {
+        setActionLoading(item.id);
+        const result = await postJson("/api/super-admin/content/flag", { type: contentType, id: item.id, flagged: true, reason: values.reason });
+        setActionLoading(null);
+        if (!result.ok) return result;
+        await fetchContent();
+        return { ok: true, message: "Content flagged." };
+      },
+    });
+  };
+
+  const openDeleteContent = (item: ContentItem) => {
+    actionDialog.open({
+      title: "Delete content",
+      tone: "danger",
+      description: "Hidden from the user and removed from this list.",
+      confirmLabel: "Delete",
+      summary: [{ label: "Item", value: item.topic || item.subject || "(untitled)" }],
+      run: async () => {
+        setActionLoading(item.id);
+        const result = await postJson(`/api/super-admin/content/${contentType}/${item.id}`, undefined, "DELETE");
+        setActionLoading(null);
+        if (!result.ok) return result;
+        await fetchContent();
+        return { ok: true, message: "Content deleted." };
+      },
+    });
   };
 
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center rounded-2xl border bg-[#FAF6EF]" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
-        <p className="text-sm font-medium" style={{ color: MUTED }}>Loading super admin dashboard...</p>
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className="text-sm font-medium" style={{ color: INK_MUTED }}>
+          Loading console…
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 pb-8">
-      <header
-        className="rounded-2xl p-6 sm:p-8"
-        style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #3a2a1e 55%, rgba(14, 148, 132,0.15) 100%)`, color: "white" }}
-      >
-        <p
-          className="mb-3 inline-flex rounded-full border px-3 py-1 text-xs font-semibold"
-          style={{ borderColor: "#f87171", color: "#f87171", background: "rgba(248,113,113,0.12)" }}
-        >
-          Super Admin
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Layah Control Panel</h1>
-        <p className="mt-2 text-sm text-white/70">Manage schools, users, and registrations</p>
-      </header>
-
-      {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-      )}
-
-      <div className="flex flex-wrap gap-2">
-        <TabButton active={tab === "overview"} label="Overview" onClick={() => setTab("overview")} />
-        <TabButton
-          active={tab === "pending"}
-          label={`Pending Schools (${pending.length})`}
-          onClick={() => setTab("pending")}
-        />
-        <TabButton active={tab === "schools"} label="All Schools" onClick={() => setTab("schools")} />
-        <TabButton active={tab === "users"} label="All Users" onClick={() => setTab("users")} />
-      </div>
-
+    <AdminShell active={tab} onNavigate={setTab} role={role} email={email} pendingCount={pending.length}>
       {tab === "overview" && stats && (
         <section>
-          <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>Overview</h2>
+          <SectionHeader title="Business at a glance" />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <StatCard label="Total Registered Users" value={stats.totalUsers} />
-            <StatCard label="Free Plan Users" value={stats.freeUsers} />
-            <StatCard label="Pro Plan Users" value={stats.proUsers} />
-            <StatCard label="Total Schools" value={stats.totalSchools} accent />
-            <StatCard label="Pending Registrations" value={stats.pendingSchools} />
-            <StatCard label="Total Generations (All Time)" value={stats.totalGenerationsToday} accent />
+            <StatCard label="Total Users" value={stats.totalUsers} />
+            <StatCard label="Free Plan" value={stats.freeUsers} />
+            <StatCard label="Pro Plan" value={stats.proUsers} tone="positive" />
+            <StatCard label="Total Schools" value={stats.totalSchools} />
+            <StatCard label="Pending Registrations" value={stats.pendingSchools} tone={stats.pendingSchools > 0 ? "warning" : "default"} />
+            <StatCard label="Generations (All Time)" value={stats.totalGenerationsToday} tone="positive" />
           </div>
+          <AnalyticsPanel />
         </section>
       )}
 
       {tab === "pending" && (
         <section>
-          <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>
-            Pending School Registrations
-          </h2>
+          <SectionHeader title="Pending School Registrations" description="New school signups awaiting approval." />
           {pending.length === 0 ? (
-            <div className="rounded-2xl border bg-[#FAF6EF] p-6 text-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)", color: MUTED }}>
-              No pending registrations.
-            </div>
+            <EmptyState title="No pending registrations" description="New school signups will show up here." />
           ) : (
-            <>
-              <div className="hidden overflow-x-auto rounded-2xl border bg-[#FAF6EF] shadow-sm md:block" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
-                <table className="min-w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b bg-stone-50" style={{ borderColor: "#E3D9C8" }}>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>School Name</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Email Domain</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Plan</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Teachers</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Admin Email</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Date</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pending.map((reg) => (
-                      <tr key={reg.id} className="border-b last:border-b-0" style={{ borderColor: "#E3D9C8" }}>
-                        <td className="px-4 py-3 font-medium" style={{ color: NAVY }}>{reg.school_name}</td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>@{reg.email_domain}</td>
-                        <td className="px-4 py-3" style={{ color: TEAL }}>{reg.plan_selected}</td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>{reg.num_teachers}</td>
-                        <td className="px-4 py-3 break-all" style={{ color: MUTED }}>{reg.admin_email}</td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>{formatDate(reg.created_at)}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              disabled={actionLoading === reg.id}
-                              onClick={() => void handleApprove(reg.id)}
-                              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                              style={{ background: TEAL }}
-                            >
-                              {actionLoading === reg.id ? "..." : "Approve"}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={actionLoading === reg.id}
-                              onClick={() => void handleReject(reg.id)}
-                              className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                            >
-                              {actionLoading === reg.id ? "..." : "Reject"}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="space-y-3 md:hidden">
-                {pending.map((reg) => (
-                  <div key={reg.id} className="rounded-2xl border bg-[#FAF6EF] p-4 shadow-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
-                    <p className="font-semibold" style={{ color: NAVY }}>{reg.school_name}</p>
-                    <p className="mt-1 text-sm" style={{ color: MUTED }}>@{reg.email_domain}</p>
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs" style={{ color: MUTED }}>
-                      <span style={{ color: TEAL }}>{reg.plan_selected}</span>
-                      <span>{reg.num_teachers}</span>
-                      <span>{formatDate(reg.created_at)}</span>
-                    </div>
-                    <p className="mt-1 break-all text-xs" style={{ color: MUTED }}>{reg.admin_email}</p>
-                    <div className="mt-3 flex gap-2">
-                      <button
-                        type="button"
-                        disabled={actionLoading === reg.id}
-                        onClick={() => void handleApprove(reg.id)}
-                        className="flex-1 rounded-lg py-2 text-sm font-semibold text-white disabled:opacity-50"
-                        style={{ background: TEAL }}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        disabled={actionLoading === reg.id}
-                        onClick={() => void handleReject(reg.id)}
-                        className="flex-1 rounded-lg border border-red-200 py-2 text-sm font-semibold text-red-600 disabled:opacity-50"
-                      >
-                        Reject
-                      </button>
+            <div className="space-y-2">
+              {pending.map((reg) => (
+                <AdminCard key={reg.id} className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold" style={{ color: INK }}>{reg.school_name}</p>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs" style={{ color: INK_MUTED }}>
+                      <span>@{reg.email_domain}</span>
+                      <Badge tone="accent">{reg.plan_selected}</Badge>
+                      <span>{reg.num_teachers} teachers</span>
+                      <span className="break-all">{reg.admin_email}</span>
+                      <span>{formatAdminDate(reg.created_at)}</span>
                     </div>
                   </div>
-                ))}
-              </div>
-            </>
+                  <div className="flex gap-2">
+                    <AdminButton tone="primary" size="sm" loading={actionLoading === reg.id} onClick={() => openApprove(reg)}>
+                      Approve
+                    </AdminButton>
+                    <AdminButton tone="danger" size="sm" loading={actionLoading === reg.id} onClick={() => openReject(reg)}>
+                      Reject
+                    </AdminButton>
+                  </div>
+                </AdminCard>
+              ))}
+            </div>
           )}
         </section>
       )}
 
       {tab === "schools" && (
         <section>
-          <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>All Schools</h2>
+          <SectionHeader title="All Schools" />
           {schools.length === 0 ? (
-            <div className="rounded-2xl border bg-[#FAF6EF] p-6 text-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)", color: MUTED }}>
-              No schools registered yet.
-            </div>
+            <EmptyState title="No schools registered yet" />
           ) : (
-            <>
-              <div className="hidden overflow-x-auto rounded-2xl border bg-[#FAF6EF] shadow-sm md:block" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
-                <table className="min-w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b bg-stone-50" style={{ borderColor: "#E3D9C8" }}>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>School Name</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Domain</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Plan</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Teachers</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Max</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Registered</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {schools.map((s) => (
-                      <tr key={s.id} className="border-b last:border-b-0" style={{ borderColor: "#E3D9C8" }}>
-                        <td className="px-4 py-3 font-medium" style={{ color: NAVY }}>{s.school_name}</td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>@{s.email_domain}</td>
-                        <td className="px-4 py-3" style={{ color: TEAL }}>{formatPlan(s.plan_type)}</td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>{s.active_teachers}</td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>{s.max_teachers >= 999 ? "∞" : s.max_teachers}</td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>{formatDate(s.created_at)}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            type="button"
-                            disabled={actionLoading === s.id}
-                            onClick={() => void handleDeactivate(s.id, s.school_name)}
-                            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                          >
-                            {actionLoading === s.id ? "..." : "Deactivate"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="space-y-3 md:hidden">
-                {schools.map((s) => (
-                  <div key={s.id} className="rounded-2xl border bg-[#FAF6EF] p-4 shadow-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
-                    <p className="font-semibold" style={{ color: NAVY }}>{s.school_name}</p>
-                    <p className="mt-1 text-sm" style={{ color: MUTED }}>@{s.email_domain}</p>
-                    <div className="mt-2 flex flex-wrap gap-3 text-xs" style={{ color: MUTED }}>
-                      <span style={{ color: TEAL }}>{formatPlan(s.plan_type)}</span>
-                      <span>{s.active_teachers}/{s.max_teachers >= 999 ? "∞" : s.max_teachers} teachers</span>
-                      <span>{formatDate(s.created_at)}</span>
+            <div className="space-y-2">
+              {schools.map((s) => (
+                <AdminCard key={s.id} tone={s.status === "inactive" ? "danger" : "default"}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold" style={{ color: INK }}>{s.school_name}</p>
+                        <Badge tone={s.status === "inactive" ? "danger" : "positive"}>
+                          {s.status === "inactive" ? "Inactive" : "Active"}
+                        </Badge>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs" style={{ color: INK_MUTED }}>
+                        <span>@{s.email_domain}</span>
+                        <Badge tone="accent">{formatPlanLabel(s.plan_type)}</Badge>
+                        <span>{s.active_teachers}/{s.max_teachers >= 999 ? "∞" : s.max_teachers} teachers</span>
+                        <span>{formatAdminDate(s.created_at)}</span>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      disabled={actionLoading === s.id}
-                      onClick={() => void handleDeactivate(s.id, s.school_name)}
-                      className="mt-3 w-full rounded-lg border border-red-200 py-2 text-sm font-semibold text-red-600 disabled:opacity-50"
-                    >
-                      Deactivate
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <AdminButton tone="secondary" size="sm" onClick={() => void toggleSchoolExpanded(s.id)}>
+                        {expandedSchoolId === s.id ? "Hide Teachers" : "Teachers"}
+                      </AdminButton>
+                      {s.status === "inactive" ? (
+                        <AdminButton tone="primary" size="sm" loading={actionLoading === s.id} onClick={() => openReactivate(s)}>
+                          Reactivate
+                        </AdminButton>
+                      ) : (
+                        <AdminButton tone="danger" size="sm" loading={actionLoading === s.id} onClick={() => openDeactivate(s)}>
+                          Deactivate
+                        </AdminButton>
+                      )}
+                    </div>
                   </div>
-                ))}
-              </div>
-            </>
+
+                  {expandedSchoolId === s.id && (
+                    <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${BORDER}` }}>
+                      {schoolDetailLoading ? (
+                        <p className="text-sm" style={{ color: INK_MUTED }}>Loading…</p>
+                      ) : schoolTeachers.length === 0 ? (
+                        <p className="text-sm" style={{ color: INK_MUTED }}>No teachers yet.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {schoolTeachers.map((t) => (
+                            <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm" style={{ background: "#FAFAF8" }}>
+                              <div>
+                                <span className="break-all font-medium" style={{ color: INK }}>{t.email}</span>
+                                <span className="ml-2 text-xs" style={{ color: INK_MUTED }}>
+                                  {t.role === "admin" ? "School Admin" : t.role === "hod" ? "HOD" : "Teacher"}
+                                  {t.department ? ` · ${t.department}` : ""}
+                                </span>
+                              </div>
+                              {t.role === "admin" ? (
+                                <AdminButton tone="danger" size="sm" loading={actionLoading === t.user_id} onClick={() => openRemoveSchoolAdmin(s.id, t)}>
+                                  Remove Admin
+                                </AdminButton>
+                              ) : (
+                                <AdminButton tone="secondary" size="sm" loading={actionLoading === t.user_id} onClick={() => void handleAssignSchoolAdmin(s.id, t.user_id)}>
+                                  Make Admin
+                                </AdminButton>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </AdminCard>
+              ))}
+            </div>
           )}
         </section>
       )}
 
-      {tab === "users" && (
+      {tab === "users" && <UsersPanel />}
+
+      {tab === "admins" && (
+        <section className="space-y-6">
+          <div>
+            <SectionHeader title="Grant Admin Access" />
+            <AdminCard>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold" style={{ color: INK_MUTED }}>
+                    Email (must already have a Layah account)
+                  </label>
+                  <AdminInput type="email" value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="teammate@example.com" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold" style={{ color: INK_MUTED }}>Role</label>
+                  <AdminSelect value={grantRole} onChange={(e) => setGrantRole(e.target.value as "admin" | "super_admin")}>
+                    <option value="admin">Admin (narrower — pick permissions below)</option>
+                    <option value="super_admin">Super Admin (full access, including refunds)</option>
+                  </AdminSelect>
+                </div>
+              </div>
+
+              {grantRole === "admin" && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-semibold" style={{ color: INK_MUTED }}>Permissions</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {ADMIN_PERMISSIONS.map((permission) => (
+                      <label key={permission} className={`flex items-center gap-2 text-sm ${FONT_MONO}`} style={{ color: INK }}>
+                        <input type="checkbox" checked={grantPermissions.has(permission)} onChange={() => togglePermission(permission)} />
+                        {permission}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <AdminButton tone="primary" className="mt-4" loading={actionLoading === "grant"} onClick={openGrantAdmin}>
+                Grant Access
+              </AdminButton>
+            </AdminCard>
+          </div>
+
+          <div>
+            <SectionHeader title={`Current Admins (${admins.length})`} />
+            {admins.length === 0 ? (
+              <EmptyState title="No admins found" />
+            ) : (
+              <div className="space-y-2">
+                {admins.map((a) => (
+                  <AdminCard key={a.userId} className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="break-all font-semibold" style={{ color: INK }}>{a.email}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs" style={{ color: INK_MUTED }}>
+                        <Badge tone={a.role === "super_admin" ? "danger" : "accent"}>
+                          {a.role === "super_admin" ? "Super Admin" : "Admin"}
+                        </Badge>
+                        <span>Granted {formatAdminDate(a.grantedAt)}</span>
+                      </div>
+                      {a.role === "admin" && (
+                        <p className={`mt-1 text-xs ${FONT_MONO}`} style={{ color: INK_FAINT }}>
+                          {a.permissions.length > 0 ? a.permissions.join(", ") : "No permissions granted yet"}
+                        </p>
+                      )}
+                    </div>
+                    <AdminButton tone="danger" size="sm" loading={actionLoading === a.userId} onClick={() => openRevokeAdmin(a)}>
+                      Revoke
+                    </AdminButton>
+                  </AdminCard>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {tab === "content" && (
         <section>
-          <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>
-            All Users ({users.length})
-          </h2>
-          {users.length === 0 ? (
-            <div className="rounded-2xl border bg-[#FAF6EF] p-6 text-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)", color: MUTED }}>
-              No users found.
-            </div>
-          ) : (
-            <>
-              <div className="hidden overflow-x-auto rounded-2xl border bg-[#FAF6EF] shadow-sm md:block" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
-                <table className="min-w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b bg-stone-50" style={{ borderColor: "#E3D9C8" }}>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Email</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Plan</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Generations</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Joined</th>
-                      <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Change Plan</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((u) => (
-                      <tr key={u.id} className="border-b last:border-b-0" style={{ borderColor: "#E3D9C8" }}>
-                        <td className="px-4 py-3 break-all font-medium" style={{ color: NAVY }}>{u.email}</td>
-                        <td className="px-4 py-3" style={{ color: TEAL }}>{formatPlan(u.planType)}</td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>
-                          {u.generationsUsed} / {u.generationsLimit === -1 ? "∞" : u.generationsLimit}
-                        </td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>{formatDate(u.createdAt)}</td>
-                        <td className="px-4 py-3">
-                          <select
-                            value={u.planType}
-                            disabled={actionLoading === u.id}
-                            onChange={(e) => void handleChangePlan(u.id, e.target.value)}
-                            className="rounded-lg border bg-[#FAF6EF] px-2 py-1 text-xs font-medium outline-none"
-                            style={{ borderColor: "#D9CCB8", color: NAVY }}
-                          >
-                            <option value="free">Free</option>
-                            <option value="pro">Pro</option>
-                            <option value="pro_plus">Pro Plus</option>
-                            <option value="school_starter">School Starter</option>
-                            <option value="school_pro">School Pro</option>
-                            <option value="school_enterprise">School Enterprise</option>
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          <SectionHeader title="Content Moderation" />
 
-              <div className="space-y-3 md:hidden">
-                {users.map((u) => (
-                  <div key={u.id} className="rounded-2xl border bg-[#FAF6EF] p-4 shadow-sm" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
-                    <p className="break-all font-semibold" style={{ color: NAVY }}>{u.email}</p>
-                    <div className="mt-2 flex flex-wrap gap-3 text-xs" style={{ color: MUTED }}>
-                      <span style={{ color: TEAL }}>{formatPlan(u.planType)}</span>
-                      <span>{u.generationsUsed}/{u.generationsLimit === -1 ? "∞" : u.generationsLimit} gen</span>
-                      <span>{formatDate(u.createdAt)}</span>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <AdminSelect value={contentType} onChange={(e) => setContentType(e.target.value as ContentType)} className="w-auto">
+              {(Object.keys(CONTENT_TYPE_LABELS) as ContentType[]).map((t) => (
+                <option key={t} value={t}>{CONTENT_TYPE_LABELS[t]}</option>
+              ))}
+            </AdminSelect>
+            <AdminInput
+              type="text"
+              value={contentSearch}
+              onChange={(e) => setContentSearch(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void fetchContent()}
+              placeholder="Search subject / topic / grade…"
+              className="min-w-[220px] flex-1"
+            />
+            <label className="flex items-center gap-2 text-sm" style={{ color: INK }}>
+              <input type="checkbox" checked={contentFlaggedOnly} onChange={(e) => setContentFlaggedOnly(e.target.checked)} />
+              Flagged only
+            </label>
+            <AdminButton tone="primary" onClick={() => void fetchContent()}>Search</AdminButton>
+          </div>
+
+          {contentLoading ? (
+            <EmptyState title="Loading…" />
+          ) : contentItems.length === 0 ? (
+            <EmptyState title="No content found" />
+          ) : (
+            <div className="space-y-2">
+              {contentItems.map((item) => (
+                <AdminCard key={item.id} tone={item.flagged ? "danger" : "default"} className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="flex items-center gap-2 font-semibold" style={{ color: INK }}>
+                      {item.topic || item.subject || "(untitled)"}
+                      {item.flagged && <Badge tone="danger">Flagged</Badge>}
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs" style={{ color: INK_MUTED }}>
+                      <span>{item.subject}</span>
+                      <span>{item.grade}</span>
+                      <span className="break-all">{item.userEmail}</span>
+                      <span>{formatAdminDate(item.created_at)}</span>
                     </div>
-                    <select
-                      value={u.planType}
-                      disabled={actionLoading === u.id}
-                      onChange={(e) => void handleChangePlan(u.id, e.target.value)}
-                      className="mt-3 w-full rounded-lg border bg-[#FAF6EF] px-3 py-2 text-sm font-medium outline-none"
-                      style={{ borderColor: "#D9CCB8", color: NAVY }}
-                    >
-                      <option value="free">Free</option>
-                      <option value="pro">Pro</option>
-                      <option value="pro_plus">Pro Plus</option>
-                      <option value="school_starter">School Starter</option>
-                      <option value="school_pro">School Pro</option>
-                      <option value="school_enterprise">School Enterprise</option>
-                    </select>
+                    {item.flagged && item.flagged_reason && (
+                      <p className="mt-1 text-xs font-medium" style={{ color: "#B3261E" }}>Reason: {item.flagged_reason}</p>
+                    )}
                   </div>
-                ))}
-              </div>
-            </>
+                  <div className="flex gap-2">
+                    <AdminButton tone="secondary" size="sm" loading={actionLoading === item.id} onClick={() => (item.flagged ? openUnflag(item) : openFlag(item))}>
+                      {item.flagged ? "Unflag" : "Flag"}
+                    </AdminButton>
+                    <AdminButton tone="danger" size="sm" loading={actionLoading === item.id} onClick={() => openDeleteContent(item)}>
+                      Delete
+                    </AdminButton>
+                  </div>
+                </AdminCard>
+              ))}
+            </div>
           )}
         </section>
       )}
-    </div>
+
+      {tab === "billing" && <BillingPanel />}
+      {tab === "announcements" && <AnnouncementsPanel />}
+    </AdminShell>
+  );
+}
+
+export function SuperAdminDashboard({ role, email }: { role: "super_admin" | "admin"; email: string }) {
+  return (
+    <AdminProviders>
+      <DashboardBody role={role} email={email} />
+    </AdminProviders>
   );
 }

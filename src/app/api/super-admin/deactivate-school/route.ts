@@ -13,9 +13,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
-  const { schoolId } = (await req.json()) as { schoolId: string };
+  const { schoolId, reason } = (await req.json()) as { schoolId: string; reason?: string };
   if (!schoolId) {
     return NextResponse.json({ error: "Missing schoolId" }, { status: 400 });
+  }
+  const trimmedReason = reason?.trim() ?? "";
+  if (!trimmedReason) {
+    return NextResponse.json({ error: "A deactivation reason is required." }, { status: 400 });
   }
 
   const admin = getSupabaseServiceRole();
@@ -23,9 +27,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Service unavailable." }, { status: 500 });
   }
 
+  // Soft deactivate — was previously a hard DELETE, which cascaded to
+  // remove every school_teachers row. Teachers just stop getting the
+  // school's plan synced on their next login (see school-enrollment-server.ts).
   const { error } = await admin
     .from("school_accounts")
-    .delete()
+    .update({ status: "inactive", deactivated_at: new Date().toISOString(), deactivated_reason: trimmedReason })
     .eq("id", schoolId);
 
   if (error) {
@@ -33,7 +40,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Could not deactivate school. Please try again." }, { status: 500 });
   }
 
-  await logAdminAction(user!.id, "school.deactivate", schoolId);
+  await logAdminAction(user!.id, "school.deactivate", schoolId, { reason: trimmedReason });
 
   return NextResponse.json({ ok: true });
 }

@@ -16,6 +16,7 @@ import {
   DAY_MS,
 } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/send-email";
+import { logGenerationEvent } from "@/lib/generation-events";
 import {
   buildCurriculumFrameworkSystemAddendum,
   getCurriculumFrameworkLabel,
@@ -757,6 +758,8 @@ export async function POST(req: Request) {
     );
   }
 
+  const genStartedAt = Date.now();
+
   const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(input.curriculumFramework);
 
   const aflCtx = {
@@ -794,10 +797,25 @@ export async function POST(req: Request) {
           });
           const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
           send({ type: "complete", ...payload, usage: gate.usage });
+          void logGenerationEvent({
+            userId: auth.userId,
+            generationType: "lesson_plan",
+            status: "success",
+            planType,
+            durationMs: Date.now() - genStartedAt,
+          });
         } catch (e) {
           console.error("[lesson-plan] stream generation failed:", e);
           await refundGeneration(gate.reservation);
           send({ type: "error", message: USER_FACING_ERROR });
+          void logGenerationEvent({
+            userId: auth.userId,
+            generationType: "lesson_plan",
+            status: "failed",
+            planType,
+            errorMessage: e instanceof Error ? e.message : String(e),
+            durationMs: Date.now() - genStartedAt,
+          });
         } finally {
           controller.close();
         }
@@ -818,10 +836,25 @@ export async function POST(req: Request) {
       strategyBlock,
     });
     const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
+    void logGenerationEvent({
+      userId: auth.userId,
+      generationType: "lesson_plan",
+      status: "success",
+      planType,
+      durationMs: Date.now() - genStartedAt,
+    });
     return NextResponse.json({ ...payload, usage: gate.usage });
   } catch (e) {
     console.error("[lesson-plan] generation failed:", e);
     await refundGeneration(gate.reservation);
+    void logGenerationEvent({
+      userId: auth.userId,
+      generationType: "lesson_plan",
+      status: "failed",
+      planType,
+      errorMessage: e instanceof Error ? e.message : String(e),
+      durationMs: Date.now() - genStartedAt,
+    });
     return NextResponse.json({ error: USER_FACING_ERROR }, { status: 500 });
   }
 }

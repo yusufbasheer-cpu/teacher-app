@@ -34,6 +34,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Subscriptions are unavailable right now." }, { status: 500 });
   }
 
+  // An admin-granted trial (src/app/api/razorpay/admin/trial/grant) — checkout
+  // is self-serve, so this is the only point where a trial can actually be
+  // applied to a new subscription. Razorpay's start_at only works at
+  // creation time, never retroactively.
+  const { data: trialGrant } = await admin
+    .from("pending_trial_grants")
+    .select("id, trial_days")
+    .eq("user_id", auth.userId)
+    .is("consumed_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+
+  const startAt = trialGrant
+    ? Math.floor(Date.now() / 1000) + trialGrant.trial_days * 86400
+    : undefined;
+
   let subscription;
   try {
     subscription = await razorpay.subscriptions.create({
@@ -41,6 +57,7 @@ export async function POST(req: Request) {
       customer_notify: 1,
       total_count: EFFECTIVELY_INDEFINITE_CYCLES,
       notes: { userId: auth.userId },
+      ...(startAt ? { start_at: startAt } : {}),
     });
   } catch (err) {
     console.error("[razorpay/create-subscription] Razorpay API error:", err);
@@ -52,7 +69,12 @@ export async function POST(req: Request) {
     razorpay_subscription_id: subscription.id,
     razorpay_plan_id: planId,
     status: "created",
+    ...(startAt ? { trial_end_at: new Date(startAt * 1000).toISOString() } : {}),
   });
+
+  if (trialGrant) {
+    await admin.from("pending_trial_grants").update({ consumed_at: new Date().toISOString() }).eq("id", trialGrant.id);
+  }
 
   if (insertError) {
     console.error("[razorpay/create-subscription] DB error:", insertError.message);

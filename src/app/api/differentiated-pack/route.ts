@@ -20,6 +20,8 @@ import {
   DAY_MS,
 } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/send-email";
+import { logGenerationEvent } from "@/lib/generation-events";
+import { saveDifferentiatedPackGeneration } from "@/lib/content-persistence";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -130,6 +132,8 @@ export async function POST(req: Request) {
     );
   }
 
+  const genStartedAt = Date.now();
+
   const userMessage = buildDiffPackUserMessage({
     level,
     topic,
@@ -161,22 +165,47 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("[differentiated-pack] DeepSeek fetch error:", e);
+    void logGenerationEvent({
+      userId: auth.userId,
+      generationType: "differentiated_pack",
+      status: "failed",
+      planType,
+      metered: false,
+      errorMessage: e instanceof Error ? e.message : String(e),
+      durationMs: Date.now() - genStartedAt,
+    });
     return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const rawBody = await deepseekResponse.text();
   logDeepSeekRawResponse(`differentiated-pack:${level}`, deepseekResponse, rawBody);
   if (!deepseekResponse.ok) {
-    console.error(
-      "[differentiated-pack] DeepSeek HTTP error:",
-      deepSeekHttpErrorMessage(deepseekResponse.status, rawBody),
-    );
+    const httpErrorMessage = deepSeekHttpErrorMessage(deepseekResponse.status, rawBody);
+    console.error("[differentiated-pack] DeepSeek HTTP error:", httpErrorMessage);
+    void logGenerationEvent({
+      userId: auth.userId,
+      generationType: "differentiated_pack",
+      status: "failed",
+      planType,
+      metered: false,
+      errorMessage: httpErrorMessage,
+      durationMs: Date.now() - genStartedAt,
+    });
     return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const { content, errorMessage } = parseDeepSeekCompletionBody(rawBody);
   if (!content?.trim()) {
     console.error("[differentiated-pack] empty model response:", errorMessage);
+    void logGenerationEvent({
+      userId: auth.userId,
+      generationType: "differentiated_pack",
+      status: "failed",
+      planType,
+      metered: false,
+      errorMessage: errorMessage || "Empty model response.",
+      durationMs: Date.now() - genStartedAt,
+    });
     return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
@@ -186,6 +215,23 @@ export async function POST(req: Request) {
     filled < 6
       ? `Only ${filled}/6 expected sections were detected from markers for ${level}.`
       : undefined;
+
+  void logGenerationEvent({
+    userId: auth.userId,
+    generationType: "differentiated_pack",
+    status: "success",
+    planType,
+    metered: false,
+    durationMs: Date.now() - genStartedAt,
+  });
+  void saveDifferentiatedPackGeneration({
+    userId: auth.userId,
+    subject,
+    grade,
+    topic,
+    curriculum: body.curriculumType,
+    content: { level, pack },
+  });
 
   return NextResponse.json({
     level,
