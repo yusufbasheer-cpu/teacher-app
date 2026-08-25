@@ -18,6 +18,7 @@ import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
+import { PageLoader } from "@/components/ui/animate";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PaymentModal } from "@/components/payment/payment-modal";
 import { LockedPageState } from "@/components/premium/locked-page-state";
@@ -396,8 +397,8 @@ export function DifferentiatedWorksheetPack() {
 
   if (checkingAuth) {
     return (
-      <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
-        Checking your account…
+      <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+        <PageLoader label="Checking your account…" />
       </div>
     );
   }
