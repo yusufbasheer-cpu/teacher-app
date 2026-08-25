@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import {
+  buildSchoolDeactivatedMessage,
   buildSchoolMaxTeachersMessage,
   buildSchoolWelcomeMessage,
   extractEmailDomain,
@@ -352,6 +353,15 @@ export async function processSchoolEnrollment(
     console.log(`No school found for domain: ${domain}`);
     await ensureIndividualUsage(admin, userId);
     return { ok: true, blocked: false, individual: true, newlyJoined: false };
+  }
+
+  if (school.status !== "active") {
+    console.log(`[school-enrollment] School is inactive — blocking sync: ${domain}`, { schoolId: school.id });
+    return {
+      ok: false,
+      blocked: true,
+      message: buildSchoolDeactivatedMessage(school.admin_email),
+    };
   }
 
   console.log(`School detected for user email: ${trimmedEmail}`, {

@@ -34,7 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (pathname === "/") {
+  if (pathname === "/" || pathname.startsWith("/super-admin")) {
     return <>{children}</>;
   }
 

@@ -15,6 +15,7 @@ export type SchoolAccountRow = {
   active_teachers: number;
   admin_email: string;
   created_at: string;
+  status: "active" | "inactive";
 };
 
 export type SchoolTeacherRow = {
@@ -33,6 +34,10 @@ export const SCHOOL_WELCOME_SESSION_KEY = "layah_school_welcome";
 
 export function buildSchoolMaxTeachersMessage(adminEmail: string): string {
   return `Your school has reached the maximum number of teacher accounts. Please contact your school administrator at ${adminEmail}`;
+}
+
+export function buildSchoolDeactivatedMessage(adminEmail: string): string {
+  return `Your school's Layah account is currently inactive. Please contact your school administrator at ${adminEmail}, or reach out to info@layah.in.`;
 }
 
 export function buildSchoolWelcomeMessage(schoolName: string): string {

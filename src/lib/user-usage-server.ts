@@ -368,6 +368,27 @@ export async function authenticateRequest(
     return { ok: false, status: 401, message: "Invalid session. Please log in again." };
   }
 
+  // Single enforcement point for account suspension — every generation route
+  // (and anything else calling authenticateRequest) is blocked immediately,
+  // without needing its own check. A user with no user_usage row yet can't
+  // be suspended (an admin can only suspend an existing row), so a missing
+  // row/column defaults to "active".
+  const { data: usageRow } = await supabase
+    .from(USER_USAGE_TABLE)
+    .select("account_status, suspended_reason")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (usageRow?.account_status === "suspended") {
+    console.warn("[user-usage] authenticateRequest: account suspended", { userId: user.id });
+    return {
+      ok: false,
+      status: 403,
+      message: usageRow.suspended_reason
+        ? `Your account has been suspended: ${usageRow.suspended_reason}`
+        : "Your account has been suspended. Contact support if you believe this is an error.",
+    };
+  }
+
   DEBUG && console.log("[user-usage] authenticateRequest: ok", {
     userId: user.id,
     auth_uid_matches: user.id,

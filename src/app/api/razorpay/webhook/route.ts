@@ -10,6 +10,8 @@ type WebhookPayload = {
   event?: string;
   payload?: {
     subscription?: { entity?: { id?: string } };
+    refund?: { entity?: { id?: string; payment_id?: string; status?: string } };
+    payment?: { entity?: { id?: string; order_id?: string; status?: string } };
   };
 };
 
@@ -43,16 +45,53 @@ export async function POST(req: Request) {
   }
 
   const event = payload.event;
-  const razorpaySubscriptionId = payload.payload?.subscription?.entity?.id;
-
-  if (!event || !razorpaySubscriptionId) {
-    // Not a subscription event we care about (e.g. a payment/order webhook) -- ack and ignore.
+  if (!event) {
     return NextResponse.json({ ok: true });
   }
 
   const admin = getSupabaseServiceRole();
   if (!admin) {
     return NextResponse.json({ error: "Service unavailable." }, { status: 500 });
+  }
+
+  // Refund events -- reconcile razorpay_refunds.status. Razorpay's own
+  // recommendation is to trust refund.processed/refund.failed as the FINAL
+  // status, not just the synchronous API response the admin refund route
+  // already recorded optimistically.
+  if (event === "refund.processed" || event === "refund.failed") {
+    const refundId = payload.payload?.refund?.entity?.id;
+    const status = payload.payload?.refund?.entity?.status;
+    if (refundId && status) {
+      await admin
+        .from("razorpay_refunds")
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq("razorpay_refund_id", refundId);
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  // One-time order payment failure -- orders previously had no webhook
+  // fallback at all (only the client-driven verify-payment call), so a
+  // payment that failed/timed out before the browser could report back
+  // left the local razorpay_orders row stuck at "created" forever. This
+  // closes that gap. Subscription renewal failures are handled separately
+  // via subscription.pending/halted below, not this event.
+  if (event === "payment.failed") {
+    const orderId = payload.payload?.payment?.entity?.order_id;
+    if (orderId) {
+      await admin
+        .from("razorpay_orders")
+        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .eq("razorpay_order_id", orderId)
+        .eq("status", "created"); // never overwrite an order that already verified as paid
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  const razorpaySubscriptionId = payload.payload?.subscription?.entity?.id;
+  if (!razorpaySubscriptionId) {
+    // Not a subscription event we care about -- ack and ignore.
+    return NextResponse.json({ ok: true });
   }
 
   const { data: subscription, error: fetchError } = await admin
@@ -110,6 +149,25 @@ export async function POST(req: Request) {
         .update({ status: "halted", updated_at: now })
         .eq("id", subscription.id);
       await downgradeToFree(admin, subscription.user_id);
+      break;
+    }
+
+    case "subscription.paused": {
+      // Safety net for the admin pause route already updating this
+      // synchronously -- also catches a pause made directly in the
+      // Razorpay Dashboard, bypassing our own route entirely.
+      await admin
+        .from("subscriptions")
+        .update({ status: "paused", paused_at: now, updated_at: now })
+        .eq("id", subscription.id);
+      break;
+    }
+
+    case "subscription.resumed": {
+      await admin
+        .from("subscriptions")
+        .update({ status: "active", paused_at: null, intended_resume_at: null, pause_reason: null, updated_at: now })
+        .eq("id", subscription.id);
       break;
     }
 

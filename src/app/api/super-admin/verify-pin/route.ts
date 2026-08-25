@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isSuperAdminEmail } from "@/lib/super-admin";
+import { isAdminUser } from "@/lib/super-admin";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!isSuperAdminEmail(user?.email)) {
+  if (!(await isAdminUser(user?.id))) {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 

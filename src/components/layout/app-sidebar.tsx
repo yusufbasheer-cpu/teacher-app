@@ -46,7 +46,7 @@ export function AppSidebar({ user }: Props) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [isSchoolAdmin, setIsSchoolAdmin] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isAnyAdmin, setIsAnyAdmin] = useState(false);
   const [isHod, setIsHod] = useState(false);
   const { usage } = useUserUsage(true);
   const callerIsFree = Boolean(usage && isFreePlan(usage.planType));
@@ -81,14 +81,14 @@ export function AppSidebar({ user }: Props) {
           }),
         ]);
         const schoolBody = (await schoolRes.json()) as { isAdmin?: boolean };
-        const superBody = (await superRes.json()) as { isSuperAdmin?: boolean };
+        const superBody = (await superRes.json()) as { role?: "super_admin" | "admin" | null };
         const hodBody = (await hodRes.json()) as { isHod?: boolean };
         setIsSchoolAdmin(Boolean(schoolBody.isAdmin));
-        setIsSuperAdmin(Boolean(superBody.isSuperAdmin));
+        setIsAnyAdmin(Boolean(superBody.role));
         setIsHod(Boolean(hodBody.isHod));
       } catch {
         setIsSchoolAdmin(false);
-        setIsSuperAdmin(false);
+        setIsAnyAdmin(false);
         setIsHod(false);
       }
     };
@@ -105,7 +105,7 @@ export function AppSidebar({ user }: Props) {
     isHod
       ? ({ href: HOD_DASHBOARD_NAV_LINK.href, label: HOD_DASHBOARD_NAV_LINK.label, icon: GraduationCap } as NavItem)
       : null,
-    isSuperAdmin
+    isAnyAdmin
       ? ({ href: SUPER_ADMIN_NAV_LINK.href, label: SUPER_ADMIN_NAV_LINK.label, icon: Shield } as NavItem)
       : null,
   ];

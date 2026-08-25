@@ -14,9 +14,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
-  const { registrationId } = (await req.json()) as { registrationId: string };
+  const { registrationId, reason } = (await req.json()) as { registrationId: string; reason?: string };
   if (!registrationId) {
     return NextResponse.json({ error: "Missing registrationId" }, { status: 400 });
+  }
+  const trimmedReason = reason?.trim() ?? "";
+  if (!trimmedReason) {
+    return NextResponse.json({ error: "A rejection reason is required." }, { status: 400 });
   }
 
   const admin = getSupabaseServiceRole();
@@ -36,11 +40,12 @@ export async function POST(req: Request) {
 
   await admin
     .from("school_registration_requests")
-    .update({ status: "rejected" })
+    .update({ status: "rejected", rejection_reason: trimmedReason })
     .eq("id", registrationId);
 
   await logAdminAction(user!.id, "school.reject", registrationId, {
     school_name: reg.school_name,
+    reason: trimmedReason,
   });
 
   try {
@@ -53,6 +58,8 @@ export async function POST(req: Request) {
         `Thank you for your interest in Layah.ai for ${reg.school_name}.`,
         ``,
         `After reviewing your registration, we are unable to approve your school account at this time.`,
+        ``,
+        `Reason: ${trimmedReason}`,
         ``,
         `If you believe this is an error or would like to discuss further, please contact us at info@layah.in.`,
         ``,
@@ -68,6 +75,7 @@ export async function POST(req: Request) {
             <p>Dear School Administrator,</p>
             <p>Thank you for your interest in Layah.ai for <strong>${reg.school_name}</strong>.</p>
             <p>After reviewing your registration, we are unable to approve your school account at this time.</p>
+            <p><strong>Reason:</strong> ${trimmedReason}</p>
             <p>If you believe this is an error or would like to discuss further, please contact us at <a href="mailto:info@layah.in" style="color: #0E9484;">info@layah.in</a>.</p>
           </div>
         </div>
