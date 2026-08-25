@@ -17,21 +17,34 @@ const NAV_LINKS = [
   { href: "/pricing", label: "Pricing" },
 ] as const;
 
+const FOCUS_RING =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E9484] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAF6EF]";
+
 export function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <header
-      className="sticky top-0 z-50 bg-[#FAF6EF]/90 backdrop-blur"
+      className={`sticky top-0 z-50 bg-[#FAF6EF]/90 backdrop-blur transition-shadow duration-300 ${
+        scrolled ? "shadow-[0_1px_0_rgba(36,26,18,0.06),0_8px_24px_-16px_rgba(36,26,18,0.25)]" : ""
+      }`}
       style={{ borderBottom: `1px solid ${BORDER}` }}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5">
+        <Link href="/" className={`flex shrink-0 items-center gap-2.5 rounded-lg ${FOCUS_RING}`}>
           <img src="/logo-mark.png" alt="Layah" className="h-9 w-9 rounded-xl object-cover" />
           <span className="leading-tight">
             <span className="block text-[15px] font-extrabold" style={{ color: NAVY }}>
@@ -49,7 +62,7 @@ export function Navbar() {
               key={link.href}
               href={link.href}
               aria-current={isNavLinkActive(pathname, link.href) ? "page" : undefined}
-              className="rounded-full px-3.5 py-2 text-sm font-medium transition hover:bg-stone-50"
+              className={`rounded-full px-3.5 py-2 text-sm font-medium transition hover:bg-stone-50 ${FOCUS_RING}`}
               style={{
                 color: isNavLinkActive(pathname, link.href) ? "#0B6B5F" : "#2b2118",
                 background: isNavLinkActive(pathname, link.href) ? "rgba(14, 148, 132,0.08)" : "transparent",
@@ -64,14 +77,14 @@ export function Navbar() {
         <div className="hidden shrink-0 items-center gap-2 lg:flex">
           <Link
             href="/login"
-            className="rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-70"
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-70 ${FOCUS_RING}`}
             style={{ color: "#2b2118" }}
           >
             Login
           </Link>
           <Link
             href="/lesson-plan"
-            className="rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+            className={`rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 hover:shadow-md ${FOCUS_RING}`}
             style={{ background: TEAL }}
           >
             Start Generating
@@ -84,7 +97,7 @@ export function Navbar() {
           onClick={() => setMenuOpen((prev) => !prev)}
           aria-label="Toggle navigation menu"
           aria-expanded={menuOpen}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg lg:hidden"
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg lg:hidden ${FOCUS_RING}`}
           style={{ border: `1px solid ${BORDER}`, color: "#2b2118" }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -101,7 +114,7 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-lg px-3 py-2.5 text-sm font-medium"
+                className={`rounded-lg px-3 py-2.5 text-sm font-medium ${FOCUS_RING}`}
                 style={{
                   color: isNavLinkActive(pathname, link.href) ? "#0B6B5F" : "#2b2118",
                   background: isNavLinkActive(pathname, link.href) ? "rgba(14, 148, 132,0.08)" : "transparent",
@@ -113,14 +126,14 @@ export function Navbar() {
             <div className="mt-2 flex flex-col gap-2 border-t pt-3" style={{ borderColor: BORDER }}>
               <Link
                 href="/login"
-                className="rounded-lg px-3 py-2.5 text-center text-sm font-semibold"
+                className={`rounded-lg px-3 py-2.5 text-center text-sm font-semibold ${FOCUS_RING}`}
                 style={{ color: "#2b2118", border: `1px solid ${BORDER}` }}
               >
                 Login
               </Link>
               <Link
                 href="/lesson-plan"
-                className="rounded-lg px-3 py-2.5 text-center text-sm font-semibold text-white"
+                className={`rounded-lg px-3 py-2.5 text-center text-sm font-semibold text-white ${FOCUS_RING}`}
                 style={{ background: TEAL }}
               >
                 Start Generating

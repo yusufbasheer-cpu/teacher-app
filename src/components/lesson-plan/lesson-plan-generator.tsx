@@ -10,7 +10,12 @@ import {
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { FileText, GraduationCap, Sparkles } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
+import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
 import { Container } from "@/components/ui/container";
@@ -135,6 +140,72 @@ const WIZARD_STEPS: { id: 1 | 2 | 3; label: string }[] = [
   { id: 2, label: "Source Content" },
   { id: 3, label: "Generate Package" },
 ];
+
+const STEP_SLIDE_VARIANTS = {
+  initial: { opacity: 0, x: 24 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -24 },
+};
+
+const STEP_FIELD_GROUP_VARIANTS = {
+  container: {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.06 } },
+  },
+  item: {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.0, 0.0, 0.2, 1] as const } },
+  },
+};
+
+// Step card chrome — lifts each wizard step off the page background: a white
+// surface with a soft warm border, distinct from the page's own cream tone,
+// so it reads as a card rather than text floating on the canvas.
+const STEP_CARD_CLASS =
+  "min-w-0 rounded-2xl border p-6 sm:p-8 shadow-[0px_4px_20px_rgba(36,26,18,0.06)]";
+const STEP_CARD_STYLE = { background: "#FFFFFF", borderColor: "#E8DFD1" };
+
+// One consistent vertical rhythm between major blocks within a step — was a
+// mix of mt-6/space-y-5 (20–24px) scattered ad hoc; standardized to 32px.
+const STEP_SECTION_GAP_CLASS = "mt-8";
+
+// Nested "grouped content" inside a step card — e.g. "Provide your own
+// teaching content", "Teaching and Learning Strategy", "What to generate".
+// Deliberately NOT a second card (no border/shadow of its own): a subtle
+// tint is enough to read as "grouped" without competing with the outer
+// card's border for visual weight, so nesting levels stay legible instead
+// of stacking near-identical card chrome three deep.
+const NESTED_GROUP_CLASS = "rounded-2xl p-4 sm:p-5";
+const NESTED_GROUP_STYLE = { background: "rgba(250,246,238,0.6)" };
+
+const STEP_LEGEND_CLASS = "flex w-full items-center gap-2 pb-3 text-lg font-semibold text-stone-900";
+const STEP_LEGEND_STYLE = { borderBottom: "1px solid #E8DFD1" };
+
+function StepLegend({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
+  // A <legend> would be the semantically "correct" tag here, but browsers
+  // give a fieldset's first-child <legend> special default positioning that
+  // straddles the fieldset's top border — invisible when these step panels
+  // had no border, but it broke the moment STEP_CARD_CLASS added one. Using
+  // <h2> avoids that UA behavior entirely; each field's own <label> still
+  // carries the real accessibility association, so nothing is lost.
+  return (
+    <h2 className={STEP_LEGEND_CLASS} style={STEP_LEGEND_STYLE}>
+      <Icon className="size-5 shrink-0" style={{ color: "#0E9484" }} />
+      {children}
+    </h2>
+  );
+}
+
+function StepIntro({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      className="mt-3 rounded-lg px-3 py-2.5 text-sm text-stone-600"
+      style={{ background: "rgba(14, 148, 132,0.06)" }}
+    >
+      {children}
+    </p>
+  );
+}
 
 export function LessonPlanGenerator() {
   const router = useRouter();
@@ -854,7 +925,7 @@ export function LessonPlanGenerator() {
   return (
     <div className="w-full space-y-6" ref={wizardRef}>
       {!lessonPlan ? (
-        <Container className="space-y-6 pt-6">
+        <Container className="space-y-10 pt-10">
           <div className={FORM_COLUMN_CLASS}>
             <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
           </div>
@@ -866,16 +937,24 @@ export function LessonPlanGenerator() {
             noValidate
             className={FORM_COLUMN_CLASS}
           >
+            <AnimatePresence mode="wait" initial={false}>
             {/* ══════════ STEP 1 — CLASS DETAILS ══════════ */}
-            <fieldset hidden={step !== 1} className="min-w-0">
-              <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
-                Class details
-              </legend>
-              <p className="mt-3 text-sm text-stone-600">
+            {step === 1 && (
+            <motion.div
+              key="step-1"
+              variants={STEP_SLIDE_VARIANTS}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.18, ease: "easeInOut" }}
+            >
+            <div className={STEP_CARD_CLASS} style={STEP_CARD_STYLE}>
+              <StepLegend icon={GraduationCap}>Class details</StepLegend>
+              <StepIntro>
                 Tell us who this lesson is for. This is the only step required to get started.
-              </p>
+              </StepIntro>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <AnimatedGroup variants={STEP_FIELD_GROUP_VARIANTS} className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label htmlFor="curriculum" className="mb-1 block text-sm font-medium text-stone-700">
               Curriculum type
@@ -886,7 +965,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, curriculumType: e.target.value }))
               }
-              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
               required
             >
               {CURRICULUM_TYPE_GROUPS.map((group) => (
@@ -917,7 +996,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, curriculumFramework: e.target.value }))
               }
-              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 shadow-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm text-stone-900 shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
             >
               {CURRICULUM_FRAMEWORK_OPTIONS.map((opt) => (
                 <option key={opt.value === "" ? "none" : opt.value} value={opt.value}>
@@ -932,6 +1011,8 @@ export function LessonPlanGenerator() {
             </p>
           </div>
 
+          <div className="sm:col-span-2 border-t border-[#E8DFD1]" />
+
           <div>
             <label htmlFor="grade-year" className="mb-1 block text-sm font-medium text-stone-700">
               Grade / year group
@@ -940,7 +1021,7 @@ export function LessonPlanGenerator() {
               id="grade-year"
               value={form.grade}
               onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
-              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
               required
             >
               {GRADE_YEAR_OPTIONS.map((opt) => (
@@ -959,7 +1040,7 @@ export function LessonPlanGenerator() {
               id="subject"
               value={form.subject}
               onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
-              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
               required
             >
               <optgroup label="Subjects">
@@ -997,23 +1078,22 @@ export function LessonPlanGenerator() {
               type="text"
               value={form.chapter}
               onChange={(e) => setForm((prev) => ({ ...prev, chapter: e.target.value }))}
-              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
               placeholder="e.g. Chapter 5 - Photosynthesis"
             />
           </div>
 
           <div>
             <label htmlFor="topic" className="mb-1 block text-sm font-medium text-stone-700">
-              Topic
+              Topic <span className="font-normal text-stone-400">(optional)</span>
             </label>
             <input
               id="topic"
               type="text"
               value={form.topic}
               onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
-              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
-              placeholder="Specific topic within the chapter"
-              required
+              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
+              placeholder="Specific topic within the chapter (leave blank to use just the chapter name)"
             />
           </div>
 
@@ -1030,12 +1110,12 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, learningObjectives: e.target.value }))
               }
-              className="min-h-28 w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2"
+              className="min-h-28 w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
               placeholder="List key outcomes students should achieve."
               required
             />
           </div>
-        </div>
+        </AnimatedGroup>
 
               <div className="mt-6 flex justify-end">
                 <button
@@ -1046,21 +1126,30 @@ export function LessonPlanGenerator() {
                   Continue
                 </button>
               </div>
-            </fieldset>
+            </div>
+            </motion.div>
+            )}
 
             {/* ══════════ STEP 2 — SOURCE CONTENT (OPTIONAL) ══════════ */}
-            <fieldset hidden={step !== 2} className="min-w-0">
-              <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
-                Source content
-              </legend>
-              <p className="mt-3 text-sm text-stone-600">
+            {step === 2 && (
+            <motion.div
+              key="step-2"
+              variants={STEP_SLIDE_VARIANTS}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.18, ease: "easeInOut" }}
+            >
+            <div className={STEP_CARD_CLASS} style={STEP_CARD_STYLE}>
+              <StepLegend icon={FileText}>Source content</StepLegend>
+              <StepIntro>
                 Add textbook pages, notes, or chapter content to generate a more accurate lesson plan.
                 This step is entirely optional — skip it and Layah will generate content from the topic
                 and objectives alone.
-              </p>
+              </StepIntro>
 
         {entitlements.sourceContent ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-[#0E9484]/30 bg-[#0E9484]/5 p-4 space-y-5">
+        <div className={cn(STEP_SECTION_GAP_CLASS, NESTED_GROUP_CLASS, "space-y-5")} style={NESTED_GROUP_STYLE}>
           <div>
             <p className="text-sm font-semibold text-[#241A12]">
               Provide your own teaching content (optional)
@@ -1071,7 +1160,7 @@ export function LessonPlanGenerator() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-[#0E9484]/20 bg-[#FAF6EF]/80 p-3">
+          <div className="rounded-xl bg-white/70 p-3">
             <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
               Option 1 — Upload PDF
             </p>
@@ -1082,11 +1171,11 @@ export function LessonPlanGenerator() {
               accept=".pdf,application/pdf"
               onChange={(e) => onUploadFileChange(e, "pdf")}
               disabled={uploadExtracting || loading}
-              className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border-0 file:bg-[#0E9484] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#0B6B5F] disabled:opacity-60"
+              className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border file:border-[#E8DFD1] file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#241A12] hover:file:bg-stone-50 disabled:opacity-60"
             />
           </div>
 
-          <div className="rounded-xl border border-[#0E9484]/20 bg-[#FAF6EF]/80 p-3">
+          <div className="rounded-xl bg-white/70 p-3">
             <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
               Option 2 — Upload Image
             </p>
@@ -1097,11 +1186,11 @@ export function LessonPlanGenerator() {
               accept=".jpg,.jpeg,.png,image/jpeg,image/png"
               onChange={(e) => onUploadFileChange(e, "image")}
               disabled={uploadExtracting || loading}
-              className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border-0 file:bg-[#0E9484] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#0B6B5F] disabled:opacity-60"
+              className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border file:border-[#E8DFD1] file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#241A12] hover:file:bg-stone-50 disabled:opacity-60"
             />
           </div>
 
-          <div className="rounded-xl border border-[#0E9484]/20 bg-[#FAF6EF]/80 p-3">
+          <div className="rounded-xl bg-white/70 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
                 Option 3 — Paste Your Content
@@ -1111,7 +1200,7 @@ export function LessonPlanGenerator() {
                   type="button"
                   onClick={clearPastedContent}
                   disabled={uploadExtracting || loading}
-                  className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
+                  className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
                 >
                   Clear pasted content
                 </button>
@@ -1127,7 +1216,7 @@ export function LessonPlanGenerator() {
               disabled={uploadExtracting || loading}
               rows={8}
               placeholder="Paste your textbook content, notes, chapter text, or any material here and the AI will generate all resources based on your content."
-              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 shadow-sm outline-none ring-[#0E9484] focus:ring-2 disabled:opacity-60"
+              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm text-stone-900 shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2 disabled:opacity-60"
             />
           </div>
 
@@ -1136,7 +1225,7 @@ export function LessonPlanGenerator() {
               type="button"
               onClick={clearUploadedSource}
               disabled={uploadExtracting || loading}
-              className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
+              className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-2 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
             >
               Clear all uploads
             </button>
@@ -1210,7 +1299,7 @@ export function LessonPlanGenerator() {
                 value={combinedSourcePreview}
                 rows={12}
                 spellCheck={false}
-                className="max-h-80 w-full resize-y rounded-xl border border-stone-200 bg-[#FAF6EF] px-3 py-2.5 font-mono text-xs leading-relaxed text-stone-800 outline-none ring-[#0E9484] focus:ring-2"
+                className="max-h-80 w-full resize-y rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 font-mono text-xs leading-relaxed text-stone-800 outline-none ring-[#0E9484] focus:ring-2"
               />
               <p className="mt-1 text-xs text-stone-500">
                 {pastedContent.trim().length > 0
@@ -1236,11 +1325,12 @@ export function LessonPlanGenerator() {
           </div>
         )}
 
-              <div className="mt-6 flex justify-between">
+              <div className={cn(STEP_SECTION_GAP_CLASS, "flex justify-between")}>
                 <button
                   type="button"
                   onClick={goToPrevStep}
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-200 bg-[#FAF6EF] px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-stone-300 hover:text-stone-900"
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border bg-white px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:bg-stone-50"
+                  style={{ borderColor: "#E8DFD1" }}
                 >
                   Back
                 </button>
@@ -1252,18 +1342,25 @@ export function LessonPlanGenerator() {
                   Continue
                 </button>
               </div>
-            </fieldset>
+            </div>
+            </motion.div>
+            )}
 
             {/* ══════════ STEP 3 — GENERATE PACKAGE ══════════ */}
-            <fieldset hidden={step !== 3} className="min-w-0">
-              <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
-                Generate package
-              </legend>
-              <p className="mt-3 text-sm text-stone-600">
-                Choose what to include, then generate your teacher package.
-              </p>
+            {step === 3 && (
+            <motion.div
+              key="step-3"
+              variants={STEP_SLIDE_VARIANTS}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.18, ease: "easeInOut" }}
+            >
+            <div className={STEP_CARD_CLASS} style={STEP_CARD_STYLE}>
+              <StepLegend icon={Sparkles}>Generate package</StepLegend>
+              <StepIntro>Choose what to include, then generate your teacher package.</StepIntro>
 
-        <div className="mt-6">
+        <div className={STEP_SECTION_GAP_CLASS}>
           <AflSelector
             selected={aflSelected}
             onChange={(next) => setAflSelected(next as Record<AflPhaseId, string[]>)}
@@ -1274,7 +1371,7 @@ export function LessonPlanGenerator() {
 
         {/* ── Teaching & Learning Strategy selector ──────────────────── */}
         {!entitlements.teachingStrategy ? (
-          <div className="mt-6">
+          <div className={STEP_SECTION_GAP_CLASS}>
             <LockedFeaturePanel
               title="Teaching & Learning Strategy"
               description="Choose a strategy — Project-Based, Inquiry-Based, Flipped Classroom, and more — to shape how activities are delivered. The lesson structure stays the same either way."
@@ -1288,7 +1385,7 @@ export function LessonPlanGenerator() {
             </LockedFeaturePanel>
           </div>
         ) : !strategyPanelOpen ? (
-          <div className="mt-6">
+          <div className={STEP_SECTION_GAP_CLASS}>
             <button
               type="button"
               onClick={() => setStrategyPanelOpen(true)}
@@ -1308,7 +1405,7 @@ export function LessonPlanGenerator() {
             </button>
           </div>
         ) : (
-          <div className="mt-6 rounded-2xl border border-[#0E9484]/30 bg-gradient-to-b from-[#0E9484]/5 to-white p-4 shadow-sm md:p-5">
+          <div className={cn(STEP_SECTION_GAP_CLASS, NESTED_GROUP_CLASS, "md:p-5")} style={NESTED_GROUP_STYLE}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-sm font-semibold text-stone-900">Teaching and Learning Strategy <span className="ml-1 text-xs font-normal text-stone-500">(Optional)</span></h3>
@@ -1321,7 +1418,7 @@ export function LessonPlanGenerator() {
                   <button
                     type="button"
                     onClick={() => setTeachingStrategy("")}
-                    className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
+                    className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
                   >
                     Clear
                   </button>
@@ -1329,7 +1426,7 @@ export function LessonPlanGenerator() {
                 <button
                   type="button"
                   onClick={() => setStrategyPanelOpen(false)}
-                  className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
+                  className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
                 >
                   Collapse ↑
                 </button>
@@ -1348,7 +1445,7 @@ export function LessonPlanGenerator() {
                     className={`group flex flex-col rounded-xl border-2 p-3.5 text-left transition ${
                       isSelected
                         ? "border-[#0E9484] bg-[#0E9484]/8 shadow-md ring-2 ring-[#0E9484]/20"
-                        : "border-stone-200 bg-[#FAF6EF] hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
+                        : "border-[#E8DFD1] bg-white hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -1374,8 +1471,8 @@ export function LessonPlanGenerator() {
         )}
         {/* ── End Teaching Strategy ──────────────────────────────────── */}
 
-        <fieldset className="mt-6 rounded-2xl border border-[#0E9484]/20 bg-[#0E9484]/5 p-4">
-          <legend className="px-1 text-sm font-semibold text-stone-900">What to generate</legend>
+        <div className={cn(STEP_SECTION_GAP_CLASS, NESTED_GROUP_CLASS)} style={NESTED_GROUP_STYLE}>
+          <h3 className="text-sm font-semibold text-stone-900">What to generate</h3>
           <p className="mt-1 text-xs text-stone-600">
             Only checked sections are sent to the AI — fewer selections usually means a quicker response.
           </p>
@@ -1389,7 +1486,7 @@ export function LessonPlanGenerator() {
                   ) as Record<TeacherPackageSectionKey, boolean>,
                 )
               }
-              className="rounded-lg border border-[#0E9484]/30 bg-[#FAF6EF] px-3 py-1.5 text-xs font-semibold text-[#241A12] shadow-sm hover:bg-[#0E9484]/10"
+              className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
             >
               Select All
             </button>
@@ -1403,7 +1500,7 @@ export function LessonPlanGenerator() {
                   >,
                 )
               }
-              className="rounded-lg border border-stone-200 bg-[#FAF6EF] px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
+              className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
             >
               Deselect All
             </button>
@@ -1419,7 +1516,7 @@ export function LessonPlanGenerator() {
                       onClick={() => setPaymentModalOpen(true)}
                       className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-1 py-1 text-left transition hover:bg-[#0E9484]/5"
                     >
-                      <input type="checkbox" disabled checked={false} readOnly className="mt-0.5 size-4 shrink-0 rounded border-stone-300" />
+                      <Checkbox checked={false} disabled className="mt-0.5" />
                       <span className="flex items-center gap-2 text-sm text-stone-500">
                         {GENERATION_CHECKBOX_LABELS[key]}
                         <ProBadge />
@@ -1430,14 +1527,13 @@ export function LessonPlanGenerator() {
               }
               return (
                 <li key={key} className="flex items-start gap-3">
-                  <input
+                  <Checkbox
                     id={`gen-${key}`}
-                    type="checkbox"
                     checked={sectionSelection[key]}
                     onChange={() =>
                       setSectionSelection((prev) => ({ ...prev, [key]: !prev[key] }))
                     }
-                    className="mt-0.5 size-4 shrink-0 rounded border-stone-300 text-[#0E9484] focus:ring-[#0E9484]"
+                    className="mt-0.5"
                   />
                   <label htmlFor={`gen-${key}`} className="text-sm text-stone-800">
                     {GENERATION_CHECKBOX_LABELS[key]}
@@ -1446,9 +1542,9 @@ export function LessonPlanGenerator() {
               );
             })}
           </ul>
-        </fieldset>
+        </div>
 
-        <p className="mt-4 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-700">
+        <p className={cn(STEP_SECTION_GAP_CLASS, "rounded-xl border px-3 py-2 text-sm text-stone-700")} style={{ borderColor: "#E8DFD1", background: "rgba(250,246,238,0.6)" }}>
           <span className="font-semibold text-stone-900">Estimated time: </span>
           {generationEta.selectedCount === 0 ? (
             generationEta.detail
@@ -1460,11 +1556,12 @@ export function LessonPlanGenerator() {
           )}
         </p>
 
-        <div className="mt-6 flex justify-between">
+        <div className={cn(STEP_SECTION_GAP_CLASS, "flex justify-between")}>
           <button
             type="button"
             onClick={goToPrevStep}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-200 bg-[#FAF6EF] px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-stone-300 hover:text-stone-900"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border bg-white px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:bg-stone-50"
+            style={{ borderColor: "#E8DFD1" }}
           >
             Back
           </button>
@@ -1495,7 +1592,10 @@ export function LessonPlanGenerator() {
             ) : null}
           </p>
         ) : null}
-            </fieldset>
+            </div>
+            </motion.div>
+            )}
+            </AnimatePresence>
           </form>
         </Container>
       ) : (

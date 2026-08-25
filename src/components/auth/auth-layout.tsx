@@ -1,83 +1,80 @@
 import type { ReactNode } from "react";
-import { NAVY, TEAL, TEAL_DARK } from "@/lib/design-tokens";
+import { NAVY } from "@/lib/design-tokens";
 
-const TRUST_ITEMS = ["CBSE", "ICSE", "IB", "Cambridge"] as const;
+const TRUST_BADGES = ["CBSE", "ICSE", "IB", "Cambridge"] as const;
 
 type AuthLayoutProps = {
-  badge: string;
-  headline: string;
-  subtext: string;
   children: ReactNode;
 };
 
-/** Shared two-column shell for /login and /signup: a brand panel on the left,
- * the auth form on the right. Collapses to a single column on mobile. */
-export function AuthLayout({ badge, headline, subtext, children }: AuthLayoutProps) {
+/** Shared two-column shell for /login and /signup: a brand panel (Haikei
+ * blob background) on the left, the auth form on the right. Left panel
+ * collapses away on mobile — form only below `lg`. */
+export function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="grid min-h-[calc(100vh-64px)] lg:grid-cols-2">
-      <div
-        className="hidden flex-col justify-center px-12 py-16 lg:flex"
-        style={{ background: NAVY }}
-      >
-        <div className="mx-auto max-w-md">
-          <span
-            className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-            style={{ background: "rgba(14, 148, 132,0.15)", color: TEAL }}
-          >
-            {badge}
-          </span>
+    <div className="flex min-h-[calc(100vh-64px)] w-full flex-col lg:flex-row">
+      <div className="relative hidden w-full flex-col justify-end p-4 lg:flex lg:min-h-[calc(100vh-64px)] lg:w-1/2">
+        <div
+          className="relative h-full w-full overflow-hidden rounded-[32px] shadow-2xl"
+          style={{ background: NAVY }}
+        >
+          <img
+            src="/hero-bg.svg"
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(to top, ${NAVY} 0%, ${NAVY}00 72%)` }}
+          />
 
-          <h2 className="mt-6 text-3xl font-extrabold leading-tight text-white">{headline}</h2>
+          <div className="relative z-10 flex w-full flex-col items-center gap-6 pb-14 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <img
+                src="/logo-mark.png"
+                alt="Layah"
+                className="h-14 w-14 rounded-2xl object-cover shadow-lg"
+              />
+              <div>
+                <p className="text-2xl font-extrabold text-white">Layah</p>
+                <p className="mt-1 text-sm font-semibold" style={{ color: "rgba(255,255,255,0.7)" }}>
+                  Prep Less. Teach More.
+                </p>
+              </div>
+            </div>
 
-          <p className="mt-4 text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
-            {subtext}
-          </p>
-
-          <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-3">
-            {TRUST_ITEMS.map((item) => (
-              <li key={item} className="flex items-center gap-2 text-sm font-semibold text-white">
+            {/* Backgrounds are deliberately opaque (not a faint tint) — the blob
+                can shift under this row at different panel aspect ratios, and a
+                near-transparent chip loses contrast against its cream fill. An
+                opaque navy surface keeps the white text readable regardless of
+                what's behind it. */}
+            <div className="flex flex-wrap items-center justify-center gap-2 px-10">
+              {TRUST_BADGES.map((badge) => (
                 <span
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-                  style={{ background: TEAL, color: NAVY }}
-                  aria-hidden
+                  key={badge}
+                  className="rounded-full px-3 py-1 text-xs font-semibold text-white"
+                  style={{ background: "rgba(36,26,18,0.65)", border: "1px solid rgba(255,255,255,0.22)" }}
                 >
-                  ✓
+                  {badge}
                 </span>
-                {item}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-xs font-semibold" style={{ color: TEAL }}>
-            + 15 more curriculums supported
-          </p>
-
-          {/* Subtle decorative illustration — a few soft rounded shapes, no imagery */}
-          <div className="relative mt-16 h-40" aria-hidden>
-            <div
-              className="absolute left-0 top-0 h-24 w-24 rounded-3xl"
-              style={{ background: "rgba(14, 148, 132,0.12)" }}
-            />
-            <div
-              className="absolute left-16 top-10 h-28 w-28 rounded-full"
-              style={{ background: "rgba(14, 148, 132,0.08)" }}
-            />
-            <div
-              className="absolute left-8 top-24 h-16 w-16 rounded-2xl border"
-              style={{ borderColor: "rgba(255,255,255,0.15)" }}
-            />
+              ))}
+              <span
+                className="rounded-full px-3 py-1 text-xs font-semibold"
+                style={{
+                  background: "rgba(36,26,18,0.65)",
+                  color: "#6EE7D8",
+                  border: "1px solid rgba(14, 148, 132,0.55)",
+                }}
+              >
+                +15 more curriculums
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col justify-center px-4 py-12 sm:px-6 lg:px-12">
-        <div className="mx-auto w-full max-w-md lg:hidden">
-          <span
-            className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-            style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL_DARK }}
-          >
-            {badge}
-          </span>
-        </div>
+      <div className="flex w-full flex-col items-center justify-center bg-[#FAF6EF] px-6 py-12 sm:px-12 lg:w-1/2">
         {children}
       </div>
     </div>

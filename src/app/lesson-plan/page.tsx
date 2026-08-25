@@ -6,6 +6,7 @@ import { SecondaryPageHero } from "@/components/layout/secondary-page-hero";
 import { PageHeader } from "@/components/layout/page-header";
 import { Container } from "@/components/ui/container";
 import { Skeleton } from "@/components/ui/animate";
+import { BG } from "@/lib/design-tokens";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,7 +29,7 @@ export default async function LessonPlanPage() {
   const user = await getVerifiedUser();
 
   return (
-    <main className="min-h-screen w-full pb-16 pt-8">
+    <main className="min-h-screen w-full pb-16 pt-8" style={{ background: BG }}>
       {user?.id ? (
         <Container className="pt-2">
           <PageHeader

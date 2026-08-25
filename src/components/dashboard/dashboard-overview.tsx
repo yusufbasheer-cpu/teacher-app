@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { BookOpen, FileStack, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -9,6 +10,23 @@ import { useUserUsage } from "@/hooks/use-user-usage";
 import { PLANS } from "@/lib/plans";
 import { toUserFacingError } from "@/lib/user-facing-errors";
 import { PageHeader } from "@/components/layout/page-header";
+import { CountUp } from "@/components/ui/animate";
+import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
+import { InView } from "@/components/motion-primitives/in-view";
+
+const CARD_CLASS =
+  "rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-[0px_4px_20px_rgba(36,26,18,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0px_8px_28px_rgba(36,26,18,0.09)]";
+
+const cardGroupVariants = {
+  container: {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.08 } },
+  },
+  item: {
+    hidden: { opacity: 0, y: 14 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.0, 0.0, 0.2, 1] as const } },
+  },
+};
 
 type SavedLesson = {
   id: string;
@@ -64,7 +82,7 @@ export function DashboardOverview() {
 
   if (checkingAuth) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
+      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 text-sm text-stone-600 shadow-[0px_4px_20px_rgba(36,26,18,0.06)]">
         Loading your dashboard…
       </div>
     );
@@ -72,7 +90,7 @@ export function DashboardOverview() {
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 shadow-[0px_4px_20px_rgba(36,26,18,0.06)]">
         <h2 className="text-xl font-semibold text-stone-900">Login required</h2>
         <p className="mt-2 text-sm text-stone-600">Please log in to see your dashboard.</p>
         <Link
@@ -100,10 +118,10 @@ export function DashboardOverview() {
       />
 
       {/* Stat cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm">
+      <AnimatedGroup variants={cardGroupVariants} className="grid gap-4 sm:grid-cols-3">
+        <div className={CARD_CLASS}>
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "rgba(14,148,132,0.1)", color: TEAL }}>
               <Sparkles size={18} />
             </span>
             <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Plan</p>
@@ -113,9 +131,9 @@ export function DashboardOverview() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm">
+        <div className={CARD_CLASS}>
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "rgba(14,148,132,0.1)", color: TEAL }}>
               <Sparkles size={18} />
             </span>
             <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
@@ -123,7 +141,15 @@ export function DashboardOverview() {
             </p>
           </div>
           <p className="mt-3 text-2xl font-bold" style={{ color: NAVY }}>
-            {usageLoading ? "…" : usage?.unlimited ? "Unlimited" : (generationsLeft ?? "—")}
+            {usageLoading ? (
+              "…"
+            ) : usage?.unlimited ? (
+              "Unlimited"
+            ) : generationsLeft != null ? (
+              <CountUp value={generationsLeft} />
+            ) : (
+              "—"
+            )}
           </p>
           {usage && !usage.unlimited && usage.generationsLimit != null ? (
             <p className="mt-1 text-xs text-stone-500">
@@ -132,9 +158,9 @@ export function DashboardOverview() {
           ) : null}
         </div>
 
-        <div className="rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm">
+        <div className={CARD_CLASS}>
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "rgba(14,148,132,0.1)", color: TEAL }}>
               <BookOpen size={18} />
             </span>
             <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
@@ -142,18 +168,18 @@ export function DashboardOverview() {
             </p>
           </div>
           <p className="mt-3 text-2xl font-bold" style={{ color: NAVY }}>
-            {loadingLessons ? "…" : lessons.length}
+            {loadingLessons ? "…" : <CountUp value={lessons.length} />}
           </p>
         </div>
-      </div>
+      </AnimatedGroup>
 
       {error ? (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
       ) : null}
 
       {/* Lessons table */}
-      <div className="rounded-3xl border border-stone-200 bg-[#FAF6EF] shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-5 py-4">
+      <div className="rounded-3xl border border-[#E8DFD1] bg-white shadow-[0px_4px_20px_rgba(36,26,18,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0px_8px_28px_rgba(36,26,18,0.09)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E8DFD1] px-5 py-4">
           <div>
             <h2 className="text-base font-semibold text-stone-900">My Lessons</h2>
             <p className="mt-0.5 text-xs text-stone-500">Your most recently generated lessons.</p>
@@ -161,7 +187,7 @@ export function DashboardOverview() {
           <div className="flex gap-2">
             <Link
               href="/my-lesson-plans"
-              className="rounded-xl border border-stone-200 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+              className="rounded-xl border border-[#E8DFD1] bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
             >
               View all
             </Link>
@@ -178,11 +204,29 @@ export function DashboardOverview() {
           <p className="px-5 py-8 text-center text-sm text-stone-500">Loading your lessons…</p>
         ) : recentLessons.length === 0 ? (
           <div className="px-5 py-10 text-center">
-            <FileStack className="mx-auto text-stone-300" size={28} />
-            <p className="mt-2 text-sm font-medium text-stone-700">No saved lesson plans yet</p>
-            <p className="mt-1 text-xs text-stone-500">
-              Generate a lesson plan and it will appear here automatically.
-            </p>
+            <InView
+              variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
+              transition={{ duration: 0.3 }}
+              once
+            >
+              <motion.div
+                className="mx-auto flex h-fit w-fit items-center justify-center"
+                animate={{ opacity: [0.55, 0.85, 0.55], scale: [1, 1.06, 1] }}
+                transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <FileStack className="text-stone-300" size={28} />
+              </motion.div>
+            </InView>
+            <InView
+              variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}
+              transition={{ duration: 0.35, delay: 0.15 }}
+              once
+            >
+              <p className="mt-2 text-sm font-medium text-stone-700">No saved lesson plans yet</p>
+              <p className="mt-1 text-xs text-stone-500">
+                Generate a lesson plan and it will appear here automatically.
+              </p>
+            </InView>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -212,7 +256,7 @@ export function DashboardOverview() {
                     <td className="px-5 py-3 text-right">
                       <Link
                         href={`/my-lesson-plans/${lesson.id}`}
-                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold hover:bg-teal-50"
+                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors duration-150 hover:bg-[#0E9484]/10"
                         style={{ color: TEAL }}
                       >
                         View →

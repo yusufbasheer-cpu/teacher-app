@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { ChevronUp } from "lucide-react";
@@ -33,9 +32,9 @@ type Props = {
 /** Account control docked in the app sidebar footer: avatar, name, a quiet
  * usage line, and a dropdown (plan, upgrade, logout) that opens upward. */
 export function UserMenu({ user, collapsed = false }: Props) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { usage } = useUserUsage(true);
 
@@ -51,10 +50,31 @@ export function UserMenu({ user, collapsed = false }: Props) {
   }, [open]);
 
   const onLogout = async () => {
-    await clearActiveSession(user.id);
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setOpen(false);
+
+    // Best-effort cleanup — neither step should be able to block the redirect below.
+    try {
+      await clearActiveSession(user.id);
+    } catch {
+      /* ignore — local sign-out below still ends the session */
+    }
+    try {
+      // scope: "local" clears the session on this device immediately, without
+      // waiting on a network round-trip to revoke the refresh token server-side.
+      // The default "global" scope was the source of the reported "logout
+      // sometimes hangs / sidebar stays" behavior — a slow or failed revoke
+      // call left stale cookies behind.
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      /* ignore — proceed to redirect regardless */
+    }
+
+    // Hard navigation (not router.push) so every client component — sidebar,
+    // usage hooks, etc. — remounts from a clean, freshly-fetched auth state
+    // instead of relying on onAuthStateChange firing everywhere in time.
+    window.location.href = "/login";
   };
 
   const displayName = (user.user_metadata?.full_name as string | undefined)?.trim() || user.email;
@@ -73,28 +93,28 @@ export function UserMenu({ user, collapsed = false }: Props) {
         onClick={() => setOpen((prev) => !prev)}
         aria-label="Account menu"
         aria-expanded={open}
-        className="flex w-full items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-left transition hover:bg-stone-50"
+        className="flex w-full items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-left transition hover:bg-white/8"
       >
         <span
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-          style={{ background: NAVY }}
+          style={{ background: TEAL }}
         >
           {initialsFor(user)}
         </span>
         {!collapsed ? (
           <>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold" style={{ color: NAVY }}>
+              <span className="block truncate text-sm font-semibold text-white">
                 {displayName}
               </span>
-              <span className="block truncate text-xs" style={{ color: "#A79A87" }}>
+              <span className="block truncate text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>
                 {usageLine}
               </span>
             </span>
             <ChevronUp
               size={16}
-              className="shrink-0 text-stone-400 transition-transform"
-              style={{ transform: open ? "none" : "rotate(180deg)" }}
+              className="shrink-0 transition-transform"
+              style={{ transform: open ? "none" : "rotate(180deg)", color: "rgba(255,255,255,0.5)" }}
             />
           </>
         ) : null}
@@ -144,11 +164,12 @@ export function UserMenu({ user, collapsed = false }: Props) {
 
           <button
             type="button"
-            onClick={onLogout}
-            className="mt-2 flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition hover:opacity-70"
+            onClick={() => void onLogout()}
+            disabled={loggingOut}
+            className="mt-2 flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-60"
             style={{ color: "#ef4444" }}
           >
-            Logout
+            {loggingOut ? "Logging out…" : "Logout"}
           </button>
         </div>
       ) : null}

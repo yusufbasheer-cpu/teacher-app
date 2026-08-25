@@ -45,3 +45,11 @@ export async function completeEmailPostAuthLogin(userId: string): Promise<PostAu
   fetch("/api/welcome-email", { method: "POST" }).catch(() => {});
   return { ok: true };
 }
+
+/** Phone/password: same as email, minus the welcome email — there's no real
+ * inbox behind a phone-only account's synthetic address to send it to. */
+export async function completePhonePostAuthLogin(userId: string): Promise<PostAuthLoginResult> {
+  await registerSession(userId);
+  await ensureUserUsageOnClient();
+  return { ok: true };
+}
