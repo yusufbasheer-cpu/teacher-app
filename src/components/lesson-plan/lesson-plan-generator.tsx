@@ -672,17 +672,30 @@ export function LessonPlanGenerator() {
             console.warn("[auto-save] Skipped — no authenticated user");
             return;
           }
-          const { error: saveError } = await supabase.from("saved_lessons").insert({
+          const basePayload = {
             user_id: currentUser.id,
             subject: form.subject,
             grade: form.grade,
-            topic: resolveLessonTitle(form.topic, form.chapter, form.subject),
+            topic: form.topic.trim(),
             curriculum: form.curriculumType,
             learning_objectives: form.learningObjectives,
             lesson_content: JSON.stringify(stripped.planTextOnly),
             ppt_content: stripped.planTextOnly["PPT Slide Content"] ?? "",
             created_at: new Date().toISOString(),
-          });
+          };
+
+          let { error: saveError } = await supabase
+            .from("saved_lessons")
+            .insert({ ...basePayload, chapter: form.chapter.trim() });
+
+          // saved_lessons.chapter is a newly added column (migration
+          // 20260825140000) — until it's run on the live DB, fall back to
+          // saving without it rather than losing the auto-save entirely.
+          if (saveError && /column .*chapter.* does not exist|could not find.*chapter/i.test(saveError.message)) {
+            console.warn("[auto-save] 'chapter' column not found yet — saving without it. Run migration 20260825140000_saved_lessons_chapter.sql.");
+            ({ error: saveError } = await supabase.from("saved_lessons").insert(basePayload));
+          }
+
           if (saveError) {
             console.error("Save failed:", saveError.message, saveError);
           } else {
@@ -818,7 +831,7 @@ export function LessonPlanGenerator() {
         subject: form.subject,
         grade: form.grade,
         chapter: form.chapter.trim(),
-        topic: resolveLessonTitle(form.topic, form.chapter, form.subject),
+        topic: form.topic.trim(),
         learning_objectives: form.learningObjectives,
         lesson_plan: mergePptSlideImageUrlsIntoPlan(
           mergeSectionImagesMeta(lessonPlan, sectionImages),

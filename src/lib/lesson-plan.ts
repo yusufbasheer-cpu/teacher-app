@@ -1,22 +1,40 @@
 import type { AflSelectionsPayload } from "@/lib/afl-tools";
 
 /**
- * Topic is optional at generation time, so nothing that displays or exports
- * a lesson may assume it's non-empty. This resolves a title that's always
- * usable: topic if given, else chapter, else a subject-based label — the
- * one place this fallback chain lives, so every reader/writer stays in sync.
+ * Both chapter and topic are optional at generation time, so nothing that
+ * displays or exports a lesson may assume either is non-empty. This resolves
+ * the one title shown everywhere: chapter first (it's the broader, always-
+ * intended-to-be-filled unit name), then topic, then a subject-based label
+ * — the one place this fallback chain lives, so every reader/writer stays
+ * in sync. Pair with `resolveLessonTopicNote` to show topic as its own
+ * distinct line when it wasn't already used as the title.
  */
 export function resolveLessonTitle(
   topic: string | null | undefined,
   chapter?: string | null | undefined,
   subject?: string | null | undefined,
 ): string {
-  const t = topic?.trim();
-  if (t) return t;
   const c = chapter?.trim();
   if (c) return c;
+  const t = topic?.trim();
+  if (t) return t;
   const s = subject?.trim();
   return s ? `${s} Lesson` : "Untitled Lesson";
+}
+
+/**
+ * The topic, but only when it's *not* already doing double duty as the
+ * title (i.e. a chapter was given, so resolveLessonTitle used that
+ * instead). Returns null when there's nothing extra to show.
+ */
+export function resolveLessonTopicNote(
+  topic: string | null | undefined,
+  chapter: string | null | undefined,
+): string | null {
+  const t = topic?.trim();
+  if (!t) return null;
+  const c = chapter?.trim();
+  return c ? t : null;
 }
 
 /** Current AI package: six top-level outputs from DeepSeek. */

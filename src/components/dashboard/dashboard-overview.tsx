@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { BookOpen, FileStack, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { resolveLessonTitle } from "@/lib/lesson-plan";
+import { resolveLessonTitle, resolveLessonTopicNote } from "@/lib/lesson-plan";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PLANS } from "@/lib/plans";
 import { toUserFacingError } from "@/lib/user-facing-errors";
@@ -34,6 +34,8 @@ type SavedLesson = {
   subject: string;
   grade: string;
   topic: string;
+  /** May be absent on rows fetched before migration 20260825140000 ran. */
+  chapter?: string | null;
   curriculum: string;
   created_at: string;
 };
@@ -64,11 +66,29 @@ export function DashboardOverview() {
         return;
       }
 
-      const { data, error: fetchError } = await supabase
+      let data: SavedLesson[] | null = null;
+      let fetchError: { message: string } | null = null;
+
+      const withChapter = await supabase
         .from("saved_lessons")
-        .select("id, subject, grade, topic, curriculum, created_at")
+        .select("id, subject, grade, topic, chapter, curriculum, created_at")
         .eq("user_id", sessionUser.id)
         .order("created_at", { ascending: false });
+      data = withChapter.data;
+      fetchError = withChapter.error;
+
+      // saved_lessons.chapter is a newly added column (migration
+      // 20260825140000) — until it's run on the live DB, fall back to the
+      // old column list rather than breaking the whole dashboard.
+      if (fetchError && /column .*chapter.* does not exist|could not find.*chapter/i.test(fetchError.message)) {
+        const withoutChapter = await supabase
+          .from("saved_lessons")
+          .select("id, subject, grade, topic, curriculum, created_at")
+          .eq("user_id", sessionUser.id)
+          .order("created_at", { ascending: false });
+        data = withoutChapter.data;
+        fetchError = withoutChapter.error;
+      }
 
       if (fetchError) {
         setError(toUserFacingError(fetchError, "dashboard-overview"));
@@ -253,8 +273,15 @@ export function DashboardOverview() {
               <tbody>
                 {recentLessons.map((lesson) => (
                   <tr key={lesson.id} className="border-b border-stone-50 last:border-0 hover:bg-stone-50/60">
-                    <td className="max-w-xs truncate px-5 py-3 font-medium text-stone-900">
-                      {resolveLessonTitle(lesson.topic, null, lesson.subject)}
+                    <td className="max-w-xs px-5 py-3">
+                      <p className="truncate font-medium text-stone-900">
+                        {resolveLessonTitle(lesson.topic, lesson.chapter, lesson.subject)}
+                      </p>
+                      {resolveLessonTopicNote(lesson.topic, lesson.chapter) ? (
+                        <p className="truncate text-xs text-stone-500">
+                          Topic: {resolveLessonTopicNote(lesson.topic, lesson.chapter)}
+                        </p>
+                      ) : null}
                     </td>
                     <td className="px-5 py-3 text-stone-600">{lesson.subject}</td>
                     <td className="px-5 py-3 text-stone-600">{lesson.grade}</td>
