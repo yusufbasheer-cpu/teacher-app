@@ -222,3 +222,36 @@ export function Skeleton({ className = "", radius = 8, style, ...rest }: Skeleto
     />
   );
 }
+
+// ── PageLoader ────────────────────────────────────────────────────────────────
+type PageLoaderProps = {
+  /** Text shown next to the spinner. Default: "Loading…" */
+  label?: string;
+  className?: string;
+};
+
+/**
+ * Motion loading indicator — a rotating ring + breathing label.
+ * Use in place of static "Loading…" text for brief async checks (auth gates,
+ * account checks). For content that's about to appear in a known shape
+ * (a list, a table), prefer `Skeleton` shaped like that content instead.
+ */
+export function PageLoader({ label = "Loading…", className = "" }: PageLoaderProps) {
+  return (
+    <div className={`flex items-center justify-center gap-3 py-1 ${className}`} role="status" aria-live="polite">
+      <motion.span
+        className="h-5 w-5 shrink-0 rounded-full border-2 border-[#0E9484]/20 border-t-[#0E9484]"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+        aria-hidden="true"
+      />
+      <motion.span
+        className="text-sm text-stone-600"
+        animate={{ opacity: [0.55, 1, 0.55] }}
+        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+      >
+        {label}
+      </motion.span>
+    </div>
+  );
+}
