@@ -1,6 +1,6 @@
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 
-export const SUPER_ADMIN_EMAIL = "yusuf.basheer@gmail.com";
+export const SUPER_ADMIN_EMAILS = ["yusuf.basheer@gmail.com", "uvaissolanki506@gmail.com"];
 
 /**
  * Authoritative super-admin check: email pre-filter + DB role lookup.
@@ -13,7 +13,7 @@ export async function isSuperAdmin(
   if (!userId || !email) return false;
 
   // Fast pre-filter — avoids DB call for obviously non-admin emails
-  if (email.trim().toLowerCase() !== SUPER_ADMIN_EMAIL) return false;
+  if (!SUPER_ADMIN_EMAILS.includes(email.trim().toLowerCase())) return false;
 
   const admin = getSupabaseServiceRole();
   if (!admin) {
@@ -34,5 +34,5 @@ export async function isSuperAdmin(
 /** Synchronous email-only check used only for the /api/super-admin/me probe. */
 export function isSuperAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
-  return email.trim().toLowerCase() === SUPER_ADMIN_EMAIL;
+  return SUPER_ADMIN_EMAILS.includes(email.trim().toLowerCase());
 }
