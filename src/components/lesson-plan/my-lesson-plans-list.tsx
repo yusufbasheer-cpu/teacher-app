@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { resolveLessonTitle } from "@/lib/lesson-plan";
+import { resolveLessonTitle, resolveLessonTopicNote } from "@/lib/lesson-plan";
 import { toUserFacingError } from "@/lib/user-facing-errors";
 import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/animate";
@@ -15,6 +15,8 @@ type SavedLesson = {
   subject: string;
   grade: string;
   topic: string;
+  /** May be absent on rows fetched before migration 20260825140000 ran. */
+  chapter?: string | null;
   curriculum: string;
   learning_objectives: string;
   lesson_content: string;
@@ -206,10 +208,15 @@ export function MyLessonPlansList() {
                     ) : null}
                   </div>
 
-                  {/* Topic */}
+                  {/* Title (chapter, else topic, else a subject-based label) */}
                   <p className="mt-3 text-base font-semibold leading-snug text-stone-900">
-                    {resolveLessonTitle(plan.topic, null, plan.subject)}
+                    {resolveLessonTitle(plan.topic, plan.chapter, plan.subject)}
                   </p>
+                  {resolveLessonTopicNote(plan.topic, plan.chapter) ? (
+                    <p className="mt-0.5 text-xs text-stone-500">
+                      Topic: {resolveLessonTopicNote(plan.topic, plan.chapter)}
+                    </p>
+                  ) : null}
 
                   {/* Date */}
                   <p className="mt-2 text-xs text-stone-400">

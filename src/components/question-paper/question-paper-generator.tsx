@@ -538,8 +538,8 @@ export function QuestionPaperGenerator() {
 
   if (usageLoading || !usage) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
-        Checking your plan…
+      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+        <PageLoader label="Checking your plan…" />
       </div>
     );
   }

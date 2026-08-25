@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Container } from "@/components/ui/container";
+import { PageLoader } from "@/components/ui/animate";
 import { getAuthHeaders } from "@/lib/auth-headers";
 import { isSyntheticPhoneEmail } from "@/lib/phone";
 import { supabase } from "@/lib/supabase";
@@ -294,7 +295,7 @@ export default function SettingsPage() {
   if (loadingPage) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <p className="text-sm font-medium" style={{ color: "#7a6e5f" }}>Loading…</p>
+        <PageLoader label="Loading…" />
       </main>
     );
   }

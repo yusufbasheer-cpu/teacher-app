@@ -20,6 +20,8 @@ export type DepartmentLesson = {
   subject: string;
   grade: string;
   topic: string;
+  /** May be absent on rows fetched before migration 20260825140000 ran. */
+  chapter: string | null;
   createdAt: string;
 };
 
@@ -81,12 +83,32 @@ export async function getHodDashboard(hod: HodTeacherRow): Promise<HodDashboardD
   // Recent saved_lessons for dept teachers
   let recentLessons: DepartmentLesson[] = [];
   if (teacherUserIds.length > 0) {
-    const { data: lessons } = await admin
+    let lessons: Record<string, unknown>[] | null = null;
+    let lessonsError: { message: string } | null = null;
+
+    const withChapter = await admin
       .from("saved_lessons")
-      .select("id, user_id, subject, grade, topic, created_at")
+      .select("id, user_id, subject, grade, topic, chapter, created_at")
       .in("user_id", teacherUserIds)
       .order("created_at", { ascending: false })
       .limit(20);
+    lessons = withChapter.data;
+    lessonsError = withChapter.error;
+
+    // saved_lessons.chapter is a newly added column (migration
+    // 20260825140000) — until it's run on the live DB, fall back to the
+    // old column list rather than the department's recent lessons going
+    // silently empty.
+    if (lessonsError && /column .*chapter.* does not exist|could not find.*chapter/i.test(lessonsError.message)) {
+      const withoutChapter = await admin
+        .from("saved_lessons")
+        .select("id, user_id, subject, grade, topic, created_at")
+        .in("user_id", teacherUserIds)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      lessons = withoutChapter.data;
+      lessonsError = withoutChapter.error;
+    }
 
     recentLessons = (lessons ?? []).map((l) => ({
       id: l.id as string,
@@ -94,6 +116,7 @@ export async function getHodDashboard(hod: HodTeacherRow): Promise<HodDashboardD
       subject: l.subject as string,
       grade: l.grade as string,
       topic: l.topic as string,
+      chapter: (l as { chapter?: string | null }).chapter ?? null,
       createdAt: l.created_at as string,
     }));
   }

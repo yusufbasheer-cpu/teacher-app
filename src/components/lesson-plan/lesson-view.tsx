@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { PageLoader } from "@/components/ui/animate";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
 import {
   buildDifferentiatedPackSourceText,
   resolveLessonTitle,
+  resolveLessonTopicNote,
   type LessonPlanResult,
 } from "@/lib/lesson-plan";
 import { writeDiffPackSession } from "@/lib/differentiated-pack-session";
@@ -24,6 +26,8 @@ type SavedLesson = {
   subject: string;
   grade: string;
   topic: string;
+  /** May be absent on rows fetched before migration 20260825140000 ran. */
+  chapter?: string | null;
   curriculum: string;
   learning_objectives: string;
   lesson_content: string;
@@ -88,8 +92,8 @@ export function LessonView({ id }: { id: string }) {
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
-          Loading lesson…
+        <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+          <PageLoader label="Loading lesson…" />
         </div>
       </div>
     );
@@ -125,9 +129,8 @@ export function LessonView({ id }: { id: string }) {
     );
   }
 
-  // saved_lessons has no chapter column, so topic (optional at generation
-  // time) is the only thing that can be missing here — fall back to subject.
-  const displayTitle = resolveLessonTitle(lesson.topic, null, lesson.subject);
+  const displayTitle = resolveLessonTitle(lesson.topic, lesson.chapter, lesson.subject);
+  const displayTopicNote = resolveLessonTopicNote(lesson.topic, lesson.chapter);
 
   const regenerateUrl =
     `/lesson-plan?subject=${encodeURIComponent(lesson.subject)}` +
@@ -154,7 +157,7 @@ export function LessonView({ id }: { id: string }) {
         curriculum_framework: "",
         subject: lesson.subject,
         grade: lesson.grade,
-        chapter: "",
+        chapter: lesson.chapter ?? "",
         topic: displayTitle,
         learning_objectives: lesson.learning_objectives ?? "",
         lesson_plan: lessonPlan,
@@ -228,6 +231,9 @@ export function LessonView({ id }: { id: string }) {
         {/* Metadata card */}
         <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
           <h2 className="text-2xl font-bold text-stone-900">{displayTitle}</h2>
+          {displayTopicNote ? (
+            <p className="mt-1 text-sm text-stone-500">Topic: {displayTopicNote}</p>
+          ) : null}
           <p className="mt-1 text-sm text-stone-500">Saved {dateStr}</p>
           <dl className="mt-5 grid gap-4 sm:grid-cols-2">
             <div>
