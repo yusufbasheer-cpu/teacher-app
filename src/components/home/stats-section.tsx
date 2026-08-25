@@ -55,7 +55,7 @@ function StatCard({ stat, inView }: { stat: Stat; inView: boolean }) {
   const count = useCountUp(stat.value, 1500, inView);
 
   return (
-    <Card className="items-center border-border py-6 text-center shadow-none">
+    <Card className="items-center border border-border bg-[#FFFCF7] py-7 text-center shadow-sm ring-0 transition-shadow duration-300 hover:shadow-md">
       <p className="font-display text-4xl font-semibold tracking-tight text-primary sm:text-5xl">
         {count}
         {stat.suffix}
@@ -88,7 +88,7 @@ export function StatsSection() {
   }, []);
 
   return (
-    <section ref={ref} className="border-t border-border py-16 sm:py-20">
+    <section ref={ref} className="border-t border-border py-[72px]">
       <Container>
         <div className="mx-auto mb-10 max-w-2xl text-center">
           <SectionLabel className="justify-center flex">Layah in numbers</SectionLabel>

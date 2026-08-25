@@ -4,9 +4,20 @@ import { Navbar } from "@/components/layout/navbar";
 import { BackButtonLogoutModal } from "@/components/landing/back-button-logout-modal";
 import { LessonPlanBento } from "@/components/landing/lesson-plan-bento";
 import { HowItWorksTimeline } from "@/components/landing/how-it-works-timeline";
+import { StatsSection } from "@/components/home/stats-section";
+import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { TextEffect } from "@/components/motion-primitives/text-effect";
 import { BorderTrail } from "@/components/motion-primitives/border-trail";
+import { InView } from "@/components/motion-primitives/in-view";
 import { BG_SOFT, BORDER, NAVY, TEAL, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
+
+const FOCUS_RING =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E9484] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAF6EF]";
+
+const FADE_UP = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0 },
+} as const;
 
 export const metadata: Metadata = {
   title: "Layah — AI Lesson Planning for Teachers",
@@ -25,6 +36,7 @@ const FOOTER_PRODUCT_LINKS = [
 
 const FOOTER_COMPANY_LINKS = [
   { href: "/about", label: "About" },
+  { href: "/blog", label: "Blog" },
   { href: "/contact", label: "Contact" },
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms" },
@@ -74,7 +86,7 @@ export default function Home() {
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/lesson-plan"
-                className="relative inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-sm transition hover:opacity-90 sm:w-auto"
+                className={`relative inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-[0_8px_24px_-8px_rgba(14,148,132,0.55)] transition hover:opacity-90 hover:shadow-[0_10px_28px_-6px_rgba(14,148,132,0.65)] sm:w-auto ${FOCUS_RING}`}
                 style={{ background: TEAL }}
               >
                 <BorderTrail
@@ -89,8 +101,8 @@ export default function Home() {
               </Link>
               <a
                 href="#preview"
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold transition hover:bg-stone-50 sm:w-auto"
-                style={{ border: `1px solid ${BORDER}`, color: NAVY }}
+                className={`inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold transition hover:border-[#0E9484]/40 hover:bg-white sm:w-auto ${FOCUS_RING}`}
+                style={{ border: `1px solid ${BORDER}`, color: NAVY, background: "#FFFCF7" }}
               >
                 View Sample Package
               </a>
@@ -120,14 +132,19 @@ export default function Home() {
             PRODUCT PREVIEW — 3-card feature grid
             ══════════════════════════════════════════════════════════════ */}
         <section id="preview" className="mx-auto max-w-6xl px-4 py-[72px] sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
+          <InView
+            variants={FADE_UP}
+            viewOptions={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="mx-auto max-w-2xl text-center"
+          >
             <h2 className="text-2xl font-extrabold sm:text-3xl" style={{ color: NAVY }}>
               See what teachers receive
             </h2>
             <p className="mt-3 text-base" style={{ color: TEXT_MUTED }}>
               One generation produces a complete, classroom-ready package.
             </p>
-          </div>
+          </InView>
 
           <div className="mt-10">
             <LessonPlanBento />
@@ -135,25 +152,40 @@ export default function Home() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════
+            TESTIMONIALS — teacher social proof
+            ══════════════════════════════════════════════════════════════ */}
+        <TestimonialsSection />
+
+        {/* ══════════════════════════════════════════════════════════════
+            STATS — factual product coverage numbers as the social-proof beat
+            ══════════════════════════════════════════════════════════════ */}
+        <StatsSection />
+
+        {/* ══════════════════════════════════════════════════════════════
             HOW IT WORKS — 3 horizontal numbered steps
             ══════════════════════════════════════════════════════════════ */}
         <section className="py-[72px]" style={{ background: BG_SOFT, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-2xl text-center">
+            <InView
+              variants={FADE_UP}
+              viewOptions={{ once: true, amount: 0.4 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="mx-auto max-w-2xl text-center"
+            >
               <h2 className="text-2xl font-extrabold sm:text-3xl" style={{ color: NAVY }}>
                 How it works
               </h2>
               <p className="mt-3 text-base" style={{ color: TEXT_MUTED }}>
                 From blank page to a complete teaching package in three steps.
               </p>
-            </div>
+            </InView>
 
             <HowItWorksTimeline />
 
             <div className="mt-12 text-center">
               <Link
                 href="/lesson-plan"
-                className="inline-flex min-h-12 items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-sm transition hover:opacity-90"
+                className={`relative inline-flex min-h-12 items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-[0_8px_24px_-8px_rgba(14,148,132,0.55)] transition hover:opacity-90 hover:shadow-[0_10px_28px_-6px_rgba(14,148,132,0.65)] ${FOCUS_RING}`}
                 style={{ background: TEAL }}
               >
                 Start Generating
@@ -178,7 +210,7 @@ export default function Home() {
               <ul className="mt-4 space-y-2.5">
                 {FOOTER_PRODUCT_LINKS.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="text-sm transition hover:opacity-70" style={{ color: "#2b2118" }}>
+                    <Link href={link.href} className={`rounded text-sm transition hover:opacity-70 ${FOCUS_RING}`} style={{ color: "#2b2118" }}>
                       {link.label}
                     </Link>
                   </li>
@@ -192,7 +224,7 @@ export default function Home() {
               <ul className="mt-4 space-y-2.5">
                 {FOOTER_COMPANY_LINKS.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="text-sm transition hover:opacity-70" style={{ color: "#2b2118" }}>
+                    <Link href={link.href} className={`rounded text-sm transition hover:opacity-70 ${FOCUS_RING}`} style={{ color: "#2b2118" }}>
                       {link.label}
                     </Link>
                   </li>

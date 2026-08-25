@@ -1085,7 +1085,7 @@ export function LessonPlanGenerator() {
 
           <div>
             <label htmlFor="topic" className="mb-1 block text-sm font-medium text-stone-700">
-              Topic
+              Topic <span className="font-normal text-stone-400">(optional)</span>
             </label>
             <input
               id="topic"
@@ -1093,8 +1093,7 @@ export function LessonPlanGenerator() {
               value={form.topic}
               onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
               className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
-              placeholder="Specific topic within the chapter"
-              required
+              placeholder="Specific topic within the chapter (leave blank to use just the chapter name)"
             />
           </div>
 

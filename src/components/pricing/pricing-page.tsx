@@ -12,6 +12,10 @@ import {
 } from "@/lib/pricing-regions";
 import { NAVY, TEAL, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
 import { PLANS } from "@/lib/plans";
+import { BorderTrail } from "@/components/motion-primitives/border-trail";
+
+const FOCUS_RING =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E9484] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAF6EF]";
 
 type Billing = "monthly" | "annual";
 
@@ -222,8 +226,7 @@ function PricingCard({
   const isSchool = plan.variant === "school";
   const lightText = isFeatured;
   const isMailto = plan.cta.href.startsWith("mailto:");
-  const ctaClassName =
-    "mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 py-3 text-center text-sm font-semibold transition hover:opacity-95";
+  const ctaClassName = `mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 py-3 text-center text-sm font-semibold transition hover:opacity-95 ${FOCUS_RING}`;
   const ctaStyle = isFeatured
     ? { background: TEAL, color: NAVY }
     : plan.id === "schools-institutes"
@@ -232,15 +235,15 @@ function PricingCard({
 
   return (
     <article
-      className={`relative flex flex-col rounded-3xl p-7 shadow-sm transition hover:shadow-lg sm:p-8 ${
-        isFeatured ? "lg:scale-[1.02] lg:shadow-xl" : ""
+      className={`relative flex flex-col rounded-3xl p-7 shadow-sm transition duration-300 hover:shadow-lg sm:p-8 ${
+        isFeatured ? "lg:-translate-y-3 lg:scale-[1.04] lg:hover:-translate-y-4" : ""
       }`}
       style={
         isFeatured
           ? {
               background: `linear-gradient(160deg, ${NAVY} 0%, #3a2a1e 55%, ${NAVY} 100%)`,
               border: `2px solid ${TEAL}`,
-              boxShadow: `0 20px 50px rgba(14, 148, 132,0.18)`,
+              boxShadow: `0 24px 60px -12px rgba(14, 148, 132,0.35), 0 0 0 1px rgba(14,148,132,0.15)`,
             }
           : isSchool
             ? { background: "#FFFCF7", border: `2px solid ${NAVY}` }
@@ -283,7 +286,14 @@ function PricingCard({
             className="flex items-start gap-2.5 text-sm leading-snug"
             style={{ color: lightText ? "rgba(255,255,255,0.9)" : "#2b2118" }}
           >
-            <CheckIcon className={lightText ? "text-[#0E9484]" : "text-[#0B6B5F]"} />
+            <span
+              className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full"
+              style={{ background: lightText ? "rgba(14,148,132,0.22)" : "rgba(14,148,132,0.12)" }}
+            >
+              <CheckIcon
+                className={`!size-3 ${lightText ? "text-[#0E9484]" : "text-[#0B6B5F]"}`}
+              />
+            </span>
             <span>{item}</span>
           </li>
         ))}
@@ -293,9 +303,16 @@ function PricingCard({
         <button
           type="button"
           onClick={() => onUpgrade(plan.upgradeKey!)}
-          className={ctaClassName}
+          className={`relative ${ctaClassName}`}
           style={ctaStyle}
         >
+          {isFeatured ? (
+            <BorderTrail
+              className="bg-[#241A12]"
+              size={40}
+              style={{ boxShadow: "0 0 8px 2px rgba(36,26,18,0.5), 0 0 16px 4px rgba(36,26,18,0.25)" }}
+            />
+          ) : null}
           {plan.cta.label}
         </button>
       ) : isMailto ? (
@@ -365,7 +382,7 @@ export function PricingPage() {
             <button
               type="button"
               onClick={() => setBilling("monthly")}
-              className="rounded-full px-6 py-3 text-sm font-semibold transition"
+              className={`rounded-full px-6 py-3 text-sm font-semibold transition ${FOCUS_RING}`}
               style={{
                 background: !isAnnual ? NAVY : "transparent",
                 color: !isAnnual ? "#fff" : "#6B5D4F",
@@ -376,7 +393,7 @@ export function PricingPage() {
             <button
               type="button"
               onClick={() => setBilling("annual")}
-              className="rounded-full px-6 py-3 text-sm font-semibold transition"
+              className={`rounded-full px-6 py-3 text-sm font-semibold transition ${FOCUS_RING}`}
               style={{
                 background: isAnnual ? NAVY : "transparent",
                 color: isAnnual ? "#fff" : "#6B5D4F",
@@ -403,7 +420,7 @@ export function PricingPage() {
           <p className="mt-2 text-center text-lg font-semibold sm:text-xl" style={{ color: NAVY }}>
             Individual plans
           </p>
-          <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3 xl:items-stretch">
+          <div className="mt-8 grid gap-6 pt-2 md:grid-cols-2 lg:pt-4 xl:grid-cols-3 xl:items-stretch">
             {TEACHER_PLAN_DEFS.map((plan) => (
               <PricingCard key={plan.id} plan={plan} region={region} billing={billing} onUpgrade={openPayment} />
             ))}
@@ -435,7 +452,7 @@ export function PricingPage() {
             <p className="text-sm text-white/50">Prefer to self-serve?</p>
             <Link
               href="/school-register"
-              className="mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold transition hover:opacity-90"
+              className={`mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E9484] focus-visible:ring-offset-2 focus-visible:ring-offset-[#241A12]`}
               style={{ background: TEAL, color: NAVY }}
             >
               <svg
@@ -470,7 +487,7 @@ export function PricingPage() {
                 style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
               >
                 <summary
-                  className="cursor-pointer list-none text-base font-semibold marker:content-none"
+                  className={`cursor-pointer list-none rounded-lg text-base font-semibold marker:content-none ${FOCUS_RING}`}
                   style={{ color: NAVY }}
                 >
                   <span className="flex items-center justify-between gap-4">

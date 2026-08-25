@@ -130,9 +130,6 @@ function validateInput(input: LessonPlanInput): string | null {
   if (!isValidSubjectOption(input.subject.trim())) {
     return "Invalid subject.";
   }
-  if (input.topic.trim().length === 0) {
-    return "Please enter a topic.";
-  }
   if (input.learningObjectives.trim().length === 0) {
     return "Please fill Learning Objectives.";
   }
@@ -183,6 +180,11 @@ function buildMessages(
       ? `- Chapter / unit: ${input.chapter.trim()}`
       : `- Chapter / unit: (not specified — infer sensible scope from topic and grade if needed)`;
 
+  const topicLine =
+    input.topic.trim().length > 0
+      ? `- Topic (within the chapter): ${input.topic.trim()}`
+      : `- Topic: (not specified — infer a sensible topic scope from the chapter/unit and grade above)`;
+
   const trimmedSource = sourceMaterial?.trim();
   const sourceBlock =
     trimmedSource && trimmedSource.length > 0
@@ -217,7 +219,7 @@ ${sectionInstructions}
 - Grade / Year group: ${input.grade.trim()}
 - Subject: ${input.subject.trim()}
 ${chapterLine}
-- Topic (within the chapter): ${input.topic.trim()}
+${topicLine}
 - Teacher-provided learning objectives / focus: ${input.learningObjectives.trim()}${frameworkUserLine}
 ${sourceBlock}
 ${aflPromptBlock}
