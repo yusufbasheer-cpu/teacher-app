@@ -14,6 +14,7 @@ import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-load
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
 import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
 import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
+import { PageLoader } from "@/components/ui/animate";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PaymentModal } from "@/components/payment/payment-modal";
 import { LockedPageState } from "@/components/premium/locked-page-state";
@@ -512,8 +513,8 @@ export function QuestionPaperGenerator() {
 
   if (checkingAuth) {
     return (
-      <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
-        Checking your account…
+      <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+        <PageLoader label="Checking your account…" />
       </div>
     );
   }
