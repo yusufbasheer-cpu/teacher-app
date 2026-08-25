@@ -40,7 +40,6 @@ import {
   TEACHING_STRATEGIES,
   buildDifferentiatedPackSourceText,
   buildGenerationSourceMaterial,
-  getGenerationTimeEstimate,
   isValidCurriculumType,
   isValidGradeYear,
   isValidSubjectOption,
@@ -903,7 +902,7 @@ export function LessonPlanGenerator() {
     );
   }
 
-  const generationEta = getGenerationTimeEstimate(sectionSelection);
+  const selectedGenerationCount = Object.values(sectionSelection).filter(Boolean).length;
 
   const scrollToWizard = () => {
     window.setTimeout(() => {
@@ -1545,13 +1544,12 @@ export function LessonPlanGenerator() {
         </div>
 
         <p className={cn(STEP_SECTION_GAP_CLASS, "rounded-xl border px-3 py-2 text-sm text-stone-700")} style={{ borderColor: "#E8DFD1", background: "rgba(250,246,238,0.6)" }}>
-          <span className="font-semibold text-stone-900">Estimated time: </span>
-          {generationEta.selectedCount === 0 ? (
-            generationEta.detail
+          {selectedGenerationCount === 0 ? (
+            <span className="font-semibold text-stone-900">Select at least one item to generate</span>
           ) : (
             <>
-              {generationEta.tier} ({generationEta.detail}) — {generationEta.selectedCount} item
-              {generationEta.selectedCount === 1 ? "" : "s"} selected
+              <span className="font-semibold text-stone-900">{selectedGenerationCount}</span> item
+              {selectedGenerationCount === 1 ? "" : "s"} selected for generation
             </>
           )}
         </p>

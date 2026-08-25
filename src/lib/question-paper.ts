@@ -115,23 +115,6 @@ export function estimateMarksPreview(totalMarks: number, counts: QuestionCounts)
   return totalMarks;
 }
 
-export function getQuestionPaperTimeEstimate(
-  questionCount: number,
-  withBlueprint = false,
-): {
-  tier: string;
-  detail: string;
-  seconds: number;
-} {
-  if (questionCount <= 0) {
-    return { tier: "—", detail: "Select at least one question", seconds: 0 };
-  }
-  const seconds = Math.min(480, Math.max(20, 18 + questionCount * 4 + (withBlueprint ? 25 : 0)));
-  const tier = seconds < 45 ? "Fast" : seconds < 120 ? "Medium" : "Full paper";
-  const mins = Math.ceil(seconds / 60);
-  return { tier, detail: `~${mins} min (${seconds}s)`, seconds };
-}
-
 export function validateQuestionPaperBody(body: QuestionPaperGenerateBody): string | null {
   if (!body.subject?.trim() || !isValidSubjectOption(body.subject)) {
     return "Valid subject is required.";

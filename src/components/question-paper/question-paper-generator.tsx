@@ -34,7 +34,6 @@ import {
   QUESTION_TYPE_SPECS,
   countSelectedQuestions,
   emptyQuestionCounts,
-  getQuestionPaperTimeEstimate,
   type GenerationMode,
   type QuestionCounts,
   type QuestionPaperResult,
@@ -157,10 +156,6 @@ export function QuestionPaperGenerator() {
   );
 
   const totalQuestions = useMemo(() => countSelectedQuestions(questionCounts), [questionCounts]);
-  const timeEstimate = useMemo(
-    () => getQuestionPaperTimeEstimate(totalQuestions, generateBlueprint),
-    [totalQuestions, generateBlueprint],
-  );
 
   const previewText = useMemo(() => {
     if (!result) return "";
@@ -966,9 +961,6 @@ export function QuestionPaperGenerator() {
         >
           {loading ? "Generating…" : "Generate question paper"}
         </button>
-        <p className="text-center text-xs text-stone-500">
-          Estimated time: {timeEstimate.detail} ({timeEstimate.tier})
-        </p>
         </fieldset>
           </form>
         </>
@@ -1100,7 +1092,6 @@ export function QuestionPaperGenerator() {
           statusText={generationProgress}
           selectedSections={qpLoadingSections}
           preset="question-paper"
-          estimatedSeconds={timeEstimate.seconds}
         />
       ) : null}
 

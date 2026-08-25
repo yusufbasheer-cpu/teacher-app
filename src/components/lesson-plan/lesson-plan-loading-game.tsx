@@ -1,10 +1,5 @@
 "use client";
 
-import {
-  computeLessonGenerationEtaSeconds,
-  formatEtaClock,
-  type TeacherPackageSectionKey,
-} from "@/lib/lesson-plan";
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 
@@ -24,8 +19,6 @@ type LessonPlanLoadingGameProps = {
   selectedSections?: Record<string, boolean> | null;
   /** Reuse this overlay for question paper generation (custom checklist + copy). */
   preset?: LoadingGamePreset;
-  /** Used when preset is question-paper (lesson plan uses section selection ETA). */
-  estimatedSeconds?: number;
 };
 
 // ── Fun facts ─────────────────────────────────────────────────────────────────
@@ -249,23 +242,12 @@ function StatusIcon({ status }: { status: SectionStatus }) {
   );
 }
 
-function computeEstimatedTotal(sel: Record<string, boolean> | null | undefined): number {
-  if (!sel || !Object.values(sel).some(Boolean)) return 80;
-  return computeLessonGenerationEtaSeconds(sel as Partial<Record<TeacherPackageSectionKey, boolean>>);
-}
-
-/** Format seconds as M:SS for countdown displays. */
-function fmtTime(secs: number): string {
-  return formatEtaClock(Math.max(0, secs));
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 export function LessonPlanLoadingGame({
   active,
   statusText,
   selectedSections,
   preset = "lesson-plan",
-  estimatedSeconds,
 }: LessonPlanLoadingGameProps) {
   const sectionCatalog = sectionCatalogForPreset(preset);
 
@@ -274,26 +256,17 @@ export function LessonPlanLoadingGame({
       ? sectionCatalog.filter((s) => selectedSections[s.sectionKey] === true)
       : sectionCatalog;
 
-  const estimatedTotal =
-    preset === "question-paper" && estimatedSeconds != null && estimatedSeconds > 0
-      ? estimatedSeconds
-      : computeEstimatedTotal(selectedSections);
-
   const copy =
     preset === "question-paper"
       ? {
           ariaLabel: "Generating your question paper",
           title: "Crafting your question paper",
-          doneEarly: "Done early! Your question paper is ready!",
-          doneAll: "All done! Your question paper is ready!",
           celebrateTitle: "Yaay! Your question paper is ready! 🎉",
           celebrateSub: "Taking you to your downloads…",
         }
       : {
           ariaLabel: "Generating your lesson plan",
           title: "Crafting your lesson package",
-          doneEarly: "Done early! Your lesson pack is ready!",
-          doneAll: "All done! Your lesson pack is ready!",
           celebrateTitle: "Yaay! Your lesson pack is ready! 🎉",
           celebrateSub: "Preparing your download…",
         };
@@ -305,13 +278,11 @@ export function LessonPlanLoadingGame({
   );
   const [smoothProgress, setSmoothProgress] = useState(5);
   const [celebrating, setCelebrating] = useState(false);
-  const [elapsedSecs, setElapsedSecs] = useState(0);
 
   const targetProgressRef  = useRef(5);
   const stageFloorRef      = useRef(5);
   const rafRef             = useRef<number | null>(null);
   const celebratedRef      = useRef(false);
-  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Reset on start ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -322,25 +293,9 @@ export function LessonPlanLoadingGame({
       stageFloorRef.current = 5;
       celebratedRef.current = false;
       setCelebrating(false);
-      setElapsedSecs(0);
       setFactIdx(Math.floor(Math.random() * FUN_FACTS.length));
       setFactVisible(true);
     }
-  }, [active]);
-
-  // ── Per-second countdown ─────────────────────────────────────────────────
-  useEffect(() => {
-    if (!active) {
-      setElapsedSecs(0);
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-      return;
-    }
-    countdownIntervalRef.current = setInterval(() => {
-      setElapsedSecs((prev) => prev + 1);
-    }, 1000);
-    return () => {
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-    };
   }, [active]);
 
   // ── Rotate fun facts every 8 s with fade ────────────────────────────────
@@ -453,11 +408,6 @@ export function LessonPlanLoadingGame({
     activeSections.find((s) => statuses[s.key] === "generating")?.label ??
     (doneCount > 0 ? "Finishing up…" : "Starting generation…");
 
-  // Countdown derived values
-  const remaining      = Math.max(0, estimatedTotal - elapsedSecs);
-  const isDoneEarly    = celebrating && elapsedSecs < estimatedTotal;
-  const isOverrun      = !celebrating && remaining === 0;
-
   /* ── Inline keyframes (no Framer Motion on loading screen) ───────────── */
   const keyframes = `
     @keyframes ldPulse {
@@ -547,63 +497,6 @@ export function LessonPlanLoadingGame({
                   transition: "width 0.5s ease",
                 }}
               />
-            </div>
-
-            {/* ── Estimated time + countdown ──────────────────────────────── */}
-            <div
-              style={{
-                marginBottom: 20,
-                borderRadius: 12,
-                background: "rgba(14, 148, 132,0.07)",
-                border: "1px solid rgba(14, 148, 132,0.2)",
-                padding: "14px 16px",
-              }}
-            >
-              {/* Estimated total */}
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>
-                Estimated time:{" "}
-                <span style={{ color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>
-                  {fmtTime(estimatedTotal)}
-                </span>
-              </p>
-
-              {/* Live countdown */}
-              {celebrating ? (
-                /* Done (possibly early) */
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>🎉</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#0E9484" }}>
-                    {isDoneEarly ? copy.doneEarly : copy.doneAll}
-                  </span>
-                </div>
-              ) : isOverrun ? (
-                /* Took longer than estimate */
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 16, animation: "ldPulse 1.2s ease infinite" }}>⏳</span>
-                  <span style={{ fontSize: 13, color: "#a79a87", fontStyle: "italic" }}>
-                    Almost there… just a few more seconds
-                  </span>
-                </div>
-              ) : (
-                /* Normal countdown */
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
-                    Time remaining:
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 32,
-                      fontWeight: 800,
-                      color: "#0E9484",
-                      fontVariantNumeric: "tabular-nums",
-                      letterSpacing: "-1px",
-                      lineHeight: 1,
-                    }}
-                  >
-                    {fmtTime(remaining)}
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Checklist */}
