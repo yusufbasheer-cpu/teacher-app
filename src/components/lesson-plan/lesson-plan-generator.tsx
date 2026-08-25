@@ -19,6 +19,7 @@ import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
 import { Container } from "@/components/ui/container";
+import { PageLoader } from "@/components/ui/animate";
 import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
 import type {
   LessonPlanInput,
@@ -46,6 +47,7 @@ import {
   mergePptSlideImageUrlsIntoPlan,
   mergeSectionImagesMeta,
   parseSectionImagesMeta,
+  resolveLessonTitle,
 } from "@/lib/lesson-plan";
 import { writeDiffPackSession } from "@/lib/differentiated-pack-session";
 import { CURRICULUM_FRAMEWORK_OPTIONS, isValidCurriculumFramework } from "@/lib/curriculum-framework";
@@ -674,7 +676,7 @@ export function LessonPlanGenerator() {
             user_id: currentUser.id,
             subject: form.subject,
             grade: form.grade,
-            topic: form.topic,
+            topic: resolveLessonTitle(form.topic, form.chapter, form.subject),
             curriculum: form.curriculumType,
             learning_objectives: form.learningObjectives,
             lesson_content: JSON.stringify(stripped.planTextOnly),
@@ -816,7 +818,7 @@ export function LessonPlanGenerator() {
         subject: form.subject,
         grade: form.grade,
         chapter: form.chapter.trim(),
-        topic: form.topic,
+        topic: resolveLessonTitle(form.topic, form.chapter, form.subject),
         learning_objectives: form.learningObjectives,
         lesson_plan: mergePptSlideImageUrlsIntoPlan(
           mergeSectionImagesMeta(lessonPlan, sectionImages),
@@ -862,7 +864,7 @@ export function LessonPlanGenerator() {
       return;
     }
     writeDiffPackSession({
-      topic: form.topic.trim(),
+      topic: resolveLessonTitle(form.topic, form.chapter, form.subject),
       subject: form.subject.trim(),
       grade: form.grade.trim(),
       learningObjectives: form.learningObjectives.trim(),
@@ -876,8 +878,8 @@ export function LessonPlanGenerator() {
   if (checkingAuth) {
     return (
       <Container className="pt-6">
-        <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
-          Checking your account...
+        <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+          <PageLoader label="Checking your account…" />
         </div>
       </Container>
     );
@@ -1603,7 +1605,7 @@ export function LessonPlanGenerator() {
             sectionImages={sectionImages ?? undefined}
             subject={form.subject}
             grade={form.grade}
-            topic={form.topic}
+            topic={resolveLessonTitle(form.topic, form.chapter, form.subject)}
             curriculumFramework={form.curriculumFramework.trim() || undefined}
             pptThemeId={pptThemeId}
             onPptThemeChange={setPptThemeId}

@@ -1,6 +1,7 @@
 "use client";
 
 import type { HodDashboardData } from "@/lib/hod-server";
+import { resolveLessonTitle } from "@/lib/lesson-plan";
 
 const TEAL = "#0E9484";
 const NAVY = "#241A12";
@@ -244,7 +245,7 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
                   >
                     <td className="px-5 py-3.5">
                       <span className="font-medium" style={{ color: NAVY }}>
-                        {lesson.topic}
+                        {resolveLessonTitle(lesson.topic, null, lesson.subject)}
                       </span>
                     </td>
                     <td

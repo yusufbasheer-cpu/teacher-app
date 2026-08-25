@@ -6,11 +6,12 @@ import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { BookOpen, FileStack, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { resolveLessonTitle } from "@/lib/lesson-plan";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PLANS } from "@/lib/plans";
 import { toUserFacingError } from "@/lib/user-facing-errors";
 import { PageHeader } from "@/components/layout/page-header";
-import { CountUp } from "@/components/ui/animate";
+import { CountUp, PageLoader, Skeleton } from "@/components/ui/animate";
 import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
 import { InView } from "@/components/motion-primitives/in-view";
 
@@ -82,8 +83,8 @@ export function DashboardOverview() {
 
   if (checkingAuth) {
     return (
-      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 text-sm text-stone-600 shadow-[0px_4px_20px_rgba(36,26,18,0.06)]">
-        Loading your dashboard…
+      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 shadow-[0px_4px_20px_rgba(36,26,18,0.06)]">
+        <PageLoader label="Loading your dashboard…" />
       </div>
     );
   }
@@ -201,7 +202,16 @@ export function DashboardOverview() {
         </div>
 
         {loadingLessons ? (
-          <p className="px-5 py-8 text-center text-sm text-stone-500">Loading your lessons…</p>
+          <div className="px-5 py-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-6 border-b border-stone-50 py-3.5 last:border-0">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-12" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            ))}
+          </div>
         ) : recentLessons.length === 0 ? (
           <div className="px-5 py-10 text-center">
             <InView
@@ -243,7 +253,9 @@ export function DashboardOverview() {
               <tbody>
                 {recentLessons.map((lesson) => (
                   <tr key={lesson.id} className="border-b border-stone-50 last:border-0 hover:bg-stone-50/60">
-                    <td className="max-w-xs truncate px-5 py-3 font-medium text-stone-900">{lesson.topic}</td>
+                    <td className="max-w-xs truncate px-5 py-3 font-medium text-stone-900">
+                      {resolveLessonTitle(lesson.topic, null, lesson.subject)}
+                    </td>
                     <td className="px-5 py-3 text-stone-600">{lesson.subject}</td>
                     <td className="px-5 py-3 text-stone-600">{lesson.grade}</td>
                     <td className="px-5 py-3 text-stone-500">

@@ -30,13 +30,13 @@ export async function POST(req: Request) {
 
   const subject = body.subject?.trim();
   const grade = body.grade?.trim();
-  const topic = body.topic?.trim();
+  const topic = body.topic?.trim() || "Lesson";
   const lessonPlan = body.lessonPlan;
   const aflSelections = sanitizeAflSelections(body.aflSelections);
 
-  if (!subject || !grade || !topic || !lessonPlan) {
+  if (!subject || !grade || !lessonPlan) {
     return NextResponse.json(
-      { error: "subject, grade, topic, and lessonPlan are required." },
+      { error: "subject, grade, and lessonPlan are required." },
       { status: 400 },
     );
   }

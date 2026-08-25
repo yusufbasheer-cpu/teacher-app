@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { resolveLessonTitle } from "@/lib/lesson-plan";
 import { toUserFacingError } from "@/lib/user-facing-errors";
 import { PageHeader } from "@/components/layout/page-header";
+import { Skeleton } from "@/components/ui/animate";
 
 type SavedLesson = {
   id: string;
@@ -100,8 +102,17 @@ export function MyLessonPlansList() {
 
   if (checkingAuth) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 text-sm text-stone-600 shadow-sm">
-        Loading your saved lesson plans…
+      <div className="grid gap-4 md:grid-cols-2">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm">
+            <div className="flex gap-1.5">
+              <Skeleton className="h-5 w-16" radius={8} />
+              <Skeleton className="h-5 w-12" radius={8} />
+            </div>
+            <Skeleton className="mt-3 h-5 w-3/4" />
+            <Skeleton className="mt-2 h-3 w-1/3" />
+          </div>
+        ))}
       </div>
     );
   }
@@ -197,7 +208,7 @@ export function MyLessonPlansList() {
 
                   {/* Topic */}
                   <p className="mt-3 text-base font-semibold leading-snug text-stone-900">
-                    {plan.topic}
+                    {resolveLessonTitle(plan.topic, null, plan.subject)}
                   </p>
 
                   {/* Date */}

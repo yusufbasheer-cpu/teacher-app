@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
   const subject           = body.subject?.trim();
   const grade             = body.grade?.trim();
-  const topic             = body.topic?.trim();
+  const topic             = body.topic?.trim() || "Lesson";
   const pptContent        = typeof body.pptContent        === "string" ? body.pptContent.trim()        : "";
   const fullLessonPlan    = typeof body.fullLessonPlan    === "string" ? body.fullLessonPlan.trim()     : "";
   const learningObjectives = typeof body.learningObjectives === "string" ? body.learningObjectives.trim() : "";
@@ -66,8 +66,8 @@ export async function POST(req: Request) {
   const pptTheme          = isValidPptThemeId(pptThemeRaw) ? pptThemeRaw : DEFAULT_PPT_THEME_ID;
   const aflSelections     = sanitizeAflSelections(body.aflSelections);
 
-  if (!subject || !grade || !topic) {
-    return NextResponse.json({ error: "subject, grade, and topic are required." }, { status: 400 });
+  if (!subject || !grade) {
+    return NextResponse.json({ error: "subject and grade are required." }, { status: 400 });
   }
   if (!pptContent && !fullLessonPlan) {
     return NextResponse.json(
