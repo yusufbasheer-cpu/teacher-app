@@ -1,5 +1,24 @@
 import type { AflSelectionsPayload } from "@/lib/afl-tools";
 
+/**
+ * Topic is optional at generation time, so nothing that displays or exports
+ * a lesson may assume it's non-empty. This resolves a title that's always
+ * usable: topic if given, else chapter, else a subject-based label — the
+ * one place this fallback chain lives, so every reader/writer stays in sync.
+ */
+export function resolveLessonTitle(
+  topic: string | null | undefined,
+  chapter?: string | null | undefined,
+  subject?: string | null | undefined,
+): string {
+  const t = topic?.trim();
+  if (t) return t;
+  const c = chapter?.trim();
+  if (c) return c;
+  const s = subject?.trim();
+  return s ? `${s} Lesson` : "Untitled Lesson";
+}
+
 /** Current AI package: six top-level outputs from DeepSeek. */
 export const TEACHER_PACKAGE_SECTIONS = [
   "Full Lesson Plan",

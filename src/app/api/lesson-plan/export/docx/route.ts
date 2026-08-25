@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
   const subject = body.subject?.trim();
   const grade = body.grade?.trim();
-  const topic = body.topic?.trim();
+  const topic = body.topic?.trim() || "Lesson";
   const documentTitle = body.documentTitle?.trim();
   const fileBaseName = body.fileBaseName?.trim();
   const content = body.content?.trim();
@@ -40,9 +40,9 @@ export async function POST(req: Request) {
     ? formatDocxAflAppendix(sanitizeAflSelections(body.aflSelections))
     : "";
 
-  if (!subject || !grade || !topic || !documentTitle || !fileBaseName || !content) {
+  if (!subject || !grade || !documentTitle || !fileBaseName || !content) {
     return NextResponse.json(
-      { error: "subject, grade, topic, documentTitle, fileBaseName, and content are required." },
+      { error: "subject, grade, documentTitle, fileBaseName, and content are required." },
       { status: 400 },
     );
   }

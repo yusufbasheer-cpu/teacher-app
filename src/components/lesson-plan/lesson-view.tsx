@@ -6,7 +6,11 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
-import { buildDifferentiatedPackSourceText, type LessonPlanResult } from "@/lib/lesson-plan";
+import {
+  buildDifferentiatedPackSourceText,
+  resolveLessonTitle,
+  type LessonPlanResult,
+} from "@/lib/lesson-plan";
 import { writeDiffPackSession } from "@/lib/differentiated-pack-session";
 import {
   DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
@@ -121,6 +125,10 @@ export function LessonView({ id }: { id: string }) {
     );
   }
 
+  // saved_lessons has no chapter column, so topic (optional at generation
+  // time) is the only thing that can be missing here — fall back to subject.
+  const displayTitle = resolveLessonTitle(lesson.topic, null, lesson.subject);
+
   const regenerateUrl =
     `/lesson-plan?subject=${encodeURIComponent(lesson.subject)}` +
     `&grade=${encodeURIComponent(lesson.grade)}` +
@@ -147,7 +155,7 @@ export function LessonView({ id }: { id: string }) {
         subject: lesson.subject,
         grade: lesson.grade,
         chapter: "",
-        topic: lesson.topic,
+        topic: displayTitle,
         learning_objectives: lesson.learning_objectives ?? "",
         lesson_plan: lessonPlan,
       };
@@ -188,7 +196,7 @@ export function LessonView({ id }: { id: string }) {
       return;
     }
     writeDiffPackSession({
-      topic: lesson.topic.trim(),
+      topic: displayTitle,
       subject: lesson.subject.trim(),
       grade: lesson.grade.trim(),
       learningObjectives: (lesson.learning_objectives ?? "").trim(),
@@ -219,7 +227,7 @@ export function LessonView({ id }: { id: string }) {
 
         {/* Metadata card */}
         <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-          <h2 className="text-2xl font-bold text-stone-900">{lesson.topic}</h2>
+          <h2 className="text-2xl font-bold text-stone-900">{displayTitle}</h2>
           <p className="mt-1 text-sm text-stone-500">Saved {dateStr}</p>
           <dl className="mt-5 grid gap-4 sm:grid-cols-2">
             <div>
@@ -259,7 +267,7 @@ export function LessonView({ id }: { id: string }) {
         lessonPlan={lessonPlan}
         subject={lesson.subject}
         grade={lesson.grade}
-        topic={lesson.topic}
+        topic={displayTitle}
         learningObjectives={lesson.learning_objectives ?? ""}
         pptThemeId={pptThemeId}
         onPptThemeChange={setPptThemeId}
