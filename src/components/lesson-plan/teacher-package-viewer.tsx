@@ -157,8 +157,7 @@ function PptImageProgressCard({
 
   if (!active) return null;
 
-  const remaining = Math.max(0, totalEstimate - elapsed);
-  const allDone   = imgCount >= TOTAL_IMAGES;
+  const allDone = imgCount >= TOTAL_IMAGES;
 
   return (
     <div
@@ -218,32 +217,14 @@ function PptImageProgressCard({
         </p>
       )}
 
-      {/* Countdown */}
-      {!allDone ? (
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-            Estimated time remaining:
-          </span>
-          <span
-            style={{
-              fontSize: 22,
-              fontWeight: 800,
-              color: "#0E9484",
-              fontVariantNumeric: "tabular-nums",
-              letterSpacing: "-0.5px",
-            }}
-          >
-            {remaining}s
-          </span>
-        </div>
-      ) : (
+      {allDone ? (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 18 }}>✅</span>
           <span style={{ fontSize: 13, fontWeight: 600, color: "#0E9484" }}>
-            0 seconds — all done!
+            All done!
           </span>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

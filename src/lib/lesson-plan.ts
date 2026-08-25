@@ -333,47 +333,12 @@ export const LESSON_PLAN_SECTION_IMAGES_META_KEY = "__sectionImageUrls" as const
 /** Serialized PPT slide image URLs (parallel to 13-slide deck indices). */
 export const LESSON_PLAN_PPT_SLIDE_IMAGE_URLS_KEY = "__pptSlideImageUrls" as const;
 
-/** Extra seconds accounted for when **PPT Slide Content** is selected (5× Pexels + 5× fal). */
-export const PPT_SLIDE_IMAGE_PIPELINE_SECONDS = 5 * 4 + 5 * 15;
-
-/** Base DeepSeek (etc.) duration estimates per section — used for ETA countdown. */
-export const SECTION_GENERATION_BASE_SECONDS: Record<TeacherPackageSectionKey, number> = {
-  "Full Lesson Plan": 30,
-  "PPT Slide Content": 35,
-  Worksheet: 25,
-  "Assessment Questions": 20,
-  "Homework Task": 15,
-  "Teacher Notes": 15,
-  "AFL Activity Sheets": 30,
-};
-
 export function isLessonPlanMetaStorageKey(key: string): boolean {
   return (
     key === LESSON_PLAN_SECTION_IMAGES_META_KEY ||
     key === LESSON_PLAN_PPT_SLIDE_IMAGE_URLS_KEY ||
     key.startsWith("__")
   );
-}
-
-/** Sum ETA seconds from checkbox selection (includes PPT image pipeline when PPT is on). */
-export function computeLessonGenerationEtaSeconds(
-  selectedSections: Partial<Record<TeacherPackageSectionKey, boolean>>,
-): number {
-  let total = 0;
-  for (const key of TEACHER_PACKAGE_SECTIONS) {
-    if (!selectedSections[key]) continue;
-    total += SECTION_GENERATION_BASE_SECONDS[key] ?? 15;
-    if (key === "PPT Slide Content") total += PPT_SLIDE_IMAGE_PIPELINE_SECONDS;
-  }
-  return total;
-}
-
-/** Format seconds as M:SS for UI copy. */
-export function formatEtaClock(seconds: number): string {
-  if (seconds <= 0) return "0:00";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 /** Split stored plan into text sections and optional FLUX image URLs. */
@@ -520,33 +485,6 @@ export function normalizeGenerationSections(raw: unknown): TeacherPackageSection
     out.push(item as TeacherPackageSectionKey);
   }
   return out.length > 0 ? out : null;
-}
-
-/**
- * ETA copy for the generator UI from the actual section checklist
- * (sums per-section estimates + PPT image pipeline when applicable).
- */
-export function getGenerationTimeEstimate(
-  selectedSections: Partial<Record<TeacherPackageSectionKey, boolean>>,
-): {
-  tier: string;
-  detail: string;
-  seconds: number;
-  selectedCount: number;
-} {
-  const selectedCount = TEACHER_PACKAGE_SECTIONS.filter((k) => selectedSections[k]).length;
-  if (selectedCount <= 0) {
-    return { tier: "—", detail: "Select at least one item", seconds: 0, selectedCount: 0 };
-  }
-  const seconds = computeLessonGenerationEtaSeconds(selectedSections);
-  const tier =
-    seconds < 90 ? "Fast" : seconds < 200 ? "Medium" : seconds < 360 ? "Full package" : "Extended run";
-  return {
-    tier,
-    detail: `~${formatEtaClock(seconds)} total`,
-    seconds,
-    selectedCount,
-  };
 }
 
 export function isLegacyLessonPlan(plan: Record<string, unknown>): boolean {
