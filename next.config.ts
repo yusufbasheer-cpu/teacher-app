@@ -26,6 +26,27 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
+  // posthog-js posts to /ingest/e/ and /ingest/i/v0/e/ WITH a trailing slash;
+  // without this, Next 308-redirects those away and every event pays an extra
+  // round trip (verified locally - it returned 308, not 200, before this line).
+  skipTrailingSlashRedirect: true,
+  // PostHog is served through this app's own origin at /ingest, because ad
+  // blockers match on the us.i.posthog.com hostname and were silently dropping
+  // analytics events for a large share of teachers. Proxying makes the requests
+  // first-party, so the existing "connect-src 'self'" / "script-src 'self'"
+  // directives in CSP above already cover them - no CSP change needed.
+  async rewrites() {
+    return [
+      {
+        source: "/ingest/static/:path*",
+        destination: "https://us-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ingest/:path*",
+        destination: "https://us.i.posthog.com/:path*",
+      },
+    ];
+  },
   async headers() {
     return [
       {
