@@ -6,6 +6,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { resolveLessonTitle, resolveLessonTopicNote } from "@/lib/lesson-plan";
 import { toUserFacingError } from "@/lib/user-facing-errors";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/animate";
 
@@ -28,7 +29,7 @@ export function MyLessonPlansList() {
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [plans, setPlans] = useState<SavedLesson[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadPlansForUser = async (sessionUser: User) => {

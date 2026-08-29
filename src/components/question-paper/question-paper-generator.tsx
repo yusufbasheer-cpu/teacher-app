@@ -13,6 +13,7 @@ import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
 import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
 import { PageLoader } from "@/components/ui/animate";
 import { useUserUsage } from "@/hooks/use-user-usage";
@@ -116,7 +117,7 @@ export function QuestionPaperGenerator() {
   const [loading, setLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<string | null>(null);
   const [paperReady, setPaperReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [result, setResult] = useState<QuestionPaperResult | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
 

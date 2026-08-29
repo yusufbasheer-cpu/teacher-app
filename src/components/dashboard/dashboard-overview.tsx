@@ -8,6 +8,7 @@ import { BookOpen, FileStack, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { resolveLessonTitle, resolveLessonTopicNote } from "@/lib/lesson-plan";
 import { useUserUsage } from "@/hooks/use-user-usage";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { PLANS } from "@/lib/plans";
 import { toUserFacingError } from "@/lib/user-facing-errors";
 import { PageHeader } from "@/components/layout/page-header";
@@ -48,7 +49,7 @@ export function DashboardOverview() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [lessons, setLessons] = useState<SavedLesson[]>([]);
   const [loadingLessons, setLoadingLessons] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
 
   const { usage, loading: usageLoading } = useUserUsage(Boolean(user));
 

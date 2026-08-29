@@ -8,6 +8,7 @@ import { getAuthHeaders } from "@/lib/auth-headers";
 import { isSyntheticPhoneEmail } from "@/lib/phone";
 import { supabase } from "@/lib/supabase";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
+import { useErrorToast } from "@/hooks/use-error-toast";
 
 const NAVY = "#241A12";
 const TEAL = "#0E9484";
@@ -155,13 +156,13 @@ export default function SettingsPage() {
   const [loadingPage, setLoadingPage] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useErrorToast();
   const [downloading, setDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useErrorToast();
   const didInit = useRef(false);
 
   const loadSubscription = async () => {

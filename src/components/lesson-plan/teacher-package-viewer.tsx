@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -273,7 +274,7 @@ export function TeacherPackageViewer({
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
   const [busy, setBusy] = useState<ExportKey | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportError, setExportError] = useErrorToast();
 
   const showTeacherDownloads = hasTeacherPackageContent(lessonPlan);
   const hasPpt = hasSectionContent(lessonPlan, "PPT Slide Content");

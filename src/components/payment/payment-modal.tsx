@@ -6,6 +6,7 @@ import { getAuthHeaders } from "@/lib/auth-headers";
 import { usePricingRegion } from "@/hooks/use-pricing-region";
 import { PRICING_REGIONS, formatRegionalPrice, type PaidPlanKey } from "@/lib/pricing-regions";
 import { PLANS } from "@/lib/plans";
+import { useErrorToast } from "@/hooks/use-error-toast";
 
 const NAVY = "#241A12";
 const TEAL = "#0E9484";
@@ -117,7 +118,7 @@ function UpiIcon() {
 export function PaymentModal({ open, planKey, initialBilling = "monthly", onClose, onSuccess }: PaymentModalProps) {
   const [billing, setBilling] = useState<Billing>(initialBilling);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useErrorToast();
   const { regionId } = usePricingRegion();
 
   if (!open) return null;

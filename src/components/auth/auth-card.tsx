@@ -8,6 +8,7 @@ import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
 import { completeEmailPostAuthLogin, completePhonePostAuthLogin } from "@/lib/auth-post-login";
 import { supabase } from "@/lib/supabase";
 import { sanitizeUserMessage, toUserFacingError } from "@/lib/user-facing-errors";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 const MIN_SIGNUP_MS = 3000;
@@ -102,7 +103,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [message, setMessage] = useState<string | null>(null);
   const [showResend, setShowResend] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);

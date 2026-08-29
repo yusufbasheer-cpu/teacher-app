@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useErrorToast } from "@/hooks/use-error-toast";
 
 const NAVY = "#241A12";
 const TEAL = "#0E9484";
@@ -16,7 +17,7 @@ export function WaitlistModal({ open, onClose, plan, initialEmail = "" }: Waitli
   const [email, setEmail] = useState(initialEmail);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
 
   useEffect(() => {
     if (!done) return;

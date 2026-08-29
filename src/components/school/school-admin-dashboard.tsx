@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import type { SchoolAdminDashboardData, SchoolAdminTeacher } from "@/lib/school-admin-server";
 import { supabase } from "@/lib/supabase";
 
@@ -48,14 +49,14 @@ type SchoolAdminDashboardProps = {
 export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps) {
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   // Per-teacher pending role/department edits
   const [pendingEdits, setPendingEdits] = useState<Record<string, RoleState>>({});
   const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
   const [roleSuccessId, setRoleSuccessId] = useState<string | null>(null);
-  const [roleError, setRoleError] = useState<string | null>(null);
+  const [roleError, setRoleError] = useErrorToast();
 
   const getTeacherRole = (teacher: SchoolAdminTeacher): RoleState =>
     pendingEdits[teacher.userId] ?? { role: teacher.role, department: teacher.department };

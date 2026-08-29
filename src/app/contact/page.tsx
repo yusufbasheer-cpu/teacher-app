@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Footer } from "@/components/layout/footer";
+import { useErrorToast } from "@/hooks/use-error-toast";
+import { toUserFacingError } from "@/lib/user-facing-errors";
 
 const NAVY = "#241A12";
 const TEAL = "#0E9484";
@@ -50,7 +52,7 @@ export default function ContactPage() {
   const [form, setForm] = useState({ name: "", email: "", subject: SUBJECTS[0], message: "" });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useErrorToast<string>("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +70,7 @@ export default function ContactPage() {
       }
       setSent(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(toUserFacingError(err, "contact-form"));
     } finally {
       setSending(false);
     }

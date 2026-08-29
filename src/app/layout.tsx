@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageTransitionWrapper } from "@/components/layout/page-transition-wrapper";
 import { SentryProvider } from "@/components/sentry-provider";
 import { PostHogProvider } from "@/providers/posthog-provider";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -145,6 +146,7 @@ export default function RootLayout({
           </AppShell>
           <CookieBanner />
         </PostHogProvider>
+        <Toaster />
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       </body>
     </html>

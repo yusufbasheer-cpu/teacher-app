@@ -231,20 +231,27 @@ type PageLoaderProps = {
 };
 
 /**
- * Motion loading indicator — a rotating ring + breathing label.
+ * Motion loading indicator — two counter-rotating rings + a breathing label.
  * Use in place of static "Loading…" text for brief async checks (auth gates,
  * account checks). For content that's about to appear in a known shape
  * (a list, a table), prefer `Skeleton` shaped like that content instead.
+ * For a full-page boot moment (signing in, first load), use `BrandLoader`.
  */
 export function PageLoader({ label = "Loading…", className = "" }: PageLoaderProps) {
   return (
     <div className={`flex items-center justify-center gap-3 py-1 ${className}`} role="status" aria-live="polite">
-      <motion.span
-        className="h-5 w-5 shrink-0 rounded-full border-2 border-[#0E9484]/20 border-t-[#0E9484]"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
-        aria-hidden="true"
-      />
+      <span className="relative h-5 w-5 shrink-0" aria-hidden="true">
+        <motion.span
+          className="absolute inset-0 rounded-full border-2 border-[#0E9484]/15 border-t-[#0E9484]"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
+        />
+        <motion.span
+          className="absolute inset-[3px] rounded-full border-2 border-transparent border-b-[#0E9484]/50"
+          animate={{ rotate: -360 }}
+          transition={{ duration: 1.3, repeat: Infinity, ease: "linear" }}
+        />
+      </span>
       <motion.span
         className="text-sm text-stone-600"
         animate={{ opacity: [0.55, 1, 0.55] }}
@@ -252,6 +259,71 @@ export function PageLoader({ label = "Loading…", className = "" }: PageLoaderP
       >
         {label}
       </motion.span>
+    </div>
+  );
+}
+
+// ── BrandLoader ───────────────────────────────────────────────────────────────
+type BrandLoaderProps = {
+  /** Text shown under the mark. Default: "Loading…" */
+  label?: string;
+  /** Small supporting line under the label, e.g. "This only takes a second." */
+  sublabel?: string;
+  className?: string;
+};
+
+/**
+ * Full-page boot loader — a breathing logo mark inside an orbiting ring, with
+ * an animated label underneath. Use for whole-screen waits like "signing you
+ * in" or a post-auth redirect, where `PageLoader`'s compact inline spinner
+ * would look lost. Caller is responsible for the page-level background/layout;
+ * this only renders the centered mark + text.
+ */
+export function BrandLoader({ label = "Loading…", sublabel, className = "" }: BrandLoaderProps) {
+  return (
+    <div
+      className={`flex flex-col items-center justify-center gap-5 ${className}`}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="relative flex h-20 w-20 items-center justify-center">
+        <motion.span
+          className="absolute inset-0 rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(14,148,132,0.22), transparent 70%)" }}
+          animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1.05, 0.9] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+          aria-hidden="true"
+        />
+        <motion.span
+          className="absolute inset-0 rounded-full border-2 border-dashed border-[#0E9484]/35"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+          aria-hidden="true"
+        />
+        <motion.img
+          src="/logo-mark.png"
+          alt=""
+          aria-hidden="true"
+          className="h-11 w-11 rounded-2xl object-cover shadow-sm"
+          animate={{ scale: [1, 1.06, 1] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
+      <div className="flex flex-col items-center gap-1 text-center">
+        <motion.span
+          className="text-sm font-semibold"
+          style={{ color: "#241A12" }}
+          animate={{ opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+        >
+          {label}
+        </motion.span>
+        {sublabel ? (
+          <span className="text-xs" style={{ color: "#6B5D4F" }}>
+            {sublabel}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }

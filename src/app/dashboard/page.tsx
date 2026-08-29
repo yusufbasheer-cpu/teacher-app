@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { registerActiveSession } from "@/lib/active-session";
 import { SCHOOL_WELCOME_SESSION_KEY } from "@/lib/school-accounts";
 import { supabase } from "@/lib/supabase";
+import { BrandLoader } from "@/components/ui/animate";
 
 function DashboardContent() {
   const router = useRouter();
@@ -114,9 +115,7 @@ function DashboardContent() {
 
   return (
     <main className="flex min-h-screen items-center justify-center" style={{ background: "#F1E9DC" }}>
-      <p className="text-sm font-medium" style={{ color: "#6B5D4F" }}>
-        Signing you in…
-      </p>
+      <BrandLoader label="Signing you in…" sublabel="Just a moment." />
     </main>
   );
 }
@@ -126,9 +125,7 @@ export default function DashboardPage() {
     <Suspense
       fallback={
         <main className="flex min-h-screen items-center justify-center" style={{ background: "#F1E9DC" }}>
-          <p className="text-sm font-medium" style={{ color: "#6B5D4F" }}>
-            Signing you in…
-          </p>
+          <BrandLoader label="Signing you in…" sublabel="Just a moment." />
         </main>
       }
     >

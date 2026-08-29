@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { ACCENT, ACCENT_SOFT, AdminButton, AdminInput, BORDER, FONT_DISPLAY, INK, INK_MUTED, PAPER } from "@/components/admin/ui/admin-kit";
+import { useErrorToast } from "@/hooks/use-error-toast";
 
 const SESSION_KEY = "layah_super_admin_verified";
 
@@ -14,7 +15,7 @@ export function SuperAdminPinGate({ children }: Props) {
     return sessionStorage.getItem(SESSION_KEY) === "1";
   });
   const [pin, setPin] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [loading, setLoading] = useState(false);
 
   if (verified) return <>{children}</>;

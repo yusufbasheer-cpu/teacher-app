@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { PageLoader } from "@/components/ui/animate";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
 import {
   buildDifferentiatedPackSourceText,
@@ -41,7 +42,7 @@ export function LessonView({ id }: { id: string }) {
   const [lesson, setLesson] = useState<SavedLesson | null>(null);
   const [lessonPlan, setLessonPlan] = useState<LessonPlanResult | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [pptThemeId, setPptThemeId] = useState<PptThemeId>(DEFAULT_PPT_THEME_ID);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

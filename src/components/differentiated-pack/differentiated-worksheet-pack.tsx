@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import {
   emptyDifferentiatedPack,
   type DifferentiatedPackContent,
@@ -55,7 +56,7 @@ export function DifferentiatedWorksheetPack() {
   });
   const [extracting, setExtracting] = useState(false);
   const [inferring, setInferring] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [busyDownload, setBusyDownload] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);

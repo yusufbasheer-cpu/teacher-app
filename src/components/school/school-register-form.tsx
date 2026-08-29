@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { supabase } from "@/lib/supabase";
 import { usePricingRegion } from "@/hooks/use-pricing-region";
 import {
@@ -279,7 +280,7 @@ export function SchoolRegisterForm() {
   });
   const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
 
   const { region, regionId, setRegionManually, loading: regionLoading } = usePricingRegion();
 

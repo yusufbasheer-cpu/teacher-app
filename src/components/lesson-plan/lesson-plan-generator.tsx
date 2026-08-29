@@ -65,6 +65,7 @@ import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import { sanitizeUserMessage, toUserFacingError, USER_FACING_ERROR, GENERATION_FAILED_ERROR } from "@/lib/user-facing-errors";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { AFL_PHASE_IDS, type AflPhaseId } from "@/lib/afl-tools";
 import { AflSelector } from "@/components/lesson-plan/afl-selector";
 import { PaymentModal } from "@/components/payment/payment-modal";
@@ -231,7 +232,7 @@ export function LessonPlanGenerator() {
   const [loading, setLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const resultsRef = useRef<HTMLElement | null>(null);
@@ -249,7 +250,7 @@ export function LessonPlanGenerator() {
   const [uploadExtracting, setUploadExtracting] = useState(false);
   const [uploadInfo, setUploadInfo] = useState<string | null>(null);
   const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
-  const [uploadExtractionError, setUploadExtractionError] = useState<string | null>(null);
+  const [uploadExtractionError, setUploadExtractionError] = useErrorToast();
 
   const [parseNotice, setParseNotice] = useState<string | null>(null);
   const [pptThemeId, setPptThemeId] = useState<PptThemeId>(DEFAULT_PPT_THEME_ID);
