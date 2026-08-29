@@ -25,7 +25,11 @@ function PostHogPageView() {
 
 if (typeof window !== "undefined") {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    // Must stay the relative /ingest path (see the rewrite in next.config.ts),
+    // not NEXT_PUBLIC_POSTHOG_HOST - pointing at us.i.posthog.com directly is
+    // exactly what ad blockers drop.
+    api_host: "/ingest",
+    ui_host: "https://us.posthog.com",
     capture_pageview: false,
     capture_pageleave: true,
   });

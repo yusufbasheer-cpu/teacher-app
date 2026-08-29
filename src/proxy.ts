@@ -122,6 +122,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // "ingest" is the PostHog reverse proxy (rewrites in next.config.ts) — a
+    // passthrough, not an app route, so it must not pay for session refresh.
+    "/((?!_next/static|_next/image|favicon.ico|ingest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
