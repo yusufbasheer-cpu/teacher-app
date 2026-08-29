@@ -234,7 +234,7 @@ export function QuestionPaperGenerator() {
     try {
       const res = await fetch("/api/question-paper/export/docx", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           subject,
           grade,
@@ -264,7 +264,7 @@ export function QuestionPaperGenerator() {
     try {
       const res = await fetch("/api/question-paper/export/blueprint", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           subject,
           grade,
@@ -295,7 +295,7 @@ export function QuestionPaperGenerator() {
     try {
       const res = await fetch("/api/question-paper/export/zip", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           subject,
           grade,

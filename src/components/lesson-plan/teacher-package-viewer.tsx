@@ -31,6 +31,7 @@ import {
   type TemplateId as PptThemeId,
 } from "@/lib/ppt-template-config";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
+import { getAuthHeaders } from "@/lib/auth-headers";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
 import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 
@@ -314,7 +315,7 @@ export function TeacherPackageViewer({
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(extraHeaders ?? {}) },
+        headers: { ...(await getAuthHeaders()), ...(extraHeaders ?? {}) },
         body: JSON.stringify(body),
       });
 
