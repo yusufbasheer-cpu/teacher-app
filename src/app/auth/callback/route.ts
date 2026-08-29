@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { applySchoolPlanForEmail } from "@/lib/auth-callback-school";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 import { sendWelcomeEmailIfNew } from "@/lib/welcome-email";
+import { sanitizeUserMessage } from "@/lib/user-facing-errors";
 
 export const runtime = "nodejs";
 
@@ -28,9 +29,8 @@ export async function GET(request: Request) {
 
   if (exchangeError) {
     console.error("[auth/callback] exchangeCodeForSession failed:", exchangeError.message);
-    return NextResponse.redirect(
-      `${origin}/auth?error=${encodeURIComponent(exchangeError.message)}`,
-    );
+    const safeMessage = sanitizeUserMessage(exchangeError.message, "auth-callback-exchange");
+    return NextResponse.redirect(`${origin}/auth?error=${encodeURIComponent(safeMessage)}`);
   }
 
   const {

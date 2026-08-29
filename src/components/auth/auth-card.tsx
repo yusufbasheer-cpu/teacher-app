@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, type Variants } from "motion/react";
 import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
 import { completeEmailPostAuthLogin, completePhonePostAuthLogin } from "@/lib/auth-post-login";
 import { supabase } from "@/lib/supabase";
+import { sanitizeUserMessage, toUserFacingError } from "@/lib/user-facing-errors";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 const MIN_SIGNUP_MS = 3000;
@@ -91,6 +92,7 @@ type AuthCardProps = {
 
 export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardProps = {}) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [identifier, setIdentifier] = useState<"email" | "phone">("email");
@@ -114,15 +116,21 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const onTurnstileExpire = useCallback(() => setTurnstileToken(null), []);
 
   useEffect(() => {
+    // Show a one-time error carried in the URL from a failed redirect (e.g. OAuth
+    // callback failure, forced session revocation), then strip it from the URL so
+    // a refresh or a later visit to this same link doesn't keep re-showing it —
+    // a fresh login/signup attempt should never be blocked by a past failure.
     if (searchParams.get("revoked") === "1") {
       setError(SESSION_REVOKED_MESSAGE);
+      router.replace(pathname, { scroll: false });
       return;
     }
     const authError = searchParams.get("error");
     if (authError) {
-      setError(decodeURIComponent(authError));
+      setError(sanitizeUserMessage(decodeURIComponent(authError), "auth-query-param"));
+      router.replace(pathname, { scroll: false });
     }
-  }, [searchParams]);
+  }, [searchParams, router, pathname]);
 
   const onGoogleSignIn = async () => {
     setError(null);
@@ -138,7 +146,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       });
       if (oauthError) throw oauthError;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Google sign-in failed.");
+      setError(toUserFacingError(err, "auth-google-signin"));
       setGoogleLoading(false);
     }
   };
@@ -155,7 +163,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       if (resendError) throw resendError;
       setMessage("Confirmation email sent. Check your inbox (and spam folder).");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't resend the confirmation email.");
+      setError(toUserFacingError(err, "auth-resend-confirmation"));
     } finally {
       setResendLoading(false);
     }
@@ -332,7 +340,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
         );
         setShowResend(true);
       } else {
-        setError(err instanceof Error ? err.message : "Authentication failed.");
+        setError(toUserFacingError(err, "auth-submit"));
       }
     } finally {
       setLoading(false);

@@ -57,6 +57,12 @@ const TECHNICAL_PATTERNS = [
   "etimedout",
   "certificate",
   "ssl",
+  // Supabase auth/OAuth internals — must never be shown to teachers
+  "pkce",
+  "code verifier",
+  "invalid_grant",
+  "auth code",
+  "exchangecodeforsession",
 ];
 
 /** Messages that are safe to show as-is (validation / auth UX). */
