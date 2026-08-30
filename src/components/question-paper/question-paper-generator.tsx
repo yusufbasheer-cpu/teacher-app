@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import {
   type ChangeEvent,
   type FormEvent,
@@ -15,9 +16,10 @@ import { GenerationLimitModal } from "@/components/usage/generation-limit-modal"
 import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
-import { PageLoader } from "@/components/ui/animate";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PaymentModal } from "@/components/payment/payment-modal";
+import { EmptyState, PageTitle, Panel, Skeleton } from "@/components/ui/panel";
+import { Button } from "@/components/ui/button";
 import { LockedPageState } from "@/components/premium/locked-page-state";
 import { PLANS } from "@/lib/plans";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
@@ -514,33 +516,42 @@ export function QuestionPaperGenerator() {
 
   if (checkingAuth) {
     return (
-      <div className="max-w-md rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
-        <PageLoader label="Checking your account…" />
+      <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="mt-6 h-[420px] rounded-lg" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="max-w-md rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-ink">Login required</h2>
-        <p className="mt-2 text-sm text-muted">
-          Please log in to generate question papers and track your monthly generation limit.
-        </p>
-        <Link
-          href="/login"
-          className="mt-5 inline-flex rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-active)]"
-        >
-          Go to Login
-        </Link>
+      <div className="mx-auto w-full max-w-[440px] px-4 py-16">
+        <Panel>
+          <EmptyState
+            icon={Lock}
+            title="Sign in to continue"
+            description="Your question papers and mark schemes are saved to your account."
+            action={
+              <Button size="lg" render={<Link href="/login" />}>
+                Sign in
+              </Button>
+            }
+            secondaryAction={
+              <Button variant="ghost" size="lg" render={<Link href="/signup" />}>
+                Create an account
+              </Button>
+            }
+          />
+        </Panel>
       </div>
     );
   }
 
   if (usageLoading || !usage) {
     return (
-      <div className="rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
-        <PageLoader label="Checking your plan…" />
+      <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="mt-6 h-[420px] rounded-lg" />
       </div>
     );
   }
@@ -549,8 +560,14 @@ export function QuestionPaperGenerator() {
     return (
       <>
         <LockedPageState
-          title="Question Paper"
-          description="Generate curriculum-aligned question papers with a custom blueprint, mark distribution, and answer key — available on Pro and above."
+          title="Question papers"
+          description="Build an exam paper for any chapter, with the mark distribution you set."
+          includes={[
+            "A blueprint you control — sections, question types and marks per section",
+            "Questions written to your curriculum and grade",
+            "A full mark scheme and answer key",
+            "Word and ZIP export, ready to print",
+          ]}
           onUpgrade={() => setPaymentModalOpen(true)}
         />
         <PaymentModal
@@ -564,9 +581,14 @@ export function QuestionPaperGenerator() {
   }
 
   return (
-    <div className="space-y-6" ref={wizardRef}>
+    <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" ref={wizardRef}>
       {!result ? (
         <>
+          <PageTitle
+            title="New question paper"
+            description="Set the blueprint, then generate the paper, mark scheme and answer key together."
+            className="mb-5"
+          />
           <div className={FORM_COLUMN_CLASS}>
             <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
           </div>

@@ -1,45 +1,67 @@
-import { Sparkles } from "lucide-react";
-import { ProBadge } from "@/components/premium/pro-badge";
-import { NAVY, TEAL, TEXT_MUTED } from "@/lib/design-tokens";
+"use client";
+
+import Link from "next/link";
+import { Check, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 
 type LockedPageStateProps = {
   title: string;
   description: string;
   onUpgrade: () => void;
+  /** Concrete things the plan unlocks here. Sell the work, not the tier. */
+  includes?: readonly string[];
 };
 
-/** Full-page locked state shown instead of a generator wizard when a Free
- * caller opens a Pro-only page (Question Paper, Differentiated Worksheets).
- * Never renders a partially-working form — this replaces the whole wizard. */
-export function LockedPageState({ title, description, onUpgrade }: LockedPageStateProps) {
+/**
+ * Shown instead of a generator when a Free caller opens a Pro-only tool.
+ *
+ * For most of the user base this *is* the page, so it should do a job rather
+ * than apologise. The old version centred a lock icon and a one-line pitch in
+ * an otherwise empty screen, under a page header that already said the same
+ * thing — two titles and no information.
+ *
+ * This states plainly what the tool produces, so the decision is about the
+ * work rather than about a tier name, and offers a way to compare plans rather
+ * than only a single upgrade button.
+ */
+export function LockedPageState({
+  title,
+  description,
+  onUpgrade,
+  includes,
+}: LockedPageStateProps) {
   return (
-    <div className="mx-auto w-full max-w-lg py-16 text-center">
-      <div
-        className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
-        style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)" }}
-      >
-        <Sparkles size={26} color={TEAL} aria-hidden />
-      </div>
+    <div className="mx-auto w-full max-w-[520px] px-4 py-14">
+      <Panel className="p-5">
+        <span className="inline-flex items-center gap-1.5 rounded-sm border border-gen-border/50 bg-gen-subtle px-1.5 py-0.5 text-[11px] font-medium text-gen-text">
+          <Lock className="size-3" aria-hidden />
+          Pro
+        </span>
 
-      <div className="mt-5 flex items-center justify-center gap-2">
-        <h1 className="text-xl font-bold" style={{ color: NAVY }}>
-          {title}
-        </h1>
-        <ProBadge />
-      </div>
+        <h1 className="mt-3 text-[17px] font-semibold tracking-[-0.015em] text-ink">{title}</h1>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-muted">{description}</p>
 
-      <p className="mt-3 text-sm leading-relaxed" style={{ color: TEXT_MUTED }}>
-        {description}
-      </p>
+        {includes?.length ? (
+          <ul className="mt-4 space-y-1.5 border-t border-line-subtle pt-4">
+            {includes.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-[13px] text-muted">
+                <Check className="mt-0.5 size-3.5 shrink-0 text-brand-text" aria-hidden />
+                {item}
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
-      <button
-        type="button"
-        onClick={onUpgrade}
-        className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl px-6 text-sm font-semibold text-white transition hover:opacity-90"
-        style={{ background: TEAL }}
-      >
-        Upgrade to Pro
-      </button>
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <Button size="lg" onClick={onUpgrade}>
+            Upgrade to Pro
+          </Button>
+          <Button variant="ghost" size="lg" render={<Link href="/pricing" />}>
+            Compare plans
+          </Button>
+        </div>
+      </Panel>
     </div>
   );
 }

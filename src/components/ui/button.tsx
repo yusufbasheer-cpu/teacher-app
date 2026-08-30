@@ -1,3 +1,4 @@
+import { isValidElement, type ReactElement } from "react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -72,11 +73,24 @@ function Button({
   variant = "default",
   size = "default",
   block,
+  render,
+  nativeButton,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  /* base-ui warns (and loses button semantics) if it renders a non-<button>
+     while still claiming to be one. `render={<Link />}` is the common case
+     here — a navigation styled as a button — so infer it rather than making
+     every call site remember to pass `nativeButton={false}`. */
+  const renderedElement =
+    isValidElement(render) ? (render as ReactElement).type : undefined
+  const inferredNative =
+    renderedElement === undefined ? undefined : renderedElement === "button"
+
   return (
     <ButtonPrimitive
       data-slot="button"
+      render={render}
+      nativeButton={nativeButton ?? inferredNative}
       className={cn(buttonVariants({ variant, size, block, className }))}
       {...props}
     />

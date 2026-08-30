@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
@@ -19,9 +20,10 @@ import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
-import { PageLoader } from "@/components/ui/animate";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PaymentModal } from "@/components/payment/payment-modal";
+import { EmptyState, Notice, PageTitle, Panel, Skeleton } from "@/components/ui/panel";
+import { Button } from "@/components/ui/button";
 import { LockedPageState } from "@/components/premium/locked-page-state";
 import { PLANS } from "@/lib/plans";
 
@@ -398,33 +400,42 @@ export function DifferentiatedWorksheetPack() {
 
   if (checkingAuth) {
     return (
-      <div className="max-w-md rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
-        <PageLoader label="Checking your account…" />
+      <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="mt-6 h-[420px] rounded-lg" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="max-w-md rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-ink">Login required</h2>
-        <p className="mt-2 text-sm text-muted">
-          Please log in to generate differentiated worksheet packs and track your monthly generation limit.
-        </p>
-        <Link
-          href="/login"
-          className="mt-5 inline-flex rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-active)]"
-        >
-          Go to Login
-        </Link>
+      <div className="mx-auto w-full max-w-[440px] px-4 py-16">
+        <Panel>
+          <EmptyState
+            icon={Lock}
+            title="Sign in to continue"
+            description="Your worksheet packs are saved to your account so you can come back to them."
+            action={
+              <Button size="lg" render={<Link href="/login" />}>
+                Sign in
+              </Button>
+            }
+            secondaryAction={
+              <Button variant="ghost" size="lg" render={<Link href="/signup" />}>
+                Create an account
+              </Button>
+            }
+          />
+        </Panel>
       </div>
     );
   }
 
   if (usageLoading || !usage) {
     return (
-      <div className={`${FORM_COLUMN_CLASS} rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm`}>
-        <PageLoader label="Checking your plan…" />
+      <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+        <Skeleton className="h-6 w-64" />
+        <Skeleton className="mt-6 h-[420px] rounded-lg" />
       </div>
     );
   }
@@ -433,8 +444,14 @@ export function DifferentiatedWorksheetPack() {
     return (
       <>
         <LockedPageState
-          title="Differentiated Worksheets"
-          description="Generate foundation, core, and extension worksheets with answer keys and rubrics from one lesson topic — available on Pro and above."
+          title="Differentiated worksheet packs"
+          description="Turn one lesson into three worksheets, pitched at three levels."
+          includes={[
+            "Foundation, Core and Extension versions of the same content",
+            "An answer key and marking rubric for each level",
+            "Built from a lesson you already made, or from an uploaded plan",
+            "Word and ZIP export, ready to print",
+          ]}
           onUpgrade={() => setPaymentModalOpen(true)}
         />
         <PaymentModal
@@ -448,21 +465,19 @@ export function DifferentiatedWorksheetPack() {
   }
 
   return (
-    <div className={`${FORM_COLUMN_CLASS} space-y-8`}>
-      <div className="rounded-2xl border border-line bg-[color-mix(in_oklch,var(--surface)_90%,transparent)] p-5 shadow-sm sm:p-6">
-        <h2 className="text-xl font-bold text-ink">How to use this pack</h2>
-        <ul className="mt-3 list-inside list-disc space-y-1.5 text-sm text-muted">
-          <li>
-            <strong className="text-emerald-800">Way 1:</strong> After generating a lesson in{" "}
-            <em>Generate Lesson Plan</em>, use the button there to send your plan here, then click{" "}
-            <strong>Generate differentiated pack</strong> below.
-          </li>
-          <li>
-            <strong className="text-[var(--text)]">Way 2:</strong> Upload a PDF or Word (.docx) lesson plan,
-            extract text, optionally <strong>Auto-fill form</strong>, edit fields, then generate.
-          </li>
-        </ul>
-      </div>
+    <div className="mx-auto w-full max-w-[1100px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+      <PageTitle
+        title="New worksheet pack"
+        description="One topic becomes three worksheets — Foundation, Core and Extension — each with its own answer key and rubric."
+      />
+
+      {/* Two routes in, stated once. This was a bulleted "How to use this
+          pack" panel that explained the interface before the user had seen
+          it; it now sits as a quiet note above the form it describes. */}
+      <Notice>
+        Start from a lesson you already made — use <strong>Send to worksheet pack</strong> on a
+        generated lesson — or upload a PDF or Word lesson plan below and auto-fill the form from it.
+      </Notice>
 
       {fromLessonNotice ? (
         <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
