@@ -126,7 +126,7 @@
   /* The signature element: a ruled margin rail borrowed from a lesson
      planner's page. Its own tokens because it appears on canvas, on
      surfaces, and inside overlays, and has to hold at each. */
-  --rule: var(--l-gray-6);
+  --rule: var(--l-gray-7);
   --rule-active: var(--brand);
   --rail-num: var(--l-gray-9);
   --rail-num-active: var(--brand-text);
@@ -182,13 +182,13 @@
    use this.
    ========================================================================= */
 .dark {
-  --l-gray-1: oklch(0.268 0.010 210); /* raised */
-  --l-gray-2: oklch(0.238 0.009 210); /* surface */
-  --l-gray-3: oklch(0.212 0.009 210); /* canvas */
-  --l-gray-4: oklch(0.192 0.008 210); /* sunken */
+  --l-gray-1: oklch(0.288 0.010 210); /* raised */
+  --l-gray-2: oklch(0.252 0.009 210); /* surface */
+  --l-gray-3: oklch(0.198 0.009 210); /* canvas */
+  --l-gray-4: oklch(0.222 0.008 210); /* sunken */
   --l-gray-5: oklch(0.300 0.011 210); /* hover fill */
-  --l-gray-6: oklch(0.320 0.011 210); /* subtle border */
-  --l-gray-7: oklch(0.365 0.012 210); /* default border */
+  --l-gray-6: oklch(0.345 0.011 210); /* subtle border */
+  --l-gray-7: oklch(0.392 0.012 210); /* default border */
   --l-gray-8: oklch(0.435 0.014 210); /* strong border */
   --l-gray-9: oklch(0.545 0.015 208); /* disabled / placeholder */
   --l-gray-10: oklch(0.660 0.014 205); /* tertiary text */

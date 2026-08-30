@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { getVerifiedUser } from "@/lib/verified-user";
 import { MyLessonPlansList } from "@/components/lesson-plan/my-lesson-plans-list";
-import { Container } from "@/components/ui/container";
-import { FadeIn } from "@/components/ui/animate";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,13 +12,8 @@ export default async function MyLessonPlansPage() {
     redirect("/login");
   }
 
-  return (
-    <main className="min-h-screen pb-16 pt-10">
-      <Container>
-        <FadeIn>
-          <MyLessonPlansList />
-        </FadeIn>
-      </Container>
-    </main>
-  );
+  // The list owns its own page width and padding. The old `Container` +
+  // `FadeIn` wrapper added a second width cap on top of the frame's and faded
+  // the whole page in on every visit, which delayed content for no signal.
+  return <MyLessonPlansList />;
 }

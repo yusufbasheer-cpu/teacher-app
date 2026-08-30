@@ -381,3 +381,70 @@ export function RuleItem({
     </section>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Disclosure                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Optional section, collapsed by default.
+ *
+ * Progressive disclosure in place of the old three-step wizard: the optional
+ * parts of a generation (source material, teaching approach) are one click
+ * away on the same screen rather than a separate step everyone has to walk
+ * through. `summary` reports what is currently configured, so a collapsed
+ * section never hides state the user needs to know about.
+ */
+export function Disclosure({
+  title,
+  summary,
+  defaultOpen = false,
+  locked = false,
+  children,
+  className,
+}: {
+  title: React.ReactNode;
+  summary?: React.ReactNode;
+  defaultOpen?: boolean;
+  locked?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
+
+  return (
+    <div className={cn("rounded-lg border border-line-subtle bg-surface", className)}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        disabled={locked}
+        className={cn(
+          "flex w-full items-center gap-2 px-3.5 py-2.5 text-left",
+          "transition-colors duration-[110ms]",
+          !locked && "hover:bg-hover",
+          open ? "rounded-t-lg" : "rounded-lg",
+          locked && "cursor-not-allowed",
+        )}
+      >
+        <svg
+          viewBox="0 0 12 12"
+          aria-hidden
+          className={cn(
+            "size-3 shrink-0 text-faint transition-transform duration-[160ms]",
+            open && "rotate-90",
+          )}
+        >
+          <path d="M4 2.5L8 6l-4 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-medium text-ink">{title}</span>
+          {summary && !open ? (
+            <span className="mt-0.5 block truncate text-[11px] text-faint">{summary}</span>
+          ) : null}
+        </span>
+      </button>
+      {open ? <div className="border-t border-line-subtle px-3.5 py-3.5">{children}</div> : null}
+    </div>
+  );
+}
