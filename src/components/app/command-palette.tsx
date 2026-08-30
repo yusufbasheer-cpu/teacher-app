@@ -317,7 +317,9 @@ export function CommandPalette({
           </span>
           <span className="flex items-center gap-1.5 text-[11px] text-faint">
             <ArrowRight className="size-3" aria-hidden />
-            {lessons === null ? "Loading your lessons…" : `${lessons.length} lessons searchable`}
+            {lessons === null
+              ? "Loading your lessons…"
+              : `${lessons.length} lesson${lessons.length === 1 ? "" : "s"} searchable`}
           </span>
         </div>
       </div>
