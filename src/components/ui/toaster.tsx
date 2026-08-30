@@ -28,7 +28,7 @@ export function Toaster() {
           error: "!border-[#F0C6C6] !bg-[#FDF2F2] !text-[#7A2020]",
           success: "!border-[#BFE3D8] !bg-[#EEF7F4] !text-[#0E5B4E]",
           warning: "!border-[#EFD9A0] !bg-[#FDF6E9] !text-[#6B4E10]",
-          info: "!border-[rgba(14,148,132,0.3)] !bg-[#F1E9DC] !text-[#241A12]",
+          info: "!border-[color-mix(in oklch, var(--brand) 30%, transparent)] !bg-[var(--canvas)] !text-[var(--text)]",
         },
       }}
     />

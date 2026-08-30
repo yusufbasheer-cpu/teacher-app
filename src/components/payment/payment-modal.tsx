@@ -8,8 +8,8 @@ import { PRICING_REGIONS, formatRegionalPrice, type PaidPlanKey } from "@/lib/pr
 import { PLANS } from "@/lib/plans";
 import { useErrorToast } from "@/hooks/use-error-toast";
 
-const NAVY = "#241A12";
-const TEAL = "#0E9484";
+const NAVY = "var(--text)";
+const TEAL = "var(--brand)";
 
 export type UpgradePlanKey = "pro" | "proPlus";
 
@@ -259,19 +259,19 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
       {/* Backdrop */}
       <button
         type="button"
-        className="absolute inset-0 bg-[#241A12]/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-[color-mix(in_oklch,var(--text)_70%,transparent)] backdrop-blur-sm"
         aria-label="Close"
         onClick={onClose}
       />
 
       <div
-        className="relative w-full max-w-md rounded-3xl border bg-[#FAF6EF] shadow-2xl"
-        style={{ borderColor: "rgba(14, 148, 132,0.3)" }}
+        className="relative w-full max-w-md rounded-3xl border bg-[var(--surface)] shadow-2xl"
+        style={{ borderColor: "color-mix(in oklch, var(--brand) 30%, transparent)" }}
       >
         {/* Header */}
         <div
           className="flex items-center justify-between rounded-t-3xl px-6 py-5"
-          style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #3a2a1e 100%)` }}
+          style={{ background: `linear-gradient(135deg, ${NAVY} 0%, var(--l-gray-11) 100%)` }}
         >
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: TEAL }}>
@@ -287,7 +287,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-white/60 transition hover:bg-surface/10 hover:text-white"
             aria-label="Close"
           >
             <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -300,7 +300,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
           {/* Billing toggle */}
           <div
             className="mb-5 inline-flex w-full rounded-xl p-1"
-            style={{ background: "#f1e9dc" }}
+            style={{ background: "var(--canvas)" }}
           >
             <button
               type="button"
@@ -308,7 +308,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
               className="flex-1 rounded-lg py-2 text-sm font-semibold transition"
               style={{
                 background: billing === "monthly" ? "#fff" : "transparent",
-                color: billing === "monthly" ? NAVY : "#7a6e5f",
+                color: billing === "monthly" ? NAVY : "var(--text-secondary)",
                 boxShadow: billing === "monthly" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
               }}
             >
@@ -320,14 +320,14 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
               className="flex-1 rounded-lg py-2 text-sm font-semibold transition"
               style={{
                 background: billing === "annual" ? "#fff" : "transparent",
-                color: billing === "annual" ? NAVY : "#7a6e5f",
+                color: billing === "annual" ? NAVY : "var(--text-secondary)",
                 boxShadow: billing === "annual" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
               }}
             >
               Annual
               <span
                 className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase"
-                style={{ background: "rgba(14, 148, 132,0.15)", color: "#0B6B5F" }}
+                style={{ background: "color-mix(in oklch, var(--brand) 15%, transparent)", color: "var(--brand-active)" }}
               >
                 -17%
               </span>
@@ -335,29 +335,29 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
           </div>
 
           {/* Price */}
-          <div className="mb-5 rounded-2xl p-4" style={{ background: "#f1e9dc", border: "1px solid rgba(14, 148, 132,0.15)" }}>
+          <div className="mb-5 rounded-2xl p-4" style={{ background: "var(--canvas)", border: "1px solid color-mix(in oklch, var(--brand) 15%, transparent)" }}>
             <div className="flex items-end justify-between">
               <div>
                 <p className="text-3xl font-extrabold tracking-tight" style={{ color: NAVY }}>
                   {formatRegionalPrice(INR_REGION, amount, period)}
                 </p>
-                <p className="mt-1 text-xs font-medium" style={{ color: "#7a6e5f" }}>
+                <p className="mt-1 text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
                   {plan.generations}
                 </p>
               </div>
               {billing === "annual" && (
-                <p className="text-xs font-semibold" style={{ color: "#0B6B5F" }}>
+                <p className="text-xs font-semibold" style={{ color: "var(--brand-active)" }}>
                   2 months free
                 </p>
               )}
             </div>
             {!isIndia && (
-              <p className="mt-2 text-[11px]" style={{ color: "#a79a87" }}>
+              <p className="mt-2 text-[11px]" style={{ color: "var(--text-disabled)" }}>
                 Billed in Indian Rupees (INR) via Razorpay, regardless of your local currency shown elsewhere.
               </p>
             )}
             {isProMonthlySubscription && (
-              <p className="mt-2 text-[11px]" style={{ color: "#a79a87" }}>
+              <p className="mt-2 text-[11px]" style={{ color: "var(--text-disabled)" }}>
                 Auto-renews every 30 days until cancelled. Manage or cancel anytime from Settings.
               </p>
             )}
@@ -366,7 +366,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
           {/* Features */}
           <ul className="mb-5 space-y-2">
             {plan.features.map((f) => (
-              <li key={f} className="flex items-center gap-2 text-sm" style={{ color: "#2b2118" }}>
+              <li key={f} className="flex items-center gap-2 text-sm" style={{ color: "var(--text)" }}>
                 <CheckIcon />
                 {f}
               </li>
@@ -377,11 +377,11 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
           {status === "success" ? (
             <div
               className="rounded-2xl p-5 text-center"
-              style={{ background: "rgba(14, 148, 132,0.08)", border: "1px solid rgba(14, 148, 132,0.3)" }}
+              style={{ background: "color-mix(in oklch, var(--brand) 8%, transparent)", border: "1px solid color-mix(in oklch, var(--brand) 30%, transparent)" }}
             >
               <div
                 className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl"
-                style={{ background: "rgba(14, 148, 132,0.15)" }}
+                style={{ background: "color-mix(in oklch, var(--brand) 15%, transparent)" }}
               >
                 <CheckIcon />
               </div>
@@ -390,7 +390,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
                   ? "Your Pro subscription is active!"
                   : "Your plan has been upgraded successfully!"}
               </p>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                 Refresh the page to see your new limits and unlocked features.
               </p>
               <button
@@ -423,7 +423,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
                   type="button"
                   onClick={() => handlePayClick("upi")}
                   disabled={status === "loading"}
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold transition hover:bg-stone-50 disabled:opacity-60"
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold transition hover:bg-hover disabled:opacity-60"
                   style={{ borderColor: "#5F259F", color: "#5F259F" }}
                 >
                   <UpiIcon />
@@ -431,7 +431,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
                 </button>
               )}
 
-              <p className="flex items-center justify-center gap-1.5 text-xs" style={{ color: "#a79a87" }}>
+              <p className="flex items-center justify-center gap-1.5 text-xs" style={{ color: "var(--text-disabled)" }}>
                 <LockIcon />
                 Secure payment · Cancel anytime
               </p>

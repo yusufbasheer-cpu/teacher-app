@@ -11,8 +11,8 @@ import { PLANS } from "@/lib/plans";
 import { getUpgradePlan, UPGRADE_COPY } from "@/components/usage/upgrade-usage-indicator";
 import { WaitlistModal } from "@/components/payment/waitlist-modal";
 
-const TEAL = "#0E9484";
-const NAVY = "#241A12";
+const TEAL = "var(--brand)";
+const NAVY = "var(--text)";
 
 function initialsFor(user: User): string {
   const name = (user.user_metadata?.full_name as string | undefined)?.trim();
@@ -93,7 +93,7 @@ export function UserMenu({ user, collapsed = false }: Props) {
         onClick={() => setOpen((prev) => !prev)}
         aria-label="Account menu"
         aria-expanded={open}
-        className="flex w-full items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-left transition hover:bg-white/8"
+        className="flex w-full items-center gap-2.5 rounded-xl px-1.5 py-1.5 text-left transition hover:bg-surface/8"
       >
         <span
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
@@ -122,19 +122,19 @@ export function UserMenu({ user, collapsed = false }: Props) {
 
       {open ? (
         <div
-          className="absolute bottom-full z-50 mb-2 w-64 rounded-2xl border bg-[#FAF6EF] p-4 shadow-lg"
-          style={{ borderColor: "rgba(14, 148, 132,0.2)", left: collapsed ? "calc(100% + 8px)" : 0 }}
+          className="absolute bottom-full z-50 mb-2 w-64 rounded-2xl border bg-[var(--surface)] p-4 shadow-lg"
+          style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)", left: collapsed ? "calc(100% + 8px)" : 0 }}
         >
           <p className="truncate text-sm font-semibold" style={{ color: NAVY }}>
             {displayName}
           </p>
-          <p className="mt-0.5 truncate text-xs" style={{ color: "#7a6e5f" }}>
+          <p className="mt-0.5 truncate text-xs" style={{ color: "var(--text-secondary)" }}>
             {user.email}
           </p>
 
           <div
             className="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-            style={{ background: "rgba(14, 148, 132,0.1)", color: "#0B6B5F" }}
+            style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: "var(--brand-active)" }}
           >
             {planLabel ?? "—"} plan
           </div>
@@ -157,7 +157,7 @@ export function UserMenu({ user, collapsed = false }: Props) {
             href="/pricing"
             onClick={() => setOpen(false)}
             className="mt-2 flex w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition hover:opacity-70"
-            style={{ color: "#2b2118", border: "1px solid #E5E7EB" }}
+            style={{ color: "var(--text)", border: "1px solid #E5E7EB" }}
           >
             View plans
           </Link>

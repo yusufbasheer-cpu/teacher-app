@@ -16,7 +16,7 @@ export function LockedPageState({ title, description, onUpgrade }: LockedPageSta
     <div className="mx-auto w-full max-w-lg py-16 text-center">
       <div
         className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
-        style={{ background: "rgba(14, 148, 132,0.1)" }}
+        style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)" }}
       >
         <Sparkles size={26} color={TEAL} aria-hidden />
       </div>

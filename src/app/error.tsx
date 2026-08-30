@@ -20,12 +20,12 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#FAF6EF] p-8 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--surface)] p-8 text-center">
       <p className="text-3xl">⚠️</p>
-      <h1 className="text-xl font-semibold" style={{ color: "#241A12" }}>
+      <h1 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
         Something went wrong
       </h1>
-      <p className="max-w-md text-sm text-stone-600">
+      <p className="max-w-md text-sm text-muted">
         This page ran into an unexpected error. It has been reported — please try again.
       </p>
       <div className="mt-2 flex gap-3">
@@ -33,13 +33,13 @@ export default function Error({
           type="button"
           onClick={reset}
           className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
-          style={{ backgroundColor: "#0E9484" }}
+          style={{ backgroundColor: "var(--brand)" }}
         >
           Try again
         </button>
         <Link
           href="/"
-          className="rounded-xl border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+          className="rounded-xl border border-line px-4 py-2 text-sm font-medium text-muted hover:bg-hover"
         >
           Go home
         </Link>

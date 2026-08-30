@@ -242,18 +242,18 @@ export function PageLoader({ label = "Loading…", className = "" }: PageLoaderP
     <div className={`flex items-center justify-center gap-3 py-1 ${className}`} role="status" aria-live="polite">
       <span className="relative h-5 w-5 shrink-0" aria-hidden="true">
         <motion.span
-          className="absolute inset-0 rounded-full border-2 border-[#0E9484]/15 border-t-[#0E9484]"
+          className="absolute inset-0 rounded-full border-2 border-[color-mix(in_oklch,var(--brand)_15%,transparent)] border-t-[var(--brand)]"
           animate={{ rotate: 360 }}
           transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
         />
         <motion.span
-          className="absolute inset-[3px] rounded-full border-2 border-transparent border-b-[#0E9484]/50"
+          className="absolute inset-[3px] rounded-full border-2 border-transparent border-b-[color-mix(in_oklch,var(--brand)_50%,transparent)]"
           animate={{ rotate: -360 }}
           transition={{ duration: 1.3, repeat: Infinity, ease: "linear" }}
         />
       </span>
       <motion.span
-        className="text-sm text-stone-600"
+        className="text-sm text-muted"
         animate={{ opacity: [0.55, 1, 0.55] }}
         transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
       >
@@ -289,13 +289,13 @@ export function BrandLoader({ label = "Loading…", sublabel, className = "" }: 
       <div className="relative flex h-20 w-20 items-center justify-center">
         <motion.span
           className="absolute inset-0 rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(14,148,132,0.22), transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, color-mix(in oklch, var(--brand) 22%, transparent), transparent 70%)" }}
           animate={{ opacity: [0.5, 1, 0.5], scale: [0.9, 1.05, 0.9] }}
           transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           aria-hidden="true"
         />
         <motion.span
-          className="absolute inset-0 rounded-full border-2 border-dashed border-[#0E9484]/35"
+          className="absolute inset-0 rounded-full border-2 border-dashed border-[color-mix(in_oklch,var(--brand)_35%,transparent)]"
           animate={{ rotate: 360 }}
           transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
           aria-hidden="true"
@@ -312,14 +312,14 @@ export function BrandLoader({ label = "Loading…", sublabel, className = "" }: 
       <div className="flex flex-col items-center gap-1 text-center">
         <motion.span
           className="text-sm font-semibold"
-          style={{ color: "#241A12" }}
+          style={{ color: "var(--text)" }}
           animate={{ opacity: [0.6, 1, 0.6] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
         >
           {label}
         </motion.span>
         {sublabel ? (
-          <span className="text-xs" style={{ color: "#6B5D4F" }}>
+          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
             {sublabel}
           </span>
         ) : null}

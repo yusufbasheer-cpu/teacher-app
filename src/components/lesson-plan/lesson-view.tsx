@@ -93,7 +93,7 @@ export function LessonView({ id }: { id: string }) {
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+        <div className="rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
           <PageLoader label="Loading lesson…" />
         </div>
       </div>
@@ -103,12 +103,12 @@ export function LessonView({ id }: { id: string }) {
   if (!user) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-stone-900">Login Required</h2>
-          <p className="mt-2 text-sm text-stone-600">Please login to view your saved lesson plans.</p>
+        <div className="rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-ink">Login Required</h2>
+          <p className="mt-2 text-sm text-muted">Please login to view your saved lesson plans.</p>
           <Link
             href="/login"
-            className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
+            className="mt-5 inline-flex rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-active)]"
           >
             Go to Login
           </Link>
@@ -120,7 +120,7 @@ export function LessonView({ id }: { id: string }) {
   if (error || !lesson || !lessonPlan) {
     return (
       <div className="mx-auto w-full max-w-7xl space-y-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/my-lesson-plans" className="text-sm font-medium text-[#0E9484] hover:underline">
+        <Link href="/my-lesson-plans" className="text-sm font-medium text-[var(--brand)] hover:underline">
           ← Back to My Lessons
         </Link>
         <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 shadow-sm">
@@ -217,44 +217,44 @@ export function LessonView({ id }: { id: string }) {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Link
             href="/my-lesson-plans"
-            className="text-sm font-medium text-[#0E9484] hover:underline"
+            className="text-sm font-medium text-[var(--brand)] hover:underline"
           >
             ← Back to My Lessons
           </Link>
           <Link
             href={regenerateUrl}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-active)]"
           >
             Regenerate Lesson
           </Link>
         </div>
 
         {/* Metadata card */}
-        <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-          <h2 className="text-2xl font-bold text-stone-900">{displayTitle}</h2>
+        <div className="rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
+          <h2 className="text-2xl font-bold text-ink">{displayTitle}</h2>
           {displayTopicNote ? (
-            <p className="mt-1 text-sm text-stone-500">Topic: {displayTopicNote}</p>
+            <p className="mt-1 text-sm text-faint">Topic: {displayTopicNote}</p>
           ) : null}
-          <p className="mt-1 text-sm text-stone-500">Saved {dateStr}</p>
+          <p className="mt-1 text-sm text-faint">Saved {dateStr}</p>
           <dl className="mt-5 grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-500">Subject</dt>
-              <dd className="mt-1 text-sm font-medium text-stone-900">{lesson.subject}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">Subject</dt>
+              <dd className="mt-1 text-sm font-medium text-ink">{lesson.subject}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-500">Grade</dt>
-              <dd className="mt-1 text-sm font-medium text-stone-900">{lesson.grade}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">Grade</dt>
+              <dd className="mt-1 text-sm font-medium text-ink">{lesson.grade}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-500">Curriculum</dt>
-              <dd className="mt-1 text-sm font-medium text-stone-900">{lesson.curriculum || "—"}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">Curriculum</dt>
+              <dd className="mt-1 text-sm font-medium text-ink">{lesson.curriculum || "—"}</dd>
             </div>
             {lesson.learning_objectives ? (
               <div className="sm:col-span-2">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
                   Learning Objectives
                 </dt>
-                <dd className="mt-1 whitespace-pre-wrap text-sm text-stone-900">
+                <dd className="mt-1 whitespace-pre-wrap text-sm text-ink">
                   {lesson.learning_objectives}
                 </dd>
               </div>
@@ -263,7 +263,7 @@ export function LessonView({ id }: { id: string }) {
         </div>
 
         {successMessage ? (
-          <div className="rounded-xl border border-[#0E9484]/30 bg-[#0E9484]/5 px-4 py-3 text-sm text-[#0E9484]">
+          <div className="rounded-xl border border-[color-mix(in_oklch,var(--brand)_30%,transparent)] bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] px-4 py-3 text-sm text-[var(--brand)]">
             {successMessage}
           </div>
         ) : null}

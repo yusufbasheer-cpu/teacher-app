@@ -55,7 +55,7 @@ function StatCard({ stat, inView }: { stat: Stat; inView: boolean }) {
   const count = useCountUp(stat.value, 1500, inView);
 
   return (
-    <Card className="items-center border border-border bg-[#FFFCF7] py-7 text-center shadow-sm ring-0 transition-shadow duration-300 hover:shadow-md">
+    <Card className="items-center border border-border bg-[var(--surface-raised)] py-7 text-center shadow-sm ring-0 transition-shadow duration-300 hover:shadow-md">
       <p className="font-display text-4xl font-semibold tracking-tight text-primary sm:text-5xl">
         {count}
         {stat.suffix}

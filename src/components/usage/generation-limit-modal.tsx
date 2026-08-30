@@ -6,8 +6,8 @@ import { getUpgradePlan } from "@/components/usage/upgrade-usage-indicator";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 import { PLANS } from "@/lib/plans";
 
-const NAVY = "#241A12";
-const TEAL = "#0E9484";
+const NAVY = "var(--text)";
+const TEAL = "var(--brand)";
 
 type GenerationLimitModalProps = {
   open: boolean;
@@ -41,17 +41,17 @@ export function GenerationLimitModal({
     >
       <button
         type="button"
-        className="absolute inset-0 bg-[#241A12]/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-[color-mix(in_oklch,var(--text)_60%,transparent)] backdrop-blur-sm"
         aria-label="Close"
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-md rounded-3xl border bg-[#FAF6EF] p-8 shadow-2xl"
-        style={{ borderColor: "rgba(14, 148, 132,0.35)" }}
+        className="relative w-full max-w-md rounded-3xl border bg-[var(--surface)] p-8 shadow-2xl"
+        style={{ borderColor: "color-mix(in oklch, var(--brand) 35%, transparent)" }}
       >
         <div
           className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
-          style={{ background: "rgba(14, 148, 132,0.12)" }}
+          style={{ background: "color-mix(in oklch, var(--brand) 12%, transparent)" }}
         >
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path
@@ -67,7 +67,7 @@ export function GenerationLimitModal({
           Monthly limit reached
         </h2>
 
-        <p className="mt-3 text-center text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
+        <p className="mt-3 text-center text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
           You have used all {limit} generations for this month.
           {used >= limit ? ` (${used} of ${limit} used)` : null}
         </p>
@@ -89,8 +89,8 @@ export function GenerationLimitModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition hover:bg-stone-50"
-            style={{ borderColor: "#D9CCB8", color: "#6B5D4F" }}
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition hover:bg-hover"
+            style={{ borderColor: "#D9CCB8", color: "var(--text-secondary)" }}
           >
             Maybe Later
           </button>

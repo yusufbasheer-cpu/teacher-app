@@ -3,7 +3,7 @@
 import { formatLimitMessage } from "@/lib/user-usage";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 
-const TEAL = "#0E9484";
+const TEAL = "var(--brand)";
 
 type GenerationUsageIndicatorProps = {
   usage: UserUsageSnapshot | null;
@@ -14,10 +14,10 @@ export function GenerationUsageIndicator({ usage, loading }: GenerationUsageIndi
   if (loading) {
     return (
       <div
-        className="rounded-2xl border bg-[#FAF6EF]/90 px-4 py-3 text-sm shadow-sm"
-        style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
+        className="rounded-2xl border bg-[color-mix(in_oklch,var(--surface)_90%,transparent)] px-4 py-3 text-sm shadow-sm"
+        style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
       >
-        <span style={{ color: "#7a6e5f" }}>Loading usage…</span>
+        <span style={{ color: "var(--text-secondary)" }}>Loading usage…</span>
       </div>
     );
   }
@@ -37,11 +37,11 @@ export function GenerationUsageIndicator({ usage, loading }: GenerationUsageIndi
 
   return (
     <div
-      className="rounded-2xl border bg-[#FAF6EF]/90 px-4 py-3 shadow-sm"
-      style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
+      className="rounded-2xl border bg-[color-mix(in_oklch,var(--surface)_90%,transparent)] px-4 py-3 shadow-sm"
+      style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium" style={{ color: "#241A12" }}>
+        <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
           {label}
         </p>
         {!usage.unlimited && usage.generationsLimit != null ? (
@@ -57,7 +57,7 @@ export function GenerationUsageIndicator({ usage, loading }: GenerationUsageIndi
       {!usage.unlimited && usage.generationsLimit != null ? (
         <div
           className="mt-2 h-2 overflow-hidden rounded-full"
-          style={{ background: "rgba(14, 148, 132,0.12)" }}
+          style={{ background: "color-mix(in oklch, var(--brand) 12%, transparent)" }}
           role="progressbar"
           aria-valuenow={usage.generationsUsed}
           aria-valuemin={0}

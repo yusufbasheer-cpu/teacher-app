@@ -3,8 +3,8 @@
 import type { HodDashboardData } from "@/lib/hod-server";
 import { resolveLessonTitle, resolveLessonTopicNote } from "@/lib/lesson-plan";
 
-const TEAL = "#0E9484";
-const NAVY = "#241A12";
+const TEAL = "var(--brand)";
+const NAVY = "var(--text)";
 
 function formatDate(iso: string): string {
   try {
@@ -31,8 +31,8 @@ type StatCardProps = {
 function StatCard({ label, value, sub }: StatCardProps) {
   return (
     <div
-      className="rounded-2xl bg-[#FAF6EF] p-5 shadow-sm"
-      style={{ border: "1px solid rgba(14, 148, 132,0.2)" }}
+      className="rounded-2xl bg-[var(--surface)] p-5 shadow-sm"
+      style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
     >
       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: TEAL }}>
         {label}
@@ -107,8 +107,8 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
 
         {departmentTeachers.length === 0 ? (
           <div
-            className="rounded-2xl bg-[#FAF6EF] px-6 py-10 text-center shadow-sm"
-            style={{ border: "1px solid rgba(14, 148, 132,0.2)" }}
+            className="rounded-2xl bg-[var(--surface)] px-6 py-10 text-center shadow-sm"
+            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
             <p className="text-sm" style={{ color: "#6B7280" }}>
               No teachers have been assigned to this department yet.
@@ -119,8 +119,8 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
           </div>
         ) : (
           <div
-            className="overflow-hidden rounded-2xl bg-[#FAF6EF] shadow-sm"
-            style={{ border: "1px solid rgba(14, 148, 132,0.2)" }}
+            className="overflow-hidden rounded-2xl bg-[var(--surface)] shadow-sm"
+            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
             <table className="w-full text-sm">
               <thead>
@@ -168,7 +168,7 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
                         style={{
                           background:
                             teacher.generationsUsedThisMonth > 0
-                              ? "rgba(14, 148, 132,0.12)"
+                              ? "color-mix(in oklch, var(--brand) 12%, transparent)"
                               : "#F3F4F6",
                           color:
                             teacher.generationsUsedThisMonth > 0 ? TEAL : "#9CA3AF",
@@ -193,8 +193,8 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
 
         {recentLessons.length === 0 ? (
           <div
-            className="rounded-2xl bg-[#FAF6EF] px-6 py-10 text-center shadow-sm"
-            style={{ border: "1px solid rgba(14, 148, 132,0.2)" }}
+            className="rounded-2xl bg-[var(--surface)] px-6 py-10 text-center shadow-sm"
+            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
             <p className="text-sm" style={{ color: "#6B7280" }}>
               No lesson plans generated yet in this department.
@@ -202,8 +202,8 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
           </div>
         ) : (
           <div
-            className="overflow-hidden rounded-2xl bg-[#FAF6EF] shadow-sm"
-            style={{ border: "1px solid rgba(14, 148, 132,0.2)" }}
+            className="overflow-hidden rounded-2xl bg-[var(--surface)] shadow-sm"
+            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
             <table className="w-full text-sm">
               <thead>

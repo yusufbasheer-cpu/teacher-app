@@ -58,7 +58,7 @@ function GoogleLogo() {
 function GoogleSpinner() {
   return (
     <svg
-      className="size-5 animate-spin text-stone-500"
+      className="size-5 animate-spin text-faint"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden
@@ -351,9 +351,9 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const footerPrefix = mode === "login" ? "Need an account?" : "Already have an account?";
   const footerAction = mode === "login" ? "Sign up" : "Login";
   const inputClass =
-    "w-full rounded-[14px] border bg-white px-4 py-3.5 text-sm outline-none transition placeholder:text-stone-400";
-  const inputStyle = { borderColor: "#D9CCB8", color: "#241A12" };
-  const onInputFocus = (e: React.FocusEvent<HTMLInputElement>) => (e.target.style.borderColor = "#0E9484");
+    "w-full rounded-[14px] border bg-surface px-4 py-3.5 text-sm outline-none transition placeholder:text-faint";
+  const inputStyle = { borderColor: "#D9CCB8", color: "var(--text)" };
+  const onInputFocus = (e: React.FocusEvent<HTMLInputElement>) => (e.target.style.borderColor = "var(--brand)");
   const onInputBlur = (e: React.FocusEvent<HTMLInputElement>) => (e.target.style.borderColor = "#D9CCB8");
 
   return (
@@ -364,10 +364,10 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       className="w-full max-w-[400px]"
     >
       <motion.div variants={itemVariants} className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#241A12" }}>
+        <h1 className="text-3xl font-bold tracking-tight" style={{ color: "var(--text)" }}>
           {mode === "login" ? "Teacher Login" : "Create Teacher Account"}
         </h1>
-        <p className="mt-2 text-sm" style={{ color: "#6B5D4F" }}>
+        <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
           {mode === "login"
             ? "Login to access your lesson plans."
             : "Tell us a bit about yourself to get started."}
@@ -379,24 +379,24 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           type="button"
           onClick={() => void onGoogleSignIn()}
           disabled={loading || googleLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-full border bg-white py-3.5 text-[13px] font-semibold transition-transform hover:bg-stone-50 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-70"
-          style={{ borderColor: "#dadce0", color: "#241A12" }}
+          className="flex w-full items-center justify-center gap-3 rounded-full border bg-surface py-3.5 text-[13px] font-semibold transition-transform hover:bg-hover active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-70"
+          style={{ borderColor: "#dadce0", color: "var(--text)" }}
         >
           {googleLoading ? <GoogleSpinner /> : <GoogleLogo />}
           <span>{googleLoading ? "Connecting…" : "Continue with Google"}</span>
         </button>
 
-        <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: "#7a6e5f" }}>
+        <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
           School teachers: Sign in with your school Google account to access your school plan
         </p>
       </motion.div>
 
       <motion.div variants={itemVariants} className="relative mb-6 flex items-center">
-        <div className="grow border-t" style={{ borderColor: "#E3D9C8" }} />
-        <span className="px-4 text-[11px] font-semibold tracking-wider uppercase" style={{ color: "#a79a87" }}>
+        <div className="grow border-t" style={{ borderColor: "var(--border)" }} />
+        <span className="px-4 text-[11px] font-semibold tracking-wider uppercase" style={{ color: "var(--text-disabled)" }}>
           Or
         </span>
-        <div className="grow border-t" style={{ borderColor: "#E3D9C8" }} />
+        <div className="grow border-t" style={{ borderColor: "var(--border)" }} />
       </motion.div>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-5">
@@ -414,7 +414,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
 
         {mode === "signup" && (
           <motion.div variants={itemVariants} className="flex flex-col gap-2">
-            <label htmlFor="full-name" className="text-sm font-medium" style={{ color: "#241A12" }}>
+            <label htmlFor="full-name" className="text-sm font-medium" style={{ color: "var(--text)" }}>
               Full name
             </label>
             <input
@@ -433,7 +433,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           </motion.div>
         )}
 
-        <motion.div variants={itemVariants} className="flex gap-1 rounded-full p-1" style={{ background: "rgba(14, 148, 132,0.08)" }}>
+        <motion.div variants={itemVariants} className="flex gap-1 rounded-full p-1" style={{ background: "color-mix(in oklch, var(--brand) 8%, transparent)" }}>
           {(["email", "phone"] as const).map((option) => (
             <button
               key={option}
@@ -441,8 +441,8 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
               onClick={() => setIdentifier(option)}
               className="flex-1 rounded-full py-1.5 text-xs font-semibold capitalize transition"
               style={{
-                background: identifier === option ? "#FAF6EF" : "transparent",
-                color: identifier === option ? "#0E9484" : "#7a6e5f",
+                background: identifier === option ? "var(--surface)" : "transparent",
+                color: identifier === option ? "var(--brand)" : "var(--text-secondary)",
                 boxShadow: identifier === option ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
               }}
             >
@@ -453,7 +453,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
 
         {identifier === "email" ? (
           <motion.div variants={itemVariants} className="flex flex-col gap-2">
-            <label htmlFor="email" className="text-sm font-medium" style={{ color: "#241A12" }}>
+            <label htmlFor="email" className="text-sm font-medium" style={{ color: "var(--text)" }}>
               Email
             </label>
             <input
@@ -472,7 +472,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           </motion.div>
         ) : (
           <motion.div variants={itemVariants} className="flex flex-col gap-2">
-            <label htmlFor="phone" className="text-sm font-medium" style={{ color: "#241A12" }}>
+            <label htmlFor="phone" className="text-sm font-medium" style={{ color: "var(--text)" }}>
               Phone number
             </label>
             <input
@@ -494,7 +494,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
         )}
 
         <motion.div variants={itemVariants} className="flex flex-col gap-2">
-          <label htmlFor="password" className="text-sm font-medium" style={{ color: "#241A12" }}>
+          <label htmlFor="password" className="text-sm font-medium" style={{ color: "var(--text)" }}>
             Password
           </label>
           <input
@@ -526,8 +526,8 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           <button
             type="submit"
             disabled={loading || googleLoading}
-            className="w-full rounded-full py-3.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(14,148,132,0.15)] transition-transform hover:opacity-90 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-70"
-            style={{ background: "#0E9484" }}
+            className="w-full rounded-full py-3.5 text-sm font-semibold text-white shadow-[0_0_20px_color-mix(in oklch, var(--brand) 15%, transparent)] transition-transform hover:opacity-90 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-70"
+            style={{ background: "var(--brand)" }}
           >
             {loading
               ? "Please wait..."
@@ -545,20 +545,20 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           onClick={() => void onResendConfirmation()}
           disabled={resendLoading}
           className="mt-2 text-sm font-medium underline transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-70"
-          style={{ color: "#0E9484" }}
+          style={{ color: "var(--brand)" }}
         >
           {resendLoading ? "Sending…" : "Resend confirmation email"}
         </button>
       ) : null}
-      {message ? <p className="mt-3 text-sm" style={{ color: "#0B6B5F" }}>{message}</p> : null}
+      {message ? <p className="mt-3 text-sm" style={{ color: "var(--brand-active)" }}>{message}</p> : null}
 
-      <motion.div variants={itemVariants} className="mt-6 text-center text-[13px]" style={{ color: "#6B5D4F" }}>
+      <motion.div variants={itemVariants} className="mt-6 text-center text-[13px]" style={{ color: "var(--text-secondary)" }}>
         {footerPrefix}{" "}
         {linkMode ? (
           <Link
             href={mode === "login" ? "/signup" : "/login"}
             className="font-bold transition hover:underline"
-            style={{ color: "#241A12" }}
+            style={{ color: "var(--text)" }}
           >
             {footerAction}
           </Link>
@@ -578,7 +578,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
               setShowResend(false);
             }}
             className="font-bold transition hover:underline"
-            style={{ color: "#241A12" }}
+            style={{ color: "var(--text)" }}
           >
             {footerAction}
           </button>

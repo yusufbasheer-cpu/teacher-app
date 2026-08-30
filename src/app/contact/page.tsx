@@ -7,8 +7,8 @@ import { Footer } from "@/components/layout/footer";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { toUserFacingError } from "@/lib/user-facing-errors";
 
-const NAVY = "#241A12";
-const TEAL = "#0E9484";
+const NAVY = "var(--text)";
+const TEAL = "var(--brand)";
 
 const SUBJECTS = ["General Inquiry", "School Plans", "Technical Support", "Feedback"];
 
@@ -77,13 +77,13 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "#F1E9DC", color: NAVY }}>
+    <div className="min-h-screen" style={{ background: "var(--canvas)", color: NAVY }}>
       {/* Hero */}
       <section className="relative overflow-hidden py-20 sm:py-28" style={{ background: NAVY }}>
-        <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 70% 50%, ${TEAL}33, transparent 60%)` }} />
+        <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 70% 50%, color-mix(in oklch, var(--brand) 20%, transparent), transparent 60%)` }} />
         <Container>
           <div className="relative mx-auto max-w-3xl text-center">
-            <p className="mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider" style={{ background: "rgba(14, 148, 132,0.15)", color: TEAL }}>
+            <p className="mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider" style={{ background: "color-mix(in oklch, var(--brand) 15%, transparent)", color: TEAL }}>
               Contact Us
             </p>
             <h1 className="text-3xl font-bold tracking-tight text-white sm:text-5xl" style={{ fontWeight: 700 }}>
@@ -102,19 +102,19 @@ export default function ContactPage() {
           <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-5">
             {/* Details card */}
             <div className="lg:col-span-2">
-              <div className="rounded-2xl border bg-[#FAF6EF] p-6 shadow-sm sm:p-8" style={{ borderColor: "rgba(14, 148, 132,0.15)" }}>
+              <div className="rounded-2xl border bg-[var(--surface)] p-6 shadow-sm sm:p-8" style={{ borderColor: "color-mix(in oklch, var(--brand) 15%, transparent)" }}>
                 <h2 className="text-lg font-bold" style={{ color: NAVY }}>Get in Touch</h2>
-                <p className="mt-2 text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
+                <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                   We are here to help. Reach out through any of these channels.
                 </p>
                 <div className="mt-6 space-y-5">
                   {CONTACT_INFO.map((item) => (
                     <div key={item.label} className="flex gap-4">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl" style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL }}>
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl" style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL }}>
                         <item.icon />
                       </div>
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#A79A87" }}>{item.label}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-disabled)" }}>{item.label}</p>
                         {item.href ? (
                           <a href={item.href} className="text-sm font-medium transition hover:opacity-80" style={{ color: TEAL }}>{item.value}</a>
                         ) : (
@@ -125,8 +125,8 @@ export default function ContactPage() {
                   ))}
                 </div>
 
-                <div className="mt-8 border-t pt-6" style={{ borderColor: "#E3D9C8" }}>
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#A79A87" }}>Follow Us</p>
+                <div className="mt-8 border-t pt-6" style={{ borderColor: "var(--border)" }}>
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-disabled)" }}>Follow Us</p>
                   <div className="flex gap-3">
                     {SOCIAL_LINKS.map((link) => (
                       <a
@@ -135,7 +135,7 @@ export default function ContactPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="rounded-lg px-3 py-1.5 text-xs font-medium transition hover:opacity-80"
-                        style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL }}
+                        style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL }}
                       >
                         {link.label}
                       </a>
@@ -147,16 +147,16 @@ export default function ContactPage() {
 
             {/* Form */}
             <div className="lg:col-span-3">
-              <div className="rounded-2xl border bg-[#FAF6EF] p-6 shadow-sm sm:p-8" style={{ borderColor: "rgba(14, 148, 132,0.15)" }}>
+              <div className="rounded-2xl border bg-[var(--surface)] p-6 shadow-sm sm:p-8" style={{ borderColor: "color-mix(in oklch, var(--brand) 15%, transparent)" }}>
                 {sent ? (
                   <div className="py-12 text-center">
-                    <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full" style={{ background: "rgba(14, 148, 132,0.15)" }}>
+                    <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full" style={{ background: "color-mix(in oklch, var(--brand) 15%, transparent)" }}>
                       <svg className="size-8" fill="none" viewBox="0 0 24 24" stroke={TEAL} strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                       </svg>
                     </div>
                     <h3 className="text-xl font-bold" style={{ color: NAVY }}>Message Sent!</h3>
-                    <p className="mt-2 text-sm" style={{ color: "#6B5D4F" }}>
+                    <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
                       Thank you for reaching out. We will get back to you within 24 hours.
                     </p>
                     <Link href="/" className="mt-6 inline-flex rounded-lg px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: TEAL }}>
@@ -166,7 +166,7 @@ export default function ContactPage() {
                 ) : (
                   <>
                     <h2 className="text-lg font-bold" style={{ color: NAVY }}>Send us a message</h2>
-                    <p className="mt-1 text-sm" style={{ color: "#6B5D4F" }}>
+                    <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
                       Fill out the form below and we will respond as soon as possible.
                     </p>
                     <form onSubmit={handleSubmit} className="mt-6 space-y-5">
@@ -179,7 +179,7 @@ export default function ContactPage() {
                           value={form.name}
                           onChange={(e) => setForm({ ...form, name: e.target.value })}
                           className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition focus:ring-2"
-                          style={{ borderColor: "#E3D9C8", color: NAVY }}
+                          style={{ borderColor: "var(--border)", color: NAVY }}
                           placeholder="Your name"
                         />
                       </div>
@@ -192,7 +192,7 @@ export default function ContactPage() {
                           value={form.email}
                           onChange={(e) => setForm({ ...form, email: e.target.value })}
                           className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition focus:ring-2"
-                          style={{ borderColor: "#E3D9C8", color: NAVY }}
+                          style={{ borderColor: "var(--border)", color: NAVY }}
                           placeholder="you@example.com"
                         />
                       </div>
@@ -203,7 +203,7 @@ export default function ContactPage() {
                           value={form.subject}
                           onChange={(e) => setForm({ ...form, subject: e.target.value })}
                           className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition focus:ring-2"
-                          style={{ borderColor: "#E3D9C8", color: NAVY }}
+                          style={{ borderColor: "var(--border)", color: NAVY }}
                         >
                           {SUBJECTS.map((s) => (
                             <option key={s} value={s}>{s}</option>
@@ -219,7 +219,7 @@ export default function ContactPage() {
                           value={form.message}
                           onChange={(e) => setForm({ ...form, message: e.target.value })}
                           className="w-full resize-none rounded-lg border px-4 py-2.5 text-sm outline-none transition focus:ring-2"
-                          style={{ borderColor: "#E3D9C8", color: NAVY }}
+                          style={{ borderColor: "var(--border)", color: NAVY }}
                           placeholder="How can we help you?"
                         />
                       </div>

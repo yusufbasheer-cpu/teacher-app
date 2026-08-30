@@ -14,7 +14,7 @@ export default function PrivacyPage() {
         Layah.ai provides AI-powered lesson planning and classroom resource tools for educators.
         This Privacy Policy explains how we collect, use, disclose, and safeguard information when
         you use our website and services at{" "}
-        <a href="https://layah.in" className="font-medium underline" style={{ color: "#0E9484" }}>
+        <a href="https://layah.in" className="font-medium underline" style={{ color: "var(--brand)" }}>
           layah.in
         </a>{" "}
         and related applications (collectively, the &quot;Service&quot;).
@@ -22,22 +22,22 @@ export default function PrivacyPage() {
 
       <LegalSection title="1. Information We Collect">
         <p>
-          <strong className="text-[#241A12]">Account information.</strong> When you register, we
+          <strong className="text-[var(--text)]">Account information.</strong> When you register, we
           collect your email address, authentication details, and profile information you provide
           (such as your name or school affiliation, if optional fields are completed).
         </p>
         <p>
-          <strong className="text-[#241A12]">Content you submit.</strong> We process lesson topics,
+          <strong className="text-[var(--text)]">Content you submit.</strong> We process lesson topics,
           curriculum details, uploaded documents (PDFs, images), generated lesson plans, worksheets,
           question papers, and other materials you create or upload through the Service.
         </p>
         <p>
-          <strong className="text-[#241A12]">Usage and technical data.</strong> We may collect log
+          <strong className="text-[var(--text)]">Usage and technical data.</strong> We may collect log
           data, device type, browser, IP address, pages visited, feature usage, and error reports to
           operate and improve the Service.
         </p>
         <p>
-          <strong className="text-[#241A12]">Payment information.</strong> If you purchase a paid
+          <strong className="text-[var(--text)]">Payment information.</strong> If you purchase a paid
           plan, payment processing is handled by our payment provider, Razorpay. We do not store full
           card, UPI, or bank details on our servers.
         </p>
@@ -76,15 +76,15 @@ export default function PrivacyPage() {
         <p>We may share information with:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
-            <strong className="text-[#241A12]">Service providers</strong> (hosting, authentication,
+            <strong className="text-[var(--text)]">Service providers</strong> (hosting, authentication,
             analytics, AI APIs, email) who process data on our behalf under contractual obligations
           </li>
           <li>
-            <strong className="text-[#241A12]">Legal authorities</strong> when required by law or to
+            <strong className="text-[var(--text)]">Legal authorities</strong> when required by law or to
             protect rights, safety, and security
           </li>
           <li>
-            <strong className="text-[#241A12]">Business transfers</strong> in connection with a
+            <strong className="text-[var(--text)]">Business transfers</strong> in connection with a
             merger, acquisition, or sale of assets, with notice where required
           </li>
         </ul>
@@ -140,7 +140,7 @@ export default function PrivacyPage() {
           <a
             href="mailto:support@layah.in"
             className="font-medium underline"
-            style={{ color: "#0E9484" }}
+            style={{ color: "var(--brand)" }}
           >
             support@layah.in
           </a>
@@ -150,11 +150,11 @@ export default function PrivacyPage() {
         {/* GDPR rights block */}
         <div
           className="rounded-2xl p-5"
-          style={{ background: "rgba(14, 148, 132,0.06)", border: "1px solid rgba(14, 148, 132,0.25)" }}
+          style={{ background: "color-mix(in oklch, var(--brand) 6%, transparent)", border: "1px solid color-mix(in oklch, var(--brand) 25%, transparent)" }}
         >
           <p
             className="mb-4 text-sm font-bold uppercase tracking-widest"
-            style={{ color: "#241A12" }}
+            style={{ color: "var(--text)" }}
           >
             GDPR Rights
           </p>
@@ -180,7 +180,7 @@ export default function PrivacyPage() {
                     <a
                       href="mailto:support@layah.in"
                       className="font-medium underline"
-                      style={{ color: "#0E9484" }}
+                      style={{ color: "var(--brand)" }}
                     >
                       support@layah.in
                     </a>
@@ -196,13 +196,13 @@ export default function PrivacyPage() {
               <li key={right} className="flex gap-3">
                 <span
                   className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-                  style={{ background: "rgba(14, 148, 132,0.15)", color: "#0E9484" }}
+                  style={{ background: "color-mix(in oklch, var(--brand) 15%, transparent)", color: "var(--brand)" }}
                   aria-hidden
                 >
                   ✓
                 </span>
-                <span className="text-sm leading-relaxed" style={{ color: "#2b2118" }}>
-                  <strong className="font-semibold" style={{ color: "#241A12" }}>
+                <span className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>
+                  <strong className="font-semibold" style={{ color: "var(--text)" }}>
                     {right}:
                   </strong>{" "}
                   {detail}
@@ -227,7 +227,7 @@ export default function PrivacyPage() {
           <a
             href="mailto:support@layah.in"
             className="font-medium underline"
-            style={{ color: "#0E9484" }}
+            style={{ color: "var(--brand)" }}
           >
             support@layah.in
           </a>

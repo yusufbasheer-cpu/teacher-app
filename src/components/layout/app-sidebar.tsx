@@ -116,9 +116,9 @@ export function AppSidebar({ user }: Props) {
       className="sticky top-0 flex h-screen shrink-0 flex-col transition-[width] duration-200"
       style={{
         width: collapsed ? 72 : 248,
-        background: "#241A12",
+        background: "var(--text)",
         borderRight: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "4px 0px 16px rgba(36,26,18,0.15)",
+        boxShadow: "4px 0px 16px color-mix(in oklch, var(--text) 15%, transparent)",
       }}
     >
       <div className="flex items-center justify-between gap-2 px-3 py-4">
@@ -131,7 +131,7 @@ export function AppSidebar({ user }: Props) {
               type="button"
               onClick={toggleCollapsed}
               aria-label="Collapse sidebar"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white/90"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition hover:bg-surface/10 hover:text-white/90"
             >
               <PanelLeftClose size={18} />
             </button>
@@ -145,7 +145,7 @@ export function AppSidebar({ user }: Props) {
             type="button"
             onClick={toggleCollapsed}
             aria-label="Expand sidebar"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white/90"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition hover:bg-surface/10 hover:text-white/90"
           >
             <PanelLeft size={18} />
           </button>
@@ -163,18 +163,18 @@ export function AppSidebar({ user }: Props) {
               title={collapsed ? item.label : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-200",
-                !active && "hover:bg-white/8",
+                !active && "hover:bg-surface/8",
               )}
               style={{
-                color: active ? "#0E9484" : "rgba(255,255,255,0.65)",
-                background: active ? "rgba(14, 148, 132,0.16)" : undefined,
+                color: active ? "var(--brand)" : "rgba(255,255,255,0.65)",
+                background: active ? "color-mix(in oklch, var(--brand) 16%, transparent)" : undefined,
                 fontWeight: active ? 600 : 500,
                 justifyContent: collapsed ? "center" : "flex-start",
               }}
             >
               <span
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors duration-200"
-                style={{ background: active ? "rgba(14, 148, 132,0.22)" : "transparent" }}
+                style={{ background: active ? "color-mix(in oklch, var(--brand) 22%, transparent)" : "transparent" }}
               >
                 <Icon size={18} className="shrink-0" />
               </span>

@@ -164,8 +164,8 @@ const STEP_FIELD_GROUP_VARIANTS = {
 // surface with a soft warm border, distinct from the page's own cream tone,
 // so it reads as a card rather than text floating on the canvas.
 const STEP_CARD_CLASS =
-  "min-w-0 rounded-2xl border p-6 sm:p-8 shadow-[0px_4px_20px_rgba(36,26,18,0.06)]";
-const STEP_CARD_STYLE = { background: "#FFFFFF", borderColor: "#E8DFD1" };
+  "min-w-0 rounded-2xl border p-6 sm:p-8 shadow-[0px_4px_20px_color-mix(in oklch, var(--text) 6%, transparent)]";
+const STEP_CARD_STYLE = { background: "#FFFFFF", borderColor: "var(--border-subtle)" };
 
 // One consistent vertical rhythm between major blocks within a step — was a
 // mix of mt-6/space-y-5 (20–24px) scattered ad hoc; standardized to 32px.
@@ -180,8 +180,8 @@ const STEP_SECTION_GAP_CLASS = "mt-8";
 const NESTED_GROUP_CLASS = "rounded-2xl p-4 sm:p-5";
 const NESTED_GROUP_STYLE = { background: "rgba(250,246,238,0.6)" };
 
-const STEP_LEGEND_CLASS = "flex w-full items-center gap-2 pb-3 text-lg font-semibold text-stone-900";
-const STEP_LEGEND_STYLE = { borderBottom: "1px solid #E8DFD1" };
+const STEP_LEGEND_CLASS = "flex w-full items-center gap-2 pb-3 text-lg font-semibold text-ink";
+const STEP_LEGEND_STYLE = { borderBottom: "1px solid var(--border-subtle)" };
 
 function StepLegend({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
   // A <legend> would be the semantically "correct" tag here, but browsers
@@ -192,7 +192,7 @@ function StepLegend({ icon: Icon, children }: { icon: React.ElementType; childre
   // carries the real accessibility association, so nothing is lost.
   return (
     <h2 className={STEP_LEGEND_CLASS} style={STEP_LEGEND_STYLE}>
-      <Icon className="size-5 shrink-0" style={{ color: "#0E9484" }} />
+      <Icon className="size-5 shrink-0" style={{ color: "var(--brand)" }} />
       {children}
     </h2>
   );
@@ -201,8 +201,8 @@ function StepLegend({ icon: Icon, children }: { icon: React.ElementType; childre
 function StepIntro({ children }: { children: React.ReactNode }) {
   return (
     <p
-      className="mt-3 rounded-lg px-3 py-2.5 text-sm text-stone-600"
-      style={{ background: "rgba(14, 148, 132,0.06)" }}
+      className="mt-3 rounded-lg px-3 py-2.5 text-sm text-muted"
+      style={{ background: "color-mix(in oklch, var(--brand) 6%, transparent)" }}
     >
       {children}
     </p>
@@ -892,7 +892,7 @@ export function LessonPlanGenerator() {
   if (checkingAuth) {
     return (
       <Container className="pt-6">
-        <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
+        <div className="max-w-md rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
           <PageLoader label="Checking your account…" />
         </div>
       </Container>
@@ -902,14 +902,14 @@ export function LessonPlanGenerator() {
   if (!user) {
     return (
       <Container className="pt-6">
-        <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-stone-900">Login Required</h2>
-          <p className="mt-2 text-sm text-stone-600">
+        <div className="max-w-md rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-ink">Login Required</h2>
+          <p className="mt-2 text-sm text-muted">
             Please login to generate and save your personal lesson plans.
           </p>
           <Link
             href="/login"
-            className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
+            className="mt-5 inline-flex rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-active)]"
           >
             Go to Login
           </Link>
@@ -971,7 +971,7 @@ export function LessonPlanGenerator() {
 
         <AnimatedGroup variants={STEP_FIELD_GROUP_VARIANTS} className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label htmlFor="curriculum" className="mb-1 block text-sm font-medium text-stone-700">
+            <label htmlFor="curriculum" className="mb-1 block text-sm font-medium text-muted">
               Curriculum type
             </label>
             <select
@@ -980,7 +980,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, curriculumType: e.target.value }))
               }
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2.5 text-sm shadow-sm outline-none ring-[var(--brand)] transition-colors duration-200 focus:border-[var(--brand)] focus:ring-2"
               required
             >
               {CURRICULUM_TYPE_GROUPS.map((group) => (
@@ -996,12 +996,12 @@ export function LessonPlanGenerator() {
           </div>
 
           <div className="sm:col-span-2">
-            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-stone-500">
+            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-faint">
               Curriculum Framework
             </p>
             <label
               htmlFor="curriculum-framework"
-              className="mb-1 block text-sm font-medium text-stone-700"
+              className="mb-1 block text-sm font-medium text-muted"
             >
               Select Educational Framework (Optional)
             </label>
@@ -1011,7 +1011,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, curriculumFramework: e.target.value }))
               }
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm text-stone-900 shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2.5 text-sm text-ink shadow-sm outline-none ring-[var(--brand)] transition-colors duration-200 focus:border-[var(--brand)] focus:ring-2"
             >
               {CURRICULUM_FRAMEWORK_OPTIONS.map((opt) => (
                 <option key={opt.value === "" ? "none" : opt.value} value={opt.value}>
@@ -1019,24 +1019,24 @@ export function LessonPlanGenerator() {
                 </option>
               ))}
             </select>
-            <p className="mt-1.5 text-xs text-stone-500">
+            <p className="mt-1.5 text-xs text-faint">
               Leave as &quot;None&quot; for a standard plan. Choosing a framework aligns lesson plan,
               slides, worksheet, assessment, homework, and teacher notes with that system&apos;s
               expectations.
             </p>
           </div>
 
-          <div className="sm:col-span-2 border-t border-[#E8DFD1]" />
+          <div className="sm:col-span-2 border-t border-[var(--border-subtle)]" />
 
           <div>
-            <label htmlFor="grade-year" className="mb-1 block text-sm font-medium text-stone-700">
+            <label htmlFor="grade-year" className="mb-1 block text-sm font-medium text-muted">
               Grade / year group
             </label>
             <select
               id="grade-year"
               value={form.grade}
               onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2.5 text-sm shadow-sm outline-none ring-[var(--brand)] transition-colors duration-200 focus:border-[var(--brand)] focus:ring-2"
               required
             >
               {GRADE_YEAR_OPTIONS.map((opt) => (
@@ -1048,14 +1048,14 @@ export function LessonPlanGenerator() {
           </div>
 
           <div>
-            <label htmlFor="subject" className="mb-1 block text-sm font-medium text-stone-700">
+            <label htmlFor="subject" className="mb-1 block text-sm font-medium text-muted">
               Subject
             </label>
             <select
               id="subject"
               value={form.subject}
               onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2.5 text-sm shadow-sm outline-none ring-[var(--brand)] transition-colors duration-200 focus:border-[var(--brand)] focus:ring-2"
               required
             >
               <optgroup label="Subjects">
@@ -1085,7 +1085,7 @@ export function LessonPlanGenerator() {
           </div>
 
           <div>
-            <label htmlFor="chapter" className="mb-1 block text-sm font-medium text-stone-700">
+            <label htmlFor="chapter" className="mb-1 block text-sm font-medium text-muted">
               Chapter name
             </label>
             <input
@@ -1093,21 +1093,21 @@ export function LessonPlanGenerator() {
               type="text"
               value={form.chapter}
               onChange={(e) => setForm((prev) => ({ ...prev, chapter: e.target.value }))}
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2.5 text-sm shadow-sm outline-none ring-[var(--brand)] transition-colors duration-200 focus:border-[var(--brand)] focus:ring-2"
               placeholder="e.g. Chapter 5 - Photosynthesis"
             />
           </div>
 
           <div>
-            <label htmlFor="topic" className="mb-1 block text-sm font-medium text-stone-700">
-              Topic <span className="font-normal text-stone-400">(optional)</span>
+            <label htmlFor="topic" className="mb-1 block text-sm font-medium text-muted">
+              Topic <span className="font-normal text-faint">(optional)</span>
             </label>
             <input
               id="topic"
               type="text"
               value={form.topic}
               onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2.5 text-sm shadow-sm outline-none ring-[var(--brand)] transition-colors duration-200 focus:border-[var(--brand)] focus:ring-2"
               placeholder="Specific topic within the chapter (leave blank to use just the chapter name)"
             />
           </div>
@@ -1115,7 +1115,7 @@ export function LessonPlanGenerator() {
           <div className="sm:col-span-2">
             <label
               htmlFor="objectives"
-              className="mb-1 block text-sm font-medium text-stone-700"
+              className="mb-1 block text-sm font-medium text-muted"
             >
               Learning objectives
             </label>
@@ -1125,7 +1125,7 @@ export function LessonPlanGenerator() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, learningObjectives: e.target.value }))
               }
-              className="min-h-28 w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
+              className="min-h-28 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2.5 text-sm shadow-sm outline-none ring-[var(--brand)] transition-colors duration-200 focus:border-[var(--brand)] focus:ring-2"
               placeholder="List key outcomes students should achieve."
               required
             />
@@ -1136,7 +1136,7 @@ export function LessonPlanGenerator() {
                 <button
                   type="button"
                   onClick={goToNextStep}
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0E9484] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B6B5F]"
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--brand)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-active)]"
                 >
                   Continue
                 </button>
@@ -1166,17 +1166,17 @@ export function LessonPlanGenerator() {
         {entitlements.sourceContent ? (
         <div className={cn(STEP_SECTION_GAP_CLASS, NESTED_GROUP_CLASS, "space-y-5")} style={NESTED_GROUP_STYLE}>
           <div>
-            <p className="text-sm font-semibold text-[#241A12]">
+            <p className="text-sm font-semibold text-[var(--text)]">
               Provide your own teaching content (optional)
             </p>
-            <p className="mt-1 text-xs text-stone-600">
+            <p className="mt-1 text-xs text-muted">
               Use any combination of PDF upload, image upload, or pasted text. Pasted content is
               treated as the <strong>primary</strong> source when present.
             </p>
           </div>
 
-          <div className="rounded-xl bg-white/70 p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
+          <div className="rounded-xl bg-surface/70 p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">
               Option 1 — Upload PDF
             </p>
             <input
@@ -1186,12 +1186,12 @@ export function LessonPlanGenerator() {
               accept=".pdf,application/pdf"
               onChange={(e) => onUploadFileChange(e, "pdf")}
               disabled={uploadExtracting || loading}
-              className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border file:border-[#E8DFD1] file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#241A12] hover:file:bg-stone-50 disabled:opacity-60"
+              className="mt-2 block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border file:border-[var(--border-subtle)] file:bg-surface file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[var(--text)] hover:file:bg-hover disabled:opacity-60"
             />
           </div>
 
-          <div className="rounded-xl bg-white/70 p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
+          <div className="rounded-xl bg-surface/70 p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">
               Option 2 — Upload Image
             </p>
             <input
@@ -1201,13 +1201,13 @@ export function LessonPlanGenerator() {
               accept=".jpg,.jpeg,.png,image/jpeg,image/png"
               onChange={(e) => onUploadFileChange(e, "image")}
               disabled={uploadExtracting || loading}
-              className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border file:border-[#E8DFD1] file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#241A12] hover:file:bg-stone-50 disabled:opacity-60"
+              className="mt-2 block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border file:border-[var(--border-subtle)] file:bg-surface file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[var(--text)] hover:file:bg-hover disabled:opacity-60"
             />
           </div>
 
-          <div className="rounded-xl bg-white/70 p-3">
+          <div className="rounded-xl bg-surface/70 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted">
                 Option 3 — Paste Your Content
               </p>
               {pastedContent.trim().length > 0 ? (
@@ -1215,13 +1215,13 @@ export function LessonPlanGenerator() {
                   type="button"
                   onClick={clearPastedContent}
                   disabled={uploadExtracting || loading}
-                  className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
+                  className="rounded-lg border border-[var(--border-subtle)] bg-surface px-3 py-1.5 text-xs font-semibold text-muted shadow-sm hover:bg-hover disabled:opacity-50"
                 >
                   Clear pasted content
                 </button>
               ) : null}
             </div>
-            <label htmlFor="pasted-content" className="mt-2 block text-sm font-medium text-stone-800">
+            <label htmlFor="pasted-content" className="mt-2 block text-sm font-medium text-ink">
               Paste Your Own Content Here (Optional)
             </label>
             <textarea
@@ -1231,7 +1231,7 @@ export function LessonPlanGenerator() {
               disabled={uploadExtracting || loading}
               rows={8}
               placeholder="Paste your textbook content, notes, chapter text, or any material here and the AI will generate all resources based on your content."
-              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm text-stone-900 shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2 disabled:opacity-60"
+              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2.5 text-sm text-ink shadow-sm outline-none ring-[var(--brand)] transition-colors duration-200 focus:border-[var(--brand)] focus:ring-2 disabled:opacity-60"
             />
           </div>
 
@@ -1240,13 +1240,13 @@ export function LessonPlanGenerator() {
               type="button"
               onClick={clearUploadedSource}
               disabled={uploadExtracting || loading}
-              className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-2 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
+              className="rounded-lg border border-[var(--border-subtle)] bg-surface px-3 py-2 text-xs font-semibold text-muted shadow-sm hover:bg-hover disabled:opacity-50"
             >
               Clear all uploads
             </button>
           ) : null}
           {uploadExtracting ? (
-            <p className="mt-2 text-xs font-medium text-[#241A12]">
+            <p className="mt-2 text-xs font-medium text-[var(--text)]">
               Extracting text from your files…
             </p>
           ) : null}
@@ -1269,15 +1269,15 @@ export function LessonPlanGenerator() {
             </ul>
           ) : null}
           {uploadedChunks.length > 0 ? (
-            <ul className="mt-3 divide-y divide-[#0E9484]/20 rounded-lg border border-[#0E9484]/20 bg-[#FAF6EF]/90">
+            <ul className="mt-3 divide-y divide-[color-mix(in_oklch,var(--brand)_20%,transparent)] rounded-lg border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[color-mix(in_oklch,var(--surface)_90%,transparent)]">
               {uploadedChunks.map((chunk) => (
                 <li
                   key={chunk.id}
                   className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-stone-900">{chunk.fileName}</p>
-                    <p className="text-xs text-stone-500">
+                    <p className="truncate font-medium text-ink">{chunk.fileName}</p>
+                    <p className="text-xs text-faint">
                       {chunk.kind === "pdf" ? "PDF" : "Image"} ·{" "}
                       {chunk.text.length.toLocaleString()} characters
                     </p>
@@ -1286,7 +1286,7 @@ export function LessonPlanGenerator() {
                     type="button"
                     onClick={() => removeUploadedChunk(chunk.id)}
                     disabled={uploadExtracting || loading}
-                    className="shrink-0 rounded-lg border border-red-200 bg-[#FAF6EF] px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    className="shrink-0 rounded-lg border border-red-200 bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
                   >
                     Remove
                   </button>
@@ -1295,7 +1295,7 @@ export function LessonPlanGenerator() {
             </ul>
           ) : null}
           {uploadedChunks.length > 0 ? (
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-faint">
               Uploads: {extractedMaterialPreview.length.toLocaleString()} characters across{" "}
               {uploadedChunks.length} file(s).
             </p>
@@ -1304,7 +1304,7 @@ export function LessonPlanGenerator() {
             <div className="mt-2">
               <label
                 htmlFor="combined-source-preview"
-                className="mb-1 block text-xs font-semibold text-stone-800"
+                className="mb-1 block text-xs font-semibold text-ink"
               >
                 Combined source preview (review before generating)
               </label>
@@ -1314,9 +1314,9 @@ export function LessonPlanGenerator() {
                 value={combinedSourcePreview}
                 rows={12}
                 spellCheck={false}
-                className="max-h-80 w-full resize-y rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 font-mono text-xs leading-relaxed text-stone-800 outline-none ring-[#0E9484] focus:ring-2"
+                className="max-h-80 w-full resize-y rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] px-3 py-2.5 font-mono text-xs leading-relaxed text-ink outline-none ring-[var(--brand)] focus:ring-2"
               />
-              <p className="mt-1 text-xs text-stone-500">
+              <p className="mt-1 text-xs text-faint">
                 {pastedContent.trim().length > 0
                   ? "Pasted content is sent as the primary source; uploads are included as supplementary context."
                   : "Uploaded extract text sent to the AI when you click Generate."}
@@ -1344,15 +1344,15 @@ export function LessonPlanGenerator() {
                 <button
                   type="button"
                   onClick={goToPrevStep}
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl border bg-white px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:bg-stone-50"
-                  style={{ borderColor: "#E8DFD1" }}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border bg-surface px-6 py-2.5 text-sm font-semibold text-muted transition hover:bg-hover"
+                  style={{ borderColor: "var(--border-subtle)" }}
                 >
                   Back
                 </button>
                 <button
                   type="button"
                   onClick={goToNextStep}
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0E9484] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B6B5F]"
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--brand)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-active)]"
                 >
                   Continue
                 </button>
@@ -1404,17 +1404,17 @@ export function LessonPlanGenerator() {
             <button
               type="button"
               onClick={() => setStrategyPanelOpen(true)}
-              className="w-full rounded-xl border border-[#0E9484]/30 bg-[#0E9484]/5 px-4 py-3 text-left text-sm font-semibold text-[#241A12] shadow-sm transition hover:bg-[#0E9484]/10"
+              className="w-full rounded-xl border border-[color-mix(in_oklch,var(--brand)_30%,transparent)] bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] px-4 py-3 text-left text-sm font-semibold text-[var(--text)] shadow-sm transition hover:bg-[color-mix(in_oklch,var(--brand)_10%,transparent)]"
             >
               {teachingStrategy ? (
                 <span className="flex items-center gap-2">
-                  <span className="inline-block size-2 rounded-full bg-[#0E9484]" />
-                  Teaching Strategy: <span className="font-bold text-[#0E9484]">{TEACHING_STRATEGIES.find((s) => s.name === teachingStrategy)?.name ?? teachingStrategy}</span>
+                  <span className="inline-block size-2 rounded-full bg-[var(--brand)]" />
+                  Teaching Strategy: <span className="font-bold text-[var(--brand)]">{TEACHING_STRATEGIES.find((s) => s.name === teachingStrategy)?.name ?? teachingStrategy}</span>
                 </span>
               ) : (
                 "Teaching and Learning Strategy"
               )}
-              <span className="mt-1 block text-xs font-normal text-stone-600">
+              <span className="mt-1 block text-xs font-normal text-muted">
                 Optional: select a strategy to shape how activities are delivered. The lesson structure will remain unchanged.
               </span>
             </button>
@@ -1423,8 +1423,8 @@ export function LessonPlanGenerator() {
           <div className={cn(STEP_SECTION_GAP_CLASS, NESTED_GROUP_CLASS, "md:p-5")} style={NESTED_GROUP_STYLE}>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-sm font-semibold text-stone-900">Teaching and Learning Strategy <span className="ml-1 text-xs font-normal text-stone-500">(Optional)</span></h3>
-                <p className="mt-1 text-xs text-stone-500">
+                <h3 className="text-sm font-semibold text-ink">Teaching and Learning Strategy <span className="ml-1 text-xs font-normal text-faint">(Optional)</span></h3>
+                <p className="mt-1 text-xs text-faint">
                   Select a strategy to shape how activities are delivered. The lesson structure will remain unchanged.
                 </p>
               </div>
@@ -1433,7 +1433,7 @@ export function LessonPlanGenerator() {
                   <button
                     type="button"
                     onClick={() => setTeachingStrategy("")}
-                    className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
+                    className="rounded-lg border border-[var(--border-subtle)] bg-surface px-3 py-1.5 text-xs font-medium text-muted hover:bg-hover"
                   >
                     Clear
                   </button>
@@ -1441,7 +1441,7 @@ export function LessonPlanGenerator() {
                 <button
                   type="button"
                   onClick={() => setStrategyPanelOpen(false)}
-                  className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
+                  className="rounded-lg border border-[var(--border-subtle)] bg-surface px-3 py-1.5 text-xs font-medium text-muted hover:bg-hover"
                 >
                   Collapse ↑
                 </button>
@@ -1459,23 +1459,23 @@ export function LessonPlanGenerator() {
                     aria-pressed={isSelected}
                     className={`group flex flex-col rounded-xl border-2 p-3.5 text-left transition ${
                       isSelected
-                        ? "border-[#0E9484] bg-[#0E9484]/8 shadow-md ring-2 ring-[#0E9484]/20"
-                        : "border-[#E8DFD1] bg-white hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
+                        ? "border-[var(--brand)] bg-[color-mix(in_oklch,var(--brand)_8%,transparent)] shadow-md ring-2 ring-[color-mix(in_oklch,var(--brand)_20%,transparent)]"
+                        : "border-[var(--border-subtle)] bg-surface hover:border-[color-mix(in_oklch,var(--brand)_50%,transparent)] hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className={`text-sm font-semibold leading-snug ${isSelected ? "text-[#0B6B5F]" : "text-stone-900"}`}>
+                      <span className={`text-sm font-semibold leading-snug ${isSelected ? "text-[var(--brand-active)]" : "text-ink"}`}>
                         {strategy.name}
                       </span>
                       {isSelected ? (
-                        <span className="shrink-0 rounded-full bg-[#0E9484] p-0.5">
+                        <span className="shrink-0 rounded-full bg-[var(--brand)] p-0.5">
                           <svg className="size-3 text-white" viewBox="0 0 12 12" fill="currentColor">
                             <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
                           </svg>
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-xs leading-relaxed text-stone-500 group-hover:text-stone-600">
+                    <p className="mt-1 text-xs leading-relaxed text-faint group-hover:text-muted">
                       {strategy.description}
                     </p>
                   </button>
@@ -1487,8 +1487,8 @@ export function LessonPlanGenerator() {
         {/* ── End Teaching Strategy ──────────────────────────────────── */}
 
         <div className={cn(STEP_SECTION_GAP_CLASS, NESTED_GROUP_CLASS)} style={NESTED_GROUP_STYLE}>
-          <h3 className="text-sm font-semibold text-stone-900">What to generate</h3>
-          <p className="mt-1 text-xs text-stone-600">
+          <h3 className="text-sm font-semibold text-ink">What to generate</h3>
+          <p className="mt-1 text-xs text-muted">
             Only checked sections are sent to the AI — fewer selections usually means a quicker response.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -1501,7 +1501,7 @@ export function LessonPlanGenerator() {
                   ) as Record<TeacherPackageSectionKey, boolean>,
                 )
               }
-              className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
+              className="rounded-lg border border-[var(--border-subtle)] bg-surface px-3 py-1.5 text-xs font-semibold text-muted shadow-sm hover:bg-hover"
             >
               Select All
             </button>
@@ -1515,7 +1515,7 @@ export function LessonPlanGenerator() {
                   >,
                 )
               }
-              className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
+              className="rounded-lg border border-[var(--border-subtle)] bg-surface px-3 py-1.5 text-xs font-semibold text-muted shadow-sm hover:bg-hover"
             >
               Deselect All
             </button>
@@ -1529,10 +1529,10 @@ export function LessonPlanGenerator() {
                     <button
                       type="button"
                       onClick={() => setPaymentModalOpen(true)}
-                      className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-1 py-1 text-left transition hover:bg-[#0E9484]/5"
+                      className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-1 py-1 text-left transition hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
                     >
                       <Checkbox checked={false} disabled className="mt-0.5" />
-                      <span className="flex items-center gap-2 text-sm text-stone-500">
+                      <span className="flex items-center gap-2 text-sm text-faint">
                         {GENERATION_CHECKBOX_LABELS[key]}
                         <ProBadge />
                       </span>
@@ -1550,7 +1550,7 @@ export function LessonPlanGenerator() {
                     }
                     className="mt-0.5"
                   />
-                  <label htmlFor={`gen-${key}`} className="text-sm text-stone-800">
+                  <label htmlFor={`gen-${key}`} className="text-sm text-ink">
                     {GENERATION_CHECKBOX_LABELS[key]}
                   </label>
                 </li>
@@ -1559,12 +1559,12 @@ export function LessonPlanGenerator() {
           </ul>
         </div>
 
-        <p className={cn(STEP_SECTION_GAP_CLASS, "rounded-xl border px-3 py-2 text-sm text-stone-700")} style={{ borderColor: "#E8DFD1", background: "rgba(250,246,238,0.6)" }}>
+        <p className={cn(STEP_SECTION_GAP_CLASS, "rounded-xl border px-3 py-2 text-sm text-muted")} style={{ borderColor: "var(--border-subtle)", background: "rgba(250,246,238,0.6)" }}>
           {selectedGenerationCount === 0 ? (
-            <span className="font-semibold text-stone-900">Select at least one item to generate</span>
+            <span className="font-semibold text-ink">Select at least one item to generate</span>
           ) : (
             <>
-              <span className="font-semibold text-stone-900">{selectedGenerationCount}</span> item
+              <span className="font-semibold text-ink">{selectedGenerationCount}</span> item
               {selectedGenerationCount === 1 ? "" : "s"} selected for generation
             </>
           )}
@@ -1574,8 +1574,8 @@ export function LessonPlanGenerator() {
           <button
             type="button"
             onClick={goToPrevStep}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border bg-white px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:bg-stone-50"
-            style={{ borderColor: "#E8DFD1" }}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border bg-surface px-6 py-2.5 text-sm font-semibold text-muted transition hover:bg-hover"
+            style={{ borderColor: "var(--border-subtle)" }}
           >
             Back
           </button>
@@ -1588,7 +1588,7 @@ export function LessonPlanGenerator() {
             uploadExtracting ||
             TEACHER_PACKAGE_SECTIONS.every((k) => !sectionSelection[k])
           }
-          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#0E9484] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0B6B5F] disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--brand-active)] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? "Generating..." : "Generate Lesson Plan"}
         </button>
@@ -1644,7 +1644,7 @@ export function LessonPlanGenerator() {
       )}
 
       {successMessage ? (
-        <div className="animate-slide-up rounded-xl border border-[#0E9484]/30 bg-[#0E9484]/5 px-4 py-3 text-sm text-[#0E9484]">
+        <div className="animate-slide-up rounded-xl border border-[color-mix(in_oklch,var(--brand)_30%,transparent)] bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] px-4 py-3 text-sm text-[var(--brand)]">
           {successMessage}
         </div>
       ) : null}

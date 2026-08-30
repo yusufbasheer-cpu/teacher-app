@@ -107,7 +107,7 @@ export function MyLessonPlansList() {
     return (
       <div className="grid gap-4 md:grid-cols-2">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm">
+          <div key={i} className="rounded-2xl border border-line bg-[var(--surface)] p-5 shadow-sm">
             <div className="flex gap-1.5">
               <Skeleton className="h-5 w-16" radius={8} />
               <Skeleton className="h-5 w-12" radius={8} />
@@ -122,14 +122,14 @@ export function MyLessonPlansList() {
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-stone-900">Login Required</h2>
-        <p className="mt-2 text-sm text-stone-600">
+      <div className="rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
+        <h2 className="text-xl font-semibold text-ink">Login Required</h2>
+        <p className="mt-2 text-sm text-muted">
           Please login to access your saved lesson plans.
         </p>
         <Link
           href="/login"
-          className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
+          className="mt-5 inline-flex rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-active)]"
         >
           Go to Login
         </Link>
@@ -149,7 +149,7 @@ export function MyLessonPlansList() {
         actions={
           <Link
             href="/lesson-plan"
-            className="shrink-0 rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
+            className="shrink-0 rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-active)]"
           >
             + New Lesson
           </Link>
@@ -161,15 +161,15 @@ export function MyLessonPlansList() {
       ) : null}
 
       {plans.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#0E9484]/30 bg-[#0E9484]/5 p-6 text-center">
+        <div className="rounded-2xl border border-dashed border-[color-mix(in_oklch,var(--brand)_30%,transparent)] bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] p-6 text-center">
           <p className="text-2xl">📚</p>
-          <p className="mt-2 text-sm font-medium text-stone-700">No saved lesson plans yet</p>
-          <p className="mt-1 text-xs text-stone-500">
+          <p className="mt-2 text-sm font-medium text-muted">No saved lesson plans yet</p>
+          <p className="mt-1 text-xs text-faint">
             Generate a lesson plan and it will appear here automatically.
           </p>
           <Link
             href="/lesson-plan"
-            className="mt-4 inline-flex rounded-xl bg-[#0E9484] px-5 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
+            className="mt-4 inline-flex rounded-xl bg-[var(--brand)] px-5 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-active)]"
           >
             Generate your first lesson
           </Link>
@@ -192,35 +192,35 @@ export function MyLessonPlansList() {
               return (
                 <div
                   key={plan.id}
-                  className="flex flex-col rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm transition hover:border-[#0E9484]/40 hover:shadow-md"
+                  className="flex flex-col rounded-2xl border border-line bg-[var(--surface)] p-5 shadow-sm transition hover:border-[color-mix(in_oklch,var(--brand)_40%,transparent)] hover:shadow-md"
                 >
                   {/* Badges */}
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="inline-flex items-center rounded-lg bg-[#0E9484]/10 px-2.5 py-0.5 text-xs font-semibold text-[#0B6B5F]">
+                    <span className="inline-flex items-center rounded-lg bg-[color-mix(in_oklch,var(--brand)_10%,transparent)] px-2.5 py-0.5 text-xs font-semibold text-[var(--brand-active)]">
                       {plan.subject}
                     </span>
-                    <span className="inline-flex items-center rounded-lg bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600">
+                    <span className="inline-flex items-center rounded-lg bg-sunken px-2.5 py-0.5 text-xs font-medium text-muted">
                       {plan.grade}
                     </span>
                     {plan.curriculum ? (
-                      <span className="inline-flex items-center rounded-lg bg-[#F1E9DC] px-2.5 py-0.5 text-xs font-medium text-[#0B6B5F]">
+                      <span className="inline-flex items-center rounded-lg bg-[var(--canvas)] px-2.5 py-0.5 text-xs font-medium text-[var(--brand-active)]">
                         {plan.curriculum}
                       </span>
                     ) : null}
                   </div>
 
                   {/* Title (chapter, else topic, else a subject-based label) */}
-                  <p className="mt-3 text-base font-semibold leading-snug text-stone-900">
+                  <p className="mt-3 text-base font-semibold leading-snug text-ink">
                     {resolveLessonTitle(plan.topic, plan.chapter, plan.subject)}
                   </p>
                   {resolveLessonTopicNote(plan.topic, plan.chapter) ? (
-                    <p className="mt-0.5 text-xs text-stone-500">
+                    <p className="mt-0.5 text-xs text-faint">
                       Topic: {resolveLessonTopicNote(plan.topic, plan.chapter)}
                     </p>
                   ) : null}
 
                   {/* Date */}
-                  <p className="mt-2 text-xs text-stone-400">
+                  <p className="mt-2 text-xs text-faint">
                     {dateStr} at {timeStr}
                   </p>
 
@@ -228,14 +228,14 @@ export function MyLessonPlansList() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Link
                       href={`/my-lesson-plans/${plan.id}`}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#0E9484] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0B6B5F]"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--brand)] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[var(--brand-active)]"
                     >
                       📖 View Lesson
                     </Link>
                     {hasPpt ? (
                       <Link
                         href={`/lesson-plan?subject=${encodeURIComponent(plan.subject)}&grade=${encodeURIComponent(plan.grade)}&topic=${encodeURIComponent(plan.topic)}&learningObjectives=${encodeURIComponent(plan.learning_objectives ?? "")}&curriculumType=${encodeURIComponent(plan.curriculum)}`}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-[#FAF6EF] px-3.5 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-[var(--surface)] px-3.5 py-2 text-xs font-semibold text-muted hover:bg-hover"
                       >
                         📊 Regenerate PPT
                       </Link>

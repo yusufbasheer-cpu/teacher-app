@@ -60,14 +60,14 @@ function ToolCheckbox({
     <label
       className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm shadow-sm transition ${
         checked
-          ? "border-[#0E9484] bg-[#0E9484]/8 ring-1 ring-[#0E9484]/20"
-          : "border-[#E8DFD1] bg-white hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
+          ? "border-[var(--brand)] bg-[color-mix(in_oklch,var(--brand)_8%,transparent)] ring-1 ring-[color-mix(in_oklch,var(--brand)_20%,transparent)]"
+          : "border-[var(--border-subtle)] bg-surface hover:border-[color-mix(in_oklch,var(--brand)_50%,transparent)] hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
       }`}
     >
       <Checkbox checked={checked} onChange={onToggle} className="mt-0.5" />
       <span className="min-w-0">
-        <span className={`block font-medium ${checked ? "text-[#0B6B5F]" : "text-stone-900"}`}>{label}</span>
-        <span className="mt-0.5 block text-xs leading-snug text-stone-500">{purpose}</span>
+        <span className={`block font-medium ${checked ? "text-[var(--brand-active)]" : "text-ink"}`}>{label}</span>
+        <span className="mt-0.5 block text-xs leading-snug text-faint">{purpose}</span>
       </span>
     </label>
   );
@@ -123,15 +123,15 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h3 className="text-lg font-semibold text-stone-900">Assessment for Learning</h3>
-        <p className="mt-1 text-sm text-stone-600">
+        <h3 className="text-lg font-semibold text-ink">Assessment for Learning</h3>
+        <p className="mt-1 text-sm text-muted">
           Select activities to weave into different phases of your lesson.
         </p>
       </div>
       {!locked && totalSelected > 0 ? (
         <span
           className="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
-          style={{ background: "rgba(14, 148, 132,0.1)", color: "#0B6B5F" }}
+          style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: "var(--brand-active)" }}
         >
           {totalSelected} selected
         </span>
@@ -178,7 +178,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
             style={
               tab === t.id
                 ? { background: TEAL, color: "#fff" }
-                : { background: "#F1E9DC", color: "#6b5d4f" }
+                : { background: "var(--canvas)", color: "var(--text-secondary)" }
             }
           >
             {t.label}
@@ -189,13 +189,13 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
       {tab === "recommended" ? (
         <div className="mt-4 space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-faint">
               A curated starting point across all phases — fine-tune below, or use as-is.
             </p>
             <button
               type="button"
               onClick={applyRecommended}
-              className="shrink-0 rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
+              className="shrink-0 rounded-lg border border-[var(--border-subtle)] bg-surface px-3 py-1.5 text-xs font-semibold text-muted shadow-sm hover:bg-hover"
             >
               Use Recommended
             </button>
@@ -224,25 +224,25 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
             const isOpen = expanded.has(group.phase);
             const count = selected[group.phase]?.length ?? 0;
             return (
-              <div key={group.phase} className="rounded-xl border border-[#E8DFD1] bg-white shadow-sm transition-colors duration-150">
+              <div key={group.phase} className="rounded-xl border border-[var(--border-subtle)] bg-surface shadow-sm transition-colors duration-150">
                 <button
                   type="button"
                   onClick={() => togglePhaseExpanded(group.phase)}
-                  className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors duration-150 hover:bg-[#0E9484]/5 ${isOpen ? "rounded-t-xl" : "rounded-xl"}`}
+                  className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors duration-150 hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] ${isOpen ? "rounded-t-xl" : "rounded-xl"}`}
                   aria-expanded={isOpen}
                 >
-                  <span className="flex items-center gap-2 text-sm font-bold text-stone-900">
+                  <span className="flex items-center gap-2 text-sm font-bold text-ink">
                     {group.title.replace(" AFL Tools", "")}
                     {count > 0 ? (
                       <span
                         className="rounded-full px-2 py-0.5 text-[11px] font-bold"
-                        style={{ background: "rgba(14, 148, 132,0.1)", color: "#0B6B5F" }}
+                        style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: "var(--brand-active)" }}
                       >
                         {count}
                       </span>
                     ) : null}
                   </span>
-                  <span className="flex items-center gap-2 text-xs text-stone-400">
+                  <span className="flex items-center gap-2 text-xs text-faint">
                     {group.tools.length} activities
                     <ChevronDown
                       size={16}
@@ -252,7 +252,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
                   </span>
                 </button>
                 {isOpen ? (
-                  <div className="grid gap-2 border-t border-stone-100 p-3 sm:grid-cols-2">
+                  <div className="grid gap-2 border-t border-line-subtle p-3 sm:grid-cols-2">
                     {group.tools.map((t) => (
                       <ToolCheckbox
                         key={t.id}
@@ -273,18 +273,18 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
       {tab === "all" ? (
         <div className="mt-4 space-y-3">
           <div className="relative">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search all 82 activities…"
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] py-2.5 pl-9 pr-3 text-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] py-2.5 pl-9 pr-3 text-sm outline-none ring-[var(--brand)] transition-colors duration-200 focus:border-[var(--brand)] focus:ring-2"
             />
           </div>
           <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
             {filteredAllTools.length === 0 ? (
-              <p className="py-6 text-center text-sm text-stone-500">No activities match &quot;{search}&quot;.</p>
+              <p className="py-6 text-center text-sm text-faint">No activities match &quot;{search}&quot;.</p>
             ) : (
               filteredAllTools.map((t) => {
                 const checked = (selected[t.phase] ?? []).includes(t.id);
@@ -293,8 +293,8 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
                     key={t.id}
                     className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm shadow-sm transition ${
                       checked
-                        ? "border-[#0E9484] bg-[#0E9484]/8 ring-1 ring-[#0E9484]/20"
-                        : "border-[#E8DFD1] bg-white hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
+                        ? "border-[var(--brand)] bg-[color-mix(in_oklch,var(--brand)_8%,transparent)] ring-1 ring-[color-mix(in_oklch,var(--brand)_20%,transparent)]"
+                        : "border-[var(--border-subtle)] bg-surface hover:border-[color-mix(in_oklch,var(--brand)_50%,transparent)] hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
                     }`}
                   >
                     <Checkbox
@@ -304,12 +304,12 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
                     />
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-1.5">
-                        <span className={`font-medium ${checked ? "text-[#0B6B5F]" : "text-stone-900"}`}>{t.label}</span>
-                        <span className="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-500">
+                        <span className={`font-medium ${checked ? "text-[var(--brand-active)]" : "text-ink"}`}>{t.label}</span>
+                        <span className="rounded-full bg-sunken px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-faint">
                           {t.phaseTitle.replace(" AFL Tools", "")}
                         </span>
                       </span>
-                      <span className="mt-0.5 block text-xs leading-snug text-stone-500">{t.purpose}</span>
+                      <span className="mt-0.5 block text-xs leading-snug text-faint">{t.purpose}</span>
                     </span>
                   </label>
                 );
@@ -324,7 +324,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
           <button
             type="button"
             onClick={clearAll}
-            className="text-xs font-medium text-stone-500 hover:text-stone-700"
+            className="text-xs font-medium text-faint hover:text-muted"
           >
             Clear all selections
           </button>

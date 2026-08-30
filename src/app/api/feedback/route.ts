@@ -73,16 +73,16 @@ export async function POST(req: Request) {
     ].join("\n"),
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px;">
-        <h2 style="color: #241A12;">New Feedback Received 💬</h2>
+        <h2 style="color: var(--text);">New Feedback Received 💬</h2>
         <table style="width: 100%; border-collapse: collapse;">
-          <tr><td style="padding: 8px 0; color: #7a6e5f; font-size: 14px; width: 80px;"><strong>Name:</strong></td><td style="padding: 8px 0; font-size: 14px;">${name || "—"}</td></tr>
-          <tr><td style="padding: 8px 0; color: #7a6e5f; font-size: 14px;"><strong>Email:</strong></td><td style="padding: 8px 0; font-size: 14px;">${email ? `<a href="mailto:${email}">${email}</a>` : "—"}</td></tr>
-          <tr><td style="padding: 8px 0; color: #7a6e5f; font-size: 14px;"><strong>Role:</strong></td><td style="padding: 8px 0; font-size: 14px;">${role || "—"}</td></tr>
-          <tr><td style="padding: 8px 0; color: #7a6e5f; font-size: 14px;"><strong>Rating:</strong></td><td style="padding: 8px 0; font-size: 18px; color: #F59E0B;">${STARS(rating)} <span style="font-size: 14px; color: #2b2118;">(${rating}/5)</span></td></tr>
-          <tr><td style="padding: 8px 0; color: #7a6e5f; font-size: 14px;"><strong>Date:</strong></td><td style="padding: 8px 0; font-size: 14px;">${submittedAt}</td></tr>
+          <tr><td style="padding: 8px 0; color: var(--text-secondary); font-size: 14px; width: 80px;"><strong>Name:</strong></td><td style="padding: 8px 0; font-size: 14px;">${name || "—"}</td></tr>
+          <tr><td style="padding: 8px 0; color: var(--text-secondary); font-size: 14px;"><strong>Email:</strong></td><td style="padding: 8px 0; font-size: 14px;">${email ? `<a href="mailto:${email}">${email}</a>` : "—"}</td></tr>
+          <tr><td style="padding: 8px 0; color: var(--text-secondary); font-size: 14px;"><strong>Role:</strong></td><td style="padding: 8px 0; font-size: 14px;">${role || "—"}</td></tr>
+          <tr><td style="padding: 8px 0; color: var(--text-secondary); font-size: 14px;"><strong>Rating:</strong></td><td style="padding: 8px 0; font-size: 18px; color: #F59E0B;">${STARS(rating)} <span style="font-size: 14px; color: var(--text);">(${rating}/5)</span></td></tr>
+          <tr><td style="padding: 8px 0; color: var(--text-secondary); font-size: 14px;"><strong>Date:</strong></td><td style="padding: 8px 0; font-size: 14px;">${submittedAt}</td></tr>
         </table>
-        <div style="margin-top: 16px; padding: 16px; background: #f1e9dc; border-radius: 8px; font-size: 14px; line-height: 1.6;">
-          <strong style="display: block; margin-bottom: 8px; color: #241A12;">Message:</strong>
+        <div style="margin-top: 16px; padding: 16px; background: var(--canvas); border-radius: 8px; font-size: 14px; line-height: 1.6;">
+          <strong style="display: block; margin-bottom: 8px; color: var(--text);">Message:</strong>
           ${message.replace(/\n/g, "<br>")}
         </div>
       </div>

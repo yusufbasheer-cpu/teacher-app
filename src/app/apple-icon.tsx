@@ -22,16 +22,16 @@ export default function AppleIcon() {
         style={{
           width: "100%",
           height: "100%",
-          background: "#241A12",
+          background: "var(--text)",
           display: "flex",
           position: "relative",
           overflow: "hidden",
         }}
       >
         {/* Bottom diamond (back, darkest) */}
-        <div style={diamond(84, 39, "#0B6B5F")} />
+        <div style={diamond(84, 39, "var(--brand-active)")} />
         {/* Middle diamond */}
-        <div style={diamond(51, 51, "#0E9484")} />
+        <div style={diamond(51, 51, "var(--brand)")} />
         {/* Top diamond (front, lightest) */}
         <div style={diamond(22, 62, "#5FC4B3")} />
       </div>

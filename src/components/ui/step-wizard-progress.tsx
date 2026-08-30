@@ -24,12 +24,12 @@ export function StepWizardProgress({ steps, currentStep }: Props) {
   return (
     <div className="relative w-full px-2">
       <div className="absolute left-2 right-2 top-4 h-0.5" aria-hidden="true">
-        <div className="absolute inset-0 rounded-full" style={{ background: "#E3D9C8" }} />
+        <div className="absolute inset-0 rounded-full" style={{ background: "var(--border)" }} />
         {steps.slice(0, -1).map((s, i) => (
           <motion.div
             key={s.id}
             className="absolute top-0 h-full origin-left rounded-full"
-            style={{ left: `${(i + 0.5) * segmentWidthPct}%`, width: `${segmentWidthPct}%`, background: "#0E9484" }}
+            style={{ left: `${(i + 0.5) * segmentWidthPct}%`, width: `${segmentWidthPct}%`, background: "var(--brand)" }}
             initial={false}
             animate={{ scaleX: currentStep > s.id ? 1 : 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
@@ -45,24 +45,24 @@ export function StepWizardProgress({ steps, currentStep }: Props) {
               <span
                 className="relative flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-bold transition"
                 style={{
-                  borderColor: isActive || isDone ? "#0E9484" : "#E3D9C8",
-                  background: isActive ? "#0E9484" : isDone ? "#0B6B5F" : "#fff",
-                  color: isActive || isDone ? "#fff" : "#A79A87",
+                  borderColor: isActive || isDone ? "var(--brand)" : "var(--border)",
+                  background: isActive ? "var(--brand)" : isDone ? "var(--brand-active)" : "#fff",
+                  color: isActive || isDone ? "#fff" : "var(--text-disabled)",
                 }}
                 aria-current={isActive ? "step" : undefined}
               >
                 {isActive ? (
                   <BorderTrail
-                    className="bg-[#241A12]"
+                    className="bg-[var(--text)]"
                     size={20}
-                    style={{ boxShadow: "0 0 6px 1px rgba(36,26,18,0.5)" }}
+                    style={{ boxShadow: "0 0 6px 1px color-mix(in oklch, var(--text) 50%, transparent)" }}
                   />
                 ) : null}
                 {isDone ? "✓" : id}
               </span>
               <span
                 className="text-center text-xs font-semibold"
-                style={{ color: isActive ? "#241A12" : isDone ? "#0B6B5F" : "#A79A87" }}
+                style={{ color: isActive ? "var(--text)" : isDone ? "var(--brand-active)" : "var(--text-disabled)" }}
               >
                 {label}
               </span>

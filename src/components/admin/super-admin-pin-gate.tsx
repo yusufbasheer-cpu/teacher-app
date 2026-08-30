@@ -50,7 +50,7 @@ export function SuperAdminPinGate({ children }: Props) {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4" style={{ background: PAPER }}>
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl" style={{ border: `1px solid ${BORDER}` }}>
+      <div className="w-full max-w-sm rounded-2xl bg-surface p-8 shadow-xl" style={{ border: `1px solid ${BORDER}` }}>
         <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl" style={{ background: ACCENT_SOFT }}>
           <ShieldCheck className="size-7" style={{ color: ACCENT }} />
         </div>

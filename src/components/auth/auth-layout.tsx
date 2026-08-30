@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { NAVY } from "@/lib/design-tokens";
+import { NAVY, withAlpha } from "@/lib/design-tokens";
 
 const TRUST_BADGES = ["CBSE", "ICSE", "IB", "Cambridge"] as const;
 
@@ -26,7 +26,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           />
           <div
             className="absolute inset-0"
-            style={{ background: `linear-gradient(to top, ${NAVY} 0%, ${NAVY}00 72%)` }}
+            style={{ background: `linear-gradient(to top, ${NAVY} 0%, ${withAlpha(NAVY, 0)} 72%)` }}
           />
 
           <div className="relative z-10 flex w-full flex-col items-center gap-6 pb-14 text-center">
@@ -54,7 +54,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
                 <span
                   key={badge}
                   className="rounded-full px-3 py-1 text-xs font-semibold text-white"
-                  style={{ background: "rgba(36,26,18,0.65)", border: "1px solid rgba(255,255,255,0.22)" }}
+                  style={{ background: "color-mix(in oklch, var(--text) 65%, transparent)", border: "1px solid rgba(255,255,255,0.22)" }}
                 >
                   {badge}
                 </span>
@@ -62,9 +62,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
               <span
                 className="rounded-full px-3 py-1 text-xs font-semibold"
                 style={{
-                  background: "rgba(36,26,18,0.65)",
-                  color: "#6EE7D8",
-                  border: "1px solid rgba(14, 148, 132,0.55)",
+                  background: "color-mix(in oklch, var(--text) 65%, transparent)",
+                  color: "var(--l-green-8)",
+                  border: "1px solid color-mix(in oklch, var(--brand) 55%, transparent)",
                 }}
               >
                 +15 more curriculums
@@ -74,7 +74,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         </div>
       </div>
 
-      <div className="flex w-full flex-col items-center justify-center bg-[#FAF6EF] px-6 py-12 sm:px-12 lg:w-1/2">
+      <div className="flex w-full flex-col items-center justify-center bg-[var(--surface)] px-6 py-12 sm:px-12 lg:w-1/2">
         {children}
       </div>
     </div>

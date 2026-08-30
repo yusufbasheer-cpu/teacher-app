@@ -16,7 +16,7 @@ export function SecondaryPageHero({ badge, headline, subtext, ctaLabel, ctaHref 
     <section className="mx-auto max-w-[820px] px-4 pb-8 pt-14 text-center sm:px-6">
       <span
         className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-        style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL_DARK }}
+        style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL_DARK }}
       >
         {badge}
       </span>

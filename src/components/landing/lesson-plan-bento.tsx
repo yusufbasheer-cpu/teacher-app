@@ -17,10 +17,10 @@ import {
 import { cn } from "@/lib/utils";
 
 const teachers = [
-  { initials: "PS", bg: "#0E9484" },
-  { initials: "RK", bg: "#241A12" },
-  { initials: "AN", bg: "#0E9484" },
-  { initials: "MJ", bg: "#241A12" },
+  { initials: "PS", bg: "var(--brand)" },
+  { initials: "RK", bg: "var(--text)" },
+  { initials: "AN", bg: "var(--brand)" },
+  { initials: "MJ", bg: "var(--text)" },
 ];
 
 interface LessonPlanBentoProps {
@@ -153,14 +153,14 @@ export function LessonPlanBento({ className }: LessonPlanBentoProps) {
                       <svg className="text-primary size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#0B6B5F" }}>
+                      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--brand-active)" }}>
                         Closure Activities
                       </span>
                     </motion.div>
 
                     <motion.div
                       className="bg-primary/10 border-primary/20 rounded border px-2 py-0.5 text-[9px] font-bold"
-                      style={{ color: "#0B6B5F" }}
+                      style={{ color: "var(--brand-active)" }}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={hoveredCard === 1 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
                       transition={{ type: "spring", delay: hoveredCard === 1 ? 1.8 : 0 }}
@@ -241,7 +241,7 @@ export function LessonPlanBento({ className }: LessonPlanBentoProps) {
               {/* Slide deck glyph + AI sparkle badge */}
               <div className="relative z-10 flex scale-[0.85] items-center justify-center transition-transform duration-500 ease-out">
                 <Presentation
-                  className="text-primary drop-shadow-[0_12px_24px_rgba(14,148,132,0.25)]"
+                  className="text-primary drop-shadow-[0_12px_24px_color-mix(in oklch, var(--brand) 25%, transparent)]"
                   style={{ width: 168, height: 168 }}
                   strokeWidth={1.25}
                 />

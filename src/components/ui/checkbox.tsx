@@ -34,8 +34,8 @@ export function Checkbox({ id, checked, onChange, disabled, className }: Checkbo
       <span
         className={cn(
           "pointer-events-none flex size-4 items-center justify-center rounded border transition-colors duration-150",
-          "peer-focus-visible:ring-2 peer-focus-visible:ring-[#0E9484]/40 peer-focus-visible:ring-offset-1",
-          checked ? "border-[#0E9484] bg-[#0E9484]" : "border-[#E8DFD1] bg-white",
+          "peer-focus-visible:ring-2 peer-focus-visible:ring-[color-mix(in_oklch,var(--brand)_40%,transparent)] peer-focus-visible:ring-offset-1",
+          checked ? "border-[var(--brand)] bg-[var(--brand)]" : "border-[var(--border-subtle)] bg-surface",
           disabled && "opacity-50",
         )}
       >

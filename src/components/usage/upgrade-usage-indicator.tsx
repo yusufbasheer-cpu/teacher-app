@@ -6,8 +6,8 @@ import { PaymentModal, type UpgradePlanKey } from "@/components/payment/payment-
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 import { PLANS } from "@/lib/plans";
 
-const TEAL = "#0E9484";
-const NAVY = "#241A12";
+const TEAL = "var(--brand)";
+const NAVY = "var(--text)";
 
 type Props = {
   usage: UserUsageSnapshot | null;
@@ -38,13 +38,13 @@ export function UpgradeUsageIndicator({ usage, loading }: Props) {
       {upgradePlan && !loading && (
         <div
           className="flex items-center justify-between gap-3 rounded-2xl border px-4 py-3"
-          style={{ background: "rgba(14, 148, 132,0.04)", borderColor: "rgba(14, 148, 132,0.2)" }}
+          style={{ background: "color-mix(in oklch, var(--brand) 4%, transparent)", borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}
         >
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold" style={{ color: NAVY }}>
               {UPGRADE_COPY[upgradePlan].label}
             </p>
-            <p className="mt-0.5 truncate text-xs" style={{ color: "#7a6e5f" }}>
+            <p className="mt-0.5 truncate text-xs" style={{ color: "var(--text-secondary)" }}>
               {UPGRADE_COPY[upgradePlan].sub}
             </p>
           </div>

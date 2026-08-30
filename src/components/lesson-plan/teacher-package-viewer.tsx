@@ -32,6 +32,7 @@ import {
   type TemplateId as PptThemeId,
 } from "@/lib/ppt-template-config";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
+import { getAuthHeaders } from "@/lib/auth-headers";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
 import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 
@@ -165,8 +166,8 @@ function PptImageProgressCard({
       style={{
         marginTop: 16,
         borderRadius: 14,
-        border: "1px solid rgba(14, 148, 132,0.3)",
-        background: "linear-gradient(135deg, #241A12 0%, #3a2a1e 100%)",
+        border: "1px solid color-mix(in oklch, var(--brand) 30%, transparent)",
+        background: "linear-gradient(135deg, var(--text) 0%, var(--l-gray-11) 100%)",
         padding: "20px 24px",
         color: "#fff",
       }}
@@ -196,14 +197,14 @@ function PptImageProgressCard({
             style={{
               height: "100%",
               width: `${(imgCount / TOTAL_IMAGES) * 100}%`,
-              background: "linear-gradient(90deg,#0E9484,#00e8c3)",
+              background: "linear-gradient(90deg,var(--brand),#00e8c3)",
               borderRadius: 99,
-              boxShadow: "0 0 8px rgba(14, 148, 132,0.6)",
+              boxShadow: "0 0 8px color-mix(in oklch, var(--brand) 60%, transparent)",
               transition: "width 0.8s ease",
             }}
           />
         </div>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#0E9484", minWidth: 52, textAlign: "right" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", minWidth: 52, textAlign: "right" }}>
           {imgCount}/{TOTAL_IMAGES}
         </span>
       </div>
@@ -221,7 +222,7 @@ function PptImageProgressCard({
       {allDone ? (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 18 }}>✅</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#0E9484" }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)" }}>
             All done!
           </span>
         </div>
@@ -315,7 +316,7 @@ export function TeacherPackageViewer({
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(extraHeaders ?? {}) },
+        headers: { ...(await getAuthHeaders()), ...(extraHeaders ?? {}) },
         body: JSON.stringify(body),
       });
 
@@ -556,14 +557,14 @@ export function TeacherPackageViewer({
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6">
       {/* ══════════ SUCCESS HEADER ══════════ */}
-      <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-teal-100 bg-[#FAF6EF] p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-brand-border bg-[var(--surface)] p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-600">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-brand-text">
             <CheckCircle2 size={22} />
           </span>
           <div>
-            <h2 className="text-lg font-bold text-stone-900 sm:text-xl">Teacher Package Ready</h2>
-            <p className="mt-1 text-sm text-stone-600">
+            <h2 className="text-lg font-bold text-ink sm:text-xl">Teacher Package Ready</h2>
+            <p className="mt-1 text-sm text-muted">
               Your lesson plan, PPT, worksheets, homework, assessment, and teacher notes have been
               generated successfully.
             </p>
@@ -574,7 +575,7 @@ export function TeacherPackageViewer({
             <button
               type="button"
               onClick={onRegenerate}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-stone-200 bg-[#FAF6EF] px-4 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:bg-stone-50"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-line bg-[var(--surface)] px-4 text-sm font-semibold text-muted transition hover:border-line-strong hover:bg-hover"
             >
               Regenerate
             </button>
@@ -584,7 +585,7 @@ export function TeacherPackageViewer({
               type="button"
               disabled={busy !== null}
               onClick={onDownloadZip}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-50"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-brand px-4 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:opacity-50"
             >
               {busy === "zip" ? "Building ZIP…" : "Download ZIP"}
             </button>
@@ -614,7 +615,7 @@ export function TeacherPackageViewer({
         <aside className="space-y-6 lg:col-span-4">
           {overviewCards.length > 0 ? (
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-faint">
                 Package overview
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -624,19 +625,19 @@ export function TeacherPackageViewer({
                   return (
                     <div
                       key={card.key}
-                      className="rounded-xl border border-stone-200 bg-[#FAF6EF] p-4 shadow-sm transition-shadow hover:shadow-md"
+                      className="rounded-xl border border-line bg-[var(--surface)] p-4 shadow-sm transition-shadow hover:shadow-md"
                     >
                       <div className="flex items-start gap-3">
                         <span
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                            isViolet ? "bg-violet-50 text-violet-600" : "bg-teal-50 text-teal-600"
+                            isViolet ? "bg-violet-50 text-violet-600" : "bg-brand-subtle text-brand-text"
                           }`}
                         >
                           <Icon size={18} />
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-stone-900">{card.title}</p>
-                          <p className="mt-0.5 text-xs text-stone-600">{card.description}</p>
+                          <p className="text-sm font-semibold text-ink">{card.title}</p>
+                          <p className="mt-0.5 text-xs text-muted">{card.description}</p>
                           <button
                             type="button"
                             disabled={busy !== null}
@@ -644,7 +645,7 @@ export function TeacherPackageViewer({
                             className={`mt-3 inline-flex min-h-8 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition disabled:opacity-50 ${
                               isViolet
                                 ? "border-violet-300 text-violet-700 hover:bg-violet-50"
-                                : "border-teal-600 text-teal-700 hover:bg-teal-50"
+                                : "border-brand text-brand-text hover:bg-brand-subtle"
                             }`}
                           >
                             {busy === card.key ? "Preparing…" : "Download"}
@@ -669,7 +670,7 @@ export function TeacherPackageViewer({
                   type="button"
                   onClick={onSave}
                   disabled={saving}
-                  className="inline-flex w-full min-h-10 items-center justify-center rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="inline-flex w-full min-h-10 items-center justify-center rounded-xl bg-brand px-4 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {saving ? "Saving..." : "Save Lesson Plan"}
                 </button>
@@ -691,7 +692,7 @@ export function TeacherPackageViewer({
         <div className="lg:col-span-8">
           <div className="overflow-x-auto pb-1">
             <div
-              className="flex min-w-0 gap-2 border-b border-stone-200 pb-3"
+              className="flex min-w-0 gap-2 border-b border-line pb-3"
               role="tablist"
               aria-label="Teacher package sections"
             >
@@ -707,13 +708,13 @@ export function TeacherPackageViewer({
                     className={`relative shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 min-h-10 ${
                       selected
                         ? "text-white"
-                        : "border border-stone-200 bg-[#FAF6EF] text-stone-700 hover:bg-stone-50"
+                        : "border border-line bg-[var(--surface)] text-muted hover:bg-hover"
                     }`}
                   >
                     {selected ? (
                       <motion.span
                         layoutId="teacher-package-active-tab"
-                        className="absolute inset-0 rounded-full bg-teal-600 shadow-md"
+                        className="absolute inset-0 rounded-full bg-brand shadow-md"
                         transition={{ type: "spring", stiffness: 500, damping: 34 }}
                       />
                     ) : null}
@@ -725,7 +726,7 @@ export function TeacherPackageViewer({
           </div>
 
           <article
-            className="mt-4 overflow-hidden rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm md:p-6"
+            className="mt-4 overflow-hidden rounded-2xl border border-line bg-[var(--surface)] p-5 shadow-sm md:p-6"
             role="tabpanel"
           >
             <AnimatePresence mode="popLayout" initial={false}>
@@ -736,17 +737,17 @@ export function TeacherPackageViewer({
                 exit={{ opacity: 0, x: -28 }}
                 transition={{ duration: 0.22, ease: "easeOut" }}
               >
-                <div className="flex flex-col gap-1 border-b border-stone-200 pb-3 md:flex-row md:items-end md:justify-between">
+                <div className="flex flex-col gap-1 border-b border-line pb-3 md:flex-row md:items-end md:justify-between">
                   <div>
-                    <h4 className="text-lg font-bold text-stone-900">
+                    <h4 className="text-lg font-bold text-ink">
                       {activeKey ? getSectionTabLabel(activeKey) : "Section"}
                     </h4>
                   </div>
                 </div>
 
                 {activeKey === "PPT Slide Content" && hasPpt ? (
-                  <div className="mt-4 border-b border-stone-200 pb-4">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">
+                  <div className="mt-4 border-b border-line pb-4">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-faint">
                       Presentation template
                     </p>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -758,8 +759,8 @@ export function TeacherPackageViewer({
                             type="button"
                             onClick={() => onPptThemeChange?.(t.id)}
                             aria-pressed={selected}
-                            className={`rounded-xl border-2 bg-[#FAF6EF] p-2.5 text-left shadow-sm transition hover:shadow-md ${
-                              selected ? "border-teal-500 ring-2 ring-teal-100" : "border-stone-200 hover:border-stone-300"
+                            className={`rounded-xl border-2 bg-[var(--surface)] p-2.5 text-left shadow-sm transition hover:shadow-md ${
+                              selected ? "border-teal-500 ring-2 ring-teal-100" : "border-line hover:border-line-strong"
                             }`}
                           >
                             <div className="mb-2 flex h-12 gap-1 overflow-hidden rounded-lg" aria-hidden>
@@ -767,10 +768,10 @@ export function TeacherPackageViewer({
                                 <span key={hex} className="h-full min-w-0 flex-1" style={{ backgroundColor: `#${hex}` }} />
                               ))}
                             </div>
-                            <p className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-faint">
                               Template {t.themeNumber}
                             </p>
-                            <p className="text-xs font-semibold text-stone-900">{t.name}</p>
+                            <p className="text-xs font-semibold text-ink">{t.name}</p>
                           </button>
                         );
                       })}
@@ -780,13 +781,13 @@ export function TeacherPackageViewer({
 
                 <div className="mt-4 grid max-h-[min(70vh,780px)] gap-4 overflow-y-auto lg:grid-cols-[1fr_min(280px,32%)]">
                   <div className="min-h-0 min-w-0 overflow-y-auto">
-                    <div className="prose prose-slate prose-sm max-w-none prose-headings:font-bold prose-headings:text-stone-900 prose-p:text-stone-600 prose-li:text-stone-600 prose-strong:text-stone-900 sm:prose-base">
+                    <div className="prose prose-slate prose-sm max-w-none prose-headings:font-bold prose-headings:text-ink prose-p:text-muted prose-li:text-muted prose-strong:text-ink sm:prose-base">
                       {renderedActiveContent}
                     </div>
                   </div>
                   {activeImageList.length > 0 ? (
-                    <aside className="flex min-h-0 flex-col gap-3 border-t border-stone-100 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+                    <aside className="flex min-h-0 flex-col gap-3 border-t border-line-subtle pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-faint">
                         Section illustration
                       </p>
                       <div className="space-y-3 overflow-y-auto">
@@ -796,7 +797,7 @@ export function TeacherPackageViewer({
                             href={src}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block overflow-hidden rounded-lg border border-stone-200 bg-stone-50 shadow-sm ring-teal-500 transition hover:ring-2"
+                            className="block overflow-hidden rounded-lg border border-line bg-hover shadow-sm ring-teal-500 transition hover:ring-2"
                           >
                             <img
                               src={src}

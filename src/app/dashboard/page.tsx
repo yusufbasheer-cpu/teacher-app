@@ -87,16 +87,16 @@ function DashboardContent() {
     return (
       <main
         className="flex min-h-screen items-center justify-center px-4"
-        style={{ background: "#F1E9DC" }}
+        style={{ background: "var(--canvas)" }}
       >
         <div
-          className="max-w-md rounded-2xl border bg-[#FAF6EF] p-8 text-center shadow-sm"
-          style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
+          className="max-w-md rounded-2xl border bg-[var(--surface)] p-8 text-center shadow-sm"
+          style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
         >
-          <p className="text-lg font-semibold" style={{ color: "#241A12" }}>
+          <p className="text-lg font-semibold" style={{ color: "var(--text)" }}>
             {hodDeniedState ? "Access restricted to Department Heads" : "You do not have admin access"}
           </p>
-          <p className="mt-2 text-sm" style={{ color: "#6B5D4F" }}>
+          <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
             {hodDeniedState
               ? "Only teachers with the HOD role can access the HOD Dashboard."
               : "Your account is not listed as a school administrator."}
@@ -104,7 +104,7 @@ function DashboardContent() {
           <Link
             href="/lesson-plan"
             className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold text-white"
-            style={{ background: "#0E9484" }}
+            style={{ background: "var(--brand)" }}
           >
             Go to lesson plan generator
           </Link>
@@ -114,7 +114,7 @@ function DashboardContent() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center" style={{ background: "#F1E9DC" }}>
+    <main className="flex min-h-screen items-center justify-center" style={{ background: "var(--canvas)" }}>
       <BrandLoader label="Signing you in…" sublabel="Just a moment." />
     </main>
   );
@@ -124,7 +124,7 @@ export default function DashboardPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center" style={{ background: "#F1E9DC" }}>
+        <main className="flex min-h-screen items-center justify-center" style={{ background: "var(--canvas)" }}>
           <BrandLoader label="Signing you in…" sublabel="Just a moment." />
         </main>
       }

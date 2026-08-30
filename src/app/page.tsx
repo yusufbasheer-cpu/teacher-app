@@ -12,7 +12,7 @@ import { InView } from "@/components/motion-primitives/in-view";
 import { BG_SOFT, BORDER, NAVY, TEAL, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
 
 const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E9484] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAF6EF]";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]";
 
 const FADE_UP = {
   hidden: { opacity: 0, y: 16 },
@@ -44,7 +44,7 @@ const FOOTER_COMPANY_LINKS = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#FAF6EF]">
+    <div className="min-h-screen bg-[var(--surface)]">
       <BackButtonLogoutModal />
       <Navbar />
 
@@ -62,7 +62,7 @@ export default function Home() {
           <div className="mx-auto max-w-[820px] px-4 pb-10 pt-14 text-center sm:px-6">
             <span
               className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-              style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL_DARK }}
+              style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL_DARK }}
             >
               AI for Teachers
             </span>
@@ -86,23 +86,23 @@ export default function Home() {
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/lesson-plan"
-                className={`relative inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-[0_8px_24px_-8px_rgba(14,148,132,0.55)] transition hover:opacity-90 hover:shadow-[0_10px_28px_-6px_rgba(14,148,132,0.65)] sm:w-auto ${FOCUS_RING}`}
+                className={`relative inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-[0_8px_24px_-8px_color-mix(in oklch, var(--brand) 55%, transparent)] transition hover:opacity-90 hover:shadow-[0_10px_28px_-6px_color-mix(in oklch, var(--brand) 65%, transparent)] sm:w-auto ${FOCUS_RING}`}
                 style={{ background: TEAL }}
               >
                 <BorderTrail
-                  className="bg-[#241A12]"
+                  className="bg-[var(--text)]"
                   size={50}
                   style={{
                     boxShadow:
-                      "0 0 10px 2px rgba(36,26,18,0.55), 0 0 20px 6px rgba(36,26,18,0.25)",
+                      "0 0 10px 2px color-mix(in oklch, var(--text) 55%, transparent), 0 0 20px 6px color-mix(in oklch, var(--text) 25%, transparent)",
                   }}
                 />
                 Start Generating
               </Link>
               <a
                 href="#preview"
-                className={`inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold transition hover:border-[#0E9484]/40 hover:bg-white sm:w-auto ${FOCUS_RING}`}
-                style={{ border: `1px solid ${BORDER}`, color: NAVY, background: "#FFFCF7" }}
+                className={`inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold transition hover:border-[color-mix(in_oklch,var(--brand)_40%,transparent)] hover:bg-surface sm:w-auto ${FOCUS_RING}`}
+                style={{ border: `1px solid ${BORDER}`, color: NAVY, background: "var(--surface-raised)" }}
               >
                 View Sample Package
               </a>
@@ -113,14 +113,14 @@ export default function Home() {
                 <span
                   key={badge}
                   className="rounded-full px-3.5 py-1.5 text-xs font-bold"
-                  style={{ background: "#FFFCF7", border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
+                  style={{ background: "var(--surface-raised)", border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
                 >
                   {badge}
                 </span>
               ))}
               <span
                 className="rounded-full px-3.5 py-1.5 text-xs font-bold"
-                style={{ background: "rgba(14, 148, 132,0.1)", border: `1px solid ${BORDER}`, color: TEAL_DARK }}
+                style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", border: `1px solid ${BORDER}`, color: TEAL_DARK }}
               >
                 +15 more
               </span>
@@ -185,7 +185,7 @@ export default function Home() {
             <div className="mt-12 text-center">
               <Link
                 href="/lesson-plan"
-                className={`relative inline-flex min-h-12 items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-[0_8px_24px_-8px_rgba(14,148,132,0.55)] transition hover:opacity-90 hover:shadow-[0_10px_28px_-6px_rgba(14,148,132,0.65)] ${FOCUS_RING}`}
+                className={`relative inline-flex min-h-12 items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-[0_8px_24px_-8px_color-mix(in oklch, var(--brand) 55%, transparent)] transition hover:opacity-90 hover:shadow-[0_10px_28px_-6px_color-mix(in oklch, var(--brand) 65%, transparent)] ${FOCUS_RING}`}
                 style={{ background: TEAL }}
               >
                 Start Generating
@@ -210,7 +210,7 @@ export default function Home() {
               <ul className="mt-4 space-y-2.5">
                 {FOOTER_PRODUCT_LINKS.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className={`rounded text-sm transition hover:opacity-70 ${FOCUS_RING}`} style={{ color: "#2b2118" }}>
+                    <Link href={link.href} className={`rounded text-sm transition hover:opacity-70 ${FOCUS_RING}`} style={{ color: "var(--text)" }}>
                       {link.label}
                     </Link>
                   </li>
@@ -224,7 +224,7 @@ export default function Home() {
               <ul className="mt-4 space-y-2.5">
                 {FOOTER_COMPANY_LINKS.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className={`rounded text-sm transition hover:opacity-70 ${FOCUS_RING}`} style={{ color: "#2b2118" }}>
+                    <Link href={link.href} className={`rounded text-sm transition hover:opacity-70 ${FOCUS_RING}`} style={{ color: "var(--text)" }}>
                       {link.label}
                     </Link>
                   </li>

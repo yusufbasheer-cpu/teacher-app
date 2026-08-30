@@ -81,7 +81,7 @@ export function ActiveSessionGuard({ children }: { children: ReactNode }) {
       {revokedMessage ? (
         <div
           className="fixed inset-x-0 top-0 z-[100] px-4 py-3 text-center text-sm font-medium text-white shadow-lg"
-          style={{ background: "#241A12", borderBottom: "2px solid #0E9484" }}
+          style={{ background: "var(--text)", borderBottom: "2px solid var(--brand)" }}
           role="alert"
         >
           {revokedMessage}

@@ -19,7 +19,7 @@ export function LockedFeaturePanel({ title, description, onUpgrade, children }: 
   return (
     <div
       className="rounded-2xl border border-dashed p-4 sm:p-5"
-      style={{ borderColor: "#E8DFD1", background: "rgba(36, 26, 18, 0.02)" }}
+      style={{ borderColor: "var(--border-subtle)", background: "color-mix(in oklch, var(--text) 2%, transparent)" }}
     >
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-sm font-semibold" style={{ color: NAVY }}>
