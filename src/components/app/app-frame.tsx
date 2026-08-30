@@ -494,30 +494,45 @@ export function AppFrame({ user, children }: { user: User; children: React.React
       <aside
         className={cn(
           "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-line-subtle bg-surface lg:flex",
-          "transition-[width] duration-200 ease-[cubic-bezier(0.2,0,0,1)]",
+          "relative transition-[width] duration-200 ease-[cubic-bezier(0.2,0,0,1)]",
           railWidth,
         )}
       >
+        {/* Collapsed at 56px, the logo and a collapse button never both fit on
+            one row — they used to wrap and overlap. The toggle now lives as a
+            floating handle straddling the rail's own edge, so it never
+            competes with the header for width and reads identically whether
+            the rail is open or shut. */}
         <div
           className={cn(
-            "flex h-[52px] shrink-0 items-center justify-between border-b border-line-subtle px-3",
+            "flex h-[52px] shrink-0 items-center border-b border-line-subtle",
+            collapsed ? "justify-center px-0" : "justify-start gap-2 px-3",
           )}
         >
-          <Link href="/overview" aria-label="Layah — dashboard" className="flex items-center gap-2">
+          <Link
+            href="/overview"
+            aria-label="Layah — dashboard"
+            className="flex items-center gap-2"
+          >
             <img src="/logo-mark.png" alt="" aria-hidden className="size-6 rounded-sm object-cover" />
             {!collapsed ? (
               <span className="text-[13px] font-semibold tracking-[-0.01em] text-ink">Layah</span>
             ) : null}
           </Link>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={toggleCollapsed}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <ChevronsRight /> : <ChevronsLeft />}
-          </Button>
         </div>
+
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={cn(
+            "absolute -right-2.5 top-[16px] z-10 flex size-5 items-center justify-center rounded-full",
+            "border border-line bg-surface text-faint shadow-pop",
+            "transition-colors duration-150 hover:border-brand hover:text-brand-text",
+          )}
+        >
+          {collapsed ? <ChevronsRight className="size-3" /> : <ChevronsLeft className="size-3" />}
+        </button>
 
         <RailContent
           activePath={activePath}
