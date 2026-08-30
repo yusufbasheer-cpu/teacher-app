@@ -1,17 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Container } from "@/components/ui/container";
-import { PageLoader } from "@/components/ui/animate";
+import { Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm";
+import {
+  Badge,
+  Meter,
+  Notice,
+  PageTitle,
+  Panel,
+  PanelHeader,
+  Skeleton,
+  Spinner,
+} from "@/components/ui/panel";
 import { getAuthHeaders } from "@/lib/auth-headers";
 import { isSyntheticPhoneEmail } from "@/lib/phone";
 import { supabase } from "@/lib/supabase";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 import { useErrorToast } from "@/hooks/use-error-toast";
 
-const NAVY = "var(--text)";
-const TEAL = "var(--brand)";
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
@@ -27,127 +37,6 @@ type SubscriptionInfo = {
   current_period_end: string | null;
   cancel_at_cycle_end: boolean;
 };
-
-function CancelConfirmModal({
-  onConfirm,
-  onCancel,
-  cancelling,
-}: {
-  onConfirm: () => void;
-  onCancel: () => void;
-  cancelling: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-[color-mix(in_oklch,var(--text)_70%,transparent)] backdrop-blur-sm"
-        aria-label="Close"
-        onClick={onCancel}
-      />
-      <div
-        className="relative w-full max-w-sm rounded-3xl border bg-[var(--surface)] p-8 shadow-2xl"
-        style={{ borderColor: "color-mix(in oklch, var(--brand) 30%, transparent)" }}
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="cancel-sub-title"
-      >
-        <h2 id="cancel-sub-title" className="text-center text-xl font-bold" style={{ color: NAVY }}>
-          Cancel auto-renewal?
-        </h2>
-        <p className="mt-3 text-center text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-          You&apos;ll keep Pro access until the end of your current billing period. No further
-          payments will be taken after that.
-        </p>
-
-        <div className="mt-7 flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={cancelling}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-red-600 text-sm font-bold text-white transition hover:bg-red-700 disabled:opacity-60"
-          >
-            {cancelling ? "Cancelling…" : "Yes, Cancel Auto-Renewal"}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={cancelling}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border text-sm font-semibold transition hover:bg-hover disabled:opacity-60"
-            style={{ borderColor: "#D9CCB8", color: "var(--text-secondary)" }}
-          >
-            Keep Subscription
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DeleteConfirmModal({
-  onConfirm,
-  onCancel,
-  deleting,
-}: {
-  onConfirm: () => void;
-  onCancel: () => void;
-  deleting: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-[color-mix(in_oklch,var(--text)_70%,transparent)] backdrop-blur-sm"
-        aria-label="Cancel"
-        onClick={onCancel}
-      />
-      <div
-        className="relative w-full max-w-sm rounded-3xl border bg-[var(--surface)] p-8 shadow-2xl"
-        style={{ borderColor: "rgba(239,68,68,0.3)" }}
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="delete-confirm-title"
-      >
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
-          <svg className="size-7 text-red-500" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-
-        <h2 id="delete-confirm-title" className="text-center text-xl font-bold" style={{ color: NAVY }}>
-          Are you sure?
-        </h2>
-        <p className="mt-3 text-center text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-          This will permanently delete your account and all your lesson plans, question papers, and worksheets.
-          <strong className="block mt-1 text-red-600">This action cannot be undone.</strong>
-        </p>
-
-        <div className="mt-7 flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={deleting}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-red-600 text-sm font-bold text-white transition hover:bg-red-700 disabled:opacity-60"
-          >
-            {deleting ? "Deleting…" : "Yes, Delete My Account"}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={deleting}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border text-sm font-semibold transition hover:bg-hover disabled:opacity-60"
-            style={{ borderColor: "#D9CCB8", color: "var(--text-secondary)" }}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -295,213 +184,196 @@ export default function SettingsPage() {
 
   if (loadingPage) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <PageLoader label="Loading…" />
-      </main>
+      <div className="mx-auto w-full max-w-[720px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="mt-5 h-[132px] rounded-lg" />
+        <Skeleton className="mt-4 h-[96px] rounded-lg" />
+        <Skeleton className="mt-4 h-[96px] rounded-lg" />
+      </div>
     );
   }
 
   const planLabel = usage ? (PLAN_LABELS[usage.planType] ?? usage.planType) : "—";
-  const generationsText = usage
-    ? usage.unlimited
-      ? "Unlimited"
-      : `${usage.generationsUsed} of ${usage.generationsLimit ?? "?"} used this month`
-    : "—";
+  const onFree = usage?.planType === "free";
+  const hasLiveSub =
+    subscription && (subscription.status === "active" || subscription.status === "pending");
 
   return (
-    <main className="min-h-screen pb-16 pt-10">
-      <Container>
-        <div className="mx-auto max-w-2xl">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" style={{ color: NAVY }}>
-            Account Settings
-          </h1>
-          <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-            Manage your Layah account and data.
-          </p>
+    <div className="mx-auto w-full max-w-[720px] px-4 py-6 sm:px-6 sm:py-8">
+      <PageTitle title="Settings" description="Your account, plan and data." />
 
-          {/* Account details */}
-          <section
-            className="mt-8 rounded-3xl border bg-[var(--surface)] p-6 shadow-sm"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}
-          >
-            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
-              Account Details
-            </h2>
-            <dl className="mt-4 space-y-4">
-              <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "var(--canvas)" }}>
-                <dt className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{contact?.label ?? "Email"}</dt>
-                <dd className="text-sm font-semibold" style={{ color: NAVY }}>{contact?.value ?? "—"}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "var(--canvas)" }}>
-                <dt className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Plan</dt>
-                <dd className="text-sm font-semibold" style={{ color: NAVY }}>{planLabel}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ background: "var(--canvas)" }}>
-                <dt className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Generations</dt>
-                <dd className="text-sm font-semibold" style={{ color: NAVY }}>{generationsText}</dd>
-              </div>
-            </dl>
-          </section>
+      {/* ---- Account ---- */}
+      <Panel className="mt-5 overflow-hidden">
+        <PanelHeader title="Account" />
+        <dl className="divide-y divide-line-subtle">
+          <div className="flex items-center justify-between gap-4 px-4 py-2.5">
+            <dt className="text-[13px] text-muted">{contact?.label ?? "Email"}</dt>
+            <dd className="truncate text-[13px] text-ink">{contact?.value ?? "—"}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-4 px-4 py-2.5">
+            <dt className="text-[13px] text-muted">Plan</dt>
+            <dd className="flex items-center gap-2">
+              <Badge tone={onFree ? "neutral" : "brand"}>{planLabel}</Badge>
+              {onFree ? (
+                <Link
+                  href="/pricing"
+                  className="text-[12px] font-medium text-brand-text underline-offset-2 hover:underline"
+                >
+                  Compare plans
+                </Link>
+              ) : null}
+            </dd>
+          </div>
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-[13px] text-muted">Generations this month</dt>
+              <dd className="font-mono text-[12px] tabular-nums text-ink">
+                {usage
+                  ? usage.unlimited || usage.generationsLimit == null
+                    ? "Unlimited"
+                    : `${usage.generationsUsed} / ${usage.generationsLimit}`
+                  : "—"}
+              </dd>
+            </div>
+            {usage && !usage.unlimited && usage.generationsLimit != null ? (
+              <Meter used={usage.generationsUsed} limit={usage.generationsLimit} className="mt-2" />
+            ) : null}
+          </div>
+        </dl>
+      </Panel>
 
-          {/* Manage subscription */}
-          {subscription && (subscription.status === "active" || subscription.status === "pending") && (
-            <section
-              className="mt-6 rounded-3xl border bg-[var(--surface)] p-6 shadow-sm"
-              style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}
-            >
-              <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
-                Manage Subscription
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                Pro Monthly · Billed ₹349 every 30 days via Razorpay
-                {subscription.status === "pending" && (
-                  <span className="mt-1 block font-semibold text-amber-600">
-                    Your last renewal payment failed — we&apos;re automatically retrying. Your Pro access is unaffected for now.
-                  </span>
-                )}
+      {/* ---- Subscription ---- */}
+      {hasLiveSub ? (
+        <Panel className="mt-4 overflow-hidden">
+          <PanelHeader title="Subscription" description="Pro Monthly · ₹349 every 30 days" />
+          <div className="p-4">
+            {subscription.status === "pending" ? (
+              <Notice tone="generated" className="mb-3">
+                Your last renewal payment failed and we&apos;re retrying automatically. Pro access
+                is unaffected for now.
+              </Notice>
+            ) : null}
+            {cancelError ? (
+              <Notice tone="danger" className="mb-3">
+                {cancelError}
+              </Notice>
+            ) : null}
+
+            {subscription.cancel_at_cycle_end ? (
+              <p className="text-[13px] text-muted">
+                Auto-renewal is off. Pro stays active until{" "}
+                <span className="font-medium text-ink">
+                  {subscription.current_period_end ?? "your next billing date"}
+                </span>
+                , then no further charges.
               </p>
-
-              {cancelError && <p className="mt-3 text-sm text-red-600">{cancelError}</p>}
-
-              {subscription.cancel_at_cycle_end ? (
-                <p className="mt-4 text-sm font-semibold" style={{ color: NAVY }}>
-                  Cancels on {subscription.current_period_end ?? "your next billing date"} — no further charges.
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-[13px] text-muted">
+                  {subscription.current_period_end
+                    ? `Renews ${subscription.current_period_end}`
+                    : "Renews automatically"}
                 </p>
-              ) : (
-                <>
-                  {subscription.current_period_end && (
-                    <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                      Next billing date: {subscription.current_period_end}
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowCancelModal(true)}
-                    className="mt-4 inline-flex min-h-10 items-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-600 transition hover:bg-red-100"
-                  >
-                    Cancel Auto-Renewal
-                  </button>
-                </>
-              )}
-            </section>
-          )}
-
-          {/* Download my data */}
-          <section
-            className="mt-6 rounded-3xl border bg-[var(--surface)] p-6 shadow-sm"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}
-          >
-            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
-              My Data
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-              Download a copy of all your Layah data including your account info, usage stats, and all saved lesson plans as a JSON file.
-            </p>
-
-            {downloadSuccess && (
-              <div
-                className="mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold"
-                style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: "var(--brand-active)" }}
-              >
-                <svg className="size-4 shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden>
-                  <path d="M5 10l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Your data has been downloaded successfully.
+                <Button variant="outline" size="sm" onClick={() => setShowCancelModal(true)}>
+                  Turn off auto-renewal
+                </Button>
               </div>
             )}
+          </div>
+        </Panel>
+      ) : null}
 
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={downloading}
-              className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl px-5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
-              style={{ background: TEAL }}
-            >
-              {downloading ? (
-                <>
-                  <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Preparing…
-                </>
-              ) : (
-                <>
-                  <svg className="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                  Download My Data
-                </>
-              )}
-            </button>
-          </section>
-
-          {/* Cookie preferences */}
-          <section
-            className="mt-6 rounded-3xl border bg-[var(--surface)] p-6 shadow-sm"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}
-          >
-            <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
-              Cookie Preferences
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-              We only use essential cookies required for authentication and your session. You can reset your cookie choice at any time.
+      {/* ---- Data ---- */}
+      <Panel className="mt-4 overflow-hidden">
+        <PanelHeader title="Your data" />
+        <div className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="max-w-sm text-[13px] text-muted">
+              Download everything Layah holds for you — account details, usage and every saved
+              lesson — as a JSON file.
             </p>
-            <button
-              type="button"
+            <Button variant="outline" size="sm" onClick={handleDownload} disabled={downloading}>
+              {downloading ? <Spinner className="size-3.5" /> : <Download />}
+              {downloading ? "Preparing…" : "Download"}
+            </Button>
+          </div>
+          {downloadSuccess ? (
+            <Notice tone="brand" className="mt-3">
+              Downloaded. Check your browser&apos;s downloads folder.
+            </Notice>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line-subtle pt-4">
+            <p className="max-w-sm text-[13px] text-muted">
+              Layah only uses cookies required for sign-in and your session. You can reset your
+              choice at any time.
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 localStorage.removeItem("layah_cookie_consent");
                 window.location.reload();
               }}
-              className="mt-4 inline-flex min-h-9 items-center rounded-xl border px-4 text-sm font-semibold transition hover:bg-hover"
-              style={{ borderColor: "#D9CCB8", color: "var(--text-secondary)" }}
             >
-              Reset Cookie Choice
-            </button>
-          </section>
-
-          {/* Danger zone */}
-          <section
-            className="mt-6 rounded-3xl border bg-[var(--surface)] p-6 shadow-sm"
-            style={{ borderColor: "rgba(239,68,68,0.2)" }}
-          >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-red-500">
-              Danger Zone
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-              Deleting your account is permanent and cannot be undone. All your lesson plans, question papers, and worksheets will be removed.
-            </p>
-            {deleteError && (
-              <p className="mt-3 text-sm text-red-600">{deleteError}</p>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowDeleteModal(true)}
-              className="mt-4 inline-flex min-h-10 items-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-600 transition hover:bg-red-100"
-            >
-              Delete My Account
-            </button>
-          </section>
+              Reset cookie choice
+            </Button>
+          </div>
         </div>
-      </Container>
+      </Panel>
 
-      {showDeleteModal && (
-        <DeleteConfirmModal
-          onConfirm={handleDeleteConfirm}
-          onCancel={() => { setShowDeleteModal(false); setDeleteError(null); }}
-          deleting={deleting}
-        />
-      )}
+      {/* ---- Delete ----
+          Kept last and given quiet chrome rather than a red-bannered "DANGER
+          ZONE" heading. The confirmation is where the weight belongs; shouting
+          on the page just trains people to ignore the shouting. */}
+      <Panel className="mt-4 overflow-hidden">
+        <PanelHeader title="Delete account" />
+        <div className="p-4">
+          {deleteError ? (
+            <Notice tone="danger" className="mb-3">
+              {deleteError}
+            </Notice>
+          ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="max-w-sm text-[13px] text-muted">
+              Permanently removes your account and every lesson, question paper and worksheet you
+              have generated. This can&apos;t be undone.
+            </p>
+            <Button variant="danger-quiet" size="sm" onClick={() => setShowDeleteModal(true)}>
+              Delete account
+            </Button>
+          </div>
+        </div>
+      </Panel>
 
-      {showCancelModal && (
-        <CancelConfirmModal
-          onConfirm={handleCancelSubscription}
-          onCancel={() => { setShowCancelModal(false); setCancelError(null); }}
-          cancelling={cancelling}
-        />
-      )}
-    </main>
+      <ConfirmDialog
+        open={showDeleteModal}
+        busy={deleting}
+        title="Delete your account?"
+        confirmLabel="Delete account"
+        description="This permanently removes your account and every lesson, question paper and worksheet you have generated. It can't be undone."
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          setShowDeleteModal(false);
+          setDeleteError(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={showCancelModal}
+        busy={cancelling}
+        tone="default"
+        title="Turn off auto-renewal?"
+        confirmLabel="Turn off auto-renewal"
+        cancelLabel="Keep it on"
+        description="You keep Pro until the end of the current billing period. No further payments will be taken after that."
+        onConfirm={handleCancelSubscription}
+        onCancel={() => {
+          setShowCancelModal(false);
+          setCancelError(null);
+        }}
+      />
+
+    </div>
   );
 }
