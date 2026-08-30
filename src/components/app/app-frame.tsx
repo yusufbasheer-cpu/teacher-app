@@ -499,8 +499,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
       >
         <div
           className={cn(
-            "flex h-[52px] shrink-0 items-center border-b border-line-subtle",
-            collapsed ? "justify-center px-0" : "justify-between px-3",
+            "flex h-[52px] shrink-0 items-center justify-between border-b border-line-subtle px-3",
           )}
         >
           <Link href="/overview" aria-label="Layah — dashboard" className="flex items-center gap-2">
@@ -509,11 +508,14 @@ export function AppFrame({ user, children }: { user: User; children: React.React
               <span className="text-[13px] font-semibold tracking-[-0.01em] text-ink">Layah</span>
             ) : null}
           </Link>
-          {!collapsed ? (
-            <Button variant="ghost" size="icon-xs" onClick={toggleCollapsed} aria-label="Collapse sidebar">
-              <ChevronsLeft />
-            </Button>
-          ) : null}
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronsRight /> : <ChevronsLeft />}
+          </Button>
         </div>
 
         <RailContent
@@ -524,13 +526,6 @@ export function AppFrame({ user, children }: { user: User; children: React.React
           onBeforeNavigate={onBeforeNavigate}
         />
 
-        {collapsed ? (
-          <div className="flex justify-center border-t border-line-subtle py-2">
-            <Button variant="ghost" size="icon-xs" onClick={toggleCollapsed} aria-label="Expand sidebar">
-              <ChevronsRight />
-            </Button>
-          </div>
-        ) : null}
       </aside>
 
       {/* ---- Drawer (below lg) ---- */}

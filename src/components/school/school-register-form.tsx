@@ -308,6 +308,10 @@ export function SchoolRegisterForm() {
         provider: "google",
         options: {
           redirectTo: window.location.origin + "/school-register?step=2",
+          // Ask Google to show the account chooser instead of reusing the last account.
+          queryParams: {
+            prompt: "select_account",
+          },
         },
       });
       if (oauthError) throw oauthError;

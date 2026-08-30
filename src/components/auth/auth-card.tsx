@@ -143,6 +143,10 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
         provider: "google",
         options: {
           redirectTo: window.location.origin + "/auth/callback",
+          // Ask Google to show the account chooser instead of reusing the last account.
+          queryParams: {
+            prompt: "select_account",
+          },
         },
       });
       if (oauthError) throw oauthError;

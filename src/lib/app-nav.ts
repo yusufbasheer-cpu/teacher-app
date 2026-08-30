@@ -94,8 +94,8 @@ export function navGroups(roles: {
   if (roles.superAdmin) role.push(ROLE_ITEMS.superAdmin);
 
   const groups: NavGroup[] = [
-    { id: "create", label: "Create", items: CREATE_ITEMS },
     { id: "library", label: "Library", items: LIBRARY_ITEMS },
+    { id: "create", label: "Create", items: CREATE_ITEMS },
   ];
   if (role.length) groups.push({ id: "manage", label: "Manage", items: role });
   return groups;
