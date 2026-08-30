@@ -122,7 +122,16 @@ export default function RootLayout({
   ];
 
   return (
-    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    // The font variables must live on <html>, not <body>: `--font-sans` is
+    // composed from them at :root by the @theme block in globals.css, and a
+    // var() only defined further down the tree resolves to nothing there —
+    // which silently drops the whole stack to Times.
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+      className={`${instrumentSans.variable} ${sourceSerif.variable} ${plexMono.variable}`}
+    >
       <head>
         <script
           type="application/ld+json"
@@ -137,9 +146,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body
-        className={`${instrumentSans.variable} ${sourceSerif.variable} ${plexMono.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
-      >
+      <body className="min-w-0 overflow-x-hidden font-sans antialiased">
         <SentryProvider />
         <PostHogProvider>
           <AppShell>
