@@ -328,7 +328,12 @@ function QuotaPill() {
       className="hidden items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-hover sm:flex"
       title={`${usage.generationsUsed} of ${usage.generationsLimit} generations used this month`}
     >
-      <Meter used={usage.generationsUsed} limit={usage.generationsLimit} className="w-12" />
+      {/* The bar only appears once headroom is short. At full quota an empty
+          track is a line that says nothing; when it matters, the bar and its
+          colour carry the urgency that the number alone doesn't. */}
+      {low ? (
+        <Meter used={usage.generationsUsed} limit={usage.generationsLimit} className="w-10" />
+      ) : null}
       <span
         className={cn(
           "font-mono text-[11px] tabular-nums",

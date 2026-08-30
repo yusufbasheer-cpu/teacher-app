@@ -362,18 +362,29 @@ export function LessonPlanGenerator() {
             setError(toUserFacingError(err, "lesson-plan-load"));
           }
         } else {
-          // Pre-fill form from Regenerate button URL params
+          // Pre-fill from URL params — used by the "Regenerate" action on a
+          // saved lesson and by the dashboard's start-a-lesson composer, which
+          // hands over the class context so the teacher doesn't re-pick it.
           const subjectParam = searchParams.get("subject");
           const gradeParam = searchParams.get("grade");
           const topicParam = searchParams.get("topic");
+          const chapterParam = searchParams.get("chapter");
           const objectivesParam = searchParams.get("learningObjectives");
           const curriculumParam = searchParams.get("curriculumType");
-          if (subjectParam || gradeParam || topicParam || objectivesParam || curriculumParam) {
+          if (
+            subjectParam ||
+            gradeParam ||
+            topicParam ||
+            chapterParam ||
+            objectivesParam ||
+            curriculumParam
+          ) {
             setForm((prev) => ({
               ...prev,
               ...(subjectParam && isValidSubjectOption(subjectParam) ? { subject: subjectParam } : {}),
               ...(gradeParam && isValidGradeYear(gradeParam) ? { grade: gradeParam } : {}),
               ...(topicParam ? { topic: topicParam } : {}),
+              ...(chapterParam ? { chapter: chapterParam } : {}),
               ...(objectivesParam ? { learningObjectives: objectivesParam } : {}),
               ...(curriculumParam && isValidCurriculumType(curriculumParam) ? { curriculumType: curriculumParam } : {}),
             }));
