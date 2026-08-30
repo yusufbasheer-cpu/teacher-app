@@ -7,7 +7,7 @@ import { HowItWorksTimeline } from "@/components/landing/how-it-works-timeline";
 import { StatsSection } from "@/components/home/stats-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { TextEffect } from "@/components/motion-primitives/text-effect";
-import { BorderTrail } from "@/components/motion-primitives/border-trail";
+import { HeroBackdrop } from "@/components/marketing/hero-backdrop";
 import { InView } from "@/components/motion-primitives/in-view";
 import { BG_SOFT, BORDER, NAVY, TEAL, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
 
@@ -53,12 +53,7 @@ export default function Home() {
             HERO — full-bleed background, content column capped at 820px
             ══════════════════════════════════════════════════════════════ */}
         <section className="relative isolate overflow-hidden">
-          <img
-            src="/hero-blob.svg"
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover"
-          />
+          <HeroBackdrop />
           <div className="mx-auto max-w-[820px] px-4 pb-10 pt-14 text-center sm:px-6">
             <span
               className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
@@ -86,22 +81,14 @@ export default function Home() {
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/lesson-plan"
-                className={`relative inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-[0_8px_24px_-8px_color-mix(in oklch, var(--brand) 55%, transparent)] transition hover:opacity-90 hover:shadow-[0_10px_28px_-6px_color-mix(in oklch, var(--brand) 65%, transparent)] sm:w-auto ${FOCUS_RING}`}
+                className={`inline-flex min-h-12 w-full items-center justify-center rounded-lg px-8 text-base font-semibold text-brand-on transition-colors hover:bg-brand-hover sm:w-auto ${FOCUS_RING}`}
                 style={{ background: TEAL }}
               >
-                <BorderTrail
-                  className="bg-[var(--text)]"
-                  size={50}
-                  style={{
-                    boxShadow:
-                      "0 0 10px 2px color-mix(in oklch, var(--text) 55%, transparent), 0 0 20px 6px color-mix(in oklch, var(--text) 25%, transparent)",
-                  }}
-                />
                 Start Generating
               </Link>
               <a
                 href="#preview"
-                className={`inline-flex min-h-12 w-full items-center justify-center rounded-full px-8 text-base font-semibold transition hover:border-[color-mix(in_oklch,var(--brand)_40%,transparent)] hover:bg-surface sm:w-auto ${FOCUS_RING}`}
+                className={`inline-flex min-h-12 w-full items-center justify-center rounded-lg px-8 text-base font-semibold transition-colors hover:border-line-strong hover:bg-hover sm:w-auto ${FOCUS_RING}`}
                 style={{ border: `1px solid ${BORDER}`, color: NAVY, background: "var(--surface-raised)" }}
               >
                 View Sample Package

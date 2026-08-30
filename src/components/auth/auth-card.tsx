@@ -350,11 +350,12 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
 
   const footerPrefix = mode === "login" ? "Need an account?" : "Already have an account?";
   const footerAction = mode === "login" ? "Sign up" : "Login";
-  const inputClass =
-    "w-full rounded-[14px] border bg-surface px-4 py-3.5 text-sm outline-none transition placeholder:text-faint";
-  const inputStyle = { borderColor: "#D9CCB8", color: "var(--text)" };
-  const onInputFocus = (e: React.FocusEvent<HTMLInputElement>) => (e.target.style.borderColor = "var(--brand)");
-  const onInputBlur = (e: React.FocusEvent<HTMLInputElement>) => (e.target.style.borderColor = "#D9CCB8");
+  const inputClass = [
+    "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-[13px] text-ink",
+    "outline-none transition-[border-color,box-shadow] duration-[110ms]",
+    "placeholder:text-disabled hover:border-line-strong",
+    "focus:border-brand focus:ring-2 focus:ring-brand/25",
+  ].join(" ");
 
   return (
     <motion.div
@@ -364,7 +365,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       className="w-full max-w-[400px]"
     >
       <motion.div variants={itemVariants} className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight" style={{ color: "var(--text)" }}>
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">
           {mode === "login" ? "Teacher Login" : "Create Teacher Account"}
         </h1>
         <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -379,7 +380,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           type="button"
           onClick={() => void onGoogleSignIn()}
           disabled={loading || googleLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-full border bg-surface py-3.5 text-[13px] font-semibold transition-transform hover:bg-hover active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex w-full items-center justify-center gap-2.5 rounded-md border border-line bg-surface py-2.5 text-[13px] font-medium text-ink transition-colors duration-[110ms] hover:border-line-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-60"
           style={{ borderColor: "#dadce0", color: "var(--text)" }}
         >
           {googleLoading ? <GoogleSpinner /> : <GoogleLogo />}
@@ -425,21 +426,21 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
               onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Priya Sharma"
               className={inputClass}
-              style={inputStyle}
-              onFocus={onInputFocus}
-              onBlur={onInputBlur}
               required
             />
           </motion.div>
         )}
 
-        <motion.div variants={itemVariants} className="flex gap-1 rounded-full p-1" style={{ background: "color-mix(in oklch, var(--brand) 8%, transparent)" }}>
+        <motion.div
+          variants={itemVariants}
+          className="flex gap-0.5 rounded-md border border-line-subtle bg-sunken p-0.5"
+        >
           {(["email", "phone"] as const).map((option) => (
             <button
               key={option}
               type="button"
               onClick={() => setIdentifier(option)}
-              className="flex-1 rounded-full py-1.5 text-xs font-semibold capitalize transition"
+              className="flex-1 rounded-sm py-1.5 text-[12px] font-medium capitalize transition-colors duration-[110ms]"
               style={{
                 background: identifier === option ? "var(--surface)" : "transparent",
                 color: identifier === option ? "var(--brand)" : "var(--text-secondary)",
@@ -464,9 +465,6 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
               className={inputClass}
-              style={inputStyle}
-              onFocus={onInputFocus}
-              onBlur={onInputBlur}
               required
             />
           </motion.div>
@@ -485,9 +483,6 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
               pattern="^\+?[0-9\s\-()]{7,20}$"
               title="Enter a valid phone number, with country code if possible"
               className={inputClass}
-              style={inputStyle}
-              onFocus={onInputFocus}
-              onBlur={onInputBlur}
               required
             />
           </motion.div>
@@ -506,9 +501,6 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             placeholder="Enter your password"
             minLength={6}
             className={inputClass}
-            style={inputStyle}
-            onFocus={onInputFocus}
-            onBlur={onInputBlur}
             required
           />
         </motion.div>
@@ -526,7 +518,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           <button
             type="submit"
             disabled={loading || googleLoading}
-            className="w-full rounded-full py-3.5 text-sm font-semibold text-white shadow-[0_0_20px_color-mix(in oklch, var(--brand) 15%, transparent)] transition-transform hover:opacity-90 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-md bg-brand py-2.5 text-[13px] font-medium text-brand-on transition-colors duration-[110ms] hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
             style={{ background: "var(--brand)" }}
           >
             {loading

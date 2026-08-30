@@ -1,81 +1,50 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
-import { NAVY, withAlpha } from "@/lib/design-tokens";
+import { HeroBackdrop } from "@/components/marketing/hero-backdrop";
 
-const TRUST_BADGES = ["CBSE", "ICSE", "IB", "Cambridge"] as const;
+const CURRICULA = ["CBSE", "ICSE", "IB", "Cambridge"] as const;
 
-type AuthLayoutProps = {
-  children: ReactNode;
-};
-
-/** Shared two-column shell for /login and /signup: a brand panel (Haikei
- * blob background) on the left, the auth form on the right. Left panel
- * collapses away on mobile — form only below `lg`. */
-export function AuthLayout({ children }: AuthLayoutProps) {
+/**
+ * Shell for /login and /signup.
+ *
+ * Was a two-column split: a navy panel carrying a decorative blob, the logo and
+ * four floating badges on the left, the form on the right. At most widths the
+ * left half read as empty — a large branded rectangle doing no work — and it
+ * disappeared entirely below `lg`, so the desktop and mobile versions of the
+ * page had nothing in common.
+ *
+ * A single centred column is both more professional and more honest about what
+ * the page is for: one task, one focal point, nothing competing with it. The
+ * ruled backdrop is the same one the homepage hero uses, so arriving here from
+ * the marketing site feels continuous rather than like a different product.
+ */
+export function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-[calc(100vh-64px)] w-full flex-col lg:flex-row">
-      <div className="relative hidden w-full flex-col justify-end p-4 lg:flex lg:min-h-[calc(100vh-64px)] lg:w-1/2">
-        <div
-          className="relative h-full w-full overflow-hidden rounded-[32px] shadow-2xl"
-          style={{ background: NAVY }}
-        >
+    <div className="relative flex min-h-[calc(100vh-64px)] w-full flex-col items-center justify-center px-4 py-12">
+      <HeroBackdrop />
+
+      <div className="flex w-full max-w-[400px] flex-col items-center">
+        <Link href="/" className="mb-7 flex flex-col items-center gap-2.5">
           <img
-            src="/hero-bg.svg"
+            src="/logo-mark.png"
             alt=""
             aria-hidden
-            className="absolute inset-0 h-full w-full object-cover"
+            className="size-10 rounded-lg object-cover"
           />
-          <div
-            className="absolute inset-0"
-            style={{ background: `linear-gradient(to top, ${NAVY} 0%, ${withAlpha(NAVY, 0)} 72%)` }}
-          />
+          <span className="text-center">
+            <span className="block text-[15px] font-semibold tracking-[-0.015em] text-ink">Layah</span>
+            <span className="mt-0.5 block text-[12px] text-faint">Prep less. Teach more.</span>
+          </span>
+        </Link>
 
-          <div className="relative z-10 flex w-full flex-col items-center gap-6 pb-14 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <img
-                src="/logo-mark.png"
-                alt="Layah"
-                className="h-14 w-14 rounded-2xl object-cover shadow-lg"
-              />
-              <div>
-                <p className="text-2xl font-extrabold text-white">Layah</p>
-                <p className="mt-1 text-sm font-semibold" style={{ color: "rgba(255,255,255,0.7)" }}>
-                  Prep Less. Teach More.
-                </p>
-              </div>
-            </div>
-
-            {/* Backgrounds are deliberately opaque (not a faint tint) — the blob
-                can shift under this row at different panel aspect ratios, and a
-                near-transparent chip loses contrast against its cream fill. An
-                opaque navy surface keeps the white text readable regardless of
-                what's behind it. */}
-            <div className="flex flex-wrap items-center justify-center gap-2 px-10">
-              {TRUST_BADGES.map((badge) => (
-                <span
-                  key={badge}
-                  className="rounded-full px-3 py-1 text-xs font-semibold text-white"
-                  style={{ background: "color-mix(in oklch, var(--text) 65%, transparent)", border: "1px solid rgba(255,255,255,0.22)" }}
-                >
-                  {badge}
-                </span>
-              ))}
-              <span
-                className="rounded-full px-3 py-1 text-xs font-semibold"
-                style={{
-                  background: "color-mix(in oklch, var(--text) 65%, transparent)",
-                  color: "var(--l-green-8)",
-                  border: "1px solid color-mix(in oklch, var(--brand) 55%, transparent)",
-                }}
-              >
-                +15 more curriculums
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex w-full flex-col items-center justify-center bg-[var(--surface)] px-6 py-12 sm:px-12 lg:w-1/2">
         {children}
+
+        {/* Trust signal as one quiet line rather than a row of floating chips.
+            It supports the decision without competing with the form. */}
+        <p className="mt-7 text-center text-[11px] leading-relaxed text-disabled">
+          Curriculum-aligned for{" "}
+          <span className="text-faint">{CURRICULA.join(", ")}</span> and 15+ more
+        </p>
       </div>
     </div>
   );
