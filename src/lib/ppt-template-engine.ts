@@ -173,13 +173,18 @@ function normalizeToLines(body: string): string[] {
     .filter((l) => l.length > 0);
 }
 
-/** Splits `lines` into per-slide chunks that fit within `maxHeight`, using real row heights. */
-function chunkLinesByHeight(lines: string[], cpl: number, maxHeight: number): string[][] {
+/**
+ * Splits `lines` into per-slide chunks that fit within `maxHeight`, using real row heights.
+ * `variant` must match what `drawBulletBlock` will render these lines with — passed through to
+ * `estimateRowHeight` so a group-header row (activity slides only) is budgeted the same extra
+ * height it's actually drawn with, rather than the chunker under-reserving for it.
+ */
+function chunkLinesByHeight(lines: string[], cpl: number, maxHeight: number, variant?: BulletVariant): string[][] {
   const chunks: string[][] = [];
   let cur: string[] = [];
   let used = 0;
   for (const line of lines) {
-    const h = estimateRowHeight(line, cpl);
+    const h = estimateRowHeight(line, cpl, 1, variant);
     if (used + h > maxHeight && cur.length > 0) { chunks.push(cur); cur = []; used = 0; }
     cur.push(line);
     used += h;
@@ -482,13 +487,13 @@ function doContentSlide(
   // the top — a 1-2 line body left top-aligned in a 5.65" box reads as broken/empty, not minimal.
   const availableBottom = CONTENT_Y + CONTENT_H;
   const budgetH = availableBottom - bodyY;
-  const baseUsedH = estimateBlockHeight(chunk, cpl);
+  const baseUsedH = estimateBlockHeight(chunk, cpl, 1, variant);
   const fillRatio = budgetH > 0 ? baseUsedH / budgetH : 1;
   // Sparse slide — grow the body text instead of leaving it small in a mostly-empty box.
   // Capped well short of 1.0x-to-2.0x so this never risks overflowing the height this chunk
   // was already budgeted for by chunkLinesByHeight.
   const fontScale = fillRatio < 0.5 ? 1.2 : fillRatio < 0.72 ? 1.1 : 1;
-  const usedH = fontScale === 1 ? baseUsedH : estimateBlockHeight(chunk, cpl, fontScale);
+  const usedH = fontScale === 1 ? baseUsedH : estimateBlockHeight(chunk, cpl, fontScale, variant);
   const slack = Math.max(0, availableBottom - bodyY - usedH);
   bodyY += slack / 2;
 
@@ -541,11 +546,12 @@ export function computeDeckLayoutStats(
     }
     const hasImg = Boolean(slideImageUrls?.[i]);
     const cpl = hasImg ? CPL_IMAGE : CPL_FULL;
+    const variant = bulletVariantFor(kind);
     const chipReserve = chipLabelFor(kind, i) ? CHIP_RESERVE_H : 0;
     const budget = CONTENT_H - chipReserve;
     const lines = normalizeToLines(slides[i]!.body);
-    const chunks = chunkLinesByHeight(lines, cpl, budget);
-    const usedH = estimateBlockHeight(lines, cpl);
+    const chunks = chunkLinesByHeight(lines, cpl, budget, variant);
+    const usedH = estimateBlockHeight(lines, cpl, 1, variant);
     stats.push({
       deckIdx: i, kind, hasImage: hasImg,
       physicalSlideCount: chunks.length,
@@ -600,7 +606,7 @@ export async function buildPptxFromTemplateEngine(params: {
     const kind = SLIDE_KIND_BY_INDEX[i] ?? "standard";
     const budget = chipLabelFor(kind, i) ? CONTENT_H - CHIP_RESERVE_H : CONTENT_H;
     const lines = normalizeToLines(deck[i]!.body);
-    const chunks = chunkLinesByHeight(lines, cpl, budget);
+    const chunks = chunkLinesByHeight(lines, cpl, budget, bulletVariantFor(kind));
     chunksByDeckIdx[i] = chunks;
     totalPhysical += chunks.length;
   }

@@ -64,6 +64,9 @@ export const ROW_LINE_H = 0.3;
 export const ROW_GAP = 0.14;
 /** Minimum row height (inches) — keeps the marker visually centered even for very short lines. */
 export const ROW_MIN_H = 0.34;
+/** Extra breathing room ABOVE a standalone group-header row (see isGroupHeaderLine) — separates
+ *  one sub-section's instructions from the next instead of the two running together. */
+export const HEADER_TOP_GAP = 0.12;
 
 export function wrappedLineCount(text: string, cpl: number): number {
   return Math.max(1, Math.ceil(text.length / Math.max(1, cpl)));
@@ -73,15 +76,27 @@ export function wrappedLineCount(text: string, cpl: number): number {
  * `scale` grows both the effective row height and shrinks the effective chars-per-line — used to
  * keep height estimates consistent with `drawBulletBlock` rendering the same lines at a larger
  * font on sparse slides (see `fontScale` in ppt-template-engine.ts).
+ *
+ * `variant`, when `"activity"`, folds in `HEADER_TOP_GAP` for a group-header line so the chunker
+ * (chunkLinesByHeight in ppt-template-engine.ts, which calls this per line) budgets the same extra
+ * space `drawBulletBlock` actually draws — without that, a slide with several differentiated-task
+ * groups under-reserves height for their header rows and the last group gets clipped at the bottom
+ * of the content area instead of flowing onto a continuation slide. Scoped to `"activity"` rather
+ * than every variant: checklist content (Learning Objectives, Success Criteria) is often written
+ * as short phrases with no terminal punctuation, which would otherwise false-positive as headers
+ * and lose their checkbox marker — the standalone-label shape this exists for is specific to
+ * activity slides (differentiated tasks, warm-ups, plenaries).
  */
-export function estimateRowHeight(text: string, cpl: number, scale = 1): number {
+export function estimateRowHeight(text: string, cpl: number, scale = 1, variant?: BulletVariant): number {
   const effectiveCpl = Math.max(8, Math.round(cpl / scale));
-  return Math.max(ROW_MIN_H * scale, wrappedLineCount(text, effectiveCpl) * ROW_LINE_H * scale) + ROW_GAP * scale;
+  const base =
+    Math.max(ROW_MIN_H * scale, wrappedLineCount(text, effectiveCpl) * ROW_LINE_H * scale) + ROW_GAP * scale;
+  return variant === "activity" && isGroupHeaderLine(text) ? base + HEADER_TOP_GAP * scale : base;
 }
 
 /** Total height `drawBulletBlock` will consume for `lines` — lets callers center short blocks. */
-export function estimateBlockHeight(lines: string[], cpl: number, scale = 1): number {
-  return lines.reduce((sum, line) => sum + estimateRowHeight(line, cpl, scale), 0);
+export function estimateBlockHeight(lines: string[], cpl: number, scale = 1, variant?: BulletVariant): number {
+  return lines.reduce((sum, line) => sum + estimateRowHeight(line, cpl, scale, variant), 0);
 }
 
 // ─── Lead-in label detection ("Higher Achievers: a challenging task…") ──────────────────────
@@ -94,6 +109,30 @@ export function splitLeadIn(line: string): { label: string | null; rest: string 
   const [, label, rest] = m;
   if (!rest || rest.trim().length < 3) return { label: null, rest: line };
   return { label: label!.trim(), rest: rest.trim() };
+}
+
+// ─── Group-header detection ("Higher Achievers task", "Middle Achievers task"…) ────────────────
+//
+// The generated content sometimes emits a short STANDALONE label line, followed by several
+// separate instruction bullets under it — a differentiated-task grouping being the clearest
+// example: "Higher Achievers task" / "Middle Achievers task" / "Lower Achievers task", each
+// followed by its own 3-4 sub-bullets. That shape is structurally different from what
+// `splitLeadIn` handles (one label + its own instruction, same line) and previously fell through
+// to the plain-bullet branch — rendered with the same marker, size and colour as every
+// instruction under it, so a teacher scanning the slide had no visual cue where one group's
+// tasks ended and the next began.
+//
+// Real instructions in this content overwhelmingly end in sentence punctuation (a period,
+// mid-sentence comma+continuation, etc.); a short capitalised line with none is reliably a label,
+// not an instruction — verified against the actual generated deck this was written to fix.
+export function isGroupHeaderLine(line: string): boolean {
+  const t = line.trim();
+  if (!t || t.length > 46) return false;
+  if (/[.!?:;,]$/.test(t)) return false; // real instructions end with sentence punctuation
+  if (splitLeadIn(t).label !== null) return false; // an inline "Label: text" line, not a header
+  if (!/^[A-Z]/.test(t)) return false; // headers start capitalised
+  const words = t.split(/\s+/).filter(Boolean);
+  return words.length >= 1 && words.length <= 6;
 }
 
 // ─── Icon badge ───────────────────────────────────────────────────────────────────────────────
@@ -127,7 +166,13 @@ export function drawSectionChip(
   const { text, x, y, tpl } = opts;
   const d = tpl.design;
   const h = 0.28;
-  const w = Math.min(4.2, Math.max(1.1, text.length * 0.078 + 0.32));
+  // Bold uppercase glyphs at this size run wider than the old 0.078"/char
+  // estimate (tuned for mixed-case body text), which under-sized this box for
+  // anything past a couple of words — "Differentiated Tasks" and the title
+  // slide's "Subject · Grade" chip both wrapped onto a second line inside a
+  // box only tall enough for one, so the wrapped line bled out of the pill
+  // and into whatever sat above it (the icon badge, on the title slide).
+  const w = Math.min(5.6, Math.max(1.1, text.length * 0.105 + 0.4));
   slide.addShape(pptx.ShapeType.roundRect, {
     x, y, w, h,
     rectRadius: h / 2,
@@ -137,7 +182,13 @@ export function drawSectionChip(
   slide.addText(text.toUpperCase(), {
     x, y, w, h,
     fontSize: d.typography.sectionLabel, bold: true, color: d.chipText,
-    fontFace: tpl.fonts.face, align: "center", valign: "middle", charSpacing: 1, fit: "shrink",
+    fontFace: tpl.fonts.face, align: "center", valign: "middle", charSpacing: 1,
+    // A pill is a single-line label by definition. `fit: "shrink"` alone
+    // isn't enough — pptxgenjs wraps by default *before* it considers
+    // shrinking, which is what caused the two-line overflow above.
+    // `wrap: false` forces the one-line-or-shrink behaviour this needs,
+    // regardless of how good the width estimate above turns out to be.
+    wrap: false, fit: "shrink",
   });
   return { w, h };
 }
@@ -231,7 +282,34 @@ export function drawBulletBlock(
 
   let curY = y;
   for (const raw of lines) {
-    const rowH = estimateRowHeight(raw, cpl, scale);
+    const rowH = estimateRowHeight(raw, cpl, scale, variant);
+
+    // Standalone sub-section label ("Higher Achievers task") rather than an instruction —
+    // see isGroupHeaderLine. Rendered as a heading: no bullet marker (it isn't a list item),
+    // bold + the theme's accent colour (the same role colour section chips already use, so a
+    // teacher reads "accent-coloured text" as "this is a label" consistently across the slide),
+    // one size up from body text, with a short accent rule underneath in place of a marker glyph.
+    // The gap this reserves above itself was already folded into `rowH` by estimateRowHeight, so
+    // it never has to compete with the previous group's last line for space.
+    //
+    // Scoped to `variant === "activity"` — see estimateRowHeight's doc comment for why checklist/
+    // plain-bullet content is excluded.
+    if (variant === "activity" && isGroupHeaderLine(raw)) {
+      const gap = HEADER_TOP_GAP * scale;
+      const headerY = curY + gap;
+      slide.addText(raw, {
+        x: textX, y: headerY, w: textW, h: rowH - gap,
+        fontSize: bodyFontSize + 1, bold: true, color: c.accent, fontFace: f.face,
+        valign: "top", lineSpacingMultiple: 1.1, fit: "shrink",
+      });
+      slide.addShape(pptx.ShapeType.line, {
+        x: textX, y: headerY + ROW_LINE_H * scale - 0.03, w: Math.min(1.3, textW * 0.35), h: 0,
+        line: { color: c.accent, pt: 0.75 },
+      });
+      curY += rowH;
+      continue;
+    }
+
     const markerY = curY + Math.max(0, (ROW_MIN_H * scale - markerSize) / 2);
 
     if (variant === "checklist") {
