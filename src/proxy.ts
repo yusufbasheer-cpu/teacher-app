@@ -34,6 +34,33 @@ function withUserHeaders(
   return next;
 }
 
+/**
+ * True when the request's Origin is the deployment's own host.
+ *
+ * This is the actual CSRF invariant — a cross-site request cannot forge an
+ * Origin matching the host it is being sent to — and it is what the static
+ * allowlist above was approximating. Checking it directly is both stricter
+ * (no origin is trusted on a host it does not belong to) and correct on hosts
+ * that cannot be known ahead of time.
+ *
+ * That last part is the bug this fixes: every Vercel preview deployment gets a
+ * generated hostname, so no preview URL was ever in the allowlist and every
+ * mutating `/api/*` call from one — sign-in, generation, save, delete — came
+ * back 403. The branch preview looked fine until you tried to do anything.
+ *
+ * `x-forwarded-host` is what the platform sets when proxying; fall back to the
+ * Host header for local development.
+ */
+function isSameOrigin(request: NextRequest, origin: string): boolean {
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  if (!host) return false;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 function csrfGuard(request: NextRequest): NextResponse | null {
   if (!MUTATION_METHODS.has(request.method)) return null;
   if (!request.nextUrl.pathname.startsWith("/api/")) return null;
@@ -42,6 +69,7 @@ function csrfGuard(request: NextRequest): NextResponse | null {
   if (!origin) return null; // no origin = same-origin server request
 
   if (ALLOWED_ORIGINS.has(origin)) return null;
+  if (isSameOrigin(request, origin)) return null;
 
   console.warn("[csrf] Blocked mutation from origin:", origin, request.nextUrl.pathname);
   return new NextResponse(JSON.stringify({ error: "Forbidden" }), {

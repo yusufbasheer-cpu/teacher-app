@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import {
@@ -44,6 +45,39 @@ import { CommandPalette } from "@/components/app/command-palette";
  */
 
 const COLLAPSE_KEY = "layah:rail-collapsed";
+
+/**
+ * Optimistic active-nav state.
+ *
+ * `usePathname()` only reflects the route that has actually finished
+ * resolving, so binding the rail's highlight to it directly means the
+ * highlight waits on the same round-trip the click itself is waiting on —
+ * the middleware's Supabase auth check plus the page's own Server Component.
+ * That is what made the indicator (and the whole sidebar) feel like it
+ * lagged behind the click.
+ *
+ * `pendingHref` is set synchronously in the nav link's own onClick, in the
+ * same event as the click — before Next.js's router transition, before any
+ * network call — so the highlight moves the instant the user acts. It
+ * reconciles itself against the real pathname once navigation lands, and
+ * clears on a short safety timer so a cancelled/blocked navigation can't
+ * strand the indicator on the wrong item.
+ */
+function useOptimisticActivePath(pathname: string) {
+  const [pendingHref, setPendingHref] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (pendingHref && pathname === pendingHref) setPendingHref(null);
+  }, [pathname, pendingHref]);
+
+  React.useEffect(() => {
+    if (!pendingHref) return;
+    const t = setTimeout(() => setPendingHref(null), 4000);
+    return () => clearTimeout(t);
+  }, [pendingHref]);
+
+  return { activePath: pendingHref ?? pathname, onNavigate: setPendingHref };
+}
 
 type Roles = { schoolAdmin: boolean; hod: boolean; superAdmin: boolean };
 
@@ -111,18 +145,25 @@ function RailLink({
   collapsed,
   isFree,
   onNavigate,
+  onBeforeNavigate,
 }: {
   item: NavItem;
   active: boolean;
   collapsed: boolean;
   isFree: boolean;
   onNavigate?: () => void;
+  /** Fires synchronously in the click, before the router transition starts —
+   *  see useOptimisticActivePath above. */
+  onBeforeNavigate: (href: string) => void;
 }) {
   const Icon = item.icon;
   return (
     <Link
       href={item.href}
-      onClick={onNavigate}
+      onClick={() => {
+        onBeforeNavigate(item.href);
+        onNavigate?.();
+      }}
       title={collapsed ? item.label : undefined}
       aria-current={active ? "page" : undefined}
       className={cn(
@@ -132,18 +173,31 @@ function RailLink({
         active ? "bg-hover font-medium text-ink" : "text-muted hover:bg-hover hover:text-ink",
       )}
     >
-      {/* The active marker is a rule segment, not a filled pill — the same
-          ruled-margin device the composer and the package viewer use. */}
-      <span
-        aria-hidden
-        className={cn(
-          "absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand transition-opacity duration-[110ms]",
-          collapsed && "left-[-6px]",
-          active ? "opacity-100" : "opacity-0",
-        )}
-      />
+      {/* The active marker is a rule segment — the same ruled-margin device
+          the composer and package viewer use — and it is ONE shared element
+          rather than one-per-link. `layoutId` makes Framer Motion treat every
+          render of it (regardless of which link it's currently inside) as the
+          same physical object, so moving between items animates as a single
+          surface travelling to its new position instead of one bar fading out
+          while another fades in. Conditionally rendered — only the active
+          link ever mounts it — which is what lets it "jump" DOM parents while
+          still reading as continuous motion. */}
+      {active ? (
+        <motion.span
+          layoutId="rail-active-indicator"
+          aria-hidden
+          className={cn(
+            "absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand",
+            collapsed && "left-[-6px]",
+          )}
+          transition={{ type: "spring", stiffness: 620, damping: 45, mass: 0.5 }}
+        />
+      ) : null}
       <Icon
-        className={cn("size-4 shrink-0", active ? "text-brand-text" : "text-faint group-hover:text-muted")}
+        className={cn(
+          "size-4 shrink-0 transition-[color,transform] duration-150 ease-out",
+          active ? "scale-[1.05] text-brand-text" : "text-faint group-hover:text-muted",
+        )}
         aria-hidden
       />
       {!collapsed ? (
@@ -161,17 +215,21 @@ function RailLink({
 }
 
 function RailContent({
-  pathname,
+  activePath,
   roles,
   collapsed,
   isFree,
   onNavigate,
+  onBeforeNavigate,
 }: {
-  pathname: string;
+  /** The optimistic path — see useOptimisticActivePath. Drives which item
+   *  lights up; may be ahead of the browser's real current route. */
+  activePath: string;
   roles: Roles;
   collapsed: boolean;
   isFree: boolean;
   onNavigate?: () => void;
+  onBeforeNavigate: (href: string) => void;
 }) {
   const groups = navGroups(roles);
   return (
@@ -190,10 +248,11 @@ function RailContent({
               <RailLink
                 key={item.href}
                 item={item}
-                active={isNavActive(pathname, item.href)}
+                active={isNavActive(activePath, item.href)}
                 collapsed={collapsed}
                 isFree={isFree}
                 onNavigate={onNavigate}
+                onBeforeNavigate={onBeforeNavigate}
               />
             ))}
           </div>
@@ -353,6 +412,7 @@ function QuotaPill() {
 export function AppFrame({ user, children }: { user: User; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { activePath, onNavigate: onBeforeNavigate } = useOptimisticActivePath(pathname);
   const roles = useRoles(user.id);
   const { usage } = useUserUsage(true);
   const isFree = Boolean(usage && isFreePlan(usage.planType));
@@ -456,7 +516,13 @@ export function AppFrame({ user, children }: { user: User; children: React.React
           ) : null}
         </div>
 
-        <RailContent pathname={pathname} roles={roles} collapsed={collapsed} isFree={isFree} />
+        <RailContent
+          activePath={activePath}
+          roles={roles}
+          collapsed={collapsed}
+          isFree={isFree}
+          onBeforeNavigate={onBeforeNavigate}
+        />
 
         {collapsed ? (
           <div className="flex justify-center border-t border-line-subtle py-2">
@@ -487,11 +553,12 @@ export function AppFrame({ user, children }: { user: User; children: React.React
               </Button>
             </div>
             <RailContent
-              pathname={pathname}
+              activePath={activePath}
               roles={roles}
               collapsed={false}
               isFree={isFree}
               onNavigate={() => setDrawer(false)}
+              onBeforeNavigate={onBeforeNavigate}
             />
             <div className="border-t border-line-subtle p-3">
               <ThemeToggle />
@@ -515,7 +582,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
 
           <span className="flex min-w-0 items-center gap-1.5">
             <PanelsTopLeft className="hidden size-3.5 shrink-0 text-disabled sm:block" aria-hidden />
-            <h2 className="truncate text-[13px] font-medium text-ink">{routeLabel(pathname)}</h2>
+            <h2 className="truncate text-[13px] font-medium text-ink">{routeLabel(activePath)}</h2>
           </span>
 
           <div className="ml-auto flex items-center gap-1.5">
