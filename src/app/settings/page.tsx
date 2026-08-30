@@ -17,11 +17,10 @@ import {
   Spinner,
 } from "@/components/ui/panel";
 import { getAuthHeaders } from "@/lib/auth-headers";
-import { isSyntheticPhoneEmail } from "@/lib/phone";
+import { getTeacherProfile } from "@/lib/user-profile";
 import { supabase } from "@/lib/supabase";
 import type { UserUsageSnapshot } from "@/lib/user-usage";
 import { useErrorToast } from "@/hooks/use-error-toast";
-
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
@@ -40,7 +39,11 @@ type SubscriptionInfo = {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [contact, setContact] = useState<{ label: string; value: string } | null>(null);
+  const [profile, setProfile] = useState<{
+    fullName: string;
+    phone: string;
+    email: string;
+  } | null>(null);
   const [usage, setUsage] = useState<UserUsageSnapshot | null>(null);
   const [loadingPage, setLoadingPage] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -81,13 +84,12 @@ export default function SettingsPage() {
         return;
       }
 
-      const rawEmail = session.user.email ?? "";
-      const metaPhone = (session.user.user_metadata as Record<string, unknown> | null)?.phone;
-      if (rawEmail && isSyntheticPhoneEmail(rawEmail) && typeof metaPhone === "string" && metaPhone) {
-        setContact({ label: "Phone", value: metaPhone });
-      } else {
-        setContact({ label: "Email", value: rawEmail || "—" });
-      }
+      const meta = getTeacherProfile(session.user);
+      setProfile({
+        fullName: meta.full_name?.trim() || "-",
+        phone: meta.phone?.trim() || "-",
+        email: session.user.email || "-",
+      });
 
       try {
         const res = await fetch("/api/user-usage", {
@@ -126,7 +128,7 @@ export default function SettingsPage() {
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 5000);
     } catch {
-      /* silent — browser already shows network errors */
+      /* silent - browser already shows network errors */
     } finally {
       setDownloading(false);
     }
@@ -193,7 +195,7 @@ export default function SettingsPage() {
     );
   }
 
-  const planLabel = usage ? (PLAN_LABELS[usage.planType] ?? usage.planType) : "—";
+  const planLabel = usage ? (PLAN_LABELS[usage.planType] ?? usage.planType) : "-";
   const onFree = usage?.planType === "free";
   const hasLiveSub =
     subscription && (subscription.status === "active" || subscription.status === "pending");
@@ -202,13 +204,20 @@ export default function SettingsPage() {
     <div className="mx-auto w-full max-w-[720px] px-4 py-6 sm:px-6 sm:py-8">
       <PageTitle title="Settings" description="Your account, plan and data." />
 
-      {/* ---- Account ---- */}
       <Panel className="mt-5 overflow-hidden">
         <PanelHeader title="Account" />
         <dl className="divide-y divide-line-subtle">
           <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-            <dt className="text-[13px] text-muted">{contact?.label ?? "Email"}</dt>
-            <dd className="truncate text-[13px] text-ink">{contact?.value ?? "—"}</dd>
+            <dt className="text-[13px] text-muted">Full name</dt>
+            <dd className="truncate text-[13px] text-ink">{profile?.fullName ?? "-"}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-4 px-4 py-2.5">
+            <dt className="text-[13px] text-muted">Mobile number</dt>
+            <dd className="truncate text-[13px] text-ink">{profile?.phone ?? "-"}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-4 px-4 py-2.5">
+            <dt className="text-[13px] text-muted">Email</dt>
+            <dd className="truncate text-[13px] text-ink">{profile?.email ?? "-"}</dd>
           </div>
           <div className="flex items-center justify-between gap-4 px-4 py-2.5">
             <dt className="text-[13px] text-muted">Plan</dt>
@@ -232,7 +241,7 @@ export default function SettingsPage() {
                   ? usage.unlimited || usage.generationsLimit == null
                     ? "Unlimited"
                     : `${usage.generationsUsed} / ${usage.generationsLimit}`
-                  : "—"}
+                  : "-"}
               </dd>
             </div>
             {usage && !usage.unlimited && usage.generationsLimit != null ? (
@@ -242,10 +251,9 @@ export default function SettingsPage() {
         </dl>
       </Panel>
 
-      {/* ---- Subscription ---- */}
       {hasLiveSub ? (
         <Panel className="mt-4 overflow-hidden">
-          <PanelHeader title="Subscription" description="Pro Monthly · ₹349 every 30 days" />
+          <PanelHeader title="Subscription" description="Pro Monthly - Rs.349 every 30 days" />
           <div className="p-4">
             {subscription.status === "pending" ? (
               <Notice tone="generated" className="mb-3">
@@ -283,18 +291,17 @@ export default function SettingsPage() {
         </Panel>
       ) : null}
 
-      {/* ---- Data ---- */}
       <Panel className="mt-4 overflow-hidden">
         <PanelHeader title="Your data" />
         <div className="p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="max-w-sm text-[13px] text-muted">
-              Download everything Layah holds for you — account details, usage and every saved
-              lesson — as a JSON file.
+              Download everything Layah holds for you - account details, usage and every saved
+              lesson - as a JSON file.
             </p>
             <Button variant="outline" size="sm" onClick={handleDownload} disabled={downloading}>
               {downloading ? <Spinner className="size-3.5" /> : <Download />}
-              {downloading ? "Preparing…" : "Download"}
+              {downloading ? "Preparing..." : "Download"}
             </Button>
           </div>
           {downloadSuccess ? (
@@ -322,10 +329,6 @@ export default function SettingsPage() {
         </div>
       </Panel>
 
-      {/* ---- Delete ----
-          Kept last and given quiet chrome rather than a red-bannered "DANGER
-          ZONE" heading. The confirmation is where the weight belongs; shouting
-          on the page just trains people to ignore the shouting. */}
       <Panel className="mt-4 overflow-hidden">
         <PanelHeader title="Delete account" />
         <div className="p-4">
@@ -373,7 +376,6 @@ export default function SettingsPage() {
           setCancelError(null);
         }}
       />
-
     </div>
   );
 }

@@ -5,13 +5,15 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, type Variants } from "motion/react";
 import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
-import { completeEmailPostAuthLogin, completePhonePostAuthLogin } from "@/lib/auth-post-login";
+import { completeEmailPostAuthLogin } from "@/lib/auth-post-login";
+import { hasCompletedTeacherProfile } from "@/lib/user-profile";
 import { supabase } from "@/lib/supabase";
 import { sanitizeUserMessage, toUserFacingError } from "@/lib/user-facing-errors";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 const MIN_SIGNUP_MS = 3000;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type AuthMode = "login" | "signup";
 
@@ -96,9 +98,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>(defaultMode);
-  const [identifier, setIdentifier] = useState<"email" | "phone">("email");
   const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -159,6 +159,10 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const onResendConfirmation = async () => {
     setError(null);
     setMessage(null);
+    if (!EMAIL_RE.test(email.trim())) {
+      setError("Enter a valid email address.");
+      return;
+    }
     setResendLoading(true);
     try {
       const { error: resendError } = await supabase.auth.resend({
@@ -182,6 +186,13 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
     setLoading(true);
 
     try {
+      const trimmedEmail = email.trim();
+      if (!EMAIL_RE.test(trimmedEmail)) {
+        setError("Enter a valid email address.");
+        setLoading(false);
+        return;
+      }
+
       if (mode === "signup") {
         // 1. Honeypot — bots fill hidden fields, humans never see it
         if (honeypot) {
@@ -216,51 +227,13 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           }
         }
 
-        if (identifier === "phone") {
-          const res = await fetch("/api/auth/signup-with-phone", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fullName: fullName.trim(), phone: phone.trim(), password }),
-          });
-          const data = (await res.json()) as {
-            access_token?: string;
-            refresh_token?: string;
-            error?: string;
-          };
-
-          if (!res.ok || !data.access_token || !data.refresh_token) {
-            setError(data.error ?? "Something went wrong creating your account.");
-            setLoading(false);
-            return;
-          }
-
-          const { error: setSessionError } = await supabase.auth.setSession({
-            access_token: data.access_token,
-            refresh_token: data.refresh_token,
-          });
-          if (setSessionError) throw setSessionError;
-
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.user) {
-            const postAuth = await completePhonePostAuthLogin(session.user.id);
-            if (!postAuth.ok) {
-              setError(postAuth.message);
-              return;
-            }
-          }
-          router.push("/lesson-plan");
-          router.refresh();
-          return;
-        }
-
         const { data, error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
+          email: trimmedEmail,
           password,
           options: {
             data: {
               full_name: fullName.trim(),
+              profile_completed: false,
             },
           },
         });
@@ -273,7 +246,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             setError(postAuth.message);
             return;
           }
-          router.push("/lesson-plan");
+          router.replace(hasCompletedTeacherProfile(data.session.user) ? "/overview" : "/onboarding");
           router.refresh();
           return;
         }
@@ -282,45 +255,9 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           "Account created. If email confirmation is enabled, check your inbox before logging in.",
         );
         setMode("login");
-      } else if (identifier === "phone") {
-        const res = await fetch("/api/auth/login-with-phone", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone: phone.trim(), password }),
-        });
-        const data = (await res.json()) as {
-          access_token?: string;
-          refresh_token?: string;
-          error?: string;
-        };
-
-        if (!res.ok || !data.access_token || !data.refresh_token) {
-          setError(data.error ?? "Invalid phone number or password.");
-          setLoading(false);
-          return;
-        }
-
-        const { error: setSessionError } = await supabase.auth.setSession({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
-        });
-        if (setSessionError) throw setSessionError;
-
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.user) {
-          const postAuth = await completePhonePostAuthLogin(session.user.id);
-          if (!postAuth.ok) {
-            setError(postAuth.message);
-            return;
-          }
-        }
-        router.push("/lesson-plan");
-        router.refresh();
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email: trimmedEmail,
           password,
         });
         if (signInError) throw signInError;
@@ -333,9 +270,10 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             setError(postAuth.message);
             return;
           }
+          router.replace(hasCompletedTeacherProfile(session.user) ? "/overview" : "/onboarding");
+          router.refresh();
+          return;
         }
-        router.push("/lesson-plan");
-        router.refresh();
       }
     } catch (err) {
       const code = typeof err === "object" && err !== null ? (err as { code?: string }).code : undefined;
@@ -434,63 +372,21 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             />
           </motion.div>
         )}
-
-        <motion.div
-          variants={itemVariants}
-          className="flex gap-0.5 rounded-md border border-line-subtle bg-sunken p-0.5"
-        >
-          {(["email", "phone"] as const).map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setIdentifier(option)}
-              className="flex-1 rounded-sm py-1.5 text-[12px] font-medium capitalize transition-colors duration-[110ms]"
-              style={{
-                background: identifier === option ? "var(--surface)" : "transparent",
-                color: identifier === option ? "var(--brand)" : "var(--text-secondary)",
-                boxShadow: identifier === option ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-              }}
-            >
-              {option}
-            </button>
-          ))}
+        <motion.div variants={itemVariants} className="flex flex-col gap-2">
+          <label htmlFor="email" className="text-sm font-medium" style={{ color: "var(--text)" }}>
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+            className={inputClass}
+            required
+          />
         </motion.div>
-
-        {identifier === "email" ? (
-          <motion.div variants={itemVariants} className="flex flex-col gap-2">
-            <label htmlFor="email" className="text-sm font-medium" style={{ color: "var(--text)" }}>
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              className={inputClass}
-              required
-            />
-          </motion.div>
-        ) : (
-          <motion.div variants={itemVariants} className="flex flex-col gap-2">
-            <label htmlFor="phone" className="text-sm font-medium" style={{ color: "var(--text)" }}>
-              Phone number
-            </label>
-            <input
-              id="phone"
-              type="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+91 98765 43210"
-              pattern="^\+?[0-9\s\-()]{7,20}$"
-              title="Enter a valid phone number, with country code if possible"
-              className={inputClass}
-              required
-            />
-          </motion.div>
-        )}
 
         <motion.div variants={itemVariants} className="flex flex-col gap-2">
           <label htmlFor="password" className="text-sm font-medium" style={{ color: "var(--text)" }}>

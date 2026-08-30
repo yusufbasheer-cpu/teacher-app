@@ -21,6 +21,7 @@ import { clearActiveSession } from "@/lib/active-session";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PLANS, isFreePlan } from "@/lib/plans";
 import { isNavActive, navGroups, routeLabel, type NavItem } from "@/lib/app-nav";
+import { getTeacherDisplayName } from "@/lib/user-profile";
 import { Badge, Kbd, Meter } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/app/theme";
@@ -123,7 +124,7 @@ function useRoles(userId: string | undefined): Roles {
 }
 
 function initials(user: User): string {
-  const name = (user.user_metadata?.full_name as string | undefined)?.trim();
+  const name = getTeacherDisplayName(user).trim();
   if (name) {
     return name
       .split(/\s+/)
@@ -303,7 +304,7 @@ function AccountMenu({ user }: { user: User }) {
     window.location.href = "/login";
   };
 
-  const name = (user.user_metadata?.full_name as string | undefined)?.trim() || user.email;
+  const name = getTeacherDisplayName(user);
   const plan = usage ? PLANS[usage.planType].adminLabel : null;
 
   return (

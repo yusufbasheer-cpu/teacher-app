@@ -6,6 +6,7 @@ import type { User } from "@supabase/supabase-js";
 import { clearActiveSession } from "@/lib/active-session";
 import { isProtectedAppPath } from "@/lib/protected-routes";
 import { supabase } from "@/lib/supabase";
+import { hasCompletedTeacherProfile } from "@/lib/user-profile";
 import { Navbar } from "./navbar";
 import { AppFrame } from "@/components/app/app-frame";
 
@@ -18,6 +19,7 @@ function isProtectedClientRoute(pathname: string): boolean {
     pathname === "/dashboard" ||
     pathname === "/overview" ||
     pathname === "/settings" ||
+    pathname === "/onboarding" ||
     pathname === "/school-admin" ||
     pathname === "/hod-dashboard" ||
     pathname === "/my-lesson-plans" ||
@@ -84,6 +86,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      if (
+        session?.user &&
+        !hasCompletedTeacherProfile(session.user) &&
+        window.location.pathname !== "/onboarding"
+      ) {
+        setUser(session.user);
+        setResolved(true);
+        window.location.replace("/onboarding");
+        return;
+      }
+
       setUser(session?.user ?? null);
       setResolved(true);
     };
@@ -121,6 +134,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // this resolves from local storage in a few milliseconds, and a spinner
     // that appears and vanishes reads as jank.
     return <div className="min-h-screen bg-canvas" aria-hidden />;
+  }
+
+  if (pathname === "/onboarding") {
+    return <>{children}</>;
   }
 
   if (!user) {

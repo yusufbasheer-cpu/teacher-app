@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/subscription-maintenance",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

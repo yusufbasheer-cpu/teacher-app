@@ -8,6 +8,7 @@ import { clearActiveSession } from "@/lib/active-session";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { supabase } from "@/lib/supabase";
 import { PLANS } from "@/lib/plans";
+import { getTeacherDisplayName } from "@/lib/user-profile";
 import { getUpgradePlan, UPGRADE_COPY } from "@/components/usage/upgrade-usage-indicator";
 import { WaitlistModal } from "@/components/payment/waitlist-modal";
 
@@ -15,7 +16,7 @@ const TEAL = "var(--brand)";
 const NAVY = "var(--text)";
 
 function initialsFor(user: User): string {
-  const name = (user.user_metadata?.full_name as string | undefined)?.trim();
+  const name = getTeacherDisplayName(user).trim();
   if (name) {
     const parts = name.split(/\s+/).filter(Boolean);
     return parts.slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
@@ -77,7 +78,7 @@ export function UserMenu({ user, collapsed = false }: Props) {
     window.location.href = "/login";
   };
 
-  const displayName = (user.user_metadata?.full_name as string | undefined)?.trim() || user.email;
+  const displayName = getTeacherDisplayName(user);
   const planLabel = usage ? PLANS[usage.planType].adminLabel : null;
   const usageLine = !usage
     ? "Loading…"

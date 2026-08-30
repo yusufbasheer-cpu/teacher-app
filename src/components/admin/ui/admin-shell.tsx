@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import {
   BarChart3,
   Building2,
   CreditCard,
+  ArrowLeft,
   LayoutGrid,
   Megaphone,
   ShieldCheck,
@@ -67,6 +69,15 @@ export function AdminShell({
           </div>
         </div>
 
+        <Link
+          href="/overview"
+          className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-black/[0.03]"
+          style={{ color: ACCENT }}
+        >
+          <ArrowLeft className="size-4" />
+          Back to platform
+        </Link>
+
         <nav className="flex flex-1 flex-col gap-0.5">
           {items.map((item) => {
             const Icon = item.icon;
@@ -121,13 +132,30 @@ export function AdminShell({
               {activeItem?.label ?? "Overview"}
             </h1>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold" style={{ background: ACCENT_SOFT, color: ACCENT }}>
-            <BarChart3 className="size-3.5" />
-            Live data
+          <div className="flex items-center gap-2">
+            <Link
+              href="/overview"
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-black/[0.03]"
+              style={{ background: "white", color: ACCENT, border: `1px solid ${BORDER}` }}
+            >
+              <ArrowLeft className="size-3.5" />
+              Back to platform
+            </Link>
+            <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold" style={{ background: ACCENT_SOFT, color: ACCENT }}>
+              <BarChart3 className="size-3.5" />
+              Live data
+            </div>
           </div>
         </header>
 
         <nav className="flex gap-1 overflow-x-auto border-b px-3 py-2 lg:hidden" style={{ borderColor: BORDER }}>
+          <Link
+            href="/overview"
+            className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold"
+            style={{ background: "white", color: ACCENT, border: `1px solid ${BORDER}` }}
+          >
+            Back to platform
+          </Link>
           {items.map((item) => (
             <button
               key={item.tab}
