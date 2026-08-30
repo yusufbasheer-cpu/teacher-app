@@ -47,7 +47,11 @@
   --color-sunken: var(--surface-sunken);
   --color-hover: var(--surface-hover);
 
-  /* text */
+  /* text
+     NOTE: `--color-muted` is *secondary ink*, so `text-muted` is dark. That
+     collides with shadcn's legacy meaning of `bg-muted` ("a muted surface"),
+     which would resolve to near-black here. Use `bg-sunken` for muted
+     surfaces — never `bg-muted`. */
   --color-ink: var(--text);
   --color-muted: var(--text-secondary);
   --color-faint: var(--text-muted);

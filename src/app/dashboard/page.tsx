@@ -76,7 +76,12 @@ function DashboardContent() {
         return;
       }
 
-      router.replace("/lesson-plan");
+      // Land on the workspace, not straight into the lesson composer. /overview
+      // is now the app's home — it opens with a composer seeded from the user's
+      // last class, plus their recent lessons — so sending people directly to
+      // /lesson-plan skipped the page that orients them. This route stays as
+      // the OAuth callback's landing spot (see /auth/callback) and forwards on.
+      router.replace("/overview");
       router.refresh();
     };
 

@@ -28,7 +28,7 @@ interface LessonPlanBentoProps {
 }
 
 const bentoCardClass = cn(
-  "group relative flex flex-col justify-between overflow-hidden rounded-xl bg-muted p-4 lg:p-6 duration-300 antialiased",
+  "group relative flex flex-col justify-between overflow-hidden rounded-xl bg-sunken p-4 lg:p-6 duration-300 antialiased",
   "shadow-[inset_0_0_2px_2px_rgba(255,255,255,1),inset_0_0_0_1px_rgba(0,0,0,0.2),0px_0px_0px_1px_rgba(0,0,0,0.08),0px_1px_2px_-1px_rgba(0,0,0,0.08),0px_2px_4px_0px_rgba(0,0,0,0.06)]",
   "dark:shadow-[inset_0_0_2px_2px_rgba(255,255,255,0.04),inset_0_0_0_1px_rgba(255,255,255,0.08),0px_0px_0px_1px_rgba(255,255,255,0.06),0px_1px_2px_-1px_rgba(0,0,0,0.5),0px_2px_4px_0px_rgba(0,0,0,0.4)]",
 );
@@ -291,7 +291,7 @@ export function LessonPlanBento({ className }: LessonPlanBentoProps) {
                       {teacher.initials}
                     </div>
                   ))}
-                  <div className="border-background bg-muted text-muted-foreground flex size-10 items-center justify-center rounded-full border-2 shadow-sm">
+                  <div className="border-background bg-sunken text-muted-foreground flex size-10 items-center justify-center rounded-full border-2 shadow-sm">
                     <Plus className="size-4" />
                   </div>
                 </div>
@@ -299,19 +299,19 @@ export function LessonPlanBento({ className }: LessonPlanBentoProps) {
                 {/* Mockup UI */}
                 <div className="bg-background border-border relative flex min-h-[220px] w-full flex-col gap-4 overflow-hidden rounded-tl-2xl border-t border-l p-4 pt-8 shadow-sm">
                   <motion.div
-                    className="bg-muted mb-2 h-5 rounded-md"
+                    className="bg-sunken mb-2 h-5 rounded-md"
                     initial={{ width: "75%" }}
                     animate={hoveredCard === 3 ? { width: "80%" } : { width: "75%" }}
                     transition={{ duration: 0.7, ease: "easeOut" }}
                   />
                   <motion.div
-                    className="bg-muted/50 h-3 rounded-md"
+                    className="bg-sunken/50 h-3 rounded-md"
                     initial={{ width: "100%" }}
                     animate={hoveredCard === 3 ? { width: "95%" } : { width: "100%" }}
                     transition={{ duration: 0.7, delay: 0.075, ease: "easeOut" }}
                   />
                   <motion.div
-                    className="bg-muted/50 h-3 rounded-md"
+                    className="bg-sunken/50 h-3 rounded-md"
                     initial={{ width: "83.333333%" }}
                     animate={hoveredCard === 3 ? { width: "85%" } : { width: "83.333333%" }}
                     transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
@@ -331,7 +331,7 @@ export function LessonPlanBento({ className }: LessonPlanBentoProps) {
                   </motion.div>
 
                   <motion.div
-                    className="bg-muted/50 h-3 rounded-md"
+                    className="bg-sunken/50 h-3 rounded-md"
                     initial={{ width: "91.666667%" }}
                     animate={hoveredCard === 3 ? { width: "90%" } : { width: "91.666667%" }}
                     transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
