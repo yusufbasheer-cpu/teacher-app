@@ -442,9 +442,15 @@ function doContentSlide(
   const titleX = isCont ? 0.3 : L.headerTitleX;
   const titleW = isCont ? L.header.w - 0.4 : L.header.w - L.headerTitleX - 0.2;
   if (isCont) {
+    // Uses headerText, not accent: this label sits on the header bar, which
+    // is the ONE surface every template already guarantees enough contrast
+    // for (it's what the slide title itself depends on). accent's contrast
+    // against the header bar isn't guaranteed — three of the five bundled
+    // templates fail WCAG AA there (2:1–3.7:1) because accent is tuned to
+    // read on the body background, not on the header fill.
     slide.addText("CONTINUED", {
       x: titleX, y: 0.14, w: titleW, h: 0.24,
-      fontSize: 10.5, bold: true, color: c.accent, fontFace: f.face, charSpacing: 1,
+      fontSize: 10.5, bold: true, color: c.headerText, fontFace: f.face, charSpacing: 1.5,
     });
   }
   slide.addText(rawTitle, {

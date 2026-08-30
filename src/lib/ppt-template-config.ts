@@ -123,9 +123,9 @@ export const TEMPLATE_CARDS: readonly {
   description: string;
   preview: readonly [string, string, string];
 }[] = [
-  { id: "classic", themeNumber: 1, name: "Classic", description: "Clean professional Navy and White", preview: ["0A1628", "00C6A7", "FFFFFF"] },
-  { id: "modern",  themeNumber: 2, name: "Modern",  description: "Bold Minimal Teal and White",       preview: ["00C6A7", "0A8F7A", "FFFFFF"] },
-  { id: "warm",    themeNumber: 3, name: "Warm",     description: "Friendly Orange and Cream",         preview: ["E8622A", "F5A623", "FFF8F0"] },
+  { id: "classic", themeNumber: 1, name: "Classic", description: "Clean professional Navy and White", preview: ["0A1628", "007B67", "FFFFFF"] },
+  { id: "modern",  themeNumber: 2, name: "Modern",  description: "Bold Minimal Teal and White",       preview: ["006B5A", "087866", "FFFFFF"] },
+  { id: "warm",    themeNumber: 3, name: "Warm",     description: "Friendly Orange and Cream",         preview: ["A13C11", "92400E", "FFF8F0"] },
   { id: "dark",    themeNumber: 4, name: "Dark",     description: "Premium Dark Navy and Gold",        preview: ["1A1A2E", "FFD700", "16213E"] },
   { id: "minimal", themeNumber: 5, name: "Minimal",  description: "Pure Clean White",                 preview: ["111827", "6B7280", "FFFFFF"] },
 ];
