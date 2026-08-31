@@ -23,7 +23,7 @@ const buttonVariants = cva(
   [
     "group/button relative inline-flex shrink-0 select-none items-center justify-center gap-1.5",
     "whitespace-nowrap rounded-md border border-transparent font-medium",
-    "transition-[background-color,border-color,color,box-shadow,opacity] duration-[110ms] ease-[cubic-bezier(0.2,0,0,1)]",
+    "transition-[background-color,border-color,color,box-shadow,opacity,transform] duration-[110ms] ease-[cubic-bezier(0.2,0,0,1)]",
     "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
     "disabled:pointer-events-none disabled:opacity-45",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -63,8 +63,16 @@ const buttonVariants = cva(
       },
       /** Fills the container. Use for stacked mobile actions and menu items. */
       block: { true: "w-full", false: "" },
+      /** A subtle hover-lift + press-scale, layered on top of any variant
+       * above — variants encode rank, this encodes emphasis. Reserved for a
+       * page's single most important CTA (e.g. a hero "Start Generating"),
+       * not a default to reach for. */
+      interactive: {
+        true: "hover:-translate-y-px hover:shadow-pop active:translate-y-0 active:scale-[0.97]",
+        false: "",
+      },
     },
-    defaultVariants: { variant: "default", size: "default", block: false },
+    defaultVariants: { variant: "default", size: "default", block: false, interactive: false },
   }
 )
 
@@ -73,6 +81,7 @@ function Button({
   variant = "default",
   size = "default",
   block,
+  interactive,
   render,
   nativeButton,
   ...props
@@ -91,7 +100,7 @@ function Button({
       data-slot="button"
       render={render}
       nativeButton={nativeButton ?? inferredNative}
-      className={cn(buttonVariants({ variant, size, block, className }))}
+      className={cn(buttonVariants({ variant, size, block, interactive, className }))}
       {...props}
     />
   )

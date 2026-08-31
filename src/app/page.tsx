@@ -2,14 +2,16 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/navbar";
 import { BackButtonLogoutModal } from "@/components/landing/back-button-logout-modal";
-import { LessonPlanBento } from "@/components/landing/lesson-plan-bento";
+import { FeatureCards } from "@/components/landing/feature-cards";
 import { HowItWorksTimeline } from "@/components/landing/how-it-works-timeline";
 import { StatsSection } from "@/components/home/stats-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
+import { FaqSection } from "@/components/landing/faq-section";
 import { TextEffect } from "@/components/motion-primitives/text-effect";
 import { HeroBackdrop } from "@/components/marketing/hero-backdrop";
 import { InView } from "@/components/motion-primitives/in-view";
-import { BG_SOFT, BORDER, NAVY, TEAL, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
+import { Button } from "@/components/ui/button";
+import { BG_SOFT, BORDER, NAVY, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
 
 const FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]";
@@ -79,13 +81,15 @@ export default function Home() {
             </p>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link
-                href="/lesson-plan"
-                className={`inline-flex min-h-12 w-full items-center justify-center rounded-lg px-8 text-base font-semibold text-brand-on transition-colors hover:bg-brand-hover sm:w-auto ${FOCUS_RING}`}
-                style={{ background: TEAL }}
+              <Button
+                render={<Link href="/lesson-plan" />}
+                size="xl"
+                interactive
+                block
+                className="sm:w-auto"
               >
                 Start Generating
-              </Link>
+              </Button>
               <a
                 href="#preview"
                 className={`inline-flex min-h-12 w-full items-center justify-center rounded-lg px-8 text-base font-semibold transition-colors hover:border-line-strong hover:bg-hover sm:w-auto ${FOCUS_RING}`}
@@ -134,7 +138,7 @@ export default function Home() {
           </InView>
 
           <div className="mt-10">
-            <LessonPlanBento />
+            <FeatureCards />
           </div>
         </section>
 
@@ -170,16 +174,17 @@ export default function Home() {
             <HowItWorksTimeline />
 
             <div className="mt-12 text-center">
-              <Link
-                href="/lesson-plan"
-                className={`relative inline-flex min-h-12 items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-[0_8px_24px_-8px_color-mix(in oklch, var(--brand) 55%, transparent)] transition hover:opacity-90 hover:shadow-[0_10px_28px_-6px_color-mix(in oklch, var(--brand) 65%, transparent)] ${FOCUS_RING}`}
-                style={{ background: TEAL }}
-              >
+              <Button render={<Link href="/lesson-plan" />} size="xl" interactive>
                 Start Generating
-              </Link>
+              </Button>
             </div>
           </div>
         </section>
+
+        {/* ══════════════════════════════════════════════════════════════
+            FAQ
+            ══════════════════════════════════════════════════════════════ */}
+        <FaqSection />
       </main>
 
       {/* ══════════════════════════════════════════════════════════════════

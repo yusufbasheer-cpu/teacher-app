@@ -1,9 +1,8 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
+import { MotionConfig } from "framer-motion";
 import { Container } from "@/components/ui/container";
 import { Card, CardContent } from "@/components/ui/card";
 import { SectionLabel } from "@/components/marketing/section-label";
+import { StaggerChildren, StaggerItem } from "@/components/ui/animate";
 
 type Testimonial = {
   name: string;
@@ -50,7 +49,7 @@ const TESTIMONIALS: Testimonial[] = [
 
 function Stars({ count }: { count: number }) {
   return (
-    <div className="flex gap-0.5 text-primary">
+    <div className="flex gap-0.5 text-brand-text">
       {Array.from({ length: count }).map((_, i) => (
         <svg key={i} className="size-4" viewBox="0 0 20 20" fill="currentColor">
           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -60,18 +59,12 @@ function Stars({ count }: { count: number }) {
   );
 }
 
-function TestimonialCard({ testimonial, visible }: { testimonial: Testimonial; visible: boolean }) {
+function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
   return (
-    <Card
-      className="border-border shadow-none transition-all duration-700 hover:shadow-md"
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(20px)",
-      }}
-    >
+    <Card className="h-full border-line shadow-none transition-shadow duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-md">
       <CardContent className="flex flex-1 flex-col">
         <Stars count={testimonial.rating} />
-        <p className="mt-4 flex-1 text-sm leading-relaxed text-foreground/80">
+        <p className="mt-4 flex-1 text-sm leading-relaxed text-ink/80">
           &ldquo;{testimonial.review}&rdquo;
         </p>
         <div className="mt-5 flex items-center gap-3">
@@ -89,29 +82,8 @@ function TestimonialCard({ testimonial, visible }: { testimonial: Testimonial; v
 }
 
 export function TestimonialsSection() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.15 },
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <section ref={ref} className="border-t border-border py-16 sm:py-20">
+    <section className="border-t border-line py-16 sm:py-20">
       <Container>
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <SectionLabel className="justify-center flex">Testimonials</SectionLabel>
@@ -122,13 +94,25 @@ export function TestimonialsSection() {
             Join thousands of teachers saving hours every week.
           </p>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {TESTIMONIALS.map((t, i) => (
-            <div key={t.name} style={{ transitionDelay: `${i * 120}ms` }}>
-              <TestimonialCard testimonial={t} visible={visible} />
-            </div>
-          ))}
-        </div>
+
+        {/* Native horizontal scroll-snap rather than framer-motion drag: it
+            gets touch, trackpad, and keyboard scrolling for free without
+            fighting a transform-based drag gesture over the same axis. */}
+        <MotionConfig reducedMotion="user">
+          <StaggerChildren
+            className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            stagger={0.1}
+          >
+            {TESTIMONIALS.map((t) => (
+              <StaggerItem
+                key={t.name}
+                className="w-[82%] max-w-sm shrink-0 snap-center sm:w-[340px]"
+              >
+                <TestimonialCard testimonial={t} />
+              </StaggerItem>
+            ))}
+          </StaggerChildren>
+        </MotionConfig>
       </Container>
     </section>
   );
