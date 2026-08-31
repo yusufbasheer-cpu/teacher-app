@@ -61,3 +61,15 @@ Alternatives considered: Starting with `saved_lessons` auto-save because it is u
 Impact: Phase 1 recommendations should name `lesson_plans` save/update as the first candidate for detailed contract hardening.
 
 Status: Proposed.
+
+## 2026-08-31
+
+Decision: Migrate `lesson_plans` save/update behind a backend API route before touching `saved_lessons`.
+
+Reason: The contract is narrower, the call surface is smaller, and it lets us prove the frontend API boundary without moving migration-critical lesson auto-save behavior yet.
+
+Alternatives considered: Moving `saved_lessons` first or bundling both lesson persistence paths into the same diff.
+
+Impact: The first production-code persistence boundary now lives in `POST /api/lesson-plan/save`, while `saved_lessons` remains browser-owned for later review.
+
+Status: Implemented.

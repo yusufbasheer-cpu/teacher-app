@@ -65,6 +65,7 @@ import {
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
+import { apiJson } from "@/lib/frontend-api-client";
 import { filterUserFacingNotices } from "@/lib/image-notices";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
@@ -775,38 +776,40 @@ export function LessonPlanGenerator() {
 
     try {
       const payload = {
-        user_id: user.id,
-        curriculum_type: form.curriculumType,
-        curriculum_framework: form.curriculumFramework.trim() || "",
-        subject: form.subject,
-        grade: form.grade,
-        chapter: form.chapter.trim(),
-        topic: form.topic.trim(),
-        learning_objectives: form.learningObjectives,
-        lesson_plan: mergePptSlideImageUrlsIntoPlan(
-          mergeSectionImagesMeta(lessonPlan, sectionImages),
-          pptSlideImageUrls,
-        ),
+        activePlanId,
+        form: {
+          curriculumType: form.curriculumType,
+          curriculumFramework: form.curriculumFramework,
+          grade: form.grade,
+          subject: form.subject,
+          chapter: form.chapter,
+          topic: form.topic,
+          learningObjectives: form.learningObjectives,
+        },
+        lessonPlan,
+        sectionImages,
+        pptSlideImageUrls,
       };
 
-      if (activePlanId) {
-        const { error: updateError } = await supabase
-          .from("lesson_plans")
-          .update(payload)
-          .eq("id", activePlanId)
-          .eq("user_id", user.id);
-        if (updateError) throw new Error(updateError.message);
-        setSuccessMessage("Lesson plan updated successfully.");
-      } else {
-        const { data, error: insertError } = await supabase
-          .from("lesson_plans")
-          .insert(payload)
-          .select("id")
-          .single();
-        if (insertError) throw new Error(insertError.message);
-        const newId = (data as { id: string }).id;
-        setActivePlanId(newId);
+      const { response, parsed } = await apiJson<{ action: "inserted" | "updated"; id: string }>(
+        "/api/lesson-plan/save",
+        {
+          auth: "bearer",
+          method: "POST",
+          json: payload,
+          logLabel: "lesson-plan-save",
+        },
+      );
+
+      if (!response.ok || !parsed.ok) {
+        throw new Error(parsed.ok ? "Save failed." : parsed.message);
+      }
+
+      if (parsed.data.action === "inserted") {
+        setActivePlanId(parsed.data.id);
         setSuccessMessage("Lesson plan saved successfully.");
+      } else {
+        setSuccessMessage("Lesson plan updated successfully.");
       }
     } catch (err) {
       setError(toUserFacingError(err, "lesson-plan-save"));

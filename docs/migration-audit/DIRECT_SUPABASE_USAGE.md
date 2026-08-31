@@ -48,3 +48,7 @@ First migration candidate, if the detailed contract review still looks clean: `l
 
 Do not start with `saved_lessons` unless later contract analysis proves it is safe enough.
 
+## Current Status
+
+- `lesson_plans` save/update has been moved behind `POST /api/lesson-plan/save`.
+- The browser still owns `saved_lessons` auto-save, list, view, and delete flows.
