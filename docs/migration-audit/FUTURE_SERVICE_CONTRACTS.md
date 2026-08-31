@@ -47,6 +47,25 @@ Current proof points:
 
 - `src/app/api/question-paper/route.ts` and `src/app/api/question-paper/blueprint/route.ts` now import DeepSeek through the facade.
 - `src/lib/ppt-image-resolver.ts` now imports fal and Pexels helpers through the facade.
+- `src/app/api/lesson-plan/route.ts` now imports lesson DeepSeek transport through `src/lib/deepseek-lesson-provider.ts`.
+
+## Lesson Provider
+
+Target shape:
+
+```text
+lesson orchestration -> lesson DeepSeek provider -> DeepSeek API
+```
+
+Scope:
+
+- lesson-specific DeepSeek URL/model/headers/body construction
+- raw-response logging and completion parsing
+- cancellation propagation
+
+Out of scope:
+
+- auth, quota, entitlement, streaming, persistence, or prompt policy
 
 ## Business-Data Boundary
 

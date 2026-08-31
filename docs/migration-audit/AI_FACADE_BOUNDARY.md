@@ -24,11 +24,11 @@ application
 
 - `src/app/api/question-paper/route.ts` and `src/app/api/question-paper/blueprint/route.ts` now call the AI facade for DeepSeek.
 - `src/lib/ppt-image-resolver.ts` now reaches fal and Pexels through the AI facade for PPT image resolution.
-- `src/app/api/lesson-plan/route.ts` still contains direct DeepSeek orchestration because that route is high-churn and intentionally left untouched in this checkpoint.
+- `src/app/api/lesson-plan/route.ts` now delegates DeepSeek transport to `src/lib/deepseek-lesson-provider.ts` while keeping lesson orchestration, quota, streaming, and persistence in the route.
 
 ## Why This Shape
 
 - It inverts the dependency without changing prompts, model IDs, temperatures, retries, or payload shapes.
 - It is small enough to test with passthrough mocks.
 - It gives the future Python AI service a concrete interface pattern without forcing a filesystem reorg yet.
-
+- The lesson route still owns policy and response shaping, so the provider stays narrow and does not become a general-purpose AI wrapper.

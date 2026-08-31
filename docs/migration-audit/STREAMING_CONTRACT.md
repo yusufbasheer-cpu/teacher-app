@@ -18,4 +18,4 @@ Date: 2026-08-31
 
 - Do not change the MIME type or event envelope without a dedicated contract test.
 - Do not change the order of progress/completion semantics unless the client is updated at the same time.
-
+- DeepSeek lesson transport changes must not alter the stream envelope; they are strictly provider-internal.

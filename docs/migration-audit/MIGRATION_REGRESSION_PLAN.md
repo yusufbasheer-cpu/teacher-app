@@ -8,6 +8,7 @@
 - Add Supabase local/test project with seeded users/plans/schools/admins.
 - Add Razorpay webhook replay fixtures for all handled event types.
 - Add AI mocked-provider tests that verify prompts, parser behavior, and failure/refund behavior without paid calls.
+- Add lesson DeepSeek provider tests that verify URL, model, headers, message order, abort signal propagation, and HTTP failure mapping.
 - Add export snapshot tests for DOCX/PPTX/ZIP headers and file sanity.
 
 ## During Migration
@@ -24,6 +25,7 @@
 - Replay webhook fixtures.
 - Run quota concurrency tests.
 - Compare generated content parser snapshots with mocked DeepSeek payloads.
+- Compare lesson DeepSeek provider behavior against the contract in `DEEPSEEK_LESSON_GENERATION_CONTRACT.md`.
 - Verify admin audit logs and billing state transitions.
 - Decommission legacy handlers only after parity passes and monitoring is quiet.
 

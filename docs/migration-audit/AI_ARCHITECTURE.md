@@ -4,13 +4,13 @@
 
 | Provider | Model/API | Use | Source |
 | --- | --- | --- | --- |
-| DeepSeek | `https://api.deepseek.com/chat/completions`, model `deepseek-chat` | text generation for lesson plans, PPT slide bodies, AFL sheets, question papers, blueprints, differentiated packs, metadata inference | `src/app/api/lesson-plan/route.ts`, `src/lib/question-paper-deepseek.ts`, differentiated routes |
+| DeepSeek | `https://api.deepseek.com/chat/completions`, model `deepseek-chat` | text generation for lesson plans, PPT slide bodies, AFL sheets, question papers, blueprints, differentiated packs, metadata inference | `src/lib/deepseek-lesson-provider.ts`, `src/lib/question-paper-deepseek.ts`, differentiated routes |
 | fal.ai | `fal-ai/flux-1/dev` | generated educational illustrations and PPT slide images | `src/lib/fal-flux-section-images.ts`, `src/lib/fal-ppt-slide-images.ts` |
 | Pexels | `/v1/search` | stock landscape image URLs for selected PPT slides | `src/lib/pexels-images.ts` |
 
 No OpenAI, Anthropic, Gemini, vector database, embeddings, RAG, speech-to-text, text-to-speech, or AI phone/calling provider was found in runtime code during this pass.
 
-Current boundary proof point: `src/lib/ai-facade.ts` now sits between selected application callers and the existing DeepSeek/fal/Pexels helpers.
+Current boundary proof point: `src/lib/ai-facade.ts` now sits between selected application callers and the existing DeepSeek/fal/Pexels helpers, while `src/lib/deepseek-lesson-provider.ts` isolates lesson-specific DeepSeek transport.
 
 ## Lesson AI Chain
 
@@ -22,6 +22,7 @@ User submits lesson form in `LessonPlanGenerator`
 -> rate/spend protection
 -> `reserveGeneration`
 -> build framework/AFL/strategy prompt blocks
+-> lesson route delegates DeepSeek transport to `src/lib/deepseek-lesson-provider.ts`
 -> DeepSeek calls per teacher-package section
 -> for PPT, generate 13 isolated slide bodies in parallel
 -> parse marker-delimited output

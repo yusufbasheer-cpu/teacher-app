@@ -109,3 +109,15 @@ Alternatives considered: Extracting service helpers from billing, school admin, 
 Impact: `src/app/api/geo/route.ts` now delegates to `src/lib/geo-service.ts` with behavior preserved.
 
 Status: Implemented.
+
+## 2026-08-31
+
+Decision: Move lesson-plan DeepSeek transport behind a lesson-specific provider before broader AI service cleanup.
+
+Reason: The lesson route already owns high-risk policy, quota, streaming, and persistence concerns. Extracting only the DeepSeek request/response mechanics reduces surface area without changing prompts, models, or output envelopes.
+
+Alternatives considered: Leaving the fetches inline until a larger AI refactor or moving all lesson orchestration into the provider.
+
+Impact: `src/lib/deepseek-lesson-provider.ts` now owns the lesson DeepSeek HTTP contract, while `src/app/api/lesson-plan/route.ts` keeps business orchestration and response shaping.
+
+Status: Implemented.

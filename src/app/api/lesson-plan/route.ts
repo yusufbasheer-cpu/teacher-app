@@ -25,8 +25,8 @@ import {
 } from "@/lib/curriculum-framework";
 import {
   buildDeepseekLessonSystemPrompt,
-  buildSinglePptSlideDeepseekSystemPrompt,
 } from "@/lib/deepseek-lesson-system-prompt";
+import { callDeepSeekLessonChat } from "@/lib/deepseek-lesson-provider";
 import { generateFluxSectionImages, formatFalError } from "@/lib/ai-facade";
 import { apiErrorResponse } from "@/lib/api-client-error";
 import { filterUserFacingNotices } from "@/lib/image-notices";
@@ -57,8 +57,6 @@ import {
   buildAflActivitySheetsUserMessage,
   buildAutoAflSelections,
 } from "@/lib/afl-tools";
-import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
-import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 import {
   parseTeacherPackageResponse,
   stripOuterMarkdownFences,
@@ -92,29 +90,12 @@ export const runtime = "nodejs";
 /** 13 parallel slide calls + other sections. Parallel PPT is faster but keep the cap generous. */
 export const maxDuration = 300;
 
-const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const DEEPSEEK_MAX_TOKENS = 8000;
-const DEEPSEEK_MAX_TOKENS_PPT_SLIDE = 2400;
-const PPT_SLIDE_MAX_ATTEMPTS = 3;
 
 const NDJSON_HEADERS = {
   "Content-Type": "application/x-ndjson; charset=utf-8",
   "Cache-Control": "no-store",
 } as const;
-
-function deepSeekHttpErrorMessage(status: number, rawBody: string): string {
-  const trimmed = rawBody.trim();
-  if (status === 401) {
-    return "DeepSeek API key is invalid or expired. Please update DEEPSEEK_API_KEY.";
-  }
-  if (status === 402) {
-    return "DeepSeek account has insufficient credits. Please top up your DeepSeek balance.";
-  }
-  if (status === 429) {
-    return "DeepSeek rate limit reached. Please retry in a few moments.";
-  }
-  return `DeepSeek HTTP ${status}: ${trimmed.slice(0, 800) || "No response body."}`;
-}
 
 type DeepSeekMessage = {
   role: "system" | "user" | "assistant";
@@ -385,6 +366,7 @@ type GeneratePackageParams = {
   aflSelections: ReturnType<typeof sanitizeAflSelections>;
   aflPromptBlock: string;
   strategyBlock: string;
+  signal?: AbortSignal;
   onProgress?: (message: string) => void;
 };
 
@@ -392,7 +374,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
   mergedPlan: LessonPlanResult;
   parseNotices: string[];
 }> {
-  const { apiKey, input, sections, sourceMaterial, frameworkAddendum, aflSelections, aflPromptBlock, strategyBlock, onProgress } =
+  const { apiKey, input, sections, sourceMaterial, frameworkAddendum, aflSelections, aflPromptBlock, strategyBlock, signal, onProgress } =
     params;
   const orderedSections = TEACHER_PACKAGE_SECTIONS.filter((k) => sections.includes(k));
   const mergedPlan = emptyLessonShell(sections);
@@ -449,102 +431,45 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
           "(No AFL tools were selected — AFL Activity Sheets are generated only when AFL tools are chosen in the generator.)";
         continue;
       }
-      let aflSheetResponse: Response;
-      try {
-        aflSheetResponse = await fetch(DEEPSEEK_API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "deepseek-chat",
-            temperature: 0.5,
-            max_tokens: DEEPSEEK_MAX_TOKENS,
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are an expert teacher generating printable student-facing activity sheets. Generate rich, complete, classroom-ready content specific to the topic, subject, and grade. Use plain text only — no markdown code fences. Wrap all output between the exact markers shown in the user message.",
-              },
-              { role: "user", content: userMsg },
-            ],
-          }),
-        });
-      } catch (err) {
-        console.error("[lesson-plan] AFL Activity Sheets fetch error:", err);
+      const aflResult = await callDeepSeekLessonChat({
+        apiKey,
+        logLabel: "lesson-plan:AFL-Activity-Sheets",
+        systemPrompt:
+          "You are an expert teacher generating printable student-facing activity sheets. Generate rich, complete, classroom-ready content specific to the topic, subject, and grade. Use plain text only — no markdown code fences. Wrap all output between the exact markers shown in the user message.",
+        userMessage: userMsg,
+        maxTokens: DEEPSEEK_MAX_TOKENS,
+        temperature: 0.5,
+        signal,
+      });
+      if ("error" in aflResult) {
+        console.warn("[lesson-plan] AFL Activity Sheets DeepSeek error:", aflResult.error);
         mergedPlan[section] = SECTION_GENERATION_FAILED;
         continue;
       }
-      const rawAflBody = await aflSheetResponse.text();
-      logDeepSeekRawResponse("lesson-plan:AFL-Activity-Sheets", aflSheetResponse, rawAflBody);
-      if (!aflSheetResponse.ok) {
-        console.warn(
-          "[lesson-plan] AFL Activity Sheets HTTP error:",
-          aflSheetResponse.status,
-          deepSeekHttpErrorMessage(aflSheetResponse.status, rawAflBody),
-        );
-        mergedPlan[section] = SECTION_GENERATION_FAILED;
-        continue;
-      }
-      const { content: aflContent } = parseDeepSeekCompletionBody(rawAflBody);
-      if (!aflContent?.trim()) {
-        mergedPlan[section] = "(No content returned for AFL Activity Sheets.)";
-        continue;
-      }
+      const aflContent = aflResult.content;
       const { plan: aflPlan } = parseTeacherPackageResponse(aflContent, ["AFL Activity Sheets"]);
       const extracted = aflPlan["AFL Activity Sheets"] ?? aflContent;
       mergedPlan[section] = extracted.trim();
       continue;
     }
 
-    let deepseekResponse: Response;
-    try {
-      deepseekResponse = await fetch(DEEPSEEK_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          temperature: 0.55,
-          max_tokens: DEEPSEEK_MAX_TOKENS,
-          messages: buildMessages(input, [section], sourceMaterial, frameworkAddendum, aflPromptBlock, strategyBlock),
-        }),
-      });
-    } catch (err) {
-      console.error("[lesson-plan] DeepSeek fetch error:", section, err);
+    const messages = buildMessages(input, [section], sourceMaterial, frameworkAddendum, aflPromptBlock, strategyBlock);
+    const deepseekResult = await callDeepSeekLessonChat({
+      apiKey,
+      logLabel: `lesson-plan:${section}`,
+      systemPrompt: messages[0]!.content,
+      userMessage: messages[1]!.content,
+      maxTokens: DEEPSEEK_MAX_TOKENS,
+      temperature: 0.55,
+      signal,
+    });
+    if ("error" in deepseekResult) {
+      console.warn("[lesson-plan] DeepSeek error:", section, deepseekResult.error);
       mergedPlan[section] = SECTION_GENERATION_FAILED;
       continue;
     }
 
-    const rawBody = await deepseekResponse.text();
-    logDeepSeekRawResponse(`lesson-plan:${section}`, deepseekResponse, rawBody);
-    if (!deepseekResponse.ok) {
-      console.warn(
-        "[lesson-plan] DeepSeek HTTP error:",
-        section,
-        deepseekResponse.status,
-        rawBody.slice(0, 400),
-      );
-      console.warn(
-        "[lesson-plan] section HTTP error:",
-        section,
-        deepSeekHttpErrorMessage(deepseekResponse.status, rawBody),
-      );
-      mergedPlan[section] = SECTION_GENERATION_FAILED;
-      continue;
-    }
-
-    const { content, errorMessage } = parseDeepSeekCompletionBody(rawBody);
-    if (errorMessage) {
-      console.warn(`[lesson-plan] parse notice for ${section}:`, errorMessage);
-    }
-    if (!content?.trim()) {
-      mergedPlan[section] = SECTION_GENERATION_FAILED;
-      continue;
-    }
+    const content = deepseekResult.content;
 
     console.log(`[lesson-plan] section generated: ${section} (${content.length} chars)`);
 
@@ -793,6 +718,7 @@ export async function POST(req: Request) {
             aflSelections,
             aflPromptBlock,
             strategyBlock,
+            signal: req.signal,
             onProgress: (message) => send({ type: "progress", message }),
           });
           const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
@@ -834,6 +760,7 @@ export async function POST(req: Request) {
       aflSelections,
       aflPromptBlock,
       strategyBlock,
+      signal: req.signal,
     });
     const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
     void logGenerationEvent({
