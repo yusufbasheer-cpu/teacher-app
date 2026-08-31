@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { CheckField } from "@/components/ui/field";
 import { UsersPanel } from "@/components/admin/users-panel";
 import { BillingPanel } from "@/components/admin/billing-panel";
 import { AnalyticsPanel } from "@/components/admin/analytics-panel";
@@ -24,7 +26,6 @@ import {
   formatAdminDate,
   formatPlanLabel,
   useActionDialog,
-  useToast,
 } from "@/components/admin/ui/admin-kit";
 
 // Mirrors ADMIN_PERMISSIONS in src/lib/super-admin.ts — kept as a plain
@@ -156,7 +157,6 @@ function DashboardBody({ role, email }: { role: "super_admin" | "admin"; email: 
   const [schoolDetailLoading, setSchoolDetailLoading] = useState(false);
 
   const actionDialog = useActionDialog();
-  const toast = useToast();
 
   const fetchStats = useCallback(async () => {
     const res = await fetch("/api/super-admin/stats");
@@ -556,7 +556,7 @@ function DashboardBody({ role, email }: { role: "super_admin" | "admin"; email: 
                       ) : (
                         <div className="space-y-1.5">
                           {schoolTeachers.map((t) => (
-                            <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm" style={{ background: "#FAFAF8" }}>
+                            <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--canvas)" }}>
                               <div>
                                 <span className="break-all font-medium" style={{ color: INK }}>{t.email}</span>
                                 <span className="ml-2 text-xs" style={{ color: INK_MUTED }}>
@@ -614,10 +614,13 @@ function DashboardBody({ role, email }: { role: "super_admin" | "admin"; email: 
                   <p className="mb-2 text-xs font-semibold" style={{ color: INK_MUTED }}>Permissions</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {ADMIN_PERMISSIONS.map((permission) => (
-                      <label key={permission} className={`flex items-center gap-2 text-sm ${FONT_MONO}`} style={{ color: INK }}>
-                        <input type="checkbox" checked={grantPermissions.has(permission)} onChange={() => togglePermission(permission)} />
-                        {permission}
-                      </label>
+                      <CheckField
+                        key={permission}
+                        label={permission}
+                        className={FONT_MONO}
+                        checked={grantPermissions.has(permission)}
+                        onChange={() => togglePermission(permission)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -680,10 +683,11 @@ function DashboardBody({ role, email }: { role: "super_admin" | "admin"; email: 
               placeholder="Search subject / topic / grade…"
               className="min-w-[220px] flex-1"
             />
-            <label className="flex items-center gap-2 text-sm" style={{ color: INK }}>
-              <input type="checkbox" checked={contentFlaggedOnly} onChange={(e) => setContentFlaggedOnly(e.target.checked)} />
-              Flagged only
-            </label>
+            <CheckField
+              label="Flagged only"
+              checked={contentFlaggedOnly}
+              onChange={(e) => setContentFlaggedOnly(e.target.checked)}
+            />
             <AdminButton tone="primary" onClick={() => void fetchContent()}>Search</AdminButton>
           </div>
 
@@ -707,7 +711,7 @@ function DashboardBody({ role, email }: { role: "super_admin" | "admin"; email: 
                       <span>{formatAdminDate(item.created_at)}</span>
                     </div>
                     {item.flagged && item.flagged_reason && (
-                      <p className="mt-1 text-xs font-medium" style={{ color: "#B3261E" }}>Reason: {item.flagged_reason}</p>
+                      <p className="mt-1 text-xs font-medium" style={{ color: "var(--danger-text)" }}>Reason: {item.flagged_reason}</p>
                     )}
                   </div>
                   <div className="flex gap-2">

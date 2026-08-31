@@ -34,12 +34,12 @@ export function Checkbox({ id, checked, onChange, disabled, className }: Checkbo
       <span
         className={cn(
           "pointer-events-none flex size-4 items-center justify-center rounded border transition-colors duration-150",
-          "peer-focus-visible:ring-2 peer-focus-visible:ring-[color-mix(in_oklch,var(--brand)_40%,transparent)] peer-focus-visible:ring-offset-1",
-          checked ? "border-[var(--brand)] bg-[var(--brand)]" : "border-[var(--border-subtle)] bg-surface",
+          "peer-focus-visible:ring-2 peer-focus-visible:ring-brand/40 peer-focus-visible:ring-offset-1",
+          checked ? "border-brand bg-brand" : "border-line-subtle bg-surface",
           disabled && "opacity-50",
         )}
       >
-        {checked ? <Check className="size-3 text-white" strokeWidth={3} /> : null}
+        {checked ? <Check className="size-3 text-brand-on" strokeWidth={3} /> : null}
       </span>
     </span>
   );

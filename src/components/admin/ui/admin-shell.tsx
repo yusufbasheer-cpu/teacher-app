@@ -54,7 +54,7 @@ export function AdminShell({
       >
         <div className="mb-5 flex items-center gap-2 px-2">
           <div
-            className="flex size-8 items-center justify-center rounded-lg text-sm font-bold text-white"
+            className="flex size-8 items-center justify-center rounded-lg text-sm font-bold text-brand-on"
             style={{ background: ACCENT }}
           >
             L
@@ -71,7 +71,7 @@ export function AdminShell({
 
         <Link
           href="/overview"
-          className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-black/[0.03]"
+          className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-hover"
           style={{ color: ACCENT }}
         >
           <ArrowLeft className="size-4" />
@@ -99,7 +99,10 @@ export function AdminShell({
                 {!!count && (
                   <span
                     className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                    style={{ background: isActive ? "white" : "#EDEBE6", color: isActive ? ACCENT : INK_FAINT }}
+                    style={{
+                      background: isActive ? "var(--surface-raised)" : "var(--surface-sunken)",
+                      color: isActive ? ACCENT : INK_FAINT,
+                    }}
                   >
                     {count}
                   </span>
@@ -109,7 +112,7 @@ export function AdminShell({
           })}
         </nav>
 
-        <div className="mt-4 rounded-lg px-2.5 py-2.5" style={{ background: "#EFEEEA" }}>
+        <div className="mt-4 rounded-lg px-2.5 py-2.5" style={{ background: "var(--surface-sunken)" }}>
           <p className="truncate text-xs font-semibold" style={{ color: INK }}>
             {email}
           </p>
@@ -135,8 +138,8 @@ export function AdminShell({
           <div className="flex items-center gap-2">
             <Link
               href="/overview"
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-black/[0.03]"
-              style={{ background: "white", color: ACCENT, border: `1px solid ${BORDER}` }}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-hover"
+              style={{ background: "var(--surface-raised)", color: ACCENT, border: `1px solid ${BORDER}` }}
             >
               <ArrowLeft className="size-3.5" />
               Back to platform
@@ -152,7 +155,7 @@ export function AdminShell({
           <Link
             href="/overview"
             className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold"
-            style={{ background: "white", color: ACCENT, border: `1px solid ${BORDER}` }}
+            style={{ background: "var(--surface-raised)", color: ACCENT, border: `1px solid ${BORDER}` }}
           >
             Back to platform
           </Link>
@@ -164,7 +167,7 @@ export function AdminShell({
               className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold"
               style={{
                 background: item.tab === active ? ACCENT : "transparent",
-                color: item.tab === active ? "white" : INK_MUTED,
+                color: item.tab === active ? "var(--brand-on)" : INK_MUTED,
                 border: item.tab === active ? "none" : `1px solid ${BORDER}`,
               }}
             >

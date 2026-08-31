@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Copy } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +30,6 @@ import {
   formatAdminDate,
   formatPlanLabel,
   useActionDialog,
-  useToast,
 } from "@/components/admin/ui/admin-kit";
 
 type UserRow = {
@@ -108,7 +110,6 @@ export function UsersPanel() {
   const [impersonateLink, setImpersonateLink] = useState<{ email: string; url: string } | null>(null);
 
   const actionDialog = useActionDialog();
-  const toast = useToast();
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -413,13 +414,9 @@ export function UsersPanel() {
         title={`All Users (${users.length})`}
         action={
           // eslint-disable-next-line @next/next/no-html-link-for-pages -- this is a file download from an API route, not a page navigation
-          <a
-            href="/api/super-admin/users/export"
-            className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition hover:bg-black/[0.02]"
-            style={{ borderColor: BORDER, color: INK }}
-          >
+          <Button variant="outline" size="sm" render={<a href="/api/super-admin/users/export" />}>
             Export CSV
-          </a>
+          </Button>
         }
       />
 
@@ -465,7 +462,7 @@ export function UsersPanel() {
           {users.map((u) => (
             <AdminCard key={u.id} padded={false} tone={u.accountStatus === "suspended" ? "danger" : "default"}>
               <div className="flex flex-wrap items-center gap-3 p-4">
-                <input type="checkbox" checked={selected.has(u.id)} onChange={() => toggleSelected(u.id)} />
+                <Checkbox checked={selected.has(u.id)} onChange={() => toggleSelected(u.id)} />
                 <div className="min-w-[180px] flex-1">
                   <button
                     type="button"
@@ -538,7 +535,7 @@ export function UsersPanel() {
                         {detail.generationEvents.length === 0 ? (
                           <p className="text-xs" style={{ color: INK_FAINT }}>None yet.</p>
                         ) : (
-                          <div className="max-h-40 overflow-y-auto rounded-lg text-xs" style={{ background: "#FAFAF8" }}>
+                          <div className="max-h-40 overflow-y-auto rounded-lg text-xs" style={{ background: "var(--canvas)" }}>
                             {detail.generationEvents.map((ev) => (
                               <div key={ev.id} className="flex justify-between gap-2 px-2 py-1.5" style={{ borderBottom: `1px solid ${BORDER}` }}>
                                 <span>{ev.generation_type}</span>
@@ -557,7 +554,7 @@ export function UsersPanel() {
                         {detail.auditHistory.length === 0 ? (
                           <p className="text-xs" style={{ color: INK_FAINT }}>None yet.</p>
                         ) : (
-                          <div className="max-h-40 overflow-y-auto rounded-lg text-xs" style={{ background: "#FAFAF8" }}>
+                          <div className="max-h-40 overflow-y-auto rounded-lg text-xs" style={{ background: "var(--canvas)" }}>
                             {detail.auditHistory.map((a) => (
                               <div key={a.id} className="flex justify-between gap-2 px-2 py-1.5" style={{ borderBottom: `1px solid ${BORDER}` }}>
                                 <span>{a.action}</span>
@@ -614,7 +611,7 @@ export function UsersPanel() {
                         ) : (
                           <div className="space-y-1.5">
                             {payments.map((p) => (
-                              <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: "#FAFAF8" }}>
+                              <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: "var(--canvas)" }}>
                                 <div>
                                   <span className={`font-medium ${FONT_MONO}`} style={{ color: INK }}>
                                     {p.currency} {(p.amount / 100).toFixed(2)}

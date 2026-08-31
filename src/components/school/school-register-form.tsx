@@ -11,12 +11,19 @@ import {
   type PricingRegion,
   type PricingRegionId,
 } from "@/lib/pricing-regions";
-
-const NAVY = "var(--text)";
-const TEAL = "var(--brand)";
-const MUTED = "var(--text-secondary)";
+import { Badge, Notice, Panel } from "@/components/ui/panel";
+import { Button } from "@/components/ui/button";
+import { Field, Select, TextInput } from "@/components/ui/field";
+import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
 
 type Step = 1 | 2 | 3 | 4 | "done";
+
+const WIZARD_STEPS = [
+  { id: 1, label: "Sign In" },
+  { id: 2, label: "School Details" },
+  { id: 3, label: "Choose Plan" },
+  { id: 4, label: "Confirm" },
+] as const;
 
 type SchoolForm = {
   schoolName: string;
@@ -153,56 +160,6 @@ function CheckIcon({ className = "" }: { className?: string }) {
   );
 }
 
-function StepIndicator({ current }: { current: Step }) {
-  const steps = [
-    { num: 1, label: "Sign In" },
-    { num: 2, label: "School Details" },
-    { num: 3, label: "Choose Plan" },
-    { num: 4, label: "Confirm" },
-  ];
-  const currentNum = typeof current === "number" ? current : 5;
-
-  return (
-    <div className="flex items-center justify-center gap-2 sm:gap-3">
-      {steps.map((s, i) => {
-        const done = currentNum > s.num;
-        const active = currentNum === s.num;
-        return (
-          <div key={s.num} className="flex items-center gap-2 sm:gap-3">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <div
-                className="flex size-8 items-center justify-center rounded-full text-xs font-bold transition-all"
-                style={{
-                  background: done ? TEAL : active ? NAVY : "var(--border)",
-                  color: done || active ? "#fff" : "var(--text-disabled)",
-                }}
-              >
-                {done ? (
-                  <CheckIcon className="text-white" />
-                ) : (
-                  s.num
-                )}
-              </div>
-              <span
-                className="hidden text-xs font-semibold sm:inline"
-                style={{ color: active ? NAVY : done ? TEAL : "var(--text-disabled)" }}
-              >
-                {s.label}
-              </span>
-            </div>
-            {i < steps.length - 1 && (
-              <div
-                className="h-0.5 w-6 sm:w-10"
-                style={{ background: done ? TEAL : "var(--border)" }}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 function PlanCard({
   plan,
   region,
@@ -218,49 +175,38 @@ function PlanCard({
 
   return (
     <article
-      className="relative flex flex-col rounded-2xl border p-6 shadow-sm transition hover:shadow-md"
-      style={{
-        borderColor: plan.highlight ? TEAL : "color-mix(in oklch, var(--text) 12%, transparent)",
-        borderWidth: plan.highlight ? 2 : 1,
-        background: "var(--surface-raised)",
-      }}
+      className={`relative flex flex-col rounded-2xl border bg-surface-raised p-6 transition-colors duration-[110ms] ${
+        plan.highlight ? "border-2 border-brand" : "border-line-subtle"
+      }`}
     >
       {plan.highlight && (
-        <span
-          className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide"
-          style={{ background: TEAL, color: NAVY }}
-        >
+        <Badge tone="brand" className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 uppercase tracking-wide">
           Most Popular
-        </span>
+        </Badge>
       )}
-      <h3 className="text-lg font-bold" style={{ color: NAVY }}>
-        {plan.name}
-      </h3>
-      <p className="mt-2 text-2xl font-extrabold" style={{ color: NAVY }}>
-        {monthlyLabel}
-      </p>
-      <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-        Or {annualLabel}
-      </p>
-      <p className="mt-3 text-sm font-semibold" style={{ color: TEAL }}>
-        {plan.teachers}
-      </p>
+      <h3 className="text-lg font-bold text-ink">{plan.name}</h3>
+      <p className="mt-2 text-2xl font-extrabold text-ink">{monthlyLabel}</p>
+      <p className="mt-1 text-sm text-muted">Or {annualLabel}</p>
+      <p className="mt-3 text-sm font-semibold text-brand-text">{plan.teachers}</p>
       <ul className="mt-4 flex flex-1 flex-col gap-2">
         {plan.features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-sm" style={{ color: "var(--text)" }}>
-            <CheckIcon className="text-[var(--brand-active)]" />
+          <li key={f} className="flex items-start gap-2 text-sm text-ink">
+            <CheckIcon className="text-brand-active" />
             <span>{f}</span>
           </li>
         ))}
       </ul>
-      <button
+      <Button
         type="button"
+        size="lg"
+        block
+        interactive={plan.highlight}
+        variant={plan.highlight ? "default" : "outline"}
+        className="mt-6"
         onClick={() => onSelect(plan, monthlyLabel)}
-        className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-        style={{ background: plan.highlight ? TEAL : NAVY }}
       >
         Select {plan.name}
-      </button>
+      </Button>
     </article>
   );
 }
@@ -403,40 +349,30 @@ export function SchoolRegisterForm() {
     }
   };
 
-  const inputClasses =
-    "w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-[color-mix(in_oklch,var(--brand)_40%,transparent)]";
-  const labelClasses = "mb-1.5 block text-sm font-semibold";
-
   return (
     <div className="mx-auto w-full max-w-4xl">
       {step !== "done" && (
         <div className="mb-10">
-          <StepIndicator current={step} />
+          <StepWizardProgress steps={WIZARD_STEPS} currentStep={typeof step === "number" ? step : 5} />
         </div>
       )}
 
       {error && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <Notice tone="danger" className="mb-6">
           {error}
-        </div>
+        </Notice>
       )}
 
       {step === 1 && (
         <div className="mx-auto max-w-md">
-          <div
-            className="rounded-3xl border bg-[var(--surface)] p-8 shadow-sm"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}
-          >
+          <Panel className="p-8">
             <div className="text-center">
-              <div
-                className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl"
-                style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)" }}
-              >
+              <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-brand-subtle">
                 <svg
-                  className="size-8"
+                  className="size-8 text-brand"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke={TEAL}
+                  stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -447,89 +383,65 @@ export function SchoolRegisterForm() {
                   <line x1="8" y1="10" x2="16" y2="10" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold" style={{ color: NAVY }}>
-                Register Your School
-              </h2>
-              <p className="mt-2 text-sm" style={{ color: MUTED }}>
+              <h2 className="text-xl font-bold text-ink">Register Your School</h2>
+              <p className="mt-2 text-sm text-muted">
                 Please sign in with your official school Google account to continue
               </p>
             </div>
 
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="xl"
+              block
+              className="mt-8"
               onClick={() => void handleGoogleSignIn()}
               disabled={googleLoading}
-              className="mt-8 inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border bg-[var(--surface)] px-4 py-3 text-sm font-semibold transition hover:bg-hover disabled:cursor-not-allowed disabled:opacity-70"
-              style={{ borderColor: "#dadce0", color: NAVY }}
             >
               {googleLoading ? (
-                <div className="size-5 animate-spin rounded-full border-2 border-line-strong border-t-slate-600" />
+                <div className="size-5 animate-spin rounded-full border-2 border-line-strong border-t-brand" />
               ) : (
                 <GoogleLogo />
               )}
               <span>{googleLoading ? "Connecting..." : "Continue with Google"}</span>
-            </button>
+            </Button>
 
-            <p className="mt-4 text-center text-xs" style={{ color: "var(--text-disabled)" }}>
+            <p className="mt-4 text-center text-xs text-disabled">
               We will extract your school email domain automatically
             </p>
-          </div>
+          </Panel>
         </div>
       )}
 
       {step === 2 && (
         <div className="mx-auto max-w-lg">
-          <div
-            className="rounded-3xl border bg-[var(--surface)] p-6 shadow-sm sm:p-8"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}
-          >
-            <h2 className="text-xl font-bold" style={{ color: NAVY }}>
-              School Details
-            </h2>
-            <p className="mt-1 text-sm" style={{ color: MUTED }}>
-              Signed in as <strong style={{ color: TEAL }}>{userEmail}</strong>
+          <Panel className="p-6 sm:p-8">
+            <h2 className="text-xl font-bold text-ink">School Details</h2>
+            <p className="mt-1 text-sm text-muted">
+              Signed in as <strong className="text-brand-text">{userEmail}</strong>
             </p>
 
             <div className="mt-6 space-y-4">
-              <div>
-                <label className={labelClasses} style={{ color: NAVY }}>
-                  School Name *
-                </label>
-                <input
+              <Field label="School Name">
+                <TextInput
                   type="text"
                   value={form.schoolName}
                   onChange={(e) => setForm((f) => ({ ...f, schoolName: e.target.value }))}
                   placeholder="e.g. Greenfield International School"
-                  className={inputClasses}
-                  style={{ borderColor: "#D9CCB8", color: NAVY }}
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label className={labelClasses} style={{ color: NAVY }}>
-                  School Email Domain
-                </label>
-                <div
-                  className="flex items-center rounded-xl border bg-hover px-4 py-2.5 text-sm"
-                  style={{ borderColor: "#D9CCB8", color: NAVY }}
-                >
-                  <span style={{ color: "var(--text-disabled)" }}>@</span>
+              <Field label="School Email Domain" hint="Auto-detected from your Google account">
+                <div className="flex items-center rounded-md border border-line bg-hover px-3 py-2 text-sm text-ink">
+                  <span className="text-disabled">@</span>
                   <span className="ml-1 font-medium">{form.emailDomain || "—"}</span>
                 </div>
-                <p className="mt-1 text-xs" style={{ color: "var(--text-disabled)" }}>
-                  Auto-detected from your Google account
-                </p>
-              </div>
+              </Field>
 
-              <div>
-                <label className={labelClasses} style={{ color: NAVY }}>
-                  Country *
-                </label>
-                <select
+              <Field label="Country">
+                <Select
                   value={form.country}
                   onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
-                  className={inputClasses}
-                  style={{ borderColor: "#D9CCB8", color: form.country ? NAVY : "var(--text-disabled)" }}
                 >
                   <option value="">Select your country</option>
                   {COUNTRY_LIST.map((c) => (
@@ -537,18 +449,13 @@ export function SchoolRegisterForm() {
                       {c}
                     </option>
                   ))}
-                </select>
-              </div>
+                </Select>
+              </Field>
 
-              <div>
-                <label className={labelClasses} style={{ color: NAVY }}>
-                  Number of Teachers *
-                </label>
-                <select
+              <Field label="Number of Teachers">
+                <Select
                   value={form.numTeachers}
                   onChange={(e) => setForm((f) => ({ ...f, numTeachers: e.target.value }))}
-                  className={inputClasses}
-                  style={{ borderColor: "#D9CCB8", color: form.numTeachers ? NAVY : "var(--text-disabled)" }}
                 >
                   <option value="">Select number of teachers</option>
                   {NUM_TEACHER_OPTIONS.map((opt) => (
@@ -556,32 +463,22 @@ export function SchoolRegisterForm() {
                       {opt}
                     </option>
                   ))}
-                </select>
-              </div>
+                </Select>
+              </Field>
 
-              <div>
-                <label className={labelClasses} style={{ color: NAVY }}>
-                  Phone Number
-                </label>
-                <input
+              <Field label="Phone Number" optional>
+                <TextInput
                   type="tel"
                   value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                   placeholder="+971 50 123 4567"
-                  className={inputClasses}
-                  style={{ borderColor: "#D9CCB8", color: NAVY }}
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label className={labelClasses} style={{ color: NAVY }}>
-                  How did you hear about us?
-                </label>
-                <select
+              <Field label="How did you hear about us?" optional>
+                <Select
                   value={form.howHeard}
                   onChange={(e) => setForm((f) => ({ ...f, howHeard: e.target.value }))}
-                  className={inputClasses}
-                  style={{ borderColor: "#D9CCB8", color: form.howHeard ? NAVY : "var(--text-disabled)" }}
                 >
                   <option value="">Select an option</option>
                   {HOW_HEARD_OPTIONS.map((opt) => (
@@ -589,236 +486,128 @@ export function SchoolRegisterForm() {
                       {opt}
                     </option>
                   ))}
-                </select>
-              </div>
+                </Select>
+              </Field>
             </div>
 
             <div className="mt-8 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-hover"
-                style={{ borderColor: "#D9CCB8", color: MUTED }}
-              >
+              <Button type="button" variant="outline" size="lg" onClick={() => setStep(1)}>
                 Back
-              </button>
-              <button
-                type="button"
-                onClick={handleFormSubmit}
-                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-                style={{ background: TEAL }}
-              >
+              </Button>
+              <Button type="button" size="lg" block onClick={handleFormSubmit}>
                 Continue to Plans
-              </button>
+              </Button>
             </div>
-          </div>
+          </Panel>
         </div>
       )}
 
       {step === 3 && (
         <div>
           <div className="mb-8 text-center">
-            <h2 className="text-xl font-bold" style={{ color: NAVY }}>
-              Choose Your School Plan
-            </h2>
-            <p className="mt-2 text-sm" style={{ color: MUTED }}>
-              All plans include unlimited generations for every teacher
-            </p>
+            <h2 className="text-xl font-bold text-ink">Choose Your School Plan</h2>
+            <p className="mt-2 text-sm text-muted">All plans include unlimited generations for every teacher</p>
           </div>
 
           {!regionLoading && (
-            <div className="mx-auto mb-8 flex max-w-xs flex-col items-center gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
-                Pricing currency
-              </label>
-              <select
-                value={regionId}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v) setRegionManually(v as PricingRegionId);
-                }}
-                className="w-full rounded-xl border bg-[var(--surface)] px-4 py-2.5 text-sm font-medium outline-none transition"
-                style={{ borderColor: "color-mix(in oklch, var(--text) 15%, transparent)", color: NAVY }}
-              >
-                {PRICING_REGION_LIST.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.flag} {r.selectorLabel}
-                  </option>
-                ))}
-              </select>
+            <div className="mx-auto mb-8 max-w-xs">
+              <Field label="Pricing currency" className="text-center">
+                <Select
+                  value={regionId}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v) setRegionManually(v as PricingRegionId);
+                  }}
+                >
+                  {PRICING_REGION_LIST.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.flag} {r.selectorLabel}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
             </div>
           )}
 
           <div className="grid gap-6 md:grid-cols-3">
             {SCHOOL_PLANS.map((plan) => (
-              <PlanCard
-                key={plan.id}
-                plan={plan}
-                region={region}
-                onSelect={handlePlanSelect}
-              />
+              <PlanCard key={plan.id} plan={plan} region={region} onSelect={handlePlanSelect} />
             ))}
           </div>
 
           <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setStep(2)}
-              className="text-sm font-semibold transition hover:opacity-80"
-              style={{ color: MUTED }}
-            >
+            <Button type="button" variant="link" onClick={() => setStep(2)}>
               Back to School Details
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {step === 4 && selectedPlan && (
         <div className="mx-auto max-w-lg">
-          <div
-            className="rounded-3xl border bg-[var(--surface)] p-6 shadow-sm sm:p-8"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}
-          >
-            <h2 className="text-xl font-bold" style={{ color: NAVY }}>
-              Confirm Your Registration
-            </h2>
-            <p className="mt-1 text-sm" style={{ color: MUTED }}>
-              Review your school details before submitting
-            </p>
+          <Panel className="p-6 sm:p-8">
+            <h2 className="text-xl font-bold text-ink">Confirm Your Registration</h2>
+            <p className="mt-1 text-sm text-muted">Review your school details before submitting</p>
 
-            <div
-              className="mt-6 rounded-2xl p-5"
-              style={{ background: "color-mix(in oklch, var(--brand) 6%, transparent)", border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
-            >
+            <div className="mt-6 rounded-2xl border border-brand-border/50 bg-brand-subtle p-5">
               <dl className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <dt style={{ color: MUTED }}>School Name</dt>
-                  <dd className="font-semibold" style={{ color: NAVY }}>
-                    {form.schoolName}
-                  </dd>
-                </div>
-                <div
-                  className="border-t"
-                  style={{ borderColor: "color-mix(in oklch, var(--brand) 15%, transparent)" }}
-                />
-                <div className="flex justify-between">
-                  <dt style={{ color: MUTED }}>Plan Selected</dt>
-                  <dd className="font-semibold" style={{ color: TEAL }}>
-                    {selectedPlan.name}
-                  </dd>
-                </div>
-                <div
-                  className="border-t"
-                  style={{ borderColor: "color-mix(in oklch, var(--brand) 15%, transparent)" }}
-                />
-                <div className="flex justify-between">
-                  <dt style={{ color: MUTED }}>Price</dt>
-                  <dd className="font-semibold" style={{ color: NAVY }}>
-                    {selectedPlan.priceLabel}
-                  </dd>
-                </div>
-                <div
-                  className="border-t"
-                  style={{ borderColor: "color-mix(in oklch, var(--brand) 15%, transparent)" }}
-                />
-                <div className="flex justify-between">
-                  <dt style={{ color: MUTED }}>Number of Teachers</dt>
-                  <dd className="font-semibold" style={{ color: NAVY }}>
-                    {form.numTeachers}
-                  </dd>
-                </div>
-                <div
-                  className="border-t"
-                  style={{ borderColor: "color-mix(in oklch, var(--brand) 15%, transparent)" }}
-                />
-                <div className="flex justify-between">
-                  <dt style={{ color: MUTED }}>Admin Email</dt>
-                  <dd className="font-semibold" style={{ color: NAVY }}>
-                    {userEmail}
-                  </dd>
-                </div>
-                <div
-                  className="border-t"
-                  style={{ borderColor: "color-mix(in oklch, var(--brand) 15%, transparent)" }}
-                />
-                <div className="flex justify-between">
-                  <dt style={{ color: MUTED }}>Email Domain</dt>
-                  <dd className="font-semibold" style={{ color: NAVY }}>
-                    @{form.emailDomain}
-                  </dd>
-                </div>
+                {[
+                  ["School Name", form.schoolName],
+                  ["Plan Selected", selectedPlan.name],
+                  ["Price", selectedPlan.priceLabel],
+                  ["Number of Teachers", form.numTeachers],
+                  ["Admin Email", userEmail],
+                  ["Email Domain", `@${form.emailDomain}`],
+                ].map(([label, value], i) => (
+                  <div key={label}>
+                    {i > 0 ? <div className="mb-3 border-t border-brand-border/40" /> : null}
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted">{label}</dt>
+                      <dd className="font-semibold text-ink">{value}</dd>
+                    </div>
+                  </div>
+                ))}
               </dl>
             </div>
 
-            <div
-              className="mt-6 rounded-xl p-4 text-sm"
-              style={{ background: "color-mix(in oklch, var(--text) 4%, transparent)", color: MUTED }}
-            >
+            <Notice className="mt-6">
               Your school account is being set up. Our team will contact you within 24 hours to
               complete payment and activation.
-            </div>
+            </Notice>
 
             <div className="mt-8 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStep(3)}
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-hover"
-                style={{ borderColor: "#D9CCB8", color: MUTED }}
-              >
+              <Button type="button" variant="outline" size="lg" onClick={() => setStep(3)}>
                 Back
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleFinalSubmit()}
-                disabled={submitting}
-                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
-                style={{ background: TEAL }}
-              >
+              </Button>
+              <Button type="button" size="lg" block disabled={submitting} onClick={() => void handleFinalSubmit()}>
                 {submitting ? "Submitting..." : "Submit Request"}
-              </button>
+              </Button>
             </div>
-          </div>
+          </Panel>
         </div>
       )}
 
       {step === "done" && (
         <div className="mx-auto max-w-md text-center">
-          <div
-            className="rounded-3xl border bg-[var(--surface)] p-8 shadow-sm sm:p-10"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}
-          >
-            <div
-              className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full"
-              style={{ background: "color-mix(in oklch, var(--brand) 12%, transparent)" }}
-            >
-              <CheckIcon className="!size-10 text-[var(--brand)]" />
+          <Panel className="p-8 sm:p-10">
+            <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full bg-brand-subtle">
+              <CheckIcon className="!size-10 text-brand" />
             </div>
-            <h2 className="text-2xl font-bold" style={{ color: NAVY }}>
-              Thank You!
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
+            <h2 className="text-2xl font-bold text-ink">Thank You!</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
               Your school registration request has been submitted successfully. Our team will review
-              your details and contact you at{" "}
-              <strong style={{ color: NAVY }}>{userEmail}</strong> within 24 hours to complete
-              payment and activate your school account.
+              your details and contact you at <strong className="text-ink">{userEmail}</strong> within
+              24 hours to complete payment and activate your school account.
             </p>
             <div className="mt-8 flex flex-col gap-3">
-              <a
-                href="/dashboard"
-                className="inline-flex min-h-11 items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-                style={{ background: TEAL }}
-              >
+              <Button size="lg" render={<a href="/dashboard" />}>
                 Go to Dashboard
-              </a>
-              <a
-                href="/pricing"
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-semibold transition hover:bg-hover"
-                style={{ borderColor: "#D9CCB8", color: MUTED }}
-              >
+              </Button>
+              <Button variant="outline" size="lg" render={<a href="/pricing" />}>
                 View Pricing
-              </a>
+              </Button>
             </div>
-          </div>
+          </Panel>
         </div>
       )}
     </div>

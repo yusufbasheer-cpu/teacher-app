@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SCHOOL_WELCOME_SESSION_KEY } from "@/lib/school-accounts";
+import { Notice } from "@/components/ui/panel";
 
 export function SchoolWelcomeBanner() {
   const [message, setMessage] = useState<string | null>(null);
@@ -21,16 +22,8 @@ export function SchoolWelcomeBanner() {
   if (!message) return null;
 
   return (
-    <div
-      className="mb-6 rounded-2xl border px-4 py-3 text-sm font-medium"
-      style={{
-        borderColor: "color-mix(in oklch, var(--brand) 35%, transparent)",
-        background: "color-mix(in oklch, var(--brand) 8%, transparent)",
-        color: "var(--brand-active)",
-      }}
-      role="status"
-    >
+    <Notice tone="brand" className="mb-6 font-medium" role="status">
       {message}
-    </div>
+    </Notice>
   );
 }

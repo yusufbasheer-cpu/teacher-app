@@ -4,10 +4,17 @@ import { useCallback, useState } from "react";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import type { SchoolAdminDashboardData, SchoolAdminTeacher } from "@/lib/school-admin-server";
 import { supabase } from "@/lib/supabase";
-
-const NAVY = "var(--text)";
-const TEAL = "var(--brand)";
-const MUTED = "var(--text-secondary)";
+import { Badge, Notice, Panel } from "@/components/ui/panel";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/field";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const ROLE_OPTIONS: { value: SchoolAdminTeacher["role"]; label: string }[] = [
   { value: "teacher", label: "Teacher" },
@@ -45,6 +52,12 @@ type RoleState = { role: SchoolAdminTeacher["role"]; department: string | null }
 type SchoolAdminDashboardProps = {
   initialData: SchoolAdminDashboardData;
 };
+
+/** Small badge next to a teacher's name for a non-default role. */
+function RoleBadge({ role }: { role: SchoolAdminTeacher["role"] }) {
+  if (role === "teacher") return null;
+  return <Badge tone={role === "hod" ? "brand" : "neutral"}>{role === "hod" ? "HOD" : "Admin"}</Badge>;
+}
 
 export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps) {
   const [data, setData] = useState(initialData);
@@ -189,14 +202,9 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
 
   if (loading) {
     return (
-      <div
-        className="flex min-h-[40vh] items-center justify-center rounded-2xl border"
-        style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)", background: "var(--surface-raised)" }}
-      >
-        <p className="text-sm font-medium" style={{ color: MUTED }}>
-          Loading school admin…
-        </p>
-      </div>
+      <Panel className="flex min-h-[40vh] items-center justify-center">
+        <p className="text-sm font-medium text-muted">Loading school admin…</p>
+      </Panel>
     );
   }
 
@@ -205,110 +213,69 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
 
   return (
     <div className="space-y-8 pb-8">
-      <header
-        className="rounded-2xl p-6 sm:p-8"
-        style={{
-          background: `linear-gradient(135deg, ${NAVY} 0%, var(--l-gray-11) 55%, color-mix(in oklch, var(--brand) 15%, transparent) 100%)`,
-          color: "white",
-        }}
-      >
-        <p
-          className="mb-3 inline-flex rounded-full border px-3 py-1 text-xs font-semibold"
-          style={{ borderColor: TEAL, color: TEAL, background: "color-mix(in oklch, var(--brand) 12%, transparent)" }}
-        >
+      {/* A deliberately inverted surface (bg-ink/text-inverse), same pairing
+          used for PptImageProgressCard and the generation loading screen — it
+          reads as a dark header in light mode and correctly flips to a light
+          one in dark mode, instead of hardcoding one direction. */}
+      <header className="rounded-2xl bg-ink p-6 text-inverse sm:p-8">
+        <span className="mb-3 inline-flex rounded-full border border-brand bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
           School Admin
-        </p>
+        </span>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{school.name}</h1>
-        <p className="mt-2 text-sm text-white/70">Manage teachers and monitor school usage</p>
+        <p className="mt-2 text-sm text-inverse/70">Manage teachers and monitor school usage</p>
       </header>
 
-      {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
-
-      {roleError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {roleError}
-        </div>
-      ) : null}
+      {error ? <Notice tone="danger">{error}</Notice> : null}
+      {roleError ? <Notice tone="danger">{roleError}</Notice> : null}
 
       <section>
-        <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>
-          School overview
-        </h2>
-        <div
-          className="rounded-2xl border bg-[var(--surface)] p-5 shadow-sm sm:p-6"
-          style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
-        >
+        <h2 className="mb-4 text-lg font-semibold text-ink">School overview</h2>
+        <Panel className="p-5 sm:p-6">
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
-                School name
-              </dt>
-              <dd className="mt-1 text-base font-semibold" style={{ color: NAVY }}>
-                {school.name}
-              </dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">School name</dt>
+              <dd className="mt-1 text-base font-semibold text-ink">{school.name}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
-                Plan type
-              </dt>
-              <dd className="mt-1 text-base font-semibold" style={{ color: TEAL }}>
-                {formatPlanLabel(school.planType)}
-              </dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">Plan type</dt>
+              <dd className="mt-1 text-base font-semibold text-brand-text">{formatPlanLabel(school.planType)}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
-                Active teachers (of max)
-              </dt>
-              <dd className="mt-1 text-base font-semibold" style={{ color: NAVY }}>
-                {seatsLabel}
-              </dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">Active teachers (of max)</dt>
+              <dd className="mt-1 text-base font-semibold text-ink">{seatsLabel}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
-                Email domain
-              </dt>
-              <dd className="mt-1 text-base font-semibold" style={{ color: NAVY }}>
-                @{school.emailDomain}
-              </dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">Email domain</dt>
+              <dd className="mt-1 text-base font-semibold text-ink">@{school.emailDomain}</dd>
             </div>
           </dl>
-        </div>
+        </Panel>
       </section>
 
       <section>
-        <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>
-          Teachers
-        </h2>
+        <h2 className="mb-4 text-lg font-semibold text-ink">Teachers</h2>
         {teachers.length === 0 ? (
-          <div
-            className="rounded-2xl border bg-[var(--surface)] p-6 text-sm"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)", color: MUTED }}
-          >
-            No teachers have joined yet. Teachers with a{" "}
-            <strong>@{school.emailDomain}</strong> Google account will appear here after they sign
-            in.
-          </div>
+          <Panel className="p-6 text-sm text-muted">
+            No teachers have joined yet. Teachers with a <strong>@{school.emailDomain}</strong> Google
+            account will appear here after they sign in.
+          </Panel>
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden overflow-x-auto rounded-2xl border bg-[var(--surface)] shadow-sm md:block" style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}>
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b bg-hover" style={{ borderColor: "var(--border)" }}>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Teacher name</th>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Email</th>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Join date</th>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Generations</th>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Role</th>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Department</th>
-                    <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <Panel className="hidden overflow-x-auto md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-line-subtle bg-hover hover:bg-hover">
+                    <TableHead className="px-4 py-3 text-ink">Teacher name</TableHead>
+                    <TableHead className="px-4 py-3 text-ink">Email</TableHead>
+                    <TableHead className="px-4 py-3 text-ink">Join date</TableHead>
+                    <TableHead className="px-4 py-3 text-ink">Generations</TableHead>
+                    <TableHead className="px-4 py-3 text-ink">Role</TableHead>
+                    <TableHead className="px-4 py-3 text-ink">Department</TableHead>
+                    <TableHead className="px-4 py-3 text-ink">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {teachers.map((teacher) => {
                     const { role, department } = getTeacherRole(teacher);
                     const isDirty = Boolean(pendingEdits[teacher.userId]);
@@ -316,21 +283,18 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                     const isSuccess = roleSuccessId === teacher.userId;
 
                     return (
-                      <tr key={teacher.userId} className="border-b last:border-b-0" style={{ borderColor: "var(--border)" }}>
-                        <td className="px-4 py-3 font-medium" style={{ color: NAVY }}>
+                      <TableRow key={teacher.userId} className="border-line-subtle hover:bg-transparent">
+                        <TableCell className="px-4 py-3 font-medium text-ink">
                           {teacher.name}
-                          {teacher.role === "hod" && (
-                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "color-mix(in oklch, var(--brand) 12%, transparent)", color: TEAL }}>HOD</span>
-                          )}
-                          {teacher.role === "admin" && (
-                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "color-mix(in oklch, var(--text) 8%, transparent)", color: NAVY }}>Admin</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>{teacher.email}</td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>{formatDate(teacher.joinedAt)}</td>
-                        <td className="px-4 py-3" style={{ color: MUTED }}>{teacher.generationsUsedThisMonth}</td>
-                        <td className="px-4 py-3">
-                          <select
+                          <span className="ml-2 inline-flex align-middle">
+                            <RoleBadge role={teacher.role} />
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-muted">{teacher.email}</TableCell>
+                        <TableCell className="px-4 py-3 text-muted">{formatDate(teacher.joinedAt)}</TableCell>
+                        <TableCell className="px-4 py-3 text-muted">{teacher.generationsUsedThisMonth}</TableCell>
+                        <TableCell className="px-4 py-3">
+                          <Select
                             value={role}
                             onChange={(e) =>
                               setTeacherPending(teacher.userId, {
@@ -338,16 +302,15 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                                 department: pendingEdits[teacher.userId]?.department ?? teacher.department,
                               })
                             }
-                            className="rounded-lg border border-line-strong px-2 py-1.5 text-xs outline-none focus:ring-2"
-                            style={{ color: NAVY, minWidth: 90 }}
+                            className="h-8 min-w-[100px] text-xs"
                           >
                             {ROLE_OPTIONS.map((opt) => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
-                          <select
+                          </Select>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <Select
                             value={department ?? ""}
                             onChange={(e) =>
                               setTeacherPending(teacher.userId, {
@@ -355,52 +318,46 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                                 department: e.target.value || null,
                               })
                             }
-                            className="rounded-lg border border-line-strong px-2 py-1.5 text-xs outline-none focus:ring-2"
-                            style={{ color: NAVY, minWidth: 130 }}
+                            className="h-8 min-w-[140px] text-xs"
                           >
                             <option value="">— None —</option>
                             {DEPARTMENT_OPTIONS.map((d) => (
                               <option key={d} value={d}>{d}</option>
                             ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-3">
+                          </Select>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             {isSuccess ? (
-                              <span className="text-xs font-semibold" style={{ color: TEAL }}>
-                                Role updated successfully
-                              </span>
+                              <span className="text-xs font-semibold text-brand-text">Role updated successfully</span>
                             ) : (
-                              <button
+                              <Button
                                 type="button"
+                                variant="subtle"
+                                size="sm"
                                 disabled={!isDirty || isSaving}
                                 onClick={() => void onSaveRole(teacher)}
-                                className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-40"
-                                style={
-                                  isDirty && !isSaving
-                                    ? { borderColor: TEAL, color: TEAL, background: "color-mix(in oklch, var(--brand) 7%, transparent)" }
-                                    : { borderColor: "#D9CCB8", color: "var(--text-disabled)" }
-                                }
                               >
                                 {isSaving ? "Saving…" : "Save"}
-                              </button>
+                              </Button>
                             )}
-                            <button
+                            <Button
                               type="button"
+                              variant="danger-quiet"
+                              size="sm"
                               disabled={removingId === teacher.userId}
                               onClick={() => void onRemoveTeacher(teacher.userId, teacher.name)}
-                              className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                             >
                               {removingId === teacher.userId ? "Removing…" : "Remove"}
-                            </button>
+                            </Button>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
+                </TableBody>
+              </Table>
+            </Panel>
 
             {/* Mobile cards */}
             <div className="space-y-3 md:hidden">
@@ -411,30 +368,17 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                 const isSuccess = roleSuccessId === teacher.userId;
 
                 return (
-                  <div
-                    key={teacher.userId}
-                    className="rounded-2xl border bg-[var(--surface)] p-4 shadow-sm"
-                    style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
-                  >
+                  <Panel key={teacher.userId} className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-semibold" style={{ color: NAVY }}>{teacher.name}</p>
-                        {teacher.role !== "teacher" && (
-                          <span
-                            className="mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold"
-                            style={
-                              teacher.role === "hod"
-                                ? { background: "color-mix(in oklch, var(--brand) 12%, transparent)", color: TEAL }
-                                : { background: "color-mix(in oklch, var(--text) 8%, transparent)", color: NAVY }
-                            }
-                          >
-                            {teacher.role === "hod" ? "HOD" : "Admin"}
-                          </span>
-                        )}
+                        <p className="font-semibold text-ink">{teacher.name}</p>
+                        <span className="mt-1 inline-flex">
+                          <RoleBadge role={teacher.role} />
+                        </span>
                       </div>
                     </div>
-                    <p className="mt-1 text-sm break-all" style={{ color: MUTED }}>{teacher.email}</p>
-                    <div className="mt-3 flex flex-wrap gap-3 text-xs" style={{ color: MUTED }}>
+                    <p className="mt-1 break-all text-sm text-muted">{teacher.email}</p>
+                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
                       <span>Joined {formatDate(teacher.joinedAt)}</span>
                       <span>·</span>
                       <span>{teacher.generationsUsedThisMonth} generations</span>
@@ -443,8 +387,8 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                     {/* Role & Department */}
                     <div className="mt-4 grid grid-cols-2 gap-2">
                       <div>
-                        <label className="mb-1 block text-xs font-semibold" style={{ color: MUTED }}>Role</label>
-                        <select
+                        <label className="mb-1 block text-xs font-semibold text-muted">Role</label>
+                        <Select
                           value={role}
                           onChange={(e) =>
                             setTeacherPending(teacher.userId, {
@@ -452,17 +396,16 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                               department: pendingEdits[teacher.userId]?.department ?? teacher.department,
                             })
                           }
-                          className="w-full rounded-lg border border-line-strong px-2 py-2 text-xs outline-none"
-                          style={{ color: NAVY }}
+                          className="h-9 w-full text-xs"
                         >
                           {ROLE_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs font-semibold" style={{ color: MUTED }}>Department</label>
-                        <select
+                        <label className="mb-1 block text-xs font-semibold text-muted">Department</label>
+                        <Select
                           value={department ?? ""}
                           onChange={(e) =>
                             setTeacherPending(teacher.userId, {
@@ -470,46 +413,42 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                               department: e.target.value || null,
                             })
                           }
-                          className="w-full rounded-lg border border-line-strong px-2 py-2 text-xs outline-none"
-                          style={{ color: NAVY }}
+                          className="h-9 w-full text-xs"
                         >
                           <option value="">— None —</option>
                           {DEPARTMENT_OPTIONS.map((d) => (
                             <option key={d} value={d}>{d}</option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     </div>
 
                     {isSuccess ? (
-                      <p className="mt-3 text-center text-xs font-semibold" style={{ color: TEAL }}>
-                        Role updated successfully
-                      </p>
+                      <p className="mt-3 text-center text-xs font-semibold text-brand-text">Role updated successfully</p>
                     ) : (
-                      <button
+                      <Button
                         type="button"
+                        variant="subtle"
+                        block
+                        className="mt-3"
                         disabled={!isDirty || isSaving}
                         onClick={() => void onSaveRole(teacher)}
-                        className="mt-3 w-full rounded-lg border py-2 text-sm font-semibold transition disabled:opacity-40"
-                        style={
-                          isDirty && !isSaving
-                            ? { borderColor: TEAL, color: TEAL, background: "color-mix(in oklch, var(--brand) 7%, transparent)" }
-                            : { borderColor: "#D9CCB8", color: "var(--text-disabled)" }
-                        }
                       >
                         {isSaving ? "Saving…" : "Save Role"}
-                      </button>
+                      </Button>
                     )}
 
-                    <button
+                    <Button
                       type="button"
+                      variant="danger-quiet"
+                      block
+                      className="mt-2"
                       disabled={removingId === teacher.userId}
                       onClick={() => void onRemoveTeacher(teacher.userId, teacher.name)}
-                      className="mt-2 w-full rounded-lg border border-red-200 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
                     >
                       {removingId === teacher.userId ? "Removing…" : "Remove teacher"}
-                    </button>
-                  </div>
+                    </Button>
+                  </Panel>
                 );
               })}
             </div>
@@ -518,49 +457,29 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
       </section>
 
       <section>
-        <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>
-          Usage statistics
-        </h2>
+        <h2 className="mb-4 text-lg font-semibold text-ink">Usage statistics</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div
-            className="rounded-2xl border bg-[var(--surface)] p-5 shadow-sm"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
-          >
+          <Panel className="p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-faint">
               Total generations used this month
             </p>
-            <p className="mt-2 text-3xl font-bold" style={{ color: NAVY }}>
-              {usage.totalGenerationsUsedThisMonth}
-            </p>
-            <p className="mt-1 text-xs" style={{ color: MUTED }}>
-              Across all teachers in your school
-            </p>
-          </div>
-          <div
-            className="rounded-2xl border bg-[var(--surface)] p-5 shadow-sm"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-faint">
-              Most active teacher
-            </p>
+            <p className="mt-2 text-3xl font-bold text-ink">{usage.totalGenerationsUsedThisMonth}</p>
+            <p className="mt-1 text-xs text-muted">Across all teachers in your school</p>
+          </Panel>
+          <Panel className="p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-faint">Most active teacher</p>
             {usage.mostActiveTeacher ? (
               <>
-                <p className="mt-2 text-lg font-bold" style={{ color: NAVY }}>
-                  {usage.mostActiveTeacher.name}
-                </p>
-                <p className="text-sm" style={{ color: MUTED }}>
-                  {usage.mostActiveTeacher.email}
-                </p>
-                <p className="mt-2 text-sm font-medium" style={{ color: TEAL }}>
+                <p className="mt-2 text-lg font-bold text-ink">{usage.mostActiveTeacher.name}</p>
+                <p className="text-sm text-muted">{usage.mostActiveTeacher.email}</p>
+                <p className="mt-2 text-sm font-medium text-brand-text">
                   {usage.mostActiveTeacher.generationsUsed} generations this month
                 </p>
               </>
             ) : (
-              <p className="mt-2 text-sm" style={{ color: MUTED }}>
-                No usage yet
-              </p>
+              <p className="mt-2 text-sm text-muted">No usage yet</p>
             )}
-          </div>
+          </Panel>
         </div>
       </section>
     </div>

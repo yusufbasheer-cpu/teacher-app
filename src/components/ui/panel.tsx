@@ -280,10 +280,9 @@ export function Notice({
   tone = "neutral",
   children,
   className,
-}: {
+  ...props
+}: React.ComponentProps<"div"> & {
   tone?: "neutral" | "generated" | "danger" | "brand";
-  children: React.ReactNode;
-  className?: string;
 }) {
   const tones = {
     neutral: "border-line-subtle bg-sunken text-muted",
@@ -298,6 +297,7 @@ export function Notice({
         tones[tone],
         className,
       )}
+      {...props}
     >
       {children}
     </div>
