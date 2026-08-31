@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callDeepSeekChat } from "@/lib/question-paper-deepseek";
+import { callDeepSeekChat } from "@/lib/ai-facade";
 import {
   authenticateRequest,
   getCallerPlanType,

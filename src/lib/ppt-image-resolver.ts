@@ -7,17 +7,17 @@
  * Fal fails (rate limit, circuit open, missing credentials) or returns nothing.
  */
 
-import { getFalCredentials } from "@/lib/fal-flux-section-images";
 import { isUaeCurriculumFramework } from "@/lib/curriculum-framework";
 import { logPexelsEnvStatus, resolvePexelsApiKey } from "@/lib/image-api-env";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
-import { fetchPexelsUniqueLandscapeUrl } from "@/lib/pexels-images";
 import {
+  fetchPexelsUniqueLandscapeUrl,
   generateLessonPptFluxImageDeduped,
+  getFalCredentials,
   getFalPptCircuitOpenReason,
   type LessonPptFluxSlot,
   type PptSlideImageMeta,
-} from "@/lib/fal-ppt-slide-images";
+} from "@/lib/ai-facade";
 
 export type PptDeckImageMeta = PptSlideImageMeta & {
   curriculumFramework?: string;

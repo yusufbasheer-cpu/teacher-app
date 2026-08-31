@@ -43,6 +43,11 @@ Goals:
 - provider normalization first
 - filesystem reorganization later
 
+Current proof points:
+
+- `src/app/api/question-paper/route.ts` and `src/app/api/question-paper/blueprint/route.ts` now import DeepSeek through the facade.
+- `src/lib/ppt-image-resolver.ts` now imports fal and Pexels helpers through the facade.
+
 ## Business-Data Boundary
 
 - Low-risk browser-side business mutations should move only after their contracts are documented.

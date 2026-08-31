@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callDeepSeekChat } from "@/lib/question-paper-deepseek";
+import { callDeepSeekChat } from "@/lib/ai-facade";
 import { parseBlueprintPlainTextResponse } from "@/lib/parse-question-paper-blueprint";
 import { USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import {

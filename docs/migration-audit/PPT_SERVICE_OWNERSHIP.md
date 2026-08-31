@@ -13,5 +13,5 @@ Date: 2026-08-31
 ## Migration Implication
 
 - Treat it as a backend/document-service boundary, not part of the AI facade.
-- The AI facade should wrap DeepSeek, fal, and Pexels first; PPT rendering can remain a downstream document concern.
-
+- The AI facade now wraps DeepSeek, fal, and Pexels helpers for the app-side image/text boundary.
+- PPT rendering itself can remain a downstream document concern.

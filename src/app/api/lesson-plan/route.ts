@@ -27,7 +27,7 @@ import {
   buildDeepseekLessonSystemPrompt,
   buildSinglePptSlideDeepseekSystemPrompt,
 } from "@/lib/deepseek-lesson-system-prompt";
-import { generateFluxSectionImages, formatFalError } from "@/lib/fal-flux-section-images";
+import { generateFluxSectionImages, formatFalError } from "@/lib/ai-facade";
 import { apiErrorResponse } from "@/lib/api-client-error";
 import { filterUserFacingNotices } from "@/lib/image-notices";
 import { SECTION_GENERATION_FAILED, USER_FACING_ERROR } from "@/lib/user-facing-errors";

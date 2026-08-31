@@ -12,8 +12,9 @@
 | `src/lib/lesson-plan-save.ts`, `src/lib/geo-service.ts` | BACKEND service seams | server-only application logic with caller-context Supabase or external integration | Keep route concerns outside the service; suitable proof points for FastAPI migration. |
 | `src/lib/user-usage*`, `src/lib/plans.ts`, `src/lib/pricing-regions.ts` | BACKEND with frontend mirror needs | plan/quota semantics are security-sensitive but UI displays them | Backend owns truth; frontend consumes contract. |
 | `src/lib/active-session.ts`, `src/lib/user-usage-client.ts` | AUTH/QUOTA boundary helpers | browser-side Supabase mutations and RPCs | Keep out of the first business-data migration diff. |
+| `src/lib/ai-facade.ts` | AI FACADE / backend service seam | dependency-inversion layer over DeepSeek, fal, and Pexels helpers | Current proof point for the future AI service boundary. |
 | `src/lib/deepseek-*`, `question-paper-prompt`, `differentiated-pack-prompts`, parsers | AI SERVICE | prompt/provider/output parsing | Move after API schemas and usage hooks stabilized. |
-| `src/lib/fal-*`, `src/lib/pexels-images.ts`, `src/lib/ppt-image-resolver.ts` | AI SERVICE / media | image provider orchestration | Candidate AI service module. |
+| `src/lib/fal-*`, `src/lib/pexels-images.ts`, `src/lib/ppt-image-resolver.ts` | AI SERVICE / media | image provider orchestration | Candidate AI service module, now accessed through `src/lib/ai-facade.ts` in some callers. |
 | `src/lib/lesson-plan-export.ts`, `question-paper-export.ts`, `ppt-*`, `pptx-template.ts` | BACKEND or dedicated document service | export generation uses server packages | Keep backend initially; consider document service later. |
 | `src/lib/razorpay.ts`, `src/app/api/razorpay/**` | BACKEND | billing and webhooks | Python backend should own. |
 | `src/lib/school-*`, `src/app/api/school-*`, `hod-server.ts` | BACKEND | tenant/admin business logic | Python backend should own. |

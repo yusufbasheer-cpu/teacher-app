@@ -76,6 +76,18 @@ Status: Implemented.
 
 ## 2026-08-31
 
+Decision: Introduce an internal AI facade before physically reorganizing provider modules.
+
+Reason: A thin facade lets application code depend on one internal boundary while preserving the existing DeepSeek, fal, and Pexels helper implementations unchanged.
+
+Alternatives considered: Moving provider files immediately, or leaving the direct imports in place until the AI service split.
+
+Impact: `src/lib/ai-facade.ts` now serves as the dependency-inversion layer for selected question-paper and PPT image paths, without changing prompts, model IDs, or provider payloads.
+
+Status: Implemented.
+
+## 2026-08-31
+
 Decision: Treat the lesson-plan save flow as the first proven authenticated persistence service boundary.
 
 Reason: The route already preserves caller-context Supabase access and RLS, and the service module stays focused on insert/update semantics without HTTP concerns.

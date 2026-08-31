@@ -10,6 +10,8 @@
 
 No OpenAI, Anthropic, Gemini, vector database, embeddings, RAG, speech-to-text, text-to-speech, or AI phone/calling provider was found in runtime code during this pass.
 
+Current boundary proof point: `src/lib/ai-facade.ts` now sits between selected application callers and the existing DeepSeek/fal/Pexels helpers.
+
 ## Lesson AI Chain
 
 User submits lesson form in `LessonPlanGenerator`
@@ -44,7 +46,7 @@ User submits paper wizard
 
 Optional blueprint is a second frontend request to `/api/question-paper/blueprint`.
 
-Evidence: `src/components/question-paper/question-paper-generator.tsx`, `src/app/api/question-paper/route.ts`, `src/lib/question-paper-prompt.ts`.
+Evidence: `src/components/question-paper/question-paper-generator.tsx`, `src/app/api/question-paper/route.ts`, `src/lib/question-paper-prompt.ts`, `src/lib/ai-facade.ts`.
 
 ## Differentiated Pack Chain
 
