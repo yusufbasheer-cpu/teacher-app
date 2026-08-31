@@ -27,6 +27,7 @@ import {
   buildDeepseekLessonSystemPrompt,
 } from "@/lib/deepseek-lesson-system-prompt";
 import { callDeepSeekLessonChat } from "@/lib/deepseek-lesson-provider";
+import { formatLessonPlanStreamEvent } from "@/lib/lesson-plan-stream";
 import { generateFluxSectionImages, formatFalError } from "@/lib/ai-facade";
 import { apiErrorResponse } from "@/lib/api-client-error";
 import { filterUserFacingNotices } from "@/lib/image-notices";
@@ -707,7 +708,8 @@ export async function POST(req: Request) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
-        const send = (obj: object) => controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+        const send = (obj: Record<string, unknown>) =>
+          controller.enqueue(encoder.encode(formatLessonPlanStreamEvent(obj)));
         try {
           const { mergedPlan, parseNotices } = await generateTeacherPackage({
             apiKey,

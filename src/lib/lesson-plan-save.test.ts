@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { parseSectionImagesMeta } from "@/lib/lesson-plan";
 import { buildLessonPlanSavePayload, saveLessonPlanRecord } from "./lesson-plan-save";
 
 describe("buildLessonPlanSavePayload", () => {
@@ -37,6 +38,36 @@ describe("buildLessonPlanSavePayload", () => {
     expect(payload.lesson_plan["Full Lesson Plan"]).toBe("Plan");
     expect(payload.lesson_plan["__sectionImageUrls"]).toBeDefined();
     expect(payload.lesson_plan["__pptSlideImageUrls"]).toBeDefined();
+  });
+
+  it("round-trips section and PPT image metadata through lesson_plan serialization", () => {
+    const payload = buildLessonPlanSavePayload({
+      userId: "user-1",
+      form: {
+        curriculumType: "CBSE/NCERT",
+        curriculumFramework: "",
+        grade: "Grade 3",
+        subject: "Math",
+        chapter: "Fractions",
+        topic: "Decimals",
+        learningObjectives: "Objective text",
+      },
+      lessonPlan: {
+        "Full Lesson Plan": "Plan",
+      },
+      sectionImages: {
+        "Full Lesson Plan": ["https://example.com/slide.png"],
+      },
+      pptSlideImageUrls: ["https://example.com/ppt.png", null],
+    });
+
+    const parsed = parseSectionImagesMeta(payload.lesson_plan);
+    expect(parsed.planTextOnly["__sectionImageUrls"]).toBeUndefined();
+    expect(parsed.planTextOnly["__pptSlideImageUrls"]).toBeUndefined();
+    expect(parsed.sectionImages).toEqual({
+      "Full Lesson Plan": ["https://example.com/slide.png"],
+    });
+    expect(parsed.pptSlideImageUrls).toEqual(["https://example.com/ppt.png", null]);
   });
 });
 

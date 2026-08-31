@@ -70,6 +70,7 @@ import { filterUserFacingNotices } from "@/lib/image-notices";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
+import { parseLessonPlanStreamLine } from "@/lib/lesson-plan-stream";
 import { sanitizeUserMessage, toUserFacingError, USER_FACING_ERROR, GENERATION_FAILED_ERROR } from "@/lib/user-facing-errors";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { AFL_PHASE_IDS, type AflPhaseId } from "@/lib/afl-tools";
@@ -675,10 +676,8 @@ export function LessonPlanGenerator() {
             const line = buffer.slice(0, nl).trim();
             buffer = buffer.slice(nl + 1);
             if (!line) continue;
-            let ev: Record<string, unknown>;
-            try {
-              ev = JSON.parse(line) as Record<string, unknown>;
-            } catch {
+            const ev = parseLessonPlanStreamLine(line);
+            if (!ev) {
               console.warn("[lesson-plan client] skipped non-JSON NDJSON line:", line.slice(0, 200));
               continue;
             }
