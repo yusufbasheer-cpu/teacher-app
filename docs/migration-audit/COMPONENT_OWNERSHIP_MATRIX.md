@@ -9,6 +9,7 @@
 | `src/components/admin`, `src/components/school`, `src/components/hod` | FRONTEND with privileged API dependencies | admin UI calls Next APIs | Must preserve admin endpoint contracts. |
 | `src/app/api/**/route.ts` | BACKEND / AI-SERVICE mixed | API handlers include business logic, AI, billing, admin operations | Split by endpoint ownership during Python migration. |
 | `src/lib/supabase*.ts`, `src/lib/auth-*`, `src/proxy.ts` | SHARED/BACKEND/FRONTEND mixed | Supabase clients, auth headers, middleware | Requires explicit auth boundary. |
+| `src/lib/lesson-plan-save.ts`, `src/lib/geo-service.ts` | BACKEND service seams | server-only application logic with caller-context Supabase or external integration | Keep route concerns outside the service; suitable proof points for FastAPI migration. |
 | `src/lib/user-usage*`, `src/lib/plans.ts`, `src/lib/pricing-regions.ts` | BACKEND with frontend mirror needs | plan/quota semantics are security-sensitive but UI displays them | Backend owns truth; frontend consumes contract. |
 | `src/lib/active-session.ts`, `src/lib/user-usage-client.ts` | AUTH/QUOTA boundary helpers | browser-side Supabase mutations and RPCs | Keep out of the first business-data migration diff. |
 | `src/lib/deepseek-*`, `question-paper-prompt`, `differentiated-pack-prompts`, parsers | AI SERVICE | prompt/provider/output parsing | Move after API schemas and usage hooks stabilized. |

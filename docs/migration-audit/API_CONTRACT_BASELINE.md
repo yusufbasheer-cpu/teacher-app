@@ -37,6 +37,13 @@ This document captures the browser-facing contracts that matter most for the Pha
 - Razorpay order/subscription verification routes return JSON contracts used by the payment modal
 - Admin billing routes are mutable and must preserve HTTP status codes and error shapes exactly during later migration
 
+### Lesson plan save
+
+- `POST /api/lesson-plan/save`
+- Authenticated JSON request body is parsed on the route and passed to a server-only service
+- Successful responses preserve `{ action, id }` with `201` for inserts and `200` for updates
+- Caller-context Supabase access remains part of the contract so RLS continues to enforce ownership
+
 ## Stability Notes
 
 - Route URLs are part of the public contract for the current frontend.
@@ -46,4 +53,3 @@ This document captures the browser-facing contracts that matter most for the Pha
   - auth header requirements
   - streaming format
   - file download MIME/filename behavior
-

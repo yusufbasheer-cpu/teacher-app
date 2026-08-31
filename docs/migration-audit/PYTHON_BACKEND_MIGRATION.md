@@ -39,10 +39,11 @@ There is already a separate Python Flask service in `python-ppt-api`, but it is 
 4. Extract AI provider/orchestration behind backend-owned interface.
 5. Stand up FastAPI backend with read-only/auth/usage endpoints first.
 6. Migrate low-risk public APIs (`geo`, `contact`, `waitlist`) behind proxy.
-7. Migrate exports/extraction.
-8. Migrate admin/school APIs.
-9. Migrate billing/webhooks with replay tests.
-10. Migrate generation endpoints last, with parity snapshots and canary traffic.
+7. Use the proven `lesson-plan/save` pattern as the template for authenticated persistence endpoints that must keep caller-context Supabase or equivalent ownership checks.
+8. Migrate exports/extraction.
+9. Migrate admin/school APIs.
+10. Migrate billing/webhooks with replay tests.
+11. Migrate generation endpoints last, with parity snapshots and canary traffic.
 
 ## Key Risks
 

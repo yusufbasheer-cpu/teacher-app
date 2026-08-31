@@ -76,6 +76,18 @@ Status: Implemented.
 
 ## 2026-08-31
 
+Decision: Treat the lesson-plan save flow as the first proven authenticated persistence service boundary.
+
+Reason: The route already preserves caller-context Supabase access and RLS, and the service module stays focused on insert/update semantics without HTTP concerns.
+
+Alternatives considered: Moving `saved_lessons` first, introducing a generic repository layer, or pushing service-role persistence into the boundary.
+
+Impact: `src/lib/lesson-plan-save.ts` is now documented as a server-only service seam, and the route/service split has a concrete reference implementation for the later FastAPI migration.
+
+Status: Implemented.
+
+## 2026-08-31
+
 Decision: Keep backend service extraction focused on low-risk stateless helpers first.
 
 Reason: The route surface still contains high-risk billing, auth, quota, and AI flows. Starting with geo lookup proves the service boundary pattern without changing business-side behavior.

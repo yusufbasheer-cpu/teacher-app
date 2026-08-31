@@ -48,3 +48,11 @@ Goals:
 - Low-risk browser-side business mutations should move only after their contracts are documented.
 - Saved lesson persistence remains a special case and should not be rushed.
 
+## Backend Service Boundary
+
+Proven examples:
+
+- `GET /api/geo` -> `src/lib/geo-service.ts`
+- `POST /api/lesson-plan/save` -> `src/lib/lesson-plan-save.ts`
+
+These are the reference seams for later FastAPI extraction because they isolate HTTP transport from application logic without changing observable contracts.
