@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { isNavLinkActive } from "@/lib/app-nav-links";
 import { BORDER, NAVY, TEAL, TEXT_MUTED } from "@/lib/design-tokens";
 
-// Rendered only for signed-out visitors — AppShell swaps to AppSidebar once a
+// Rendered only for signed-out visitors — AppShell swaps to AppFrame once a
 // user session is present, so this never needs to know about auth or admin
 // roles. Same header markup as `/` (the homepage, which renders this
 // component too), so there is exactly one public-facing nav bar in the app.

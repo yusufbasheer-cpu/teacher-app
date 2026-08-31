@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, MotionConfig } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import {
@@ -196,7 +196,7 @@ function RailLink({
       ) : null}
       <Icon
         className={cn(
-          "size-4 shrink-0 transition-[color,transform] duration-150 ease-out",
+          "size-4 shrink-0 transition-[color,transform] duration-[160ms] ease-[cubic-bezier(0.16,1,0.3,1)]",
           active ? "scale-[1.05] text-brand-text" : "text-faint group-hover:text-muted",
         )}
         aria-hidden
@@ -487,6 +487,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
   const railWidth = collapsed ? "lg:w-14" : "lg:w-[232px]";
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="flex min-h-screen bg-canvas">
       <CommandPalette roles={roles} />
 
@@ -494,7 +495,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
       <aside
         className={cn(
           "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-line-subtle bg-surface lg:flex",
-          "relative transition-[width] duration-200 ease-[cubic-bezier(0.2,0,0,1)]",
+          "relative transition-[width] duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)]",
           railWidth,
         )}
       >
@@ -528,7 +529,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
           className={cn(
             "absolute -right-2.5 top-[16px] z-10 flex size-5 items-center justify-center rounded-full",
             "border border-line bg-surface text-faint shadow-pop",
-            "transition-colors duration-150 hover:border-brand hover:text-brand-text",
+            "transition-colors duration-[160ms] hover:border-brand hover:text-brand-text",
           )}
         >
           {collapsed ? <ChevronsRight className="size-3" /> : <ChevronsLeft className="size-3" />}
@@ -628,5 +629,6 @@ export function AppFrame({ user, children }: { user: User; children: React.React
         <main className="min-w-0 flex-1">{children}</main>
       </div>
     </div>
+    </MotionConfig>
   );
 }
