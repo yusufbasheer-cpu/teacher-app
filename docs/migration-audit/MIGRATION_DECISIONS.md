@@ -73,3 +73,15 @@ Alternatives considered: Moving `saved_lessons` first or bundling both lesson pe
 Impact: The first production-code persistence boundary now lives in `POST /api/lesson-plan/save`, while `saved_lessons` remains browser-owned for later review.
 
 Status: Implemented.
+
+## 2026-08-31
+
+Decision: Keep backend service extraction focused on low-risk stateless helpers first.
+
+Reason: The route surface still contains high-risk billing, auth, quota, and AI flows. Starting with geo lookup proves the service boundary pattern without changing business-side behavior.
+
+Alternatives considered: Extracting service helpers from billing, school admin, or lesson-generation routes first.
+
+Impact: `src/app/api/geo/route.ts` now delegates to `src/lib/geo-service.ts` with behavior preserved.
+
+Status: Implemented.
