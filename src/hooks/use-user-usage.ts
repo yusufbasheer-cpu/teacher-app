@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getAuthHeaders } from "@/lib/auth-headers";
+import { apiJson } from "@/lib/frontend-api-client";
 import { getUpgradePitch, logUsageSnapshot, type UserUsageSnapshot } from "@/lib/user-usage";
 
 type UsageState = {
@@ -33,27 +33,28 @@ export function useUserUsage(enabled: boolean) {
     if (!enabled) return;
     setState((s) => ({ ...s, loading: true }));
     try {
-      const res = await fetch("/api/user-usage", {
-        headers: await getAuthHeaders(),
-        cache: "no-store",
-      });
-      const data = (await res.json()) as {
+      const { response, parsed } = await apiJson<{
         usage?: UserUsageSnapshot;
         upgradePitch?: { headline: string; subline: string };
         error?: string;
-      };
-      if (!res.ok || !data.usage) {
+      }>("/api/user-usage", {
+        auth: "bearer",
+        cache: "no-store",
+      });
+      const usage = parsed.ok ? parsed.data.usage : undefined;
+      if (!response.ok || !parsed.ok || !usage) {
         console.warn("[user-usage] failed to load usage", {
-          status: res.status,
-          error: data.error,
+          status: response.status,
+          error: parsed.ok ? parsed.data.error : parsed.message,
         });
         setState((s) => ({ ...s, usage: null, loading: false }));
         return;
       }
-      logUsageSnapshot("page load", data.usage);
-      const pitch = data.upgradePitch ?? getUpgradePitch(data.usage.planType);
+      const data = parsed.data;
+      logUsageSnapshot("page load", usage);
+      const pitch = data.upgradePitch ?? getUpgradePitch(usage.planType);
       setState({
-        usage: data.usage,
+        usage,
         loading: false,
         headline: pitch.headline,
         subline: pitch.subline,

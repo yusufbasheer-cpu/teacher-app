@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { apiJson } from "@/lib/frontend-api-client";
 import {
   getCountryDisplayName,
   getRegionForCountryCode,
@@ -64,8 +65,13 @@ export function usePricingRegion() {
           return;
         }
 
-        const res = await fetch("/api/geo", { cache: "no-store" });
-        const data = (await res.json()) as GeoResponse;
+        const { response, parsed } = await apiJson<GeoResponse>("/api/geo", {
+          cache: "no-store",
+        });
+        if (!response.ok || !parsed.ok) {
+          throw new Error("geo lookup failed");
+        }
+        const data = parsed.data;
         const cc = data.country_code ?? "US";
         const detected = getRegionForCountryCode(cc);
 

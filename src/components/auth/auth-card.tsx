@@ -7,6 +7,7 @@ import { MotionConfig } from "framer-motion";
 import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
 import { completeEmailPostAuthLogin } from "@/lib/auth-post-login";
 import { hasCompletedTeacherProfile } from "@/lib/user-profile";
+import { apiJson } from "@/lib/frontend-api-client";
 import { supabase } from "@/lib/supabase";
 import { sanitizeUserMessage, toUserFacingError } from "@/lib/user-facing-errors";
 import { useErrorToast } from "@/hooks/use-error-toast";
@@ -199,14 +200,19 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             setLoading(false);
             return;
           }
-          const captchaRes = await fetch("/api/auth/verify-captcha", {
+          const { response: captchaRes, parsed: captchaParsed } = await apiJson<{
+            ok: boolean;
+            error?: string;
+          }>("/api/auth/verify-captcha", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: turnstileToken }),
+            json: { token: turnstileToken },
           });
-          const captchaData = (await captchaRes.json()) as { ok: boolean; error?: string };
-          if (!captchaData.ok) {
-            setError(captchaData.error ?? "Verification failed. Please try again.");
+          if (!captchaRes.ok || !captchaParsed.ok || !captchaParsed.data.ok) {
+            setError(
+              captchaParsed.ok
+                ? captchaParsed.data.error ?? "Verification failed. Please try again."
+                : "Verification failed. Please try again.",
+            );
             setTurnstileToken(null);
             setLoading(false);
             return;
