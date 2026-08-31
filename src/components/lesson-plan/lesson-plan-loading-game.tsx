@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
+import { cn } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type LoadingGamePreset = "lesson-plan" | "question-paper";
@@ -129,6 +130,9 @@ function computeProgress(
 }
 
 // ── Confetti helper ───────────────────────────────────────────────────────────
+// canvas-confetti's fillStyle can't resolve CSS custom properties (getComputedStyle
+// never resolves a var() chain for a property read directly, only when applied to a
+// real CSS property), so this stays a fixed palette rather than reading --brand/--text.
 const CONFETTI_COLORS = ["var(--brand)", "var(--text)", "#FFD700", "#FFFFFF"];
 
 function fireConfetti() {
@@ -196,24 +200,20 @@ function fireConfetti() {
 function LayahLogo() {
   return (
     <div className="flex items-center justify-center">
-      <img
-        src="/Logo.png"
-        alt="Layah"
-        height={40}
-        className="h-10 w-auto"
-        style={{ height: 40, width: "auto" }}
-      />
+      <img src="/Logo.png" alt="Layah" className="h-10 w-auto" />
     </div>
   );
 }
 
 // ── Status icon ───────────────────────────────────────────────────────────────
+// This whole overlay is a deliberately inverted surface (bg-ink, text-inverse)
+// so it always reads as a dark takeover regardless of the page's own light/dark
+// theme — that flips correctly with .dark since --text/--text-inverse do.
 function StatusIcon({ status }: { status: SectionStatus }) {
   if (status === "done") {
     return (
       <span
-        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full"
-        style={{ background: "var(--brand)" }}
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand"
         aria-label="Done"
       >
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
@@ -225,18 +225,16 @@ function StatusIcon({ status }: { status: SectionStatus }) {
   if (status === "generating") {
     return (
       <span
-        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2"
-        style={{ borderColor: "var(--brand)" }}
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-brand"
         aria-label="Generating"
       >
-        <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: "var(--brand)" }} />
+        <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
       </span>
     );
   }
   return (
     <span
-      className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2"
-      style={{ borderColor: "rgba(255,255,255,0.15)" }}
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-inverse/15"
       aria-label="Waiting"
     />
   );
@@ -424,125 +422,75 @@ export function LessonPlanLoadingGame({
     <>
       <style>{keyframes}</style>
 
-      {/* Full-screen overlay — explicit top/left/width/height so no
-          ancestor containing-block quirk can shrink or offset it */}
+      {/* Full-screen overlay. bg-ink + text-inverse is a deliberately inverted
+          surface — it reads as a dark takeover in light mode and a light one in
+          dark mode, which is what keeps every text/border token below correctly
+          legible in both themes instead of hardcoding one direction. */}
       <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          zIndex: 9999,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 16,
-          backgroundColor: "var(--text)",
-        }}
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-ink p-4"
         role="dialog"
         aria-modal="true"
         aria-label={copy.ariaLabel}
       >
         {/* ── Main loading card ───────────────────────────────────────────── */}
         {!celebrating && (
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 460,
-              backgroundColor: "var(--l-gray-11)",
-              border: "1px solid color-mix(in oklch, var(--brand) 40%, transparent)",
-              borderRadius: 20,
-              padding: 28,
-              boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
-            }}
-          >
-            {/* Logo */}
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+          <div className="w-full max-w-[460px] rounded-xl border border-brand-border/40 bg-ink p-7 shadow-overlay">
+            <div className="mb-6 flex justify-center">
               <LayahLogo />
             </div>
 
-            {/* Title */}
-            <p style={{ textAlign: "center", fontSize: 17, fontWeight: 700, color: "#FFFFFF", marginBottom: 4 }}>
-              {copy.title}
-            </p>
-            <p style={{ textAlign: "center", fontSize: 13, color: "var(--text-disabled)", marginBottom: 20 }}>
-              {currentLabel}
-            </p>
+            <p className="mb-1 text-center text-[17px] font-bold text-inverse">{copy.title}</p>
+            <p className="mb-5 text-center text-[13px] text-inverse/60">{currentLabel}</p>
 
-            {/* Progress bar label */}
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)" }}>Progress</span>
-              <span style={{ fontSize: 20, fontWeight: 800, color: "#FFFFFF" }}>{pct}%</span>
+            <div className="mb-1.5 flex justify-between">
+              <span className="text-xs font-semibold text-brand">Progress</span>
+              <span className="text-xl font-extrabold text-inverse">{pct}%</span>
             </div>
 
-            {/* Progress bar track */}
-            <div
-              style={{
-                width: "100%",
-                height: 10,
-                backgroundColor: "rgba(255,255,255,0.15)",
-                borderRadius: 99,
-                overflow: "hidden",
-                marginBottom: 24,
-              }}
-            >
+            <div className="mb-6 h-2.5 w-full overflow-hidden rounded-full bg-inverse/15">
               <div
-                style={{
-                  height: "100%",
-                  width: `${smoothProgress}%`,
-                  background: "linear-gradient(90deg,var(--brand),#00e8c3)",
-                  borderRadius: 99,
-                  boxShadow: "0 0 10px color-mix(in oklch, var(--brand) 70%, transparent)",
-                  transition: "width 0.5s ease",
-                }}
+                className="h-full rounded-full bg-brand transition-[width] duration-500 ease-out"
+                style={{ width: `${smoothProgress}%` }}
               />
             </div>
 
-            {/* Checklist */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+            <div className="mb-6 flex flex-col gap-3">
               {activeSections.map((s) => {
                 const status = statuses[s.key] ?? "waiting";
-                const isActive  = status === "generating";
-                const isDone    = status === "done";
+                const isActive = status === "generating";
+                const isDone = status === "done";
                 return (
-                  <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div key={s.key} className="flex items-center gap-3">
                     <StatusIcon status={status} />
                     <span
-                      style={{
-                        fontSize: 15,
-                        fontWeight: isActive ? 700 : 400,
-                        color: isDone ? "rgba(255,255,255,0.5)" : "#FFFFFF",
-                        textDecoration: isDone ? "line-through" : "none",
-                        flex: 1,
-                      }}
+                      className={cn(
+                        "flex-1 text-[15px]",
+                        isActive ? "font-bold" : "font-normal",
+                        isDone ? "text-inverse/50 line-through" : "text-inverse",
+                      )}
                     >
                       {s.label}
                     </span>
                     {isActive && (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)", animation: "ldPulse 1.2s ease infinite" }}>
+                      <span className="animate-[ldPulse_1.2s_ease_infinite] text-xs font-semibold text-brand">
                         Generating…
                       </span>
                     )}
-                    {isDone && (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)" }}>Done ✓</span>
-                    )}
-                    {status === "waiting" && (
-                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Waiting</span>
-                    )}
+                    {isDone && <span className="text-xs font-semibold text-brand">Done ✓</span>}
+                    {status === "waiting" && <span className="text-xs text-inverse/35">Waiting</span>}
                   </div>
                 );
               })}
             </div>
 
-            {/* Divider */}
-            <div style={{ height: 1, backgroundColor: "rgba(255,255,255,0.1)", marginBottom: 16 }} />
+            <div className="mb-4 h-px bg-inverse/10" />
 
-            {/* Fun fact */}
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }} aria-hidden>💡</span>
-              <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--border)", margin: 0 }}>
-                <span style={{ fontWeight: 700, color: "#FFFFFF" }}>Did you know?&nbsp;</span>
+            <div className="flex items-start gap-2.5">
+              <span className="shrink-0 text-base" aria-hidden>
+                💡
+              </span>
+              <p className="text-[13px] leading-relaxed text-inverse/70">
+                <span className="font-bold text-inverse">Did you know?&nbsp;</span>
                 {FUN_FACTS[factIdx]}
               </p>
             </div>
@@ -551,43 +499,18 @@ export function LessonPlanLoadingGame({
 
         {/* ── Celebration card ────────────────────────────────────────────── */}
         {celebrating && (
-          <div
-            style={{
-              width: "90%",
-              maxWidth: 400,
-              backgroundColor: "var(--surface-raised)",
-              borderRadius: 24,
-              padding: "40px 36px",
-              textAlign: "center",
-              border: "2px solid color-mix(in oklch, var(--brand) 50%, transparent)",
-              boxShadow: "0 0 60px 16px color-mix(in oklch, var(--brand) 35%, transparent), 0 8px 40px rgba(0,0,0,0.5)",
-            }}
-          >
-            {/* Glowing checkmark */}
+          <div className="w-[90%] max-w-[400px] rounded-xl border-2 border-brand-border bg-surface-raised px-9 py-10 text-center shadow-overlay">
             <div
-              style={{
-                width: 88,
-                height: 88,
-                borderRadius: "50%",
-                backgroundColor: "var(--brand)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 20px",
-                animation: "ldGlowRing 1.4s ease-in-out infinite",
-              }}
+              className="mx-auto mb-5 flex size-[88px] items-center justify-center rounded-full bg-brand"
+              style={{ animation: "ldGlowRing 1.4s ease-in-out infinite" }}
             >
               <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
                 <path d="M8 22l9 9 19-18" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
 
-            <p style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>
-              {copy.celebrateTitle}
-            </p>
-            <p style={{ fontSize: 14, color: "#6b7280" }}>
-              {copy.celebrateSub}
-            </p>
+            <p className="mb-2 text-2xl font-extrabold text-ink">{copy.celebrateTitle}</p>
+            <p className="text-sm text-muted">{copy.celebrateSub}</p>
           </div>
         )}
       </div>

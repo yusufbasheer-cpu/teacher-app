@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/panel";
 import { useErrorToast } from "@/hooks/use-error-toast";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -166,68 +166,41 @@ function PptImageProgressCard({
 
   return (
     <div
-      style={{
-        marginTop: 16,
-        borderRadius: 14,
-        border: "1px solid color-mix(in oklch, var(--brand) 30%, transparent)",
-        background: "linear-gradient(135deg, var(--text) 0%, var(--l-gray-11) 100%)",
-        padding: "20px 24px",
-        color: "#fff",
-      }}
+      className="mt-4 rounded-xl border border-brand-border/50 bg-ink px-6 py-5 text-inverse"
       role="status"
       aria-live="polite"
     >
       {/* Title row */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <span style={{ fontSize: 20 }}>🎨</span>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "#FFFFFF" }}>
+      <div className="mb-3.5 flex items-center gap-2.5">
+        <span className="text-xl">🎨</span>
+        <span className="text-[15px] font-bold text-inverse">
           {allDone ? "Almost ready…" : packagingOnly ? "Building your PowerPoint…" : "Preparing slide images…"}
         </span>
       </div>
 
       {/* Image count */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <div
-          style={{
-            height: 8,
-            flex: 1,
-            borderRadius: 99,
-            background: "rgba(255,255,255,0.12)",
-            overflow: "hidden",
-          }}
-        >
+      <div className="mb-2.5 flex items-center gap-2">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-inverse/10">
           <div
-            style={{
-              height: "100%",
-              width: `${(imgCount / TOTAL_IMAGES) * 100}%`,
-              background: "linear-gradient(90deg,var(--brand),#00e8c3)",
-              borderRadius: 99,
-              boxShadow: "0 0 8px color-mix(in oklch, var(--brand) 60%, transparent)",
-              transition: "width 0.8s ease",
-            }}
+            className="h-full rounded-full bg-brand transition-[width] duration-500 ease-out"
+            style={{ width: `${(imgCount / TOTAL_IMAGES) * 100}%` }}
           />
         </div>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", minWidth: 52, textAlign: "right" }}>
+        <span className="w-[52px] shrink-0 text-right text-[13px] font-bold text-brand">
           {imgCount}/{TOTAL_IMAGES}
         </span>
       </div>
 
       {milestone ? (
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 12 }}>
-          ✔ {milestone}
-        </p>
+        <p className="mb-3 text-xs text-inverse/60">✔ {milestone}</p>
       ) : (
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 12 }}>
-          Fetching photos and generating illustrations…
-        </p>
+        <p className="mb-3 text-xs text-inverse/40">Fetching photos and generating illustrations…</p>
       )}
 
       {allDone ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 18 }}>✅</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)" }}>
-            All done!
-          </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-lg">✅</span>
+          <span className="text-[13px] font-semibold text-brand">All done!</span>
         </div>
       ) : null}
     </div>
@@ -717,6 +690,7 @@ export function TeacherPackageViewer({
             className="on-surface mt-4 overflow-hidden rounded-lg border border-line-subtle bg-surface p-4 md:p-6"
             role="tabpanel"
           >
+            <MotionConfig reducedMotion="user">
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.div
                 key={activeKey}
@@ -793,6 +767,7 @@ export function TeacherPackageViewer({
                 </div>
               </motion.div>
             </AnimatePresence>
+            </MotionConfig>
           </article>
         </div>
       </div>

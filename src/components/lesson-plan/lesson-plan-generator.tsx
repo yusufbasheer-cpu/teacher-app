@@ -1469,7 +1469,7 @@ export function LessonPlanGenerator() {
       )}
 
       {successMessage ? (
-        <div className="animate-slide-up rounded-xl border border-[color-mix(in_oklch,var(--brand)_30%,transparent)] bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] px-4 py-3 text-sm text-[var(--brand)]">
+        <div className="animate-slide-up rounded-xl border border-brand-border/50 bg-brand-subtle px-4 py-3 text-sm text-brand-text">
           {successMessage}
         </div>
       ) : null}

@@ -20,6 +20,7 @@ import { useErrorToast } from "@/hooks/use-error-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm";
+import { Select, TextInput } from "@/components/ui/field";
 import {
   Badge,
   EmptyState,
@@ -87,20 +88,16 @@ function FilterChips({
       {options.map((opt) => {
         const active = value === opt;
         return (
-          <button
+          <Button
             key={opt}
             type="button"
+            variant={active ? "subtle" : "outline"}
+            size="xs"
             aria-pressed={active}
             onClick={() => onChange(active ? null : opt)}
-            className={cn(
-              "rounded-sm border px-1.5 py-0.5 text-[11px] font-medium transition-colors duration-[110ms]",
-              active
-                ? "border-brand bg-brand-subtle text-brand-text"
-                : "border-line-subtle bg-surface text-faint hover:border-line hover:text-muted",
-            )}
           >
             {opt}
-          </button>
+          </Button>
         );
       })}
     </div>
@@ -279,27 +276,25 @@ export function MyLessonPlansList() {
               className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-faint"
               aria-hidden
             />
-            <input
+            <TextInput
               ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search lessons"
               aria-label="Search lessons"
-              className={cn(
-                "h-8 w-full rounded-md border border-line bg-surface pl-8 pr-7 text-[13px] text-ink",
-                "transition-colors placeholder:text-disabled hover:border-line-strong",
-                "focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25",
-              )}
+              className="pl-8 pr-7 text-[13px]"
             />
             {query ? (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setQuery("")}
                 aria-label="Clear search"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-xs p-0.5 text-faint hover:text-ink"
+                className="absolute right-1 top-1/2 -translate-y-1/2"
               >
-                <X className="size-3.5" />
-              </button>
+                <X />
+              </Button>
             ) : null}
           </div>
 
@@ -317,23 +312,19 @@ export function MyLessonPlansList() {
             </label>
             <div className="relative">
               <ArrowUpDown
-                className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-faint"
+                className="pointer-events-none absolute left-2 top-1/2 z-10 size-3 -translate-y-1/2 text-faint"
                 aria-hidden
               />
-              <select
+              <Select
                 id="lesson-sort"
                 value={sort}
                 onChange={(e) => setSort(e.target.value as Sort)}
-                className={cn(
-                  "h-7 cursor-pointer appearance-none rounded-md border border-line-subtle bg-surface",
-                  "pl-7 pr-2 text-[12px] text-muted transition-colors hover:border-line",
-                  "focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25",
-                )}
+                className="h-7 pl-7 text-[12px]"
               >
                 <option value="recent">Newest</option>
                 <option value="oldest">Oldest</option>
                 <option value="title">A–Z</option>
-              </select>
+              </Select>
             </div>
           </div>
         </div>

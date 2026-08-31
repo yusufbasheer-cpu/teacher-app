@@ -99,7 +99,7 @@ export function Field({
 export function TextInput({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<"input">) {
+}: React.ComponentProps<"input">) {
   const f = useField();
   return (
     <input

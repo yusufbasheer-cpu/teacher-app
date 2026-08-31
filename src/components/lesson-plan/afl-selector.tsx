@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import {
   AFL_PHASE_GROUPS,
   AFL_PHASE_IDS,
@@ -12,7 +12,11 @@ import {
 import { LockedFeaturePanel } from "@/components/premium/locked-feature-panel";
 import { LockedPreviewPill } from "@/components/premium/locked-preview-pill";
 import { Checkbox } from "@/components/ui/checkbox";
-import { TEAL } from "@/lib/design-tokens";
+import { Button } from "@/components/ui/button";
+import { TextInput } from "@/components/ui/field";
+import { Badge, Disclosure } from "@/components/ui/panel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 type Tab = "recommended" | "phase" | "all";
 
@@ -45,6 +49,9 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "all", label: "All Activities" },
 ];
 
+const TOOL_ROW_CLASS =
+  "flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm transition-colors duration-[110ms]";
+
 function ToolCheckbox({
   checked,
   onToggle,
@@ -58,15 +65,18 @@ function ToolCheckbox({
 }) {
   return (
     <label
-      className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm shadow-sm transition ${
+      className={cn(
+        TOOL_ROW_CLASS,
         checked
-          ? "border-[var(--brand)] bg-[color-mix(in_oklch,var(--brand)_8%,transparent)] ring-1 ring-[color-mix(in_oklch,var(--brand)_20%,transparent)]"
-          : "border-[var(--border-subtle)] bg-surface hover:border-[color-mix(in_oklch,var(--brand)_50%,transparent)] hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
-      }`}
+          ? "border-brand bg-brand-subtle"
+          : "border-line-subtle bg-surface hover:border-line hover:bg-hover",
+      )}
     >
       <Checkbox checked={checked} onChange={onToggle} className="mt-0.5" />
       <span className="min-w-0">
-        <span className={`block font-medium ${checked ? "text-[var(--brand-active)]" : "text-ink"}`}>{label}</span>
+        <span className={cn("block font-medium", checked ? "text-brand-text" : "text-ink")}>
+          {label}
+        </span>
         <span className="mt-0.5 block text-xs leading-snug text-faint">{purpose}</span>
       </span>
     </label>
@@ -82,19 +92,9 @@ function ToolCheckbox({
  * categories + counts visible — never the full interactive catalog. */
 export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelectorProps) {
   const [tab, setTab] = useState<Tab>("phase");
-  const [expanded, setExpanded] = useState<Set<AflPhaseId>>(new Set());
   const [search, setSearch] = useState("");
 
   const totalSelected = countSelected(selected);
-
-  const togglePhaseExpanded = (phase: AflPhaseId) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(phase)) next.delete(phase);
-      else next.add(phase);
-      return next;
-    });
-  };
 
   const applyRecommended = () => {
     onChange(
@@ -129,12 +129,9 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
         </p>
       </div>
       {!locked && totalSelected > 0 ? (
-        <span
-          className="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
-          style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: "var(--brand-active)" }}
-        >
+        <Badge tone="brand" className="shrink-0 rounded-full px-3 py-1 text-xs">
           {totalSelected} selected
-        </span>
+        </Badge>
       ) : null}
     </div>
   );
@@ -168,37 +165,23 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
     <div>
       {header}
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className="rounded-full px-3.5 py-1.5 text-xs font-semibold transition"
-            style={
-              tab === t.id
-                ? { background: TEAL, color: "#fff" }
-                : { background: "var(--canvas)", color: "var(--text-secondary)" }
-            }
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mt-4">
+        <TabsList variant="line">
+          {TABS.map((t) => (
+            <TabsTrigger key={t.id} value={t.id}>
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      {tab === "recommended" ? (
-        <div className="mt-4 space-y-4">
+        <TabsContent value="recommended" className="mt-4 space-y-4">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs text-faint">
               A curated starting point across all phases — fine-tune below, or use as-is.
             </p>
-            <button
-              type="button"
-              onClick={applyRecommended}
-              className="shrink-0 rounded-lg border border-[var(--border-subtle)] bg-surface px-3 py-1.5 text-xs font-semibold text-muted shadow-sm hover:bg-hover"
-            >
+            <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={applyRecommended}>
               Use Recommended
-            </button>
+            </Button>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {AFL_PHASE_GROUPS.flatMap((group) =>
@@ -215,71 +198,50 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
                 )),
             )}
           </div>
-        </div>
-      ) : null}
+        </TabsContent>
 
-      {tab === "phase" ? (
-        <div className="mt-4 space-y-2">
+        <TabsContent value="phase" className="mt-4 space-y-2">
           {AFL_PHASE_GROUPS.map((group) => {
-            const isOpen = expanded.has(group.phase);
             const count = selected[group.phase]?.length ?? 0;
             return (
-              <div key={group.phase} className="rounded-xl border border-[var(--border-subtle)] bg-surface shadow-sm transition-colors duration-150">
-                <button
-                  type="button"
-                  onClick={() => togglePhaseExpanded(group.phase)}
-                  className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors duration-150 hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] ${isOpen ? "rounded-t-xl" : "rounded-xl"}`}
-                  aria-expanded={isOpen}
-                >
-                  <span className="flex items-center gap-2 text-sm font-bold text-ink">
+              <Disclosure
+                key={group.phase}
+                defaultOpen={count > 0}
+                title={
+                  <span className="flex items-center gap-2">
                     {group.title.replace(" AFL Tools", "")}
-                    {count > 0 ? (
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[11px] font-bold"
-                        style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: "var(--brand-active)" }}
-                      >
-                        {count}
-                      </span>
-                    ) : null}
+                    {count > 0 ? <Badge tone="brand">{count}</Badge> : null}
                   </span>
-                  <span className="flex items-center gap-2 text-xs text-faint">
-                    {group.tools.length} activities
-                    <ChevronDown
-                      size={16}
-                      className="transition-transform"
-                      style={{ transform: isOpen ? "rotate(180deg)" : "none" }}
+                }
+                summary={`${group.tools.length} activities`}
+              >
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {group.tools.map((t) => (
+                    <ToolCheckbox
+                      key={t.id}
+                      checked={(selected[group.phase] ?? []).includes(t.id)}
+                      onToggle={() => onChange(toggleTool(selected, group.phase, t.id))}
+                      label={t.label}
+                      purpose={t.purpose}
                     />
-                  </span>
-                </button>
-                {isOpen ? (
-                  <div className="grid gap-2 border-t border-line-subtle p-3 sm:grid-cols-2">
-                    {group.tools.map((t) => (
-                      <ToolCheckbox
-                        key={t.id}
-                        checked={(selected[group.phase] ?? []).includes(t.id)}
-                        onToggle={() => onChange(toggleTool(selected, group.phase, t.id))}
-                        label={t.label}
-                        purpose={t.purpose}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+                  ))}
+                </div>
+              </Disclosure>
             );
           })}
-        </div>
-      ) : null}
+        </TabsContent>
 
-      {tab === "all" ? (
-        <div className="mt-4 space-y-3">
+        <TabsContent value="all" className="mt-4 space-y-3">
           <div className="relative">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-            <input
-              type="text"
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-faint"
+              aria-hidden
+            />
+            <TextInput
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search all 82 activities…"
-              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] py-2.5 pl-9 pr-3 text-sm outline-none ring-[var(--brand)] transition-colors duration-200 focus:border-[var(--brand)] focus:ring-2"
+              className="h-10 pl-9"
             />
           </div>
           <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
@@ -291,11 +253,12 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
                 return (
                   <label
                     key={t.id}
-                    className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm shadow-sm transition ${
+                    className={cn(
+                      TOOL_ROW_CLASS,
                       checked
-                        ? "border-[var(--brand)] bg-[color-mix(in_oklch,var(--brand)_8%,transparent)] ring-1 ring-[color-mix(in_oklch,var(--brand)_20%,transparent)]"
-                        : "border-[var(--border-subtle)] bg-surface hover:border-[color-mix(in_oklch,var(--brand)_50%,transparent)] hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
-                    }`}
+                        ? "border-brand bg-brand-subtle"
+                        : "border-line-subtle bg-surface hover:border-line hover:bg-hover",
+                    )}
                   >
                     <Checkbox
                       checked={checked}
@@ -304,7 +267,9 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
                     />
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-1.5">
-                        <span className={`font-medium ${checked ? "text-[var(--brand-active)]" : "text-ink"}`}>{t.label}</span>
+                        <span className={cn("font-medium", checked ? "text-brand-text" : "text-ink")}>
+                          {t.label}
+                        </span>
                         <span className="rounded-full bg-sunken px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-faint">
                           {t.phaseTitle.replace(" AFL Tools", "")}
                         </span>
@@ -316,18 +281,14 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
               })
             )}
           </div>
-        </div>
-      ) : null}
+        </TabsContent>
+      </Tabs>
 
       {totalSelected > 0 ? (
         <div className="mt-3 flex justify-end">
-          <button
-            type="button"
-            onClick={clearAll}
-            className="text-xs font-medium text-faint hover:text-muted"
-          >
+          <Button type="button" variant="ghost" size="xs" onClick={clearAll}>
             Clear all selections
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

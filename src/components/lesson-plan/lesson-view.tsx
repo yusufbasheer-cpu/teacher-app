@@ -96,7 +96,7 @@ export function LessonView({ id }: { id: string }) {
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
+        <div className="rounded-3xl border border-brand-border/50 bg-surface p-6">
           <PageLoader label="Loading lesson…" />
         </div>
       </div>
@@ -109,12 +109,9 @@ export function LessonView({ id }: { id: string }) {
         <div className="rounded-3xl border border-[color-mix(in_oklch,var(--brand)_20%,transparent)] bg-[var(--surface)] p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-ink">Login Required</h2>
           <p className="mt-2 text-sm text-muted">Please login to view your saved lesson plans.</p>
-          <Link
-            href="/login"
-            className="mt-5 inline-flex rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-active)]"
-          >
+          <Button className="mt-5" render={<Link href="/login" />}>
             Go to Login
-          </Link>
+          </Button>
         </div>
       </div>
     );
@@ -123,12 +120,12 @@ export function LessonView({ id }: { id: string }) {
   if (error || !lesson || !lessonPlan) {
     return (
       <div className="mx-auto w-full max-w-7xl space-y-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/my-lesson-plans" className="text-sm font-medium text-[var(--brand)] hover:underline">
+        <Link href="/my-lesson-plans" className="text-sm font-medium text-brand-text hover:underline">
           ← Back to My Lessons
         </Link>
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 shadow-sm">
+        <Notice tone="danger" className="rounded-3xl p-6 text-sm">
           {error ?? "Lesson not found."}
-        </div>
+        </Notice>
       </div>
     );
   }

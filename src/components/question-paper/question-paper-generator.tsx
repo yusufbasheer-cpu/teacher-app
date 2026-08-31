@@ -18,9 +18,12 @@ import { useErrorToast } from "@/hooks/use-error-toast";
 import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PaymentModal } from "@/components/payment/payment-modal";
-import { EmptyState, PageTitle, Panel, Skeleton } from "@/components/ui/panel";
+import { EmptyState, Notice, PageTitle, Panel, Skeleton } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
+import { CheckField, Field, Select, TextArea, TextInput } from "@/components/ui/field";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LockedPageState } from "@/components/premium/locked-page-state";
+import { cn } from "@/lib/utils";
 import { PLANS } from "@/lib/plans";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-usage";
@@ -68,12 +71,6 @@ type ExtractPayload = {
   parts?: { sourceLabel: string; kind: "pdf" | "image"; text: string }[];
   partialErrors?: { sourceLabel: string; message: string }[];
 };
-
-const inputClass =
-  "w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-sm shadow-sm outline-none ring-[var(--brand)] focus:ring-2";
-
-const sectionClass =
-  "rounded-2xl border bg-[var(--surface)] p-4 shadow-sm sm:p-5";
 
 const WIZARD_STEPS = [
   { id: 1, label: "Paper Details" },
@@ -600,14 +597,8 @@ export function QuestionPaperGenerator() {
             Basic details
           </legend>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-muted">Curriculum type</label>
-              <select
-                value={curriculumType}
-                onChange={(e) => setCurriculumType(e.target.value)}
-                className={inputClass}
-                required
-              >
+            <Field label="Curriculum type" className="sm:col-span-2">
+              <Select value={curriculumType} onChange={(e) => setCurriculumType(e.target.value)} required>
                 {CURRICULUM_TYPE_GROUPS.map((g) => (
                   <optgroup key={g.label} label={g.label}>
                     {g.options.map((opt) => (
@@ -617,21 +608,19 @@ export function QuestionPaperGenerator() {
                     ))}
                   </optgroup>
                 ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-muted">Grade</label>
-              <select value={grade} onChange={(e) => setGrade(e.target.value)} className={inputClass} required>
+              </Select>
+            </Field>
+            <Field label="Grade">
+              <Select value={grade} onChange={(e) => setGrade(e.target.value)} required>
                 {GRADE_YEAR_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
                   </option>
                 ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-muted">Subject</label>
-              <select value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} required>
+              </Select>
+            </Field>
+            <Field label="Subject">
+              <Select value={subject} onChange={(e) => setSubject(e.target.value)} required>
                 <optgroup label="Subjects">
                   {CORE_SUBJECT_OPTIONS.filter(
                     (opt) => !(STEM_SUBJECT_OPTIONS as readonly string[]).includes(opt),
@@ -655,75 +644,63 @@ export function QuestionPaperGenerator() {
                     </option>
                   ))}
                 </optgroup>
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-muted">Topic or chapter name</label>
-              <input
+              </Select>
+            </Field>
+            <Field label="Topic or chapter name" className="sm:col-span-2">
+              <TextInput
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                className={inputClass}
                 placeholder="e.g. Photosynthesis"
                 required
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-muted">Total marks</label>
-              <input
+            </Field>
+            <Field label="Total marks">
+              <TextInput
                 type="number"
                 min={1}
                 max={500}
                 value={totalMarks}
                 onChange={(e) => setTotalMarks(Number(e.target.value))}
-                className={inputClass}
                 required
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-muted">Time allowed</label>
-              <select
+            </Field>
+            <Field label="Time allowed">
+              <Select
                 value={timeAllowed}
                 onChange={(e) =>
                   setTimeAllowed(e.target.value as (typeof QUESTION_PAPER_TIME_OPTIONS)[number])
                 }
-                className={inputClass}
               >
                 {QUESTION_PAPER_TIME_OPTIONS.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
                 ))}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-muted">Difficulty level</label>
-              <select
+              </Select>
+            </Field>
+            <Field label="Difficulty level" className="sm:col-span-2">
+              <Select
                 value={difficulty}
                 onChange={(e) =>
                   setDifficulty(e.target.value as (typeof QUESTION_PAPER_DIFFICULTY_OPTIONS)[number])
                 }
-                className={inputClass}
               >
                 {QUESTION_PAPER_DIFFICULTY_OPTIONS.map((d) => (
                   <option key={d} value={d}>
                     {d}
                   </option>
                 ))}
-              </select>
-            </div>
+              </Select>
+            </Field>
           </div>
         </fieldset>
 
         {step === 1 ? (
           <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={goToNextStep}
-              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--brand)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-active)]"
-            >
+            <Button type="button" size="lg" onClick={goToNextStep}>
               Continue
-            </button>
+            </Button>
           </div>
         ) : null}
 
@@ -753,32 +730,33 @@ export function QuestionPaperGenerator() {
               className="hidden"
               onChange={(e) => onUploadFileChange(e, "image")}
             />
-            <button
+            <Button
               type="button"
+              variant="outline"
               disabled={uploadExtracting || loading}
               onClick={() => pdfInputRef.current?.click()}
-              className="rounded-xl border border-line-strong bg-[var(--surface)] px-4 py-2 text-sm font-medium text-ink hover:bg-hover"
             >
               Upload PDF
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
               disabled={uploadExtracting || loading}
               onClick={() => imageInputRef.current?.click()}
-              className="rounded-xl border border-line-strong bg-[var(--surface)] px-4 py-2 text-sm font-medium text-ink hover:bg-hover"
             >
               Upload image
-            </button>
+            </Button>
           </div>
-          <textarea
-            value={pastedContent}
-            onChange={(e) => setPastedContent(e.target.value)}
-            disabled={uploadExtracting || loading}
-            rows={6}
-            className={`${inputClass} mt-4`}
-            placeholder="Paste chapter notes, textbook extract, or teaching content…"
-          />
-          {uploadInfo ? <p className="mt-2 text-xs text-teal-800">{uploadInfo}</p> : null}
+          <Field label="Paste content" optional className="mt-4">
+            <TextArea
+              value={pastedContent}
+              onChange={(e) => setPastedContent(e.target.value)}
+              disabled={uploadExtracting || loading}
+              rows={6}
+              placeholder="Paste chapter notes, textbook extract, or teaching content…"
+            />
+          </Field>
+          {uploadInfo ? <p className="mt-2 text-xs text-brand-text">{uploadInfo}</p> : null}
           {uploadedChunks.length > 0 ? (
             <p className="mt-2 text-xs text-muted">
               {uploadedChunks.length} file(s) attached ({extractedMaterial.length.toLocaleString()}{" "}
@@ -789,29 +767,19 @@ export function QuestionPaperGenerator() {
 
         {step === 2 ? (
           <div className="flex justify-between">
-            <button
-              type="button"
-              onClick={goToPrevStep}
-              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-[var(--surface)] px-6 py-2.5 text-sm font-semibold text-muted transition hover:border-line-strong hover:text-ink"
-            >
+            <Button type="button" variant="outline" size="lg" onClick={goToPrevStep}>
               Back
-            </button>
-            <button
-              type="button"
-              onClick={goToNextStep}
-              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--brand)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-active)]"
-            >
+            </Button>
+            <Button type="button" size="lg" onClick={goToNextStep}>
               Continue
-            </button>
+            </Button>
           </div>
         ) : null}
 
         {/* ══════════ STEP 3 — GENERATE PACKAGE ══════════ */}
         <fieldset hidden={step !== 3} className="space-y-6">
-        <section className={sectionClass} style={{ borderColor: "color-mix(in oklch, var(--text) 8%, transparent)" }}>
-          <h2 className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-            Question types
-          </h2>
+        <Panel className="p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-ink">Question types</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {QUESTION_TYPE_SPECS.map((spec) => (
               <div
@@ -822,22 +790,19 @@ export function QuestionPaperGenerator() {
                   <p className="text-xs font-semibold text-ink">{spec.label}</p>
                   <p className="text-[11px] text-faint">{spec.description}</p>
                 </div>
-                <input
+                <TextInput
                   type="number"
                   min={0}
                   max={50}
                   value={questionCounts[spec.id]}
                   onChange={(e) => setCount(spec.id, Number(e.target.value))}
-                  className="w-14 rounded-lg border border-line-strong bg-surface px-2 py-1 text-center text-sm shadow-sm"
+                  className="w-14 text-center"
                   aria-label={`Count for ${spec.label}`}
                 />
               </div>
             ))}
           </div>
-          <div
-            className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm"
-            style={{ background: "var(--text)", color: "#fff" }}
-          >
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-ink px-4 py-3 text-sm text-inverse">
             <span>
               Total questions: <strong>{totalQuestions}</strong>
             </span>
@@ -845,20 +810,18 @@ export function QuestionPaperGenerator() {
               Paper marks: <strong>{totalMarks}</strong>
             </span>
           </div>
-        </section>
+        </Panel>
 
-        <section className={sectionClass}>
-          <h2 className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-            Generation mode
-          </h2>
+        <Panel className="p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-ink">Generation mode</h2>
           <div className="mt-4 space-y-3">
-            <label className="flex cursor-pointer gap-3 rounded-xl border border-line p-3 has-[:checked]:border-[var(--brand)] has-[:checked]:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]">
+            <label className="flex cursor-pointer gap-3 rounded-xl border border-line p-3 has-[:checked]:border-brand has-[:checked]:bg-brand-subtle">
               <input
                 type="radio"
                 name="genMode"
                 checked={generationMode === "strict"}
                 onChange={() => setGenerationMode("strict")}
-                className="mt-1"
+                className="mt-1 accent-brand"
               />
               <span>
                 <span className="font-semibold text-ink">Strictly based on my content</span>
@@ -869,17 +832,17 @@ export function QuestionPaperGenerator() {
               </span>
             </label>
             {generationMode === "strict" ? (
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <Notice tone="generated" className="text-xs">
                 Please upload or paste your content above for best results.
-              </p>
+              </Notice>
             ) : null}
-            <label className="flex cursor-pointer gap-3 rounded-xl border border-line p-3 has-[:checked]:border-[var(--brand)] has-[:checked]:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]">
+            <label className="flex cursor-pointer gap-3 rounded-xl border border-line p-3 has-[:checked]:border-brand has-[:checked]:bg-brand-subtle">
               <input
                 type="radio"
                 name="genMode"
                 checked={generationMode === "enhanced"}
                 onChange={() => setGenerationMode("enhanced")}
-                className="mt-1"
+                className="mt-1 accent-brand"
               />
               <span>
                 <span className="font-semibold text-ink">AI enhanced generation</span>
@@ -892,7 +855,7 @@ export function QuestionPaperGenerator() {
               <div className="rounded-xl border border-line bg-hover p-4">
                 <div className="flex items-center justify-between text-sm font-medium text-ink">
                   <span>Enhancement level</span>
-                  <span style={{ color: "var(--brand)" }}>{enhancementPercent}%</span>
+                  <span className="text-brand">{enhancementPercent}%</span>
                 </div>
                 <input
                   type="range"
@@ -900,7 +863,7 @@ export function QuestionPaperGenerator() {
                   max={100}
                   value={enhancementPercent}
                   onChange={(e) => setEnhancementPercent(Number(e.target.value))}
-                  className="mt-3 w-full accent-[var(--brand)]"
+                  className="mt-3 w-full accent-brand"
                 />
                 <p className="mt-2 text-[11px] text-muted">
                   0–20%: mostly your content · 21–50%: balanced · 51–80%: mostly AI · 81–100%: fully AI
@@ -909,82 +872,49 @@ export function QuestionPaperGenerator() {
               </div>
             ) : null}
           </div>
-        </section>
+        </Panel>
 
-        <section className={sectionClass}>
-          <h2 className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-            Answer key options
-          </h2>
-          <div className="mt-3 space-y-2">
-            <label className="flex items-center gap-2 text-sm text-ink">
-              <input
-                type="checkbox"
-                checked={includeAnswerKey}
-                onChange={(e) => setIncludeAnswerKey(e.target.checked)}
-              />
-              Include answer key
-            </label>
-            <label className="flex items-center gap-2 text-sm text-ink">
-              <input
-                type="checkbox"
-                checked={includeMarkingScheme}
-                onChange={(e) => setIncludeMarkingScheme(e.target.checked)}
-              />
-              Include marking scheme
-            </label>
-            <label className="flex items-center gap-2 text-sm text-ink">
-              <input
-                type="checkbox"
-                checked={includeModelAnswers}
-                onChange={(e) => setIncludeModelAnswers(e.target.checked)}
-              />
-              Include model answers for long questions
-            </label>
-          </div>
-        </section>
-
-        <section className={sectionClass} style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}>
-          <label className="flex cursor-pointer items-start gap-3">
-            <input
-              type="checkbox"
-              checked={generateBlueprint}
-              onChange={(e) => setGenerateBlueprint(e.target.checked)}
-              className="mt-1 size-4 rounded border-line-strong text-[var(--brand)] focus:ring-[var(--brand)]"
+        <Panel className="p-4 sm:p-5">
+          <h2 className="text-sm font-semibold text-ink">Answer key options</h2>
+          <div className="mt-3 space-y-1">
+            <CheckField
+              label="Include answer key"
+              checked={includeAnswerKey}
+              onChange={(e) => setIncludeAnswerKey(e.target.checked)}
             />
-            <span>
-              <span className="text-sm font-semibold text-ink">
-                Generate Blueprint with Question Paper
-              </span>
-              <span className="mt-1 block text-xs text-muted">
-                After your paper is ready, a second pass analyzes it and builds chapter-wise,
-                Bloom&apos;s, question-type, and difficulty tables (plain text, not JSON).
-              </span>
-            </span>
-          </label>
-        </section>
+            <CheckField
+              label="Include marking scheme"
+              checked={includeMarkingScheme}
+              onChange={(e) => setIncludeMarkingScheme(e.target.checked)}
+            />
+            <CheckField
+              label="Include model answers for long questions"
+              checked={includeModelAnswers}
+              onChange={(e) => setIncludeModelAnswers(e.target.checked)}
+            />
+          </div>
+        </Panel>
 
-        {error ? (
-          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
-        ) : null}
+        <Panel className="border-brand-border/50 p-4 sm:p-5">
+          <CheckField
+            label="Generate Blueprint with Question Paper"
+            description="After your paper is ready, a second pass analyzes it and builds chapter-wise, Bloom's, question-type, and difficulty tables (plain text, not JSON)."
+            checked={generateBlueprint}
+            onChange={(e) => setGenerateBlueprint(e.target.checked)}
+          />
+        </Panel>
+
+        {error ? <Notice tone="danger">{error}</Notice> : null}
 
         <div className="flex justify-between gap-3">
-          <button
-            type="button"
-            onClick={goToPrevStep}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-[var(--surface)] px-6 py-2.5 text-sm font-semibold text-muted transition hover:border-line-strong hover:text-ink"
-          >
+          <Button type="button" variant="outline" size="lg" onClick={goToPrevStep}>
             Back
-          </button>
+          </Button>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading || totalQuestions < 1}
-          className="w-full rounded-xl px-6 py-4 text-base font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-50"
-          style={{ background: "var(--brand)" }}
-        >
+        <Button type="submit" size="xl" block disabled={loading || totalQuestions < 1}>
           {loading ? "Generating…" : "Generate question paper"}
-        </button>
+        </Button>
         </fieldset>
           </form>
         </>
@@ -992,77 +922,64 @@ export function QuestionPaperGenerator() {
         <section className="mx-auto w-full max-w-[820px] space-y-4">
           <div className="flex items-start justify-between gap-4">
             <h3 className="text-xl font-semibold text-ink">Your question paper is ready</h3>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setResult(null);
                 setStep(1);
               }}
-              className="shrink-0 rounded-xl border border-line bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-muted transition hover:border-line-strong hover:text-ink"
             >
               ← Edit details
-            </button>
+            </Button>
           </div>
 
           <div
             role="status"
             aria-live="polite"
-            style={{
-              transition: "opacity 0.4s ease, transform 0.4s ease",
-              opacity: paperReady ? 1 : 0,
-              transform: paperReady ? "translateY(0)" : "translateY(-8px)",
-              pointerEvents: paperReady ? "auto" : "none",
-            }}
-            className="rounded-2xl border border-[color-mix(in_oklch,var(--brand)_40%,transparent)] bg-[color-mix(in_oklch,var(--brand)_10%,transparent)] px-4 py-3 text-sm font-semibold text-[#007a66] shadow-sm"
+            className={cn(
+              "rounded-2xl border border-brand-border bg-brand-subtle px-4 py-3 text-sm font-semibold text-brand-text",
+              "transition-[opacity,transform] duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)]",
+              paperReady ? "opacity-100 translate-y-0" : "pointer-events-none opacity-0 -translate-y-2",
+            )}
           >
             Your Question Paper is ready!
           </div>
 
-          <div
-            className="min-h-[420px] rounded-2xl border shadow-sm"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 30%, transparent)", background: "var(--surface-raised)" }}
-          >
-            <div
-              className="rounded-t-2xl px-4 py-3 text-sm font-semibold text-white sm:px-5"
-              style={{ background: "var(--text)" }}
-            >
+          <div className="min-h-[420px] rounded-2xl border border-brand-border/50 bg-surface-raised">
+            <div className="rounded-t-2xl bg-ink px-4 py-3 text-sm font-semibold text-inverse sm:px-5">
               Preview
             </div>
             {result?.blueprintText ? (
-              <div className="flex border-b border-line bg-hover px-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setPreviewTab("paper")}
-                  className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
-                  style={{
-                    background: previewTab === "paper" ? "#fff" : "transparent",
-                    color: previewTab === "paper" ? "var(--text)" : "var(--text-secondary)",
-                  }}
+              <Tabs
+                value={previewTab}
+                onValueChange={(v) => setPreviewTab(v as "paper" | "blueprint")}
+              >
+                <TabsList
+                  variant="line"
+                  className="h-auto w-full justify-start gap-1 rounded-none border-b border-line bg-hover px-2 pt-2"
                 >
-                  Question paper
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewTab("blueprint")}
-                  className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
-                  style={{
-                    background: previewTab === "blueprint" ? "#fff" : "transparent",
-                    color: previewTab === "blueprint" ? "var(--text)" : "var(--text-secondary)",
-                  }}
-                >
-                  Blueprint
-                </button>
-              </div>
+                  <TabsTrigger value="paper" className="flex-none rounded-t-lg px-4 py-2 text-xs">
+                    Question paper
+                  </TabsTrigger>
+                  <TabsTrigger value="blueprint" className="flex-none rounded-t-lg px-4 py-2 text-xs">
+                    Blueprint
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             ) : null}
             <div className="max-h-[min(60vh,560px)] overflow-y-auto p-4 sm:p-5">
               {result?.parseNotice ? (
-                <p className="mb-3 text-xs text-amber-800">{result.parseNotice}</p>
+                <Notice tone="generated" className="mb-3 text-xs">
+                  {result.parseNotice}
+                </Notice>
               ) : null}
               {result?.blueprintError ? (
-                <p className="mb-3 text-xs text-amber-800">
+                <Notice tone="generated" className="mb-3 text-xs">
                   Blueprint could not be generated. Your question paper and downloads are still
                   available.
-                </p>
+                </Notice>
               ) : null}
               <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink">
                 {previewText}
@@ -1070,41 +987,37 @@ export function QuestionPaperGenerator() {
             </div>
           </div>
 
-          <div
-            id="download-section"
-            className="rounded-2xl border px-4 py-5 shadow-sm sm:px-5"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 30%, transparent)", background: "var(--surface-raised)" }}
-          >
+          <div id="download-section" className="rounded-2xl border border-brand-border/50 bg-surface-raised px-4 py-5 sm:px-5">
             <div className="flex flex-col gap-3">
-              <button
+              <Button
                 type="button"
+                size="lg"
+                block
                 disabled={!!downloading}
                 onClick={() => downloadQuestionPaper()}
-                className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                style={{ background: "var(--brand)" }}
               >
                 {downloading === "paper" ? "Downloading…" : "Download Question Paper as Word"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
+                size="lg"
+                block
                 disabled={!!downloading || !result?.blueprintText}
                 onClick={() => downloadBlueprint()}
-                className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                style={{ background: "var(--text)" }}
               >
                 {downloading === "blueprint" ? "Downloading…" : "Download Blueprint as Word"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
+                size="lg"
+                block
                 disabled={!!downloading}
                 onClick={() => downloadZip()}
-                className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                style={{
-                  background: "linear-gradient(135deg, var(--brand) 0%, var(--text) 100%)",
-                }}
               >
                 {downloading === "zip" ? "Downloading…" : "Download Complete Pack as ZIP"}
-              </button>
+              </Button>
             </div>
           </div>
         </section>
