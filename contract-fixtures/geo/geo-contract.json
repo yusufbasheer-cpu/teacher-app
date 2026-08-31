@@ -1,0 +1,79 @@
+{
+  "cases": [
+    {
+      "name": "vercel_header",
+      "headers": {
+        "x-vercel-ip-country": "IN"
+      },
+      "expected": {
+        "country_code": "IN",
+        "country_name": "IN"
+      }
+    },
+    {
+      "name": "ipapi_success",
+      "headers": {
+        "x-forwarded-for": "203.0.113.10"
+      },
+      "fetches": [
+        {
+          "url": "https://ipapi.co/203.0.113.10/json/",
+          "status": 200,
+          "json": {
+            "country_code": "US",
+            "country_name": "United States"
+          }
+        }
+      ],
+      "expected": {
+        "country_code": "US",
+        "country_name": "United States"
+      }
+    },
+    {
+      "name": "countryis_success",
+      "headers": {
+        "x-real-ip": "198.51.100.9"
+      },
+      "fetches": [
+        {
+          "url": "https://ipapi.co/198.51.100.9/json/",
+          "status": 500,
+          "text": "boom"
+        },
+        {
+          "url": "https://api.country.is/",
+          "status": 200,
+          "json": {
+            "country": "CA",
+            "ip": "198.51.100.9"
+          }
+        }
+      ],
+      "expected": {
+        "country_code": "CA",
+        "country_name": "CA"
+      }
+    },
+    {
+      "name": "fallback_uae",
+      "headers": {},
+      "fetches": [
+        {
+          "url": "https://ipapi.co/json/",
+          "status": 500,
+          "text": "boom"
+        },
+        {
+          "url": "https://api.country.is/",
+          "status": 500,
+          "text": "boom"
+        }
+      ],
+      "expected": {
+        "country_code": "AE",
+        "country_name": "UAE"
+      }
+    }
+  ]
+}

@@ -1,60 +1,52 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { resolveGeoLocation } from "./geo-service";
 
-describe("resolveGeoLocation", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+type GeoFixtureCase = {
+  name: string;
+  headers: Record<string, string>;
+  fetches?: Array<{
+    url: string;
+    status: number;
+    json?: Record<string, unknown>;
+    text?: string;
+  }>;
+  expected: { country_code: string; country_name: string };
+};
 
-  it("uses the Vercel country header without calling external services", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
+const fixturePath = resolve(process.cwd(), "contract-fixtures", "geo", "geo-contract.json");
+const cases = JSON.parse(readFileSync(fixturePath, "utf-8")) as { cases: GeoFixtureCase[] };
 
-    const result = await resolveGeoLocation(new Headers({ "x-vercel-ip-country": "IN" }));
-    expect(result).toEqual({ country_code: "IN", country_name: "IN" });
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("falls back to ipapi.co using the forwarded IP", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ country_code: "GB", country_name: "United Kingdom" }), { status: 200 }),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-
-    const result = await resolveGeoLocation(new Headers({ "x-forwarded-for": "203.0.113.5, 10.0.0.1" }));
-
-    expect(result).toEqual({ country_code: "GB", country_name: "United Kingdom" });
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://ipapi.co/203.0.113.5/json/",
-      expect.objectContaining({
-        headers: { "User-Agent": "LayahPricing/1.0" },
-        cache: "no-store",
-      }),
-    );
-  });
-
-  it("falls back to api.country.is when ipapi.co fails", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response("{}", { status: 500 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ country: "PK", ip: "1.2.3.4" }), { status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    const result = await resolveGeoLocation(new Headers({ "x-real-ip": "198.51.100.2" }));
-
-    expect(result).toEqual({ country_code: "PK", country_name: "PK" });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("defaults to UAE when every lookup fails", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response("{}", { status: 500 }))
-      .mockResolvedValueOnce(new Response("{}", { status: 500 }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    const result = await resolveGeoLocation(new Headers());
-    expect(result).toEqual({ country_code: "AE", country_name: "UAE" });
-  });
+beforeEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
+describe("geo-service", () => {
+  it.each(cases.cases)("matches the shared geo contract for $name", async (scenario) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      const expected = scenario.fetches?.shift();
+      expect(expected, `unexpected fetch for ${scenario.name}`).toBeDefined();
+      expect(url).toContain(expected!.url);
+      return new Response(
+        expected!.json ? JSON.stringify(expected!.json) : expected!.text ?? "",
+        {
+          status: expected!.status,
+          headers: expected!.json ? { "content-type": "application/json" } : {},
+        },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(resolveGeoLocation(new Headers(scenario.headers))).resolves.toEqual(
+      scenario.expected,
+    );
+
+    if (scenario.name === "vercel_header") {
+      expect(fetchMock).not.toHaveBeenCalled();
+    }
+  });
+});
