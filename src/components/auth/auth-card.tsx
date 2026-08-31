@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { motion, type Variants } from "motion/react";
+import { MotionConfig } from "framer-motion";
 import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
 import { completeEmailPostAuthLogin } from "@/lib/auth-post-login";
 import { hasCompletedTeacherProfile } from "@/lib/user-profile";
@@ -11,28 +11,14 @@ import { supabase } from "@/lib/supabase";
 import { sanitizeUserMessage, toUserFacingError } from "@/lib/user-facing-errors";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { StaggerChildren, StaggerItem } from "@/components/ui/animate";
+import { Button } from "@/components/ui/button";
+import { Field, TextInput } from "@/components/ui/field";
 
 const MIN_SIGNUP_MS = 3000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type AuthMode = "login" | "signup";
-
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.1 },
-  },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 300, damping: 24 },
-  },
-};
 
 function GoogleLogo() {
   return (
@@ -292,190 +278,160 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
 
   const footerPrefix = mode === "login" ? "Need an account?" : "Already have an account?";
   const footerAction = mode === "login" ? "Sign up" : "Login";
-  const inputClass = [
-    "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-[13px] text-ink",
-    "outline-none transition-[border-color,box-shadow] duration-[110ms]",
-    "placeholder:text-disabled hover:border-line-strong",
-    "focus:border-brand focus:ring-2 focus:ring-brand/25",
-  ].join(" ");
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="w-full max-w-[400px]"
-    >
-      <motion.div variants={itemVariants} className="mb-8 text-center">
-        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">
-          {mode === "login" ? "Teacher Login" : "Create Teacher Account"}
-        </h1>
-        <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-          {mode === "login"
-            ? "Login to access your lesson plans."
-            : "Tell us a bit about yourself to get started."}
-        </p>
-      </motion.div>
+    <MotionConfig reducedMotion="user">
+      <StaggerChildren className="w-full max-w-[400px]" stagger={0.08} delay={0.05}>
+        <StaggerItem className="mb-8 text-center">
+          <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">
+            {mode === "login" ? "Teacher Login" : "Create Teacher Account"}
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            {mode === "login"
+              ? "Login to access your lesson plans."
+              : "Tell us a bit about yourself to get started."}
+          </p>
+        </StaggerItem>
 
-      <motion.div variants={itemVariants} className="mb-6">
-        <button
-          type="button"
-          onClick={() => void onGoogleSignIn()}
-          disabled={loading || googleLoading}
-          className="flex w-full items-center justify-center gap-2.5 rounded-md border border-line bg-surface py-2.5 text-[13px] font-medium text-ink transition-colors duration-[110ms] hover:border-line-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-60"
-          style={{ borderColor: "#dadce0", color: "var(--text)" }}
-        >
-          {googleLoading ? <GoogleSpinner /> : <GoogleLogo />}
-          <span>{googleLoading ? "Connecting…" : "Continue with Google"}</span>
-        </button>
-
-        <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-          School teachers: Sign in with your school Google account to access your school plan
-        </p>
-      </motion.div>
-
-      <motion.div variants={itemVariants} className="relative mb-6 flex items-center">
-        <div className="grow border-t" style={{ borderColor: "var(--border)" }} />
-        <span className="px-4 text-[11px] font-semibold tracking-wider uppercase" style={{ color: "var(--text-disabled)" }}>
-          Or
-        </span>
-        <div className="grow border-t" style={{ borderColor: "var(--border)" }} />
-      </motion.div>
-
-      <form onSubmit={onSubmit} className="flex flex-col gap-5">
-        {/* Honeypot — invisible to humans, bots fill it. Must use CSS positioning, NOT display:none */}
-        <div style={{ position: "absolute", left: "-9999px", opacity: 0, pointerEvents: "none" }} aria-hidden="true">
-          <input
-            type="text"
-            name="website"
-            tabIndex={-1}
-            autoComplete="off"
-            value={honeypot}
-            onChange={(e) => setHoneypot(e.target.value)}
-          />
-        </div>
-
-        {mode === "signup" && (
-          <motion.div variants={itemVariants} className="flex flex-col gap-2">
-            <label htmlFor="full-name" className="text-sm font-medium" style={{ color: "var(--text)" }}>
-              Full name
-            </label>
-            <input
-              id="full-name"
-              type="text"
-              autoComplete="name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="e.g. Priya Sharma"
-              className={inputClass}
-              required
-            />
-          </motion.div>
-        )}
-        <motion.div variants={itemVariants} className="flex flex-col gap-2">
-          <label htmlFor="email" className="text-sm font-medium" style={{ color: "var(--text)" }}>
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
-            className={inputClass}
-            required
-          />
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="flex flex-col gap-2">
-          <label htmlFor="password" className="text-sm font-medium" style={{ color: "var(--text)" }}>
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            minLength={6}
-            className={inputClass}
-            required
-          />
-        </motion.div>
-
-        {mode === "signup" && (
-          <motion.div variants={itemVariants}>
-            <TurnstileWidget
-              onVerify={onTurnstileVerify}
-              onExpire={onTurnstileExpire}
-            />
-          </motion.div>
-        )}
-
-        <motion.div variants={itemVariants} className="mt-1">
-          <button
-            type="submit"
-            disabled={loading || googleLoading}
-            className="w-full rounded-md bg-brand py-2.5 text-[13px] font-medium text-brand-on transition-colors duration-[110ms] hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ background: "var(--brand)" }}
-          >
-            {loading
-              ? "Please wait..."
-              : mode === "login"
-                ? "Login"
-                : "Create Account"}
-          </button>
-        </motion.div>
-      </form>
-
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
-      {showResend ? (
-        <button
-          type="button"
-          onClick={() => void onResendConfirmation()}
-          disabled={resendLoading}
-          className="mt-2 text-sm font-medium underline transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-70"
-          style={{ color: "var(--brand)" }}
-        >
-          {resendLoading ? "Sending…" : "Resend confirmation email"}
-        </button>
-      ) : null}
-      {message ? <p className="mt-3 text-sm" style={{ color: "var(--brand-active)" }}>{message}</p> : null}
-
-      <motion.div variants={itemVariants} className="mt-6 text-center text-[13px]" style={{ color: "var(--text-secondary)" }}>
-        {footerPrefix}{" "}
-        {linkMode ? (
-          <Link
-            href={mode === "login" ? "/signup" : "/login"}
-            className="font-bold transition hover:underline"
-            style={{ color: "var(--text)" }}
-          >
-            {footerAction}
-          </Link>
-        ) : (
-          <button
+        <StaggerItem className="mb-6">
+          <Button
             type="button"
-            onClick={() => {
-              setMode((prev) => {
-                if (prev === "login") {
-                  formLoadTime.current = Date.now();
-                  setTurnstileToken(null);
-                }
-                return prev === "login" ? "signup" : "login";
-              });
-              setError(null);
-              setMessage(null);
-              setShowResend(false);
-            }}
-            className="font-bold transition hover:underline"
-            style={{ color: "var(--text)" }}
+            variant="outline"
+            size="lg"
+            block
+            onClick={() => void onGoogleSignIn()}
+            disabled={loading || googleLoading}
           >
-            {footerAction}
-          </button>
-        )}
-      </motion.div>
-    </motion.div>
+            {googleLoading ? <GoogleSpinner /> : <GoogleLogo />}
+            <span>{googleLoading ? "Connecting…" : "Continue with Google"}</span>
+          </Button>
+
+          <p className="mt-3 text-center text-xs leading-relaxed text-muted">
+            School teachers: Sign in with your school Google account to access your school plan
+          </p>
+        </StaggerItem>
+
+        <StaggerItem className="relative mb-6 flex items-center">
+          <div className="grow border-t border-line" />
+          <span className="px-4 text-[11px] font-semibold tracking-wider uppercase text-disabled">
+            Or
+          </span>
+          <div className="grow border-t border-line" />
+        </StaggerItem>
+
+        <form onSubmit={onSubmit} className="flex flex-col gap-5">
+          {/* Honeypot — invisible to humans, bots fill it. Must use CSS positioning, NOT display:none */}
+          <div style={{ position: "absolute", left: "-9999px", opacity: 0, pointerEvents: "none" }} aria-hidden="true">
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+            />
+          </div>
+
+          {mode === "signup" && (
+            <StaggerItem>
+              <Field label="Full name" id="full-name">
+                <TextInput
+                  type="text"
+                  autoComplete="name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Priya Sharma"
+                  className="h-9"
+                  required
+                />
+              </Field>
+            </StaggerItem>
+          )}
+
+          <StaggerItem>
+            <Field label="Email" id="email">
+              <TextInput
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="h-9"
+                required
+              />
+            </Field>
+          </StaggerItem>
+
+          <StaggerItem>
+            <Field label="Password" id="password">
+              <TextInput
+                type="password"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                minLength={6}
+                className="h-9"
+                required
+              />
+            </Field>
+          </StaggerItem>
+
+          {mode === "signup" && (
+            <StaggerItem>
+              <TurnstileWidget onVerify={onTurnstileVerify} onExpire={onTurnstileExpire} />
+            </StaggerItem>
+          )}
+
+          <StaggerItem className="mt-1">
+            <Button type="submit" size="lg" block interactive disabled={loading || googleLoading}>
+              {loading ? "Please wait..." : mode === "login" ? "Login" : "Create Account"}
+            </Button>
+          </StaggerItem>
+        </form>
+
+        {error ? <p className="mt-3 text-sm text-danger-text">{error}</p> : null}
+        {showResend ? (
+          <Button
+            type="button"
+            variant="link"
+            onClick={() => void onResendConfirmation()}
+            disabled={resendLoading}
+            className="mt-2"
+          >
+            {resendLoading ? "Sending…" : "Resend confirmation email"}
+          </Button>
+        ) : null}
+        {message ? <p className="mt-3 text-sm text-brand-active">{message}</p> : null}
+
+        <StaggerItem className="mt-6 text-center text-[13px] text-muted">
+          {footerPrefix}{" "}
+          {linkMode ? (
+            <Link href={mode === "login" ? "/signup" : "/login"} className="font-bold text-ink transition hover:underline">
+              {footerAction}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setMode((prev) => {
+                  if (prev === "login") {
+                    formLoadTime.current = Date.now();
+                    setTurnstileToken(null);
+                  }
+                  return prev === "login" ? "signup" : "login";
+                });
+                setError(null);
+                setMessage(null);
+                setShowResend(false);
+              }}
+              className="font-bold text-ink transition hover:underline"
+            >
+              {footerAction}
+            </button>
+          )}
+        </StaggerItem>
+      </StaggerChildren>
+    </MotionConfig>
   );
 }
