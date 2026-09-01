@@ -47,9 +47,9 @@ export function AdminShell({
   const activeItem = NAV.find((n) => n.tab === active);
 
   return (
-    <div className="flex min-h-screen" style={{ background: PAPER }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: PAPER }}>
       <aside
-        className="hidden w-60 shrink-0 flex-col gap-1 px-3 py-5 lg:flex"
+        className="hidden w-60 shrink-0 flex-col gap-1 overflow-y-auto px-3 py-5 lg:flex"
         style={{ borderRight: `1px solid ${BORDER}` }}
       >
         <div className="mb-5 flex items-center gap-2 px-2">
@@ -119,7 +119,11 @@ export function AdminShell({
         </div>
       </aside>
 
-      <div className="min-w-0 flex-1">
+      {/* Scroll container for header + nav + main, same reason as the app rail's
+          shell: the outer row is fixed to h-screen, so this is where scrolling
+          happens instead of the document — the sidebar never has to hold a
+          sticky/fixed position past a containing block that runs out of room. */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         <header
           className="flex items-center justify-between gap-3 px-5 py-4 lg:px-8"
           style={{ borderBottom: `1px solid ${BORDER}` }}
