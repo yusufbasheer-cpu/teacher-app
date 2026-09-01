@@ -128,4 +128,23 @@ describe("backend routing", () => {
       reason: "default_next",
     });
   });
+
+  it("does not attach a protection bypass header when unconfigured", async () => {
+    const { applyDeploymentProtectionBypass } = await import("./backend-routing");
+
+    const headers = new Headers();
+    applyDeploymentProtectionBypass(headers);
+
+    expect(headers.has("x-vercel-protection-bypass")).toBe(false);
+  });
+
+  it("attaches the protection bypass header only when explicitly configured", async () => {
+    vi.stubEnv("PYTHON_BACKEND_BYPASS_SECRET", "test-bypass-secret");
+    const { applyDeploymentProtectionBypass } = await import("./backend-routing");
+
+    const headers = new Headers();
+    applyDeploymentProtectionBypass(headers);
+
+    expect(headers.get("x-vercel-protection-bypass")).toBe("test-bypass-secret");
+  });
 });

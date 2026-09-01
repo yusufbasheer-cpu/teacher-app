@@ -125,6 +125,32 @@ describe("verify-captcha route", () => {
     expect(forwardedHeaders.get("x-forwarded-for")).toBe("203.0.113.1");
     expect(forwardedHeaders.has("authorization")).toBe(false);
     expect(forwardedHeaders.has("cookie")).toBe(false);
+    expect(forwardedHeaders.has("x-vercel-protection-bypass")).toBe(false);
+  });
+
+  it("attaches a deployment-protection bypass header only when explicitly configured", async () => {
+    vi.stubEnv("BACKEND_ROUTE_VERIFY_CAPTCHA", "python");
+    vi.stubEnv("PYTHON_BACKEND_URL", "https://python.internal/");
+    vi.stubEnv("PYTHON_BACKEND_BYPASS_SECRET", "test-bypass-secret");
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { POST } = await import("./route");
+    await POST(
+      new Request("http://localhost/api/auth/verify-captcha", {
+        method: "POST",
+        body: JSON.stringify({ token: "abc" }),
+      }),
+    );
+
+    const [, init] = fetchMock.mock.calls[0]! as unknown as [URL, RequestInit];
+    const forwardedHeaders = init.headers as Headers;
+    expect(forwardedHeaders.get("x-vercel-protection-bypass")).toBe("test-bypass-secret");
   });
 
   it("forwards valid Python HTTP error responses as-is", async () => {

@@ -56,6 +56,20 @@ export function buildPythonBackendUrl(baseUrl: URL, path: BackendRouteUpstreamPa
   return new URL(path, baseUrl);
 }
 
+// Vercel Preview deployments are protected (SSO/Deployment Protection) by
+// default. This attaches Vercel's own documented "Protection Bypass for
+// Automation" header so a server-to-server proxy call can reach a
+// protection-gated backend Preview during testing. No-op — and therefore
+// harmless in production — unless PYTHON_BACKEND_BYPASS_SECRET is
+// explicitly configured. This is unrelated to, and does not affect,
+// Authorization/Cookie forwarding decisions.
+export function applyDeploymentProtectionBypass(headers: Headers): void {
+  const bypassSecret = process.env.PYTHON_BACKEND_BYPASS_SECRET?.trim();
+  if (bypassSecret) {
+    headers.set("x-vercel-protection-bypass", bypassSecret);
+  }
+}
+
 export function resolveBackendRoute(endpoint: BackendRouteEndpoint): BackendRouteDecision {
   const routeValue = getEndpointRouteValue(endpoint);
 

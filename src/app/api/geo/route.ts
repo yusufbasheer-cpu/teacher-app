@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveBackendRoute } from "@/lib/backend-routing";
+import { applyDeploymentProtectionBypass, resolveBackendRoute } from "@/lib/backend-routing";
 import { resolveGeoLocation } from "@/lib/geo-service";
 
 export const GEO_PYTHON_PROXY_TIMEOUT_MS = 9000;
@@ -10,6 +10,7 @@ function buildGeoProxyHeaders(incoming: Headers): Headers {
     const value = incoming.get(name);
     if (value) headers.set(name, value);
   }
+  applyDeploymentProtectionBypass(headers);
   return headers;
 }
 

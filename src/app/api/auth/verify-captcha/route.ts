@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
-import { resolveBackendRoute } from "@/lib/backend-routing";
+import { applyDeploymentProtectionBypass, resolveBackendRoute } from "@/lib/backend-routing";
 
 export const runtime = "nodejs";
 
@@ -17,6 +17,7 @@ function buildCaptchaProxyHeaders(incoming: Headers): Headers {
     const value = incoming.get(name);
     if (value) headers.set(name, value);
   }
+  applyDeploymentProtectionBypass(headers);
   return headers;
 }
 
