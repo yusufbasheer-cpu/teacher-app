@@ -27,6 +27,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("NEXT_PUBLIC_SUPABASE_ANON_KEY", "supabase_anon_key"),
     )
 
+    turnstile_secret_key: str = Field(
+        default="", validation_alias=AliasChoices("TURNSTILE_SECRET_KEY", "turnstile_secret_key")
+    )
+    turnstile_timeout_seconds: float = 5.0
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

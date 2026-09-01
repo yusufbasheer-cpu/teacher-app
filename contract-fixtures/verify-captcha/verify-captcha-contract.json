@@ -1,0 +1,64 @@
+{
+  "cases": [
+    {
+      "name": "missing_secret_skips_turnstile",
+      "secretConfigured": false,
+      "rawBody": "not-even-valid-json{",
+      "turnstileCalled": false,
+      "expected": { "status": 200, "json": { "ok": true } }
+    },
+    {
+      "name": "invalid_json_body",
+      "secretConfigured": true,
+      "rawBody": "not-json{",
+      "turnstileCalled": false,
+      "expected": { "status": 400, "json": { "ok": false, "error": "Invalid request." } }
+    },
+    {
+      "name": "missing_token",
+      "secretConfigured": true,
+      "body": {},
+      "turnstileCalled": false,
+      "expected": { "status": 400, "json": { "ok": false, "error": "Missing captcha token." } }
+    },
+    {
+      "name": "trims_whitespace_from_token",
+      "secretConfigured": true,
+      "body": { "token": "  good-token  " },
+      "expectedTurnstileToken": "good-token",
+      "turnstileResponse": { "status": 200, "json": { "success": true } },
+      "turnstileCalled": true,
+      "expected": { "status": 200, "json": { "ok": true } }
+    },
+    {
+      "name": "success",
+      "secretConfigured": true,
+      "body": { "token": "good-token" },
+      "turnstileResponse": { "status": 200, "json": { "success": true } },
+      "turnstileCalled": true,
+      "expected": { "status": 200, "json": { "ok": true } }
+    },
+    {
+      "name": "turnstile_rejects_token",
+      "secretConfigured": true,
+      "body": { "token": "bad-token" },
+      "turnstileResponse": {
+        "status": 200,
+        "json": { "success": false, "error-codes": ["invalid-input-response"] }
+      },
+      "turnstileCalled": true,
+      "expected": {
+        "status": 403,
+        "json": { "ok": false, "error": "Captcha verification failed. Please try again." }
+      }
+    },
+    {
+      "name": "turnstile_transport_failure_fails_open",
+      "secretConfigured": true,
+      "body": { "token": "any-token" },
+      "turnstileResponse": { "networkError": true },
+      "turnstileCalled": true,
+      "expected": { "status": 200, "json": { "ok": true } }
+    }
+  ]
+}
