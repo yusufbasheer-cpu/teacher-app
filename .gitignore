@@ -42,3 +42,10 @@ eng.traineddata
 
 # vercel CLI project link (local machine state, not shared)
 .vercel
+
+# python (backend-python/)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
