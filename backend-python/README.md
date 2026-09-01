@@ -41,6 +41,15 @@ python -m pytest backend-python/tests/integration -m integration
 
 Do not point the integration variables at production or an unclassified hosted project.
 
+## Production
+
+Deployment status, canonical start command, environment variables, and
+rollback procedure are documented in
+`docs/migration-audit/FASTAPI_DEPLOYMENT_RUNBOOK.md`. Platform choice
+rationale is in `docs/migration-audit/FASTAPI_DEPLOYMENT_DECISION.md`.
+`render.yaml` in this directory documents the (not yet provisioned) Render
+Blueprint.
+
 ## Endpoints
 
 - `GET /health`

@@ -1,0 +1,22 @@
+# Render Blueprint for the FastAPI backend migration pilot.
+#
+# This documents the intended service configuration in the same style as
+# the sibling python-ppt-api/render.yaml. Neither has been confirmed live;
+# see docs/migration-audit/FASTAPI_DEPLOYMENT_DECISION.md for why Render
+# was chosen as the technically preferred (not yet provisioned) option.
+#
+# If created manually via the Render dashboard instead of Blueprint sync,
+# set "Root Directory" to backend-python so the commands below resolve
+# correctly.
+services:
+  - type: web
+    name: layah-backend-python
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10

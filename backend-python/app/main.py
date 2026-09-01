@@ -9,6 +9,7 @@ from app.api.routes.geo import router as geo_router
 from app.api.routes.health import router as health_router
 from app.api.routes.lesson_plan import router as lesson_plan_router
 from app.config import get_settings
+from app.observability import request_logging_middleware
 
 
 def configure_logging() -> None:
@@ -22,6 +23,8 @@ def configure_logging() -> None:
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title=settings.app_name, version="0.1.0")
+
+    app.middleware("http")(request_logging_middleware)
 
     if settings.cors_allowed_origins:
         app.add_middleware(
