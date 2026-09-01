@@ -37,6 +37,21 @@ export function resolveLessonTopicNote(
   return c ? t : null;
 }
 
+/**
+ * The topic used inside generation prompts (as opposed to display titles).
+ * Topic is optional in the form, but per-slide/per-section prompts always
+ * interpolate this value directly — an empty topic there produces a blank
+ * "...lesson on: " prompt that pushes the model toward inventing a generic
+ * one. Falling back to chapter keeps every generation call anchored to
+ * something the teacher actually entered.
+ */
+export function resolveGenerationTopic(
+  topic: string | null | undefined,
+  chapter: string | null | undefined,
+): string {
+  return topic?.trim() || chapter?.trim() || "";
+}
+
 /** Current AI package: six top-level outputs from DeepSeek. */
 export const TEACHER_PACKAGE_SECTIONS = [
   "Full Lesson Plan",

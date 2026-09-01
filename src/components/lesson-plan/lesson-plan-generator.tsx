@@ -1027,7 +1027,7 @@ export function LessonPlanGenerator() {
                     <Field
                       label="Curriculum framework"
                       optional
-                      hint="Aligns every part of the package with that system's expectations."
+                      hint="Uses the selected framework to guide objectives, terminology, and structure — not a certified compliance check."
                       className="sm:col-span-2"
                     >
                       <Select

@@ -9,6 +9,7 @@ import {
   sanitizeSlide10ExtendedBody,
   stripSlideTitleEchoFromBody,
 } from "@/lib/ppt-slide-by-slide";
+import { resolveGenerationTopic } from "@/lib/lesson-plan";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const MAX_ATTEMPTS = 3;
@@ -37,10 +38,17 @@ type DSMessage = { role: "system" | "user"; content: string };
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-function buildIsolatedSystemPrompt(slideName: string): string {
+function buildIsolatedSystemPrompt(slideName: string, params: SlideGenParams): string {
+  const { topic, subject, grade, chapter } = params;
+  const focus = resolveGenerationTopic(topic, chapter) || subject;
   return `You are a professional teacher creating a PowerPoint presentation slide. You are generating content for ONE specific slide ONLY.
 
 SLIDE: ${slideName}
+
+LOCKED LESSON CONTEXT (authoritative — do not deviate):
+- Subject: ${subject}
+- Grade: ${grade}
+${chapter?.trim() ? `- Chapter: ${chapter.trim()}\n` : ""}- Topic: ${focus}
 
 STRICT ISOLATION RULES:
 1. Generate content ONLY for the slide named above. Do NOT include content for any other slide.
@@ -49,7 +57,12 @@ STRICT ISOLATION RULES:
 4. Do NOT use bullet symbols (-, *, •) — use numbered lists or plain paragraph lines.
 5. Return clean plain text that is classroom-ready and professional.
 6. Content must be specific to the actual topic being taught.
-7. Do NOT reference what came before or what comes after this slide.`;
+7. Do NOT reference what came before or what comes after this slide.
+
+TOPIC LOCK (critical):
+- The locked lesson context above is the ONLY subject matter this slide may teach. Treat it as authoritative regardless of what other subjects, chapters, or example topics you may associate with this grade or subject area.
+- Do NOT substitute, drift to, or blend in a different or "example" topic (e.g. a common textbook example for this subject) even if it feels like a natural or well-known illustration — every sentence must stay grounded in "${focus}".
+- If you are uncertain about a specific fact, stay generically correct and on-topic rather than switching to a different, better-known topic.`;
 }
 
 function cleanBody(body: string, slideName: string): string {
@@ -158,7 +171,7 @@ export function generateSlide1Body(params: SlideGenParams): SlideGenResult {
 export async function generateSlide2(params: SlideGenParams): Promise<SlideGenResult> {
   const { topic, subject, grade, starterAflBlock } = params;
   const slideName = "Starter Activity";
-  const system = buildIsolatedSystemPrompt(slideName);
+  const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate a Starter Activity for a ${grade} ${subject} lesson.
 Topic: ${topic}
 ${starterAflBlock ? `AFL Starter Tool: ${starterAflBlock}` : "Choose an appropriate engaging starter AFL tool."}
@@ -181,7 +194,7 @@ Requirements:
 export async function generateSlide3(params: SlideGenParams): Promise<SlideGenResult> {
   const { topic, subject, grade, chapter } = params;
   const slideName = "Chapter, Topic and SDG Goal";
-  const system = buildIsolatedSystemPrompt(slideName);
+  const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate exactly THREE items for a ${grade} ${subject} lesson on: ${topic}
 
 Item 1 — Chapter: ${chapter ? chapter : `The most appropriate chapter or unit that contains "${topic}"`}
@@ -212,7 +225,7 @@ export function generateSlide4Body(params: SlideGenParams): SlideGenResult {
 export async function generateSlide5(params: SlideGenParams): Promise<SlideGenResult> {
   const { topic, subject, grade, learningObjectives } = params;
   const slideName = "Learning Outcomes";
-  const system = buildIsolatedSystemPrompt(slideName);
+  const system = buildIsolatedSystemPrompt(slideName, params);
   const objectiveLines = (learningObjectives ?? "")
     .split("\n")
     .filter((l) => l.trim()).length;
@@ -239,7 +252,7 @@ Requirements:
 export async function generateSlide6(params: SlideGenParams): Promise<SlideGenResult> {
   const { topic, subject, grade, curriculumType, mainAflBlock } = params;
   const slideName = "Main Phase Core Teaching";
-  const system = buildIsolatedSystemPrompt(slideName);
+  const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate the Main Phase Core Teaching content for a ${grade} ${subject} lesson.
 Topic: ${topic}
 ${curriculumType ? `Curriculum: ${curriculumType}` : ""}
@@ -273,7 +286,7 @@ Requirements:
 export async function generateSlide7(params: SlideGenParams): Promise<SlideGenResult> {
   const { topic, subject, grade } = params;
   const slideName = "Differentiated Activity and Mini Plenary";
-  const system = buildIsolatedSystemPrompt(slideName);
+  const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate differentiated activities for a ${grade} ${subject} lesson on: ${topic}
 
 Write EXACTLY FOUR sections in this precise order:
@@ -308,7 +321,7 @@ export async function generateSlide8(params: SlideGenParams): Promise<SlideGenRe
   const slideName = uaeFrameworkEnabled
     ? "UAE Real Life and Cross Curricular Connection"
     : "Real Life and Cross Curricular Connection";
-  const system = buildIsolatedSystemPrompt(slideName);
+  const system = buildIsolatedSystemPrompt(slideName, params);
 
   const user = uaeFrameworkEnabled
     ? `Generate UAE Real Life and Cross Curricular Connection content for a ${grade} ${subject} lesson on: ${topic}
@@ -348,7 +361,7 @@ Requirements:
 export async function generateSlide9(params: SlideGenParams): Promise<SlideGenResult> {
   const { topic, subject, grade, plenaryAflBlock } = params;
   const slideName = "Plenary";
-  const system = buildIsolatedSystemPrompt(slideName);
+  const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate a complete Plenary activity for a ${grade} ${subject} lesson on: ${topic}
 ${plenaryAflBlock ? `AFL Plenary Tool: ${plenaryAflBlock}` : "Choose the most appropriate plenary AFL tool."}
 
@@ -377,7 +390,7 @@ Requirements:
 export async function generateSlide10(params: SlideGenParams): Promise<SlideGenResult> {
   const { topic, subject, grade } = params;
   const slideName = "Extended Task";
-  const system = buildIsolatedSystemPrompt(slideName);
+  const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate a Homework or Extended Task for a ${grade} ${subject} lesson on: ${topic}
 
 Include:
@@ -405,7 +418,7 @@ Requirements:
 export async function generateSlide11(params: SlideGenParams): Promise<SlideGenResult> {
   const { topic, subject, grade } = params;
   const slideName = "Exit Ticket";
-  const system = buildIsolatedSystemPrompt(slideName);
+  const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate 2-3 Exit Ticket questions for a ${grade} ${subject} lesson on: ${topic}
 
 Requirements:
@@ -426,7 +439,7 @@ Requirements:
 export async function generateSlide12(params: SlideGenParams): Promise<SlideGenResult> {
   const { topic, subject, grade } = params;
   const slideName = "Success Criteria and Self Evaluation";
-  const system = buildIsolatedSystemPrompt(slideName);
+  const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate Success Criteria and Self Evaluation for a ${grade} ${subject} lesson on: ${topic}
 
 Section 1 — Success Criteria:

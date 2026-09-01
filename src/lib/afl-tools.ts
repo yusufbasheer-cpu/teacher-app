@@ -1127,7 +1127,7 @@ ${sourceMaterialBlock ?? ""}
 ${toolList}
 
 ### Rules for EVERY sheet
-- **Heading:** AFL tool name + topic (e.g. "Learning Stations — Photosynthesis")
+- **Heading:** AFL tool name + the requested topic above (e.g. "Learning Stations — ${input.topic || "<TOPIC>"}")
 - **Student instructions:** clear, grade-appropriate, written directly to the student (second person). No teacher instructions on the sheet.
 - **Full activity content** — generate the complete content the student interacts with:
   - **Learning Stations** → 3 to 4 numbered station cards, each with a clear heading and 2–3 tasks or questions the student completes at that station.
