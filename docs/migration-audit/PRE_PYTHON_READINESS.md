@@ -49,6 +49,8 @@ Checkpoint 9 added a guarded integration harness for `POST /api/lesson-plan/save
 
 Checkpoint 10 repeated the classification and found the same blocker. The `.env.local` project ref `jbwevzvtloahjoamwnjt` is still `UNKNOWN`, not mutation-safe.
 
+Checkpoint 11 found that local Supabase is not yet reproducible because the CLI/runtime are absent and the migration chain does not create `public.lesson_plans`.
+
 Required before cutover candidacy:
 
 - local Supabase runtime with Auth/PostgREST/RLS, or

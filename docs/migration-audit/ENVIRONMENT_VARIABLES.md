@@ -40,7 +40,7 @@ Actual values were not copied. Variable names were gathered from `.env.example` 
 | `RUN_SUPABASE_INTEGRATION_TESTS` | explicit opt-in for networked Supabase integration tests | test only | No | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
 | `ALLOW_SUPABASE_INTEGRATION_MUTATIONS` | explicit approval for isolated Supabase test mutations | test only | No but high-impact | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
 | `SUPABASE_INTEGRATION_ENVIRONMENT` | environment safety marker; must be `local`, `test`, or `staging` | test only | No | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
-| `SUPABASE_INTEGRATION_URL` | isolated Supabase target for RLS integration tests | test only | No | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
+| `SUPABASE_INTEGRATION_URL` | isolated Supabase target for RLS integration tests; `local` mode must use localhost/127.0.0.1/::1 | test only | No | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
 | `SUPABASE_INTEGRATION_ANON_KEY` | anon key for isolated Supabase RLS integration tests | test only | Public credential | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
 | `SUPABASE_INTEGRATION_SERVICE_ROLE_KEY` | fixture-admin key for creating synthetic users and verifying cleanup in isolated tests | test only | Yes | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
 
@@ -54,3 +54,4 @@ Known frontend-exposed variables are prefixed `NEXT_PUBLIC_*`. No server-only se
 - `src/lib/try-parse-api-json.ts` is frontend-safe and should be reused for local API responses instead of ad hoc parsers.
 - `SUPABASE_SERVICE_ROLE_KEY` and other server-only secrets must never enter the browser API-client abstraction.
 - The FastAPI pilot reuses the existing Supabase URL and anon-key variable names; no Python-specific duplicate secret is introduced.
+- `backend-python/.env.integration.example` is a local integration-test template only. It must not be populated with production or unknown hosted credentials.

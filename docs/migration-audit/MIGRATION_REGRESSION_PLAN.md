@@ -33,6 +33,8 @@ Checkpoint 8 adds unit-contract coverage for authenticated lesson-plan persisten
 
 Checkpoint 9 adds an explicit integration test harness at `backend-python/tests/integration/test_lesson_plan_rls.py`. It is skipped unless a non-production Supabase target is deliberately configured with `RUN_SUPABASE_INTEGRATION_TESTS=1`, `ALLOW_SUPABASE_INTEGRATION_MUTATIONS=1`, and `SUPABASE_INTEGRATION_ENVIRONMENT=local|test|staging`. A successful real run is still required before lesson-plan save can become a Python cutover candidate.
 
+Checkpoint 11 hardened the local guard so `SUPABASE_INTEGRATION_ENVIRONMENT=local` requires a localhost URL. It also documented that local Supabase reset is blocked until runtime tooling exists and `SUPABASE_SCHEMA_DRIFT.md` is resolved.
+
 ## Critical User Journeys
 
 - signup/login/logout/OAuth callback

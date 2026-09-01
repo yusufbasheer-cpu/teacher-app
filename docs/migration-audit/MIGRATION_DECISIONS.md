@@ -157,3 +157,15 @@ Alternatives considered: Running the guarded harness against `.env.local`, creat
 Impact: No unsafe mutation occurred. Cutover candidacy is blocked only by provisioning/identifying a safe Supabase RLS integration environment and running the existing harness successfully.
 
 Status: Implemented.
+
+## 2026-09-01
+
+Decision: Do not add a local Supabase config or baseline migration until `lesson_plans` schema-source drift is resolved.
+
+Reason: Checkpoint 11 found that Supabase CLI and Docker are unavailable in the current workspace, and the tracked migration chain does not create `public.lesson_plans` before later migrations alter it. Adding a reduced local table or choosing `schema.sql` over migrations without reconciliation would produce misleading RLS evidence.
+
+Alternatives considered: Creating a minimal `supabase/config.toml` immediately, adding a new baseline migration for only `lesson_plans`, loading `schema.sql` manually, or running the harness against the unclassified `.env.local` hosted project.
+
+Impact: The integration harness local guard is stricter, local env documentation exists, and the exact schema/tooling blocker is documented. `POST /api/lesson-plan/save` remains `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`.
+
+Status: Implemented.

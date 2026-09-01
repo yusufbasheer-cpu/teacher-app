@@ -4,6 +4,7 @@ import os
 import uuid
 from collections.abc import Iterator
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 import pytest
@@ -15,6 +16,7 @@ from app.main import create_app
 pytestmark = pytest.mark.integration
 
 SAFE_ENVIRONMENTS = {"local", "test", "staging"}
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 PRODUCTION_WORDS = ("prod", "production", "live")
 
 
@@ -42,6 +44,12 @@ def _integration_config() -> dict[str, str]:
     lowered_url = url.lower()
     if any(word in lowered_url for word in PRODUCTION_WORDS):
         raise RuntimeError("Refusing to run Supabase integration tests against production-like URL")
+    host = urlparse(url).hostname
+    if environment == "local" and host not in LOCAL_HOSTS:
+        raise RuntimeError(
+            "Refusing local Supabase integration tests unless "
+            "SUPABASE_INTEGRATION_URL points at localhost, 127.0.0.1, or ::1"
+        )
 
     return {
         "environment": environment,

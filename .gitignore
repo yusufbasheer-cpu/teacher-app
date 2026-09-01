@@ -21,6 +21,7 @@ pnpm-debug.log*
 # local env files
 .env*
 !.env.example
+!backend-python/.env.integration.example
 
 # accidental secret-copy artifacts (seen in the wild, easy to miss)
 env.download

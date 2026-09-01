@@ -27,6 +27,20 @@ python -m pytest backend-python/tests
 python -m ruff check backend-python/app backend-python/tests
 ```
 
+## Local Supabase Integration Testing
+
+The lesson-plan RLS integration test is networked and mutating, so it is skipped by default.
+
+Current status: blocked until local Supabase prerequisites and schema drift are resolved. See `docs/migration-audit/LOCAL_SUPABASE_TESTING.md` and `docs/migration-audit/SUPABASE_SCHEMA_DRIFT.md`.
+
+When a faithful local Supabase runtime exists, use `backend-python/.env.integration.example` as the variable template and run:
+
+```powershell
+python -m pytest backend-python/tests/integration -m integration
+```
+
+Do not point the integration variables at production or an unclassified hosted project.
+
 ## Endpoints
 
 - `GET /health`

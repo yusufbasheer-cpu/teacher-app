@@ -10,6 +10,8 @@ Checkpoint 9 could not run real Supabase mutation tests because the available en
 
 Checkpoint 10 re-ran the environment classification step and reached the same safety result: no local, dedicated test, or controlled staging Supabase target is currently available from repository evidence. No mutation test was run.
 
+Checkpoint 11 attempted to establish local Supabase reproducibility, but stopped before local startup because the required runtime tools are unavailable and the tracked migration chain does not create `public.lesson_plans`. See `LOCAL_SUPABASE_TESTING.md` and `SUPABASE_SCHEMA_DRIFT.md`.
+
 ## Environment Inspection
 
 Repository evidence:
@@ -19,6 +21,8 @@ Repository evidence:
 - No `supabase/config.toml` exists.
 - Supabase CLI was not available on PATH during this checkpoint.
 - Docker was not available on PATH during this checkpoint.
+- `supabase/config.toml` was not created because schema-source drift must be resolved first.
+- The migration chain has no initial `lesson_plans` creation migration.
 - `.github/workflows/ci.yml` uses placeholder Supabase values for fast checks only.
 - `.env.local` contains Supabase URL, anon key, and service-role key, but no `SUPABASE_ENVIRONMENT`, staging marker, test marker, or mutation approval marker.
 
@@ -28,7 +32,7 @@ Environment classification:
 | --- | --- | --- | --- | --- | --- |
 | `.env.local` Supabase project | `.env.local` | `jbwevzvtloahjoamwnjt` | `UNKNOWN` | No | URL, anon key, and service-role key are present, but no repo doc or env marker identifies it as local/test/staging. |
 | CI placeholder Supabase | `.github/workflows/ci.yml` | `placeholder` | `UNKNOWN` | No | Placeholder values are for fast checks only and are not a real Supabase target. |
-| Local Supabase | `supabase/` directory | none | `LOCAL` unavailable | No | `supabase/schema.sql` and migrations exist, but no `supabase/config.toml`, Supabase CLI, or Docker runtime is available. |
+| Local Supabase | `supabase/` directory | none | `LOCAL` unavailable | No | `supabase/schema.sql` and migrations exist, but no `supabase/config.toml`, Supabase CLI, Docker runtime, or complete fresh-reset migration chain is available. |
 | Dedicated test Supabase | repository docs/config | none | `DEDICATED_TEST` unavailable | No | No dedicated test project reference or credentials found. |
 | Controlled staging Supabase | repository docs/config | none | `CONTROLLED_STAGING` unavailable | No | Staging URLs in docs are placeholders; no staging Supabase project reference found. |
 | Production Supabase | repository docs/config | unknown | `UNKNOWN` | No | Production identity is not documented in repo; unknown is treated as unsafe. |
@@ -156,6 +160,14 @@ Checkpoint 10 blocker:
 
 `POST /api/lesson-plan/save` therefore moves from plain `PYTHON_PARITY` to `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`.
 
+Checkpoint 11 blocker:
+
+- Local Supabase cannot currently be reproduced from tracked repo state.
+- Supabase CLI is absent.
+- Docker-compatible runtime is absent.
+- The migration chain does not create `public.lesson_plans`; later migrations assume it already exists.
+- The harness local guard was hardened so `SUPABASE_INTEGRATION_ENVIRONMENT=local` requires a localhost target.
+
 ## Auth Provider Coupling
 
 The current FastAPI auth path validates each bearer token through Supabase Auth `/auth/v1/user`. Operational consequences:
@@ -196,7 +208,8 @@ Required hosted strategy:
 Required local strategy:
 
 - Add the minimal Supabase CLI configuration needed to run Auth, PostgREST, and Postgres locally.
-- Apply the same lesson-plan schema and RLS policies.
+- Resolve `SUPABASE_SCHEMA_DRIFT.md` before adding or using that configuration.
+- Apply the same lesson-plan schema and RLS policies from the reconciled source.
 - Run with `SUPABASE_INTEGRATION_ENVIRONMENT=local`.
 - Do not reduce policies just to make integration tests pass.
 

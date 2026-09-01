@@ -10,6 +10,8 @@ The request contained placeholders instead of usable URLs:
 
 No browser/network comparison was performed because there were no concrete deployed URLs and no credentials.
 
+Checkpoint 11 local RLS comparison status: not run. Local Supabase is blocked by missing Supabase CLI/Docker runtime and schema-source drift for `lesson_plans`.
+
 ## Comparison Matrix
 
 | Feature / Behavior | Production | Staging | Current branch | Difference | Expected? | Source-code explanation | Migration implication |
@@ -32,3 +34,9 @@ Provide production, staging, and preview URLs plus test credentials. Then run:
 - Razorpay test-mode checkout/webhook replay
 - responsive screenshots
 - network/console error capture
+
+## Local RLS Test Configuration
+
+Production and unknown hosted Supabase configuration must remain separate from local RLS test configuration.
+
+Use `backend-python/.env.integration.example` only with a local Supabase URL such as `http://127.0.0.1:54321` after `SUPABASE_SCHEMA_DRIFT.md` is resolved. Do not copy `.env.local` hosted project credentials into the integration variables unless that project has been explicitly classified as dedicated test or controlled staging.
