@@ -33,19 +33,21 @@ Checkpoint 17 re-confirmed the same account-access gap and attempted no further 
 
 Checkpoint 18, with external provisioning still blocked, continued useful repository-side work: selected `POST /api/auth/verify-captcha` as the second Track B pilot from a 5-candidate shortlist (see `VERIFY_CAPTCHA_PYTHON_PARITY_CONTRACT.md`), froze its contract, implemented Python parity, and generalized the geo routing seam to support a second allowlisted endpoint with its own disabled-by-default opt-in (`BACKEND_ROUTE_VERIFY_CAPTCHA`). Also found, while reviewing candidates, that `feedback`/`waitlist`/`school-register` perform privileged Supabase service-role writes — undersold by their prior `PYTHON_PARITY` label — and re-classified them `NEXT_ONLY` pending a mutation-safe migration design.
 
+Checkpoint 19 provisioned the first real remote FastAPI target: Vercel project `teacher-app/layah-backend-python` (Preview environment), created only after Render/Railway remained unavailable and the user explicitly authorized provisioning under the teammate's personal Vercel account (a real account-ownership ambiguity this checkpoint's safety rule required stopping for, rather than guessing). Health/readiness/geo verified remotely with matching contract; verify-captcha's contract paths verified remotely too (its Turnstile provider path is pending — no secret configured). A genuine platform-compatibility issue was found and fixed narrowly: Vercel's Services deployment mode needs an explicit `entrypoint` in `vercel.json`, not just filename-convention auto-detection. Next-side routing was deliberately not enabled — see `FASTAPI_REMOTE_DEPLOYMENT.md`.
+
 ## Migration Tracks
 
 | Track | Status | Examples | Blocker |
 | --- | --- | --- | --- |
 | Track A: authenticated DB migration | blocked for cutover | `POST /api/lesson-plan/save`, future saved lesson CRUD | reproducible schema plus live RLS integration |
-| Track B: non-DB/public migration | not blocked by RLS schema drift, but blocked on deployment | `GET /api/geo`, `POST /api/auth/verify-captcha` | endpoint-specific parity done for both; both `ROUTING_READY`/`CUTOVER_VALIDATED` pending a real FastAPI deployment target |
+| Track B: non-DB/public migration | not blocked by RLS schema drift; deployment target now exists (Vercel), Next-side routing not yet enabled | `GET /api/geo`, `POST /api/auth/verify-captcha` | endpoint-specific parity and remote deployment verification done for both; both `_REMOTE_TARGET_READY`, pending Checkpoint 20's Next-side routing/cutover decision |
 
 ## Cutover Readiness Matrix
 
 | Endpoint | Python parity | DB dependency | Auth dependency | Live integration required | Cutover blocker |
 | --- | --- | --- | --- | --- | --- |
-| `GET /api/geo` | Yes | None | None | No | None known; still no traffic cutover |
-| `POST /api/auth/verify-captcha` | Yes | None | None | No | None known beyond deployment; no fallback on Python transport failure by design (single-use Turnstile token) |
+| `GET /api/geo` | Yes | None | None | No | Remote target exists (Vercel); `PYTHON_BACKEND_URL`/`BACKEND_ROUTE_GEO` not yet configured on Next — Checkpoint 20 |
+| `POST /api/auth/verify-captcha` | Yes | None | None | No | Remote target exists (Vercel); routing not yet configured on Next — Checkpoint 20. No fallback on Python transport failure by design (single-use Turnstile token) |
 | `POST /api/lesson-plan/save` | Yes | `lesson_plans` and owner RLS | Supabase bearer token | Yes | schema reproducibility and safe RLS target |
 | `POST /api/lesson-plan` | No cutover parity | usage, generation events, AI providers | Supabase auth/session | Yes | quota, streaming, provider payload parity |
 | `POST /api/question-paper` | Not promoted | usage, generation persistence, AI providers | Supabase auth/session | Yes | quota and AI/persistence parity |

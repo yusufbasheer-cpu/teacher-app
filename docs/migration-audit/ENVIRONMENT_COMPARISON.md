@@ -22,6 +22,8 @@ Checkpoint 16 status: still no deployed URL for `backend-python` to compare agai
 
 Checkpoint 17 status: attempted to provision a real remote target for comparison; blocked by lack of Render/Railway/Vercel account access in this session. Still no deployed URL exists. See `FASTAPI_DEPLOYMENT_DECISION.md` Checkpoint 17 addendum.
 
+Checkpoint 19 status: a real deployed URL now exists (Vercel, Preview environment, project `teacher-app/layah-backend-python`). Direct remote health/readiness/geo/verify-captcha(contract-only) were verified against it and matched the local baseline exactly. Next→remote-Python routing comparison still not run — `PYTHON_BACKEND_URL`/`BACKEND_ROUTE_*` remain unset on the Next side; that comparison is Checkpoint 20's job. See `FASTAPI_REMOTE_DEPLOYMENT.md`.
+
 ## Comparison Matrix
 
 | Feature / Behavior | Production | Staging | Current branch | Difference | Expected? | Source-code explanation | Migration implication |

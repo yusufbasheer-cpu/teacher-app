@@ -2,10 +2,14 @@
 
 Date: 2026-09-01
 
-Status: **DEPLOYMENT_READY_EXTERNAL_PROVISIONING_REQUIRED**. Everything
-below has been verified locally. No real hosting account/deployment exists
-yet — see `FASTAPI_DEPLOYMENT_DECISION.md` for platform rationale and the
-exact external steps still required.
+Status: **REMOTE_FASTAPI_PROVISIONED** (Checkpoint 19). A real deployment
+now exists on Vercel (project `teacher-app/layah-backend-python`) — see
+`FASTAPI_REMOTE_DEPLOYMENT.md` for the full verification record. Next-side
+routing is still **not enabled** (Checkpoint 20's job). Everything below
+was written when the backend was still local-only; it remains accurate
+for the Render path (undeployed) and for local development — the
+Vercel-specific deployment procedure is in `FASTAPI_REMOTE_DEPLOYMENT.md`,
+not duplicated here.
 
 ## Prerequisites
 
@@ -212,3 +216,13 @@ account access needs to create the service** — either via Blueprint sync
 from `backend-python/render.yaml` or manual creation with Root Directory
 `backend-python` — and share the resulting HTTPS URL back for the next
 checkpoint to configure `PYTHON_BACKEND_URL` against.
+
+**Checkpoint 19:** the blocker above was resolved — not via Render, but
+via Vercel, after the user explicitly authorized provisioning under the
+teammate's personal Vercel account (the only authenticated platform
+available; see `FASTAPI_DEPLOYMENT_DECISION.md`). A real deployment now
+exists: project `teacher-app/layah-backend-python`, Preview environment,
+health/readiness/geo all verified remotely with matching contract, logs,
+and no secret leakage. Full record: `FASTAPI_REMOTE_DEPLOYMENT.md`. Status
+is now **REMOTE_FASTAPI_PROVISIONED** — `PYTHON_BACKEND_URL` and
+`BACKEND_ROUTE_*` remain unset; Next-side routing is Checkpoint 20's job.

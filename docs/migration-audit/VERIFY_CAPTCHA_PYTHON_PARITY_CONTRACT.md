@@ -167,3 +167,27 @@ follow the exact `BACKEND_ROUTE_GEO`-style per-endpoint opt-in pattern
 established in `src/lib/backend-routing.ts` — no generic gateway, default
 remains Next, no `Authorization`/`Cookie` forwarding (this endpoint never
 needed them), no client-visible backend URL.
+
+(A disabled-by-default routing seam, `BACKEND_ROUTE_VERIFY_CAPTCHA`, was
+in fact added in Checkpoint 18 — see `BACKEND_ROUTING_AND_ROLLBACK.md`.)
+
+## Checkpoint 19 Addendum
+
+A real remote FastAPI target now exists (Vercel, project
+`teacher-app/layah-backend-python` — see `FASTAPI_REMOTE_DEPLOYMENT.md`).
+Verified remotely: `POST /api/auth/verify-captcha` with no
+`TURNSTILE_SECRET_KEY` configured and a garbage (invalid-JSON) body
+still returns `200 {"ok":true}` — confirming the subtlest edge case in
+this contract (secret-absent skips body parsing entirely, so even a
+malformed body never gets a chance to trigger the `400` path) holds in
+the real deployment, not just locally.
+
+**Not verified remotely:** the real Turnstile provider path (success,
+rejection, or transport-failure responses from Cloudflare) —
+`TURNSTILE_SECRET_KEY` was not configured on the remote deployment, per
+this checkpoint's explicit instruction not to expose or copy it without
+a safe, authorized source. Status: `REMOTE_PROVIDER_PATH_NOT_EXERCISED`.
+
+Next→remote-Python routing was not enabled — `PYTHON_BACKEND_URL`/
+`BACKEND_ROUTE_VERIFY_CAPTCHA` remain unset on Next. Manifest status:
+`ROUTING_READY_REMOTE_TARGET_READY`, not `CUTOVER_ACTIVE`.

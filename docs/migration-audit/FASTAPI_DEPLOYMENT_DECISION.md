@@ -1,8 +1,28 @@
 # FastAPI Deployment Decision — Checkpoint 16
 
-Date: 2026-09-01
+Date: 2026-09-01, superseded in part 2026-09-01 (Checkpoint 19) — see
+below.
 
-## Current Deployment State
+## Checkpoint 19: Actual Platform Used
+
+Render remained completely unavailable (still no CLI, no credentials,
+confirmed again this checkpoint). Vercel was authenticated but under the
+teammate's (`yusufbasheer-cpu`) personal account/team
+("Mohammed Yusuf's projects", not a neutral shared team as far as this
+session can verify) — a real account-ownership ambiguity per this
+checkpoint's safety rule. Rather than guess, the user (Uvais) was asked
+directly and explicitly authorized provisioning a new, separate project
+under that account. See the Checkpoint 19 entry in
+`MIGRATION_DECISIONS.md` for the full reasoning, and
+`FASTAPI_REMOTE_DEPLOYMENT.md` for the resulting deployment.
+
+This does not retroactively make Render the "wrong" recommendation — it
+remains the more explicit/self-documenting config of the two originally
+considered. Vercel became the actual choice only because it was the one
+platform an authorized human could actually approve access to in this
+session.
+
+## Current Deployment State (original, Checkpoint 16)
 
 No `backend-python` deployment exists anywhere. Checkpoint 15 ran it only
 as an ephemeral local `uvicorn` process for verification and stopped it
@@ -180,16 +200,23 @@ Per the checkpoint's authorization rule, provisioning was not attempted.
 Classification: `EXTERNAL_PROVISIONING_BLOCKED`. See "Known
 External/Manual Steps Required" below — unchanged from Checkpoint 16.
 
-## Known External/Manual Steps Required
+## Known External/Manual Steps Required (original, Checkpoint 16)
 
-1. A human with Render account access must create the account/service
-   (Blueprint sync from `backend-python/render.yaml`, or manual service
-   creation with Root Directory set to `backend-python`).
-2. Configure `PYTHON_BACKEND_URL` on the Next deployment (Vercel project
-   env vars) to point at the resulting Render URL, server-only, once a
-   target exists.
-3. Only then can `BACKEND_ROUTE_GEO=python` be safely enabled outside a
+1. ~~A human with Render account access must create the account/service~~
+   — superseded: a Vercel deployment now exists instead (Checkpoint 19,
+   `FASTAPI_REMOTE_DEPLOYMENT.md`). Render remains undeployed; this step
+   is no longer blocking, since a real target now exists via a different
+   platform.
+2. Configure `PYTHON_BACKEND_URL` on the Next deployment (`project-scquo`
+   env vars) to point at the new Vercel deployment, server-only. **Not
+   done yet** — Checkpoint 20's job, along with deciding which URL
+   (specific Preview deployment vs. a promoted Production alias) to
+   target.
+3. Only then can `BACKEND_ROUTE_GEO=python` /
+   `BACKEND_ROUTE_VERIFY_CAPTCHA=python` be safely enabled outside a
    local/dev environment.
 
-None of these steps were performed in this checkpoint — they require
-account access this session does not have.
+Step 1 was completed this checkpoint (via Vercel, with explicit user
+authorization given the account-ownership ambiguity — see the
+Checkpoint 19 section above). Steps 2–3 remain undone, intentionally —
+this checkpoint's scope stopped before enabling any Next-side routing.

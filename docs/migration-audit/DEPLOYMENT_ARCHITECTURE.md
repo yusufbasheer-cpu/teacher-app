@@ -74,6 +74,21 @@ Checkpoint 17 re-checked for Render/Railway CLI, MCP tooling, and
 credentials (none found) and confirmed the blocker is unchanged: this is
 purely an account-access gap, not a repository/runtime problem.
 
+Checkpoint 19 deployed `backend-python` to **Vercel** as a new, separate
+project (`teacher-app/layah-backend-python`) — Render/Railway remained
+unavailable, and Vercel was used only after explicit user authorization
+given the account-ownership ambiguity (the authenticated Vercel identity
+is the teammate's personal account, not a neutral shared team). The
+existing frontend project (`project-scquo`) is untouched — confirmed
+before and after via `vercel project ls`, same production URL and
+project ID. Deployment topology: `backend-python/vercel.json` defines it
+as a single Vercel Service with an explicit `entrypoint` (a fix required
+because Vercel's filename-convention auto-detection doesn't apply the
+same way once a project is linked into Services mode — see
+`FASTAPI_REMOTE_DEPLOYMENT.md` for the full EXPECTED/ACTUAL/ROOT CAUSE
+record). Full verification record: `FASTAPI_REMOTE_DEPLOYMENT.md`.
+Next-side routing to this deployment has **not** been enabled.
+
 ## Infrastructure Gaps
 
 - No Terraform, Pulumi, Kubernetes manifests, Dockerfile, docker-compose, nginx config, serverless config, Netlify config, or Fly config were found.

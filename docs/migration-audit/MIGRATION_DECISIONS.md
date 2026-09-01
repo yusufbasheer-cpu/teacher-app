@@ -265,3 +265,27 @@ Alternatives considered: Reusing geo's exact fallback-to-Next behavior (rejected
 Impact: `src/lib/backend-routing.ts` now maps each endpoint to its own env var and upstream path via fixed records instead of a single hardcoded `"geo"` branch; all existing geo tests pass unchanged, proving the generalization didn't alter geo's behavior. `src/app/api/auth/verify-captcha/route.ts` proxies to Python when configured and returns a `502` on transport failure instead of falling back — covered by a dedicated test asserting exactly one `fetch` call occurred (no second, silent call to Turnstile via Next). Configuration was never persisted; default remains Next for both endpoints.
 
 Status: Implemented.
+
+## 2026-09-01 (Checkpoint 19)
+
+Decision: Provision the first real remote FastAPI target on Vercel, under the teammate's (`yusufbasheer-cpu`) personal Vercel account, only after asking the user directly and receiving explicit authorization — rather than either proceeding silently or refusing outright.
+
+Reason: This checkpoint's safety rule requires establishing account ownership, authorization, cost implications, and environment classification before creating any external resource. `vercel teams ls` showed the only authenticated scope, "teacher-app", is literally labeled "Mohammed Yusuf's projects" — a personal account, not a neutral shared team, despite Uvais having separately-confirmed Vercel dashboard access. Render and Railway remained completely unavailable (no CLI, no credentials, confirmed again). This is exactly the "account ownership materially ambiguous" case the checkpoint says to stop for. Since the user was actively present in the conversation and the ambiguity was resolvable in one message, asking directly was more useful than silently blocking and ending the checkpoint — auto-mode explicitly permits stopping for a genuine human decision.
+
+Alternatives considered: Proceeding without asking (rejected — exactly the "do not guess" case this checkpoint warns against); refusing and classifying `PROVISIONING_AUTHORIZATION_BLOCKED` without asking (rejected — the ambiguity was fast to resolve and the user was present, so this would have wasted a round-trip); waiting for Render/Railway credentials instead (still the documented preference, but no timeline for when those would appear, and the user chose to proceed with Vercel now).
+
+Impact: User explicitly authorized "Proceed under Yusuf's Vercel account." A new, separate Vercel project (`layah-backend-python`) was created, fully isolated from `project-scquo` (separate `.vercel/project.json` link scoped to `backend-python/` only; root `.vercel/repo.json` untouched; confirmed unmodified via `vercel project ls` before and after). See `FASTAPI_REMOTE_DEPLOYMENT.md` for the resulting deployment record.
+
+Status: Implemented.
+
+## 2026-09-01 (Checkpoint 19)
+
+Decision: Add an explicit `entrypoint` to the service block in `backend-python/vercel.json` (and, redundantly but harmlessly, `[tool.vercel.entrypoint]` in `pyproject.toml`), after the first two deploy attempts failed.
+
+Reason: Vercel's documented Python entrypoint auto-detection ("same filenames inside `src/` or `app/`") should have matched `backend-python/app/main.py`'s module-level `app` object with zero config. The actual deploy failed both before and after adding the `pyproject.toml` declaration, with: `"detected framework \"fastapi\" in \".\" and must specify an \"entrypoint\" for runtime \"python\"."` Fetching Vercel's own Services documentation showed the reason: `vercel link` wrapped this project in Services mode (`vercel.json`'s `services` key), and in that mode the entrypoint must be declared inside the service's own config block — the `pyproject.toml`-level mechanism is for the non-Services case only.
+
+Alternatives considered: Restructuring the project out of Services mode (rejected — more invasive than necessary, and Services mode is what `vercel link` produced by default for this CLI-created project); guessing at other config shapes without checking documentation first (rejected — this is real external infrastructure, and burning deploy attempts on guesses wastes time and risks confusing failure states).
+
+Impact: `backend-python/vercel.json`'s service block now has `"entrypoint": "app.main:app"`. Third deploy attempt succeeded. No application code changed; local `uvicorn`/pytest/ruff behavior confirmed unaffected (`pip install --dry-run`, full local test suite, ruff all still pass after the change).
+
+Status: Implemented.

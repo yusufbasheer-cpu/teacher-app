@@ -249,6 +249,24 @@ the remote verification steps could run. Classification:
 only. No repository/runtime defect was found — the blocker is purely
 external account access.
 
+## Checkpoint 19 Addendum
+
+Checkpoint 19 provisioned a real remote FastAPI target on Vercel
+(project `teacher-app/layah-backend-python`, Preview environment) and
+verified `GET /api/geo` directly against it: `200`, matching JSON
+contract (`{"country_code":"IN","country_name":"IN"}` via the
+Vercel-auto-injected `x-vercel-ip-country` header), correct content
+type, clean structured logs (method/path/status/request_id/duration,
+no secret leakage). This document graduates from **LOCAL VERIFIED** to
+**REMOTE VERIFIED** for the direct-Python portion. Full record:
+`FASTAPI_REMOTE_DEPLOYMENT.md`.
+
+**Still not done:** Next→remote-Python routing. `PYTHON_BACKEND_URL` and
+`BACKEND_ROUTE_GEO` remain unset on the Next side — this checkpoint
+stopped deliberately before enabling any routing, per its own scope.
+Final routing state is unchanged: `GET /api/geo` → NEXT. Manifest status:
+`CUTOVER_VALIDATED_REMOTE_TARGET_READY`, not `CUTOVER_ACTIVE`.
+
 ## Known Limitations
 
 - Verification was local-only; no preview/staging/production FastAPI
