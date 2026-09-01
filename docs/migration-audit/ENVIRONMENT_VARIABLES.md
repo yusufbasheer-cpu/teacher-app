@@ -12,7 +12,7 @@ Actual values were not copied. Variable names were gathered from `.env.example` 
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key; public API key for the FastAPI Auth/PostgREST pilot | browser/server/Python | Public credential | FRONTEND/SHARED | Supabase helpers, `backend-python/app/config.py` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin bypass RLS | server only | Yes | BACKEND | `src/lib/supabase-admin.ts` |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile site key | browser | No | FRONTEND | auth widget, `.env.example` |
-| `TURNSTILE_SECRET_KEY` | Turnstile verify secret | server | Yes | BACKEND | verify captcha route |
+| `TURNSTILE_SECRET_KEY` | Turnstile verify secret; also read (optional, same name, no Python-specific duplicate) by the FastAPI verify-captcha pilot | server/Python | Yes | BACKEND | verify captcha route, `backend-python/app/config.py` |
 | `SUPER_ADMIN_PIN` | Admin second-factor PIN | server | Yes | BACKEND | super-admin verify PIN |
 | `RAZORPAY_KEY_ID` | Razorpay server key ID | server | Sensitive | BACKEND | Razorpay helper/script |
 | `RAZORPAY_KEY_SECRET` | Razorpay server secret | server | Yes | BACKEND | Razorpay helper/script |
@@ -35,6 +35,7 @@ Actual values were not copied. Variable names were gathered from `.env.example` 
 | `SCHOOL_ADMIN_BYPASS_AUTH` | bypass flag for school admin auth | server | High-risk if enabled | BACKEND | env reference grep |
 | `PYTHON_BACKEND_URL` | server-side FastAPI base URL for explicitly opted-in Next routing seams | server only | No, but internal topology | DEPLOYMENT/BACKEND | `src/lib/backend-routing.ts` |
 | `BACKEND_ROUTE_GEO` | explicit opt-in for routing `GET /api/geo` through Python when set to `python`; missing/unknown values use Next | server only | No | DEPLOYMENT/BACKEND | `src/lib/backend-routing.ts`, `src/app/api/geo/route.ts` |
+| `BACKEND_ROUTE_VERIFY_CAPTCHA` | explicit opt-in for routing `POST /api/auth/verify-captcha` through Python when set to `python`; missing/unknown values use Next; independent of `BACKEND_ROUTE_GEO` (Checkpoint 18) | server only | No | DEPLOYMENT/BACKEND | `src/lib/backend-routing.ts`, `src/app/api/auth/verify-captcha/route.ts` |
 | `NODE_ENV` | runtime mode | build/server | No | DEPLOYMENT | `next.config.ts` |
 | `NEXT_RUNTIME` | Next runtime discriminator | server | No | DEPLOYMENT | env reference grep |
 | `PORT` | Flask port | Python server | No | BACKEND/PPT service | `python-ppt-api/main.py` |
@@ -62,3 +63,4 @@ Known frontend-exposed variables are prefixed `NEXT_PUBLIC_*`. No server-only se
 - Checkpoint 15 confirmed neither `PYTHON_BACKEND_URL` nor `BACKEND_ROUTE_GEO` is set in `.env.local` or `.env.example`. Both were verified live using ephemeral shell-environment values pointed at a local FastAPI process only; neither variable was persisted anywhere.
 - Checkpoint 16 added `PYTHON_VERSION` (platform-level, `backend-python/render.yaml` only, pins Render's Python runtime to `3.12.10`) — not an application-level variable and not read by any Python code. No new application environment variable was introduced. `backend-python` still starts and serves geo with zero environment variables, reconfirmed this checkpoint.
 - Checkpoint 17: no environment variable changes. `PYTHON_BACKEND_URL`/`BACKEND_ROUTE_GEO` remain unset everywhere (no remote target exists to point them at).
+- Checkpoint 18 added `BACKEND_ROUTE_VERIFY_CAPTCHA` (server-only, disabled-by-default opt-in, independent of `BACKEND_ROUTE_GEO`) and confirmed `backend-python`'s FastAPI verify-captcha route reuses the existing `TURNSTILE_SECRET_KEY` name — no Python-specific duplicate secret. Like `PYTHON_BACKEND_URL`/`BACKEND_ROUTE_GEO`, this new variable was never persisted to `.env.local`, `.env.example`, or any deployment platform config; `backend-python` still starts with zero required environment variables.

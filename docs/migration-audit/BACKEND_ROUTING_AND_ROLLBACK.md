@@ -2,7 +2,7 @@
 
 Date: 2026-09-01 (Checkpoint 14), updated 2026-09-01 (Checkpoint 15)
 
-Status: `ROUTING_INFRASTRUCTURE_READY_FOR_GEO_ONLY`.
+Status: `ROUTING_INFRASTRUCTURE_READY_FOR_GEO_AND_VERIFY_CAPTCHA` (Checkpoint 18).
 
 ## Checkpoint 15 Live Verification
 
@@ -29,6 +29,21 @@ Checkpoint 17 re-confirmed the same account-access gap (no Render/Railway/
 Vercel CLI, MCP tool, or credential in this session) and did not attempt
 remote routing. The routing/rollback mechanism described above is
 unchanged and still only verified locally.
+
+## Checkpoint 18: Second Endpoint (`verify-captcha`)
+
+With external provisioning still blocked, Checkpoint 18 generalized this
+routing seam to a second endpoint, `POST /api/auth/verify-captcha`, to
+prove the pattern extends cleanly rather than being geo-specific
+plumbing. `src/lib/backend-routing.ts`'s single hardcoded `"/api/geo"`
+path was replaced with two small `Record<BackendRouteEndpoint, ...>`
+maps (env var name, upstream path) — still a fixed, server-controlled
+allowlist, not a dynamic/generic gateway. All existing geo routing tests
+pass unchanged, proving geo's behavior is byte-identical after the
+generalization.
+
+Verify-captcha's routing differs from geo in one deliberate way: **no
+transport-fallback to Next.** See "Transport Fallback" below.
 
 ## Architecture
 
@@ -63,24 +78,25 @@ Unknown/unapproved endpoints fail closed to Next. The client cannot choose a bac
 
 ## Per-Endpoint Opt-In
 
-Current allowlist: `geo` only.
+Current allowlist: `geo`, `verify-captcha` (Checkpoint 18).
 
 Server-side configuration:
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `PYTHON_BACKEND_URL` | Operator-controlled FastAPI base URL | unset |
+| `PYTHON_BACKEND_URL` | Operator-controlled FastAPI base URL, shared by all allowlisted endpoints | unset |
 | `BACKEND_ROUTE_GEO` | Route `GET /api/geo`; only `python` opts in | Next |
+| `BACKEND_ROUTE_VERIFY_CAPTCHA` | Route `POST /api/auth/verify-captcha`; only `python` opts in | Next |
 
 No `NEXT_PUBLIC_` routing variables are used. The Python backend URL is server-only topology, not browser configuration.
 
-One variable per migrated endpoint is intentionally simpler than a compact allowlist at this stage: only one endpoint is eligible, and the explicit name makes accidental broad routing harder.
+One variable per migrated endpoint is intentionally simpler than a compact allowlist at this stage: each endpoint is independently eligible, and the explicit name makes accidental broad routing harder. Setting one endpoint's variable has no effect on the other — verified by an explicit isolation test in `src/lib/backend-routing.test.ts`.
 
 ## Python URL Handling
 
 `PYTHON_BACKEND_URL` must parse as `http:` or `https:` and must not contain embedded credentials, query, or hash. HTTP remains allowed for local development; hosted production should use HTTPS.
 
-The geo upstream path is fixed in code as `/api/geo`. Client query parameters, headers, or request body cannot select an arbitrary target.
+Each allowlisted endpoint's upstream path is fixed in code (`/api/geo`, `/api/auth/verify-captcha`) via a `Record<BackendRouteEndpoint, path>` map. Client query parameters, headers, or request body cannot select an arbitrary target or an unlisted path.
 
 ## Timeout
 
@@ -90,22 +106,27 @@ Reason: the Python geo implementation preserves the existing provider behavior, 
 
 ## Request Forwarding
 
-For geo, the proxy forwards only:
+For geo (`GET`, no body), the proxy forwards only:
 
 - `Accept: application/json`
 - `x-vercel-ip-country`
 - `x-forwarded-for`
 - `x-real-ip`
 
-It does not forward:
+For verify-captcha (`POST`, has a body), the proxy forwards:
+
+- `Content-Type: application/json`, `Accept: application/json`
+- `x-forwarded-for`, `x-real-ip`
+- the raw request body, unmodified (needed — it carries the CAPTCHA token)
+
+Neither forwards:
 
 - `Authorization`
 - `Cookie`
 - arbitrary client headers
 - Vercel/internal headers
-- request bodies
 
-Geo is public and non-authenticated, so bearer/cookie forwarding is unnecessary and intentionally blocked.
+Both endpoints are public and non-authenticated, so bearer/cookie forwarding is unnecessary and intentionally blocked — verified for both by dedicated tests asserting `forwardedHeaders.has("authorization") === false` / `.has("cookie") === false` even when the incoming request carries them.
 
 ## Response Behavior
 
@@ -120,7 +141,7 @@ The route does not wrap the Python response in a new envelope.
 
 ## Transport Fallback
 
-For this geo pilot only:
+**Geo:**
 
 ```text
 Python selected + transport failure
@@ -128,11 +149,37 @@ Python selected + transport failure
   -> call existing Next geo service
 ```
 
-Transport failure includes connection failure, DNS failure, timeout/abort, or fetch throwing before a usable response exists.
+Transport failure includes connection failure, DNS failure, timeout/abort, or fetch throwing before a usable response exists. Safe because geo is a pure read with no external side effect to duplicate.
 
-Valid Python HTTP responses, including 4xx and 5xx, are forwarded and do not trigger fallback. This keeps Python application errors observable instead of silently hiding semantic defects.
+**Verify-captcha: deliberately NO fallback.**
 
-This fallback model must not automatically be reused for mutating endpoints. Retrying or falling back after a POST/write may duplicate side effects or corrupt quota/billing state.
+```text
+Python selected + transport failure
+  -> log failure (no fallback)
+  -> return 502 {"ok": false, "error": "Captcha verification is temporarily unavailable. Please try again."}
+```
+
+Cloudflare Turnstile tokens are single-use. If Python's outbound call to
+Turnstile succeeded (consuming the token) but the response back to Next
+then failed at the transport level, a naive fallback would have Next
+resubmit the same token to Turnstile again — which Turnstile would reject
+as `timeout-or-duplicate`, turning an already-valid captcha completion
+into a false rejection the caller never actually caused. This is exactly
+the "fallback could duplicate effects or hide important semantic errors"
+case, so fallback was intentionally not implemented here. Verified by
+`src/app/api/auth/verify-captcha/route.test.ts`'s
+`"does NOT fall back to Next on Python transport failure"` test, which
+asserts `fetch` was called exactly once (the failed Python attempt, no
+second call to Turnstile via Next).
+
+Both endpoints: valid Python HTTP responses, including 4xx and 5xx, are
+forwarded and do not trigger fallback. This keeps Python application
+errors observable instead of silently hiding semantic defects.
+
+This fallback model (either geo's or verify-captcha's) must not be applied
+to a future mutating endpoint without the same case-by-case analysis.
+Retrying or falling back after a POST/write may duplicate side effects or
+corrupt quota/billing state.
 
 ## Logging
 
@@ -149,26 +196,26 @@ No diagnostic response header is added in Checkpoint 14, so the public HTTP cont
 
 ## Rollback
 
-Operational rollback for geo:
+Operational rollback, per endpoint:
 
-1. remove `BACKEND_ROUTE_GEO`, or
-2. set `BACKEND_ROUTE_GEO=next`
+1. remove `BACKEND_ROUTE_GEO` / `BACKEND_ROUTE_VERIFY_CAPTCHA`, or
+2. set it to `next`
 
-No frontend code change is required once this routing mechanism is deployed. If `PYTHON_BACKEND_URL` is removed or malformed, the route also safely falls back to Next.
+No frontend code change is required once this routing mechanism is deployed. If `PYTHON_BACKEND_URL` is removed or malformed, both routes also safely fall back to Next by default (this is the *default-routing* fallback for missing/invalid config — distinct from the *transport-failure* fallback discussed above, which verify-captcha intentionally does not have once Python is actively selected).
 
 ## Security Review
 
-Checkpoint 14 verifies:
+Checkpoint 14 verifies (geo) and Checkpoint 18 re-verifies (both endpoints):
 
 - Python URL is server-only
-- no bearer forwarding for geo
-- no cookie forwarding for geo
+- no bearer forwarding
+- no cookie forwarding
 - no arbitrary proxy destination from request input
-- endpoint path is fixed by code
+- endpoint path is fixed by code (now via an explicit two-entry map, still not client-influenceable)
 - no open proxy behavior
 - no service-role dependency
 - no Supabase dependency
-- no new public secrets
+- no new public secrets (verify-captcha reuses the existing `TURNSTILE_SECRET_KEY` name, server-only on both Next and Python)
 
 ## Future Authenticated Routing
 

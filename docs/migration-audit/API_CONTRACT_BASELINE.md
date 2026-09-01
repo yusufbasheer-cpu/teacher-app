@@ -37,6 +37,14 @@ This document captures the browser-facing contracts that matter most for the Pha
 - Razorpay order/subscription verification routes return JSON contracts used by the payment modal
 - Admin billing routes are mutable and must preserve HTTP status codes and error shapes exactly during later migration
 
+### Auth / captcha
+
+- `POST /api/auth/verify-captcha`
+- Public, unauthenticated. Request body `{ token?: string }`.
+- With no `TURNSTILE_SECRET_KEY` configured, returns `200 {"ok": true}` immediately without parsing the body at all — validation order matters and must be preserved.
+- Malformed JSON → `400`; empty/missing token → `400`; Turnstile rejects → `403`; Turnstile transport/parse failure → fails open to `200 {"ok": true}` (Turnstile's HTTP status is never inspected, only whether its body parses as JSON).
+- Full frozen contract: `docs/migration-audit/VERIFY_CAPTCHA_PYTHON_PARITY_CONTRACT.md`. Checkpoint 18 added Python parity plus a disabled-by-default routing seam (`BACKEND_ROUTE_VERIFY_CAPTCHA`); default remains Next, and Python transport failures deliberately do **not** fall back to Next (Turnstile tokens are single-use, so a blind retry could turn a valid completion into a false rejection).
+
 ### Lesson plan save
 
 - `POST /api/lesson-plan/save`

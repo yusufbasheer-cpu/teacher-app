@@ -29,18 +29,23 @@ Checkpoint 15 proved the Checkpoint 14 geo routing seam live against a local Fas
 
 Checkpoint 16 built the first real deployment foundation for `backend-python`: a Render Blueprint (`backend-python/render.yaml`), a production-safe start command (`uvicorn app.main:app --host 0.0.0.0 --port $PORT`), request-ID/timing/error-logging middleware, and a `backend-python` CI job (pytest + ruff). No hosting account access existed in-session, so no real deployment occurred; classification is `DEPLOYMENT_READY_EXTERNAL_PROVISIONING_REQUIRED`. See `FASTAPI_DEPLOYMENT_DECISION.md` and `FASTAPI_DEPLOYMENT_RUNBOOK.md`.
 
+Checkpoint 17 re-confirmed the same account-access gap and attempted no further deployment work (`EXTERNAL_PROVISIONING_BLOCKED`).
+
+Checkpoint 18, with external provisioning still blocked, continued useful repository-side work: selected `POST /api/auth/verify-captcha` as the second Track B pilot from a 5-candidate shortlist (see `VERIFY_CAPTCHA_PYTHON_PARITY_CONTRACT.md`), froze its contract, implemented Python parity, and generalized the geo routing seam to support a second allowlisted endpoint with its own disabled-by-default opt-in (`BACKEND_ROUTE_VERIFY_CAPTCHA`). Also found, while reviewing candidates, that `feedback`/`waitlist`/`school-register` perform privileged Supabase service-role writes — undersold by their prior `PYTHON_PARITY` label — and re-classified them `NEXT_ONLY` pending a mutation-safe migration design.
+
 ## Migration Tracks
 
 | Track | Status | Examples | Blocker |
 | --- | --- | --- | --- |
 | Track A: authenticated DB migration | blocked for cutover | `POST /api/lesson-plan/save`, future saved lesson CRUD | reproducible schema plus live RLS integration |
-| Track B: non-DB/public migration | not blocked by RLS schema drift | `GET /api/geo`, public form pilots where parity already exists | endpoint-specific parity and routing approval |
+| Track B: non-DB/public migration | not blocked by RLS schema drift, but blocked on deployment | `GET /api/geo`, `POST /api/auth/verify-captcha` | endpoint-specific parity done for both; both `ROUTING_READY`/`CUTOVER_VALIDATED` pending a real FastAPI deployment target |
 
 ## Cutover Readiness Matrix
 
 | Endpoint | Python parity | DB dependency | Auth dependency | Live integration required | Cutover blocker |
 | --- | --- | --- | --- | --- | --- |
 | `GET /api/geo` | Yes | None | None | No | None known; still no traffic cutover |
+| `POST /api/auth/verify-captcha` | Yes | None | None | No | None known beyond deployment; no fallback on Python transport failure by design (single-use Turnstile token) |
 | `POST /api/lesson-plan/save` | Yes | `lesson_plans` and owner RLS | Supabase bearer token | Yes | schema reproducibility and safe RLS target |
 | `POST /api/lesson-plan` | No cutover parity | usage, generation events, AI providers | Supabase auth/session | Yes | quota, streaming, provider payload parity |
 | `POST /api/question-paper` | Not promoted | usage, generation persistence, AI providers | Supabase auth/session | Yes | quota and AI/persistence parity |

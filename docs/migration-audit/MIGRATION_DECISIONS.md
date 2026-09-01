@@ -229,3 +229,39 @@ Alternatives considered: Falling back to Railway (same access gap applies — no
 Impact: No repository runtime/config changes were needed — Checkpoint 16's deployment readiness was re-verified and remains valid as-is. Only documentation was updated to record the attempt and the exact human action still required (a person with Render, or an authorized alternative platform, account access must create the service and share the resulting URL). Geo remains `CUTOVER_VALIDATED`; `GET /api/geo` continues to serve from Next.
 
 Status: Blocked, pending external human action. Not implemented.
+
+## 2026-09-01 (Checkpoint 18)
+
+Decision: Select `POST /api/auth/verify-captcha` as the second Track B (non-DB) FastAPI parity pilot, from a 5-candidate shortlist, and re-classify `feedback`/`waitlist`/`school-register` from `PYTHON_PARITY` to `NEXT_ONLY`.
+
+Reason: Reading `API_INVENTORY.md`'s endpoint-group table produced a shortlist of `verify-captcha`, `contact`, `feedback`, `waitlist`, `school-register` as the only public, non-admin, non-AI, non-billing candidates. Reading each route's actual source (not just the audit summary) showed the audit's own "low-risk public form handler" label for contact/feedback/waitlist/school-register undersold their real dependencies: `feedback`, `waitlist`, and `school-register` all perform a privileged Supabase `service_role` insert of real user data, and `contact`/`feedback`/`school-register` also send a real email via SMTP. Only `verify-captcha` has zero Supabase dependency, zero mutation, and zero SMTP dependency — a single bounded call to one external provider (Cloudflare Turnstile) with an already-optional, already-documented secret.
+
+Alternatives considered: `contact` (rejected — real SMTP send side effect, new secret category); `feedback`/`waitlist`/`school-register` (rejected — privileged Supabase writes, explicitly excluded by this checkpoint's eligibility bar); lowering the safety bar to force a "cleaner" pick — rejected per the checkpoint's explicit instruction not to do this.
+
+Impact: `docs/migration-audit/VERIFY_CAPTCHA_PYTHON_PARITY_CONTRACT.md` freezes the contract. `feedback`/`waitlist`/`school-register` are re-classified `NEXT_ONLY` in `BACKEND_MIGRATION_MANIFEST.md` pending a mutation-safe migration pattern (analogous to `lesson-plan/save`'s caller-context approach) — this is a documentation correction reflecting what their source actually does, not a behavior change to those routes.
+
+Status: Implemented.
+
+## 2026-09-01 (Checkpoint 18)
+
+Decision: Implement Python parity for `verify-captcha` with a shared JSON contract fixture (`contract-fixtures/verify-captcha/`), and preserve two unhandled-exception edge cases in the existing Next code as designed `400` responses in Python rather than reproducing the crashes.
+
+Reason: The existing Next route has two paths where a non-string or `null` top-level `token` value causes an uncaught `TypeError` outside its only try/catch, producing Next's default `500`. No real caller can trigger this (the frontend always sends `{ token: string }`), so it is not designed behavior worth bit-for-bit reproduction — doing so would mean deliberately writing a Python crash path to match an accidental one. The shared-fixture pattern already established for geo (`contract-fixtures/geo/`) extends cleanly to a POST-with-body endpoint.
+
+Alternatives considered: Reproducing the exact unhandled-exception `500` in Python (rejected — no value, and Python's own type system makes an equivalent accidental crash awkward to construct deliberately); skipping shared fixtures and writing independent Node/Python test data (rejected — the existing pattern's whole value is one JSON file both suites read, and it already caught nothing at odds between the two implementations).
+
+Impact: `backend-python/app/services/verify_captcha.py`, `backend-python/app/api/routes/verify_captcha.py`, `backend-python/tests/test_verify_captcha.py`, `contract-fixtures/verify-captcha/verify-captcha-contract.json`. Both Node and Python test suites pass every shared case on first run.
+
+Status: Implemented.
+
+## 2026-09-01 (Checkpoint 18)
+
+Decision: Generalize `src/lib/backend-routing.ts` to a second allowlisted endpoint (`verify-captcha`, via `BACKEND_ROUTE_VERIFY_CAPTCHA`), but give it no transport-fallback to Next — unlike geo.
+
+Reason: All of this checkpoint's routing-eligibility criteria were met (low risk, no mutation, no auth, no quota/billing, no streaming, no user-specific persistence, Python contract proven, straightforward rollback), so adding a disabled-by-default routing seam was justified rather than deferred. However, Cloudflare Turnstile tokens are single-use: if Python's call to Turnstile succeeded but the response back to Next then failed at the transport level, blindly falling back to Next would resubmit the same token and get a false `timeout-or-duplicate` rejection — turning a valid captcha completion into an apparent failure the caller never caused. Geo's fallback is safe only because it's a pure idempotent read with no external side effect to duplicate; that reasoning does not transfer here.
+
+Alternatives considered: Reusing geo's exact fallback-to-Next behavior (rejected — the single-use-token risk above); adding no routing seam at all, i.e. stopping at `PYTHON_PARITY` (also acceptable per the checkpoint's own success criteria, but the routing-eligibility checklist was fully satisfied, so the more complete `ROUTING_READY` outcome was chosen); building a generic per-endpoint fallback-policy configuration (rejected — unjustified abstraction for two endpoints, one line of route-specific logic is clearer).
+
+Impact: `src/lib/backend-routing.ts` now maps each endpoint to its own env var and upstream path via fixed records instead of a single hardcoded `"geo"` branch; all existing geo tests pass unchanged, proving the generalization didn't alter geo's behavior. `src/app/api/auth/verify-captcha/route.ts` proxies to Python when configured and returns a `502` on transport failure instead of falling back — covered by a dedicated test asserting exactly one `fetch` call occurred (no second, silent call to Turnstile via Next). Configuration was never persisted; default remains Next for both endpoints.
+
+Status: Implemented.
