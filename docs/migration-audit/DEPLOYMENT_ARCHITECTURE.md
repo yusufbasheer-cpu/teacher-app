@@ -89,6 +89,15 @@ same way once a project is linked into Services mode — see
 record). Full verification record: `FASTAPI_REMOTE_DEPLOYMENT.md`.
 Next-side routing to this deployment has **not** been enabled.
 
+Checkpoint 20 discovered a pre-existing, unrelated `project-scquo`
+configuration issue: its stored Root Directory setting (`.`) is rejected
+by the current Vercel CLI/API for `vercel deploy` (non-git-integration)
+invocations, blocking any local-CLI-triggered Preview deployment of the
+frontend. This was not introduced by this migration work (the setting is
+115+ days old) and was not fixed (fixing it means modifying
+`project-scquo`, out of scope for this migration's checkpoints). See
+`REMOTE_ROUTING_VALIDATION.md` "Human Action Required."
+
 ## Infrastructure Gaps
 
 - No Terraform, Pulumi, Kubernetes manifests, Dockerfile, docker-compose, nginx config, serverless config, Netlify config, or Fly config were found.

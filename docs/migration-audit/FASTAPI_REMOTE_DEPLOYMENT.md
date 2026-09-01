@@ -211,3 +211,24 @@ stability.
    rollback, per the same pattern already exercised locally in
    Checkpoint 15/18.
 4. Decide, per endpoint, whether to reach `CUTOVER_ACTIVE`.
+
+## Checkpoint 20 Update
+
+Checkpoint 20 performed steps 1–3 above, with one documented deviation:
+an actual `project-scquo` **Preview** deployment could not be created
+(pre-existing Root Directory setting rejected by the current Vercel
+CLI/API — not caused by, and not fixed by, this checkpoint, since fixing
+it means modifying `project-scquo`, which is out of scope). Routing was
+instead proven against local Next **development** pointed at the real
+deployed backend. Full record, including a security incident (a
+Protection Bypass secret was briefly exposed in tool output and
+immediately rotated) and its remediation: `REMOTE_ROUTING_VALIDATION.md`.
+
+Multiple new backend Preview deployments were created this checkpoint to
+safely exercise different Turnstile test-key configurations (Cloudflare's
+official public test credentials — see
+`VERIFY_CAPTCHA_PYTHON_PARITY_CONTRACT.md`). The final resting deployment
+has zero secrets configured again, matching the original zero-secret
+default. Backend Deployment Protection remains fully enabled and was not
+weakened — a scoped, documented bypass mechanism was added instead (see
+`BACKEND_ROUTING_AND_ROLLBACK.md`).

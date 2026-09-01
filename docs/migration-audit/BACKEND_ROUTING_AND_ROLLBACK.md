@@ -244,3 +244,22 @@ Before enabling `BACKEND_ROUTE_GEO=python` outside tests:
 - run smoke tests through `/api/geo`
 - confirm latency overhead is acceptable
 - keep rollback env change ready
+
+## Checkpoint 20: Deployment Protection Bypass
+
+The deployed backend (Vercel `layah-backend-python`, Preview) has
+Vercel Deployment Protection (SSO) enabled by default — a Next server
+routed only via `fetch()` gets blocked by Vercel's own login
+interstitial. `src/lib/backend-routing.ts` gained
+`applyDeploymentProtectionBypass(headers)`, called from both endpoints'
+proxy-header builders: it attaches Vercel's documented
+`x-vercel-protection-bypass` header, but **only** when
+`PYTHON_BACKEND_BYPASS_SECRET` is explicitly set. Unset (the default,
+including in production), it is a complete no-op — Deployment Protection
+itself was never weakened or disabled, and this mechanism becomes
+unnecessary once the backend is eventually promoted out of Preview.
+Verified end-to-end against the real backend — see
+`REMOTE_ROUTING_VALIDATION.md`.
+
+This is unrelated to, and does not change, the existing
+Authorization/Cookie exclusion rules above.

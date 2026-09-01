@@ -191,3 +191,37 @@ a safe, authorized source. Status: `REMOTE_PROVIDER_PATH_NOT_EXERCISED`.
 Next→remote-Python routing was not enabled — `PYTHON_BACKEND_URL`/
 `BACKEND_ROUTE_VERIFY_CAPTCHA` remain unset on Next. Manifest status:
 `ROUTING_READY_REMOTE_TARGET_READY`, not `CUTOVER_ACTIVE`.
+
+## Checkpoint 20 Addendum
+
+The Turnstile provider path marked pending above is now resolved.
+Cloudflare officially publishes public dummy test credentials safe for
+automated testing on any domain (verified against Cloudflare's own
+documentation before use). Using them, the backend's
+`TURNSTILE_SECRET_KEY` was temporarily set to the "always passes"
+(`1x0000000000000000000000000000000AA`) and "always fails"
+(`2x0000000000000000000000000000000AA`) test secrets in turn, and the
+real Cloudflare `siteverify` endpoint was called for real:
+
+- Approved test token → `200 {"ok":true}`, backend log shows the actual
+  outbound `POST .../siteverify "HTTP/1.1 200 OK"`.
+- Rejected test token → `403 {"ok":false,"error":"Captcha verification failed. Please try again."}`,
+  backend log shows `[captcha] Turnstile verification failed: ['invalid-input-response']`.
+
+Both were exercised **through the actual Next routing path**, not just
+direct backend calls — see `REMOTE_ROUTING_VALIDATION.md` for full
+dual-sided log evidence. No real user token was used at any point.
+`REMOTE_PROVIDER_PATH_NOT_EXERCISED` is superseded:
+**provider path now remotely verified** (both branches).
+
+The backend's `TURNSTILE_SECRET_KEY` was removed again afterward,
+restoring the zero-secret default state.
+
+Routing itself was validated against local Next **development**, not an
+actual Next **Preview** deployment — `project-scquo`'s Vercel Preview
+deploys are currently blocked by a pre-existing, out-of-scope Root
+Directory setting (see `REMOTE_ROUTING_VALIDATION.md`). Rollback
+confirmed via configuration change only. Manifest status:
+**REMOTE_ROUTING_AND_PROVIDER_VALIDATED (local Next dev + remote
+Preview backend)** — not yet full Preview-to-Preview, not
+`CUTOVER_ACTIVE`.

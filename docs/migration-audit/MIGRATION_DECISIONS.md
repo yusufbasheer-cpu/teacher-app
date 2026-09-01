@@ -289,3 +289,27 @@ Alternatives considered: Restructuring the project out of Services mode (rejecte
 Impact: `backend-python/vercel.json`'s service block now has `"entrypoint": "app.main:app"`. Third deploy attempt succeeded. No application code changed; local `uvicorn`/pytest/ruff behavior confirmed unaffected (`pip install --dry-run`, full local test suite, ruff all still pass after the change).
 
 Status: Implemented.
+
+## 2026-09-01 (Checkpoint 20)
+
+Decision: Add a narrow, inert-by-default Deployment Protection bypass mechanism (`applyDeploymentProtectionBypass`) to the routing proxy, rather than disabling or weakening the backend's Vercel Deployment Protection.
+
+Reason: The backend Preview has Vercel SSO/Deployment Protection enabled by default, so a plain server-side `fetch()` from Next hit Vercel's own login page instead of the FastAPI function. The checkpoint's own instruction was explicit: investigate the narrow supported mechanism rather than disabling security broadly. Vercel's own documentation names exactly this mechanism — "Protection Bypass for Automation," activated via an `x-vercel-protection-bypass` header carrying a project-scoped secret, expressly intended for automated/server-to-server access to protected deployments.
+
+Alternatives considered: Disabling Deployment Protection on the backend project entirely (rejected — exactly the "broadly less secure" outcome the checkpoint forbids); promoting the backend to Production to escape protection (rejected — the checkpoint explicitly forbids promoting before Preview validation completes); accepting the block and classifying the checkpoint `REMOTE_ROUTING_BLOCKED` without investigating further (rejected — a documented, narrow, reversible mechanism existed and hadn't been tried yet).
+
+Impact: `src/lib/backend-routing.ts` gained `applyDeploymentProtectionBypass()`, wired into both `geo/route.ts` and `verify-captcha/route.ts`. No-op unless `PYTHON_BACKEND_BYPASS_SECRET` is explicitly set, so production behavior is unaffected. Verified end-to-end against the real backend; 4 new tests added. Deployment Protection itself was never disabled or weakened — it remains fully enabled throughout.
+
+Status: Implemented.
+
+## 2026-09-01 (Checkpoint 20)
+
+Decision: Rotate the Vercel "Protection Bypass for Automation" secret immediately after it was accidentally exposed in tool output, with the user's explicit authorization, rather than continuing to use the exposed value or leaving rotation for later.
+
+Reason: While inspecting `layah-backend-python`'s deployment-protection settings (`vercel project protection layah-backend-python --json`) to find the bypass secret needed for the fix above, the command's JSON output — which was not anticipated to include the raw secret — printed the actual secret value, and it appeared in visible tool output. Continuing to use a secret known to have been exposed in a transcript, rather than treating it as compromised, would be careless regardless of how mild the actual exposure risk was. The first attempt at rotation was blocked by the permission classifier; rather than working around that block, the situation was explained directly to the user, who then explicitly authorized the rotation.
+
+Alternatives considered: Leaving the exposed secret in place since its blast radius is limited to bypassing Preview deployment protection on one non-production project (rejected — "limited blast radius" is not the same as "acceptable to leave exposed," and rotation was cheap and fast); working around the permission classifier's block without asking (rejected — explicitly against instructions, and the classifier's block was itself a meaningful signal that this action warranted explicit oversight).
+
+Impact: Old secret value revoked and confirmed non-functional (structural check: `protectionBypass` key count returned to 0 before the new one was created — never by printing values). New secret generated and piped directly between `vercel` CLI invocations via shell command substitution, so its value was never displayed, and its correctness was confirmed indirectly by successful routed requests rather than by reading it back (Vercel deliberately excludes sensitive-marked values from `vercel env pull`, by design). `git status` was re-checked after every step; nothing landed in a repository file.
+
+Status: Implemented.

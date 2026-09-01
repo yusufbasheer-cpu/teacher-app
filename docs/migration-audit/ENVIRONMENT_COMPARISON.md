@@ -24,6 +24,8 @@ Checkpoint 17 status: attempted to provision a real remote target for comparison
 
 Checkpoint 19 status: a real deployed URL now exists (Vercel, Preview environment, project `teacher-app/layah-backend-python`). Direct remote health/readiness/geo/verify-captcha(contract-only) were verified against it and matched the local baseline exactly. Next→remote-Python routing comparison still not run — `PYTHON_BACKEND_URL`/`BACKEND_ROUTE_*` remain unset on the Next side; that comparison is Checkpoint 20's job. See `FASTAPI_REMOTE_DEPLOYMENT.md`.
 
+Checkpoint 20 status: Next→remote-Python routing comparison now run, for both endpoints, including verify-captcha's real Turnstile provider branch. Deviation: run via local Next development rather than an actual `project-scquo` Preview deployment, which is currently blocked by a pre-existing project setting outside this checkpoint's authorization to fix. Full record: `REMOTE_ROUTING_VALIDATION.md`.
+
 ## Comparison Matrix
 
 | Feature / Behavior | Production | Staging | Current branch | Difference | Expected? | Source-code explanation | Migration implication |

@@ -267,6 +267,20 @@ stopped deliberately before enabling any routing, per its own scope.
 Final routing state is unchanged: `GET /api/geo` → NEXT. Manifest status:
 `CUTOVER_VALIDATED_REMOTE_TARGET_READY`, not `CUTOVER_ACTIVE`.
 
+## Checkpoint 20 Addendum
+
+Full routing path proven against the real remote backend: local Next
+**development** → remote FastAPI **Preview**, contract match, dual-sided
+log correlation, header isolation (synthetic Authorization/Cookie
+confirmed not forwarded), and configuration-only rollback all passed.
+**Not** proven: an actual Next **Preview** deployment routing to the
+backend Preview — `project-scquo`'s Vercel deployment is currently
+blocked by a pre-existing, out-of-scope-to-fix Root Directory setting
+(see `REMOTE_ROUTING_VALIDATION.md`). Status:
+**REMOTE_ROUTING_VALIDATED (local Next dev + remote Preview backend)** —
+distinct from, and not yet equal to, full Preview-to-Preview validation.
+Final routing state after rollback: `GET /api/geo` → NEXT.
+
 ## Known Limitations
 
 - Verification was local-only; no preview/staging/production FastAPI
