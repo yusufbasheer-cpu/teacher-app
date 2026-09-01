@@ -19,10 +19,25 @@ evidence trail.
 
 **NEXT MIGRATION MODE = BATCH / SUBSYSTEM WAVES.** The remaining ~80 Next
 API routes will not be migrated one-by-one, one-checkpoint-each. Future
-work should batch by subsystem, matching the phase groupings below
-(e.g. one wave for the remaining low-risk public endpoints, one wave for
-document/export, one wave for admin/tenant, etc.), each wave proving
-parity/routing/rollback for its whole batch rather than a single route.
+work should batch by subsystem, matching the phase groupings below, each
+wave proving parity/routing/rollback for its whole batch rather than a
+single route.
+
+## Checkpoint 22 Correction: No Further "Low-Risk Public" Wave Exists
+
+Checkpoint 22 investigated all ~84 remaining Next API operations for a
+Wave 1 bulk-migration cohort using the infrastructure proven by the pilot.
+**None qualify.** The assumption above ("one wave for the remaining
+low-risk public endpoints") does not hold — `geo` and `verify-captcha`
+were not a sample of a larger low-risk category, they were the *entire*
+category. Every other route requires Supabase, auth, an AI provider,
+billing, admin authorization, export complexity, or SMTP — see
+`BACKEND_WAVE_1_INVESTIGATION.md` for the full per-route classification.
+The wave structure below is corrected accordingly: there is no separate
+"Wave 1.5" of easy wins waiting — the next real unlock is Wave 2
+(authenticated Supabase reads/writes), which is blocked on the database
+source-of-truth track plus an unbuilt Authorization-forwarding routing
+design, not on migration effort.
 
 ## Phase 0: Audit Closure
 

@@ -39,12 +39,15 @@ Checkpoint 20 proved the complete remote routing path for both endpoints against
 
 Checkpoint 21 closed the pilot phase: fixed `project-scquo`'s Root Directory setting (a two-part fix — server-side project setting plus a local gitignored link-file override, neither of which had been in scope to touch until this checkpoint), produced real Next Preview deployments, and re-ran the complete geo + verify-captcha matrix through actual Preview-to-Preview routing with full contract, security, and observability evidence. Both endpoints' service-substitution architecture is now considered fully validated end-to-end. **`PILOT_ENDPOINT_MIGRATION_PHASE = COMPLETE`. `NEXT MIGRATION MODE = BATCH / SUBSYSTEM WAVES`** — the migration unit changes from one endpoint per checkpoint to subsystem/batch waves for the remaining Next API routes (see `MIGRATION_MASTER_PLAN.md`). Full record: `REMOTE_ROUTING_VALIDATION.md`.
 
+Checkpoint 22 investigated whether a Wave 1 bulk-migration cohort exists beyond the two completed pilots. It does not: every one of the ~84 Next API operations reviewed requires at least one of Supabase, auth/session, an AI provider, billing, admin authorization, export/file complexity, or SMTP. Track B (below) is now known to contain exactly two members, not an open-ended set of "similarly low-risk" candidates — the original master-plan assumption that routes like `account/export`'s read path or `user_usage` would also qualify did not hold once their source was read. Classification: `NO_SAFE_WAVE_1_COHORT`. No code changed. Full investigation: `BACKEND_WAVE_1_INVESTIGATION.md`.
+
 ## Migration Tracks
 
 | Track | Status | Examples | Blocker |
 | --- | --- | --- | --- |
 | Track A: authenticated DB migration | blocked for cutover | `POST /api/lesson-plan/save`, future saved lesson CRUD | reproducible schema plus live RLS integration |
-| Track B: non-DB/public migration | not blocked by RLS schema drift; deployment target now exists (Vercel), Next-side routing not yet enabled | `GET /api/geo`, `POST /api/auth/verify-captcha` | endpoint-specific parity and remote deployment verification done for both; both `_REMOTE_TARGET_READY`, pending Checkpoint 20's Next-side routing/cutover decision |
+| Track B: non-DB/public migration | complete — exactly 2 members, no more exist | `GET /api/geo`, `POST /api/auth/verify-captcha` | both fully validated end-to-end (Preview-to-Preview); remaining decision is Production activation, not further verification |
+| Track C (new, Checkpoint 22): authenticated Supabase reads/writes beyond lesson-plan/save | not started | `user_usage`, `account/export`, `hod/me`, `auth/school-enrollment`, `welcome-email`, `contact`/`feedback`/`waitlist`/`school-register` | same two blockers as Track A (DB source-of-truth reconciliation) plus an unbuilt Authorization-forwarding routing design — see `BACKEND_WAVE_1_INVESTIGATION.md` |
 
 ## Cutover Readiness Matrix
 
