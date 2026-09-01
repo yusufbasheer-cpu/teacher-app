@@ -56,10 +56,28 @@ describe("buildCurriculumFrameworkSystemAddendum", () => {
     }
   });
 
-  it("reserves explicit alignment narration for a section that deliberately owns it (e.g. UAE)", () => {
+  it("reserves explicit alignment narration for a section that already exists for that purpose (e.g. UAE)", () => {
     const uae = buildCurriculumFrameworkSystemAddendum("uae_moe_khda_spea")!;
-    expect(uae.toLowerCase()).toContain(
-      "dedicated real-life/curriculum-connection slide".toLowerCase(),
-    );
+    expect(uae.toLowerCase()).toContain("already part of the requested output structure");
+  });
+
+  it("CASE E — every framework addendum forbids inventing a new standalone alignment section", () => {
+    // Regression: live generation added an unlisted "UAE Framework Alignment"
+    // section to the Full Lesson Plan even though no such section is part of
+    // the defined output structure — the old wording only said "name the
+    // framework inside a dedicated section", which reads as permission to
+    // create one from scratch. The fix must explicitly forbid that.
+    for (const value of NON_EMPTY_FRAMEWORK_VALUES) {
+      const addendum = buildCurriculumFrameworkSystemAddendum(value)!.toLowerCase();
+      expect(addendum, value).toContain("do not invent, add, or append a new standalone section");
+    }
+  });
+
+  it("CASE F — every framework addendum forbids blanket standards-compliance claims", () => {
+    for (const value of NON_EMPTY_FRAMEWORK_VALUES) {
+      const addendum = buildCurriculumFrameworkSystemAddendum(value)!.toLowerCase();
+      expect(addendum, value).toContain("does not perform formal standards certification");
+      expect(addendum, value).toMatch(/is designed to meet.{0,20}complies with.{0,20}is aligned with/);
+    }
   });
 });
