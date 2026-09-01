@@ -730,7 +730,8 @@ The PPT generation system is **driven by AFL tools** from the **AFL tool catalog
 ### TEACHER CONTROL RULE (mandatory)
 - If the teacher **selected** an AFL tool for a phase, you **MUST** use **exactly** that tool — **do NOT** replace it.
 - Implement the selected tool as a **full classroom activity** with complete teacher facilitation steps and student tasks.
-- If the teacher **did NOT** select a tool, **automatically select** the best tool for that phase based on **subject**, **grade**, **topic**, and **learning objectives** — then implement it fully.
+- If the teacher **did NOT** select a tool for a phase, use the **system-recommended** tool given for that phase — a recommendation resolved deterministically from subject/grade/topic/learning objectives, shown to the teacher exactly as given. Implement it fully. Do **not** claim, imply, or narrate that the teacher chose it, and do **not** substitute a different tool.
+- Each phase is resolved **independently** — a teacher selection in one phase never affects whether another phase is treated as selected.
 
 ### GENERAL AFL UNDERSTANDING RULE (mandatory)
 - **Do NOT** mention a tool name without implementing it.
@@ -816,20 +817,34 @@ function formatToolPromptLine(t: AflToolDefinition): string {
   return `- **${t.label}** (\`${t.id}\`): How it works — ${t.howItWorks} Classroom use — ${t.classroomUse} Purpose — ${t.purpose}`;
 }
 
-/** Suggested default tool id when the teacher did not select (deterministic from lesson context). */
+/**
+ * The single, canonical recommendation for a phase — deterministic (a hash of the phase +
+ * lesson context, no AI call), so the frontend can compute the *exact same* recommendation a
+ * generation call will resolve to, just by calling this with the same context. This is what
+ * keeps "Recommended: X" in the UI from ever drifting away from what generation actually uses.
+ */
+export function suggestRecommendedToolId(
+  phase: AflPhaseId,
+  ctx: PptSlideAflContext,
+): string | undefined {
+  const pool = AFL_RECOMMENDED_IDS[phase] ?? toolsForPhase(phase).map((t) => t.id);
+  if (!pool.length) return undefined;
+  const seed = `${phase}|${ctx.subject}|${ctx.grade}|${ctx.topic}|${ctx.learningObjectives}`;
+  return pool[hashPickIndex(seed, pool.length)];
+}
+
+/**
+ * Same recommendation as {@link suggestRecommendedToolId}, looked up by PPT deck slide number
+ * instead of phase — every AFL-bearing slide maps to exactly one phase (see
+ * PPT_SLIDE_AFL_BINDINGS), so this is just that lookup plus the call above.
+ */
 export function suggestAutoAflToolId(
   slideNumber1Based: number,
   ctx: PptSlideAflContext,
 ): string | undefined {
   const binding = PPT_SLIDE_AFL_BINDINGS[slideNumber1Based];
   if (!binding) return undefined;
-  const pool =
-    binding.autoSelectCandidateIds ??
-    AFL_RECOMMENDED_IDS[binding.autoSelectPhase] ??
-    toolsForPhase(binding.autoSelectPhase).map((t) => t.id);
-  if (!pool.length) return undefined;
-  const seed = `${slideNumber1Based}|${ctx.subject}|${ctx.grade}|${ctx.topic}|${ctx.learningObjectives}`;
-  return pool[hashPickIndex(seed, pool.length)];
+  return suggestRecommendedToolId(binding.autoSelectPhase, ctx);
 }
 
 /**
@@ -900,33 +915,36 @@ function formatAutoSelectAflBlock(
   ctx: PptSlideAflContext,
 ): string {
   const catalogPhase = binding.autoSelectPhase;
-  const catalogTools = toolsForPhase(catalogPhase);
   const suggestedId = suggestAutoAflToolId(slideNumber1Based, ctx);
   const suggested = suggestedId ? getAflToolById(suggestedId) : undefined;
 
   const lines: string[] = [
-    `### AFL for THIS slide — ${binding.stageLabel} (AI must auto-select — teacher did not choose)`,
-    "The teacher did **not** select an AFL tool. Pick the **most suitable** tool from the catalog below for **subject**, **topic**, **grade**, and **objectives** — implement it **fully** as classroom-ready content.",
+    `### AFL for THIS slide — ${binding.stageLabel} (SYSTEM-RECOMMENDED — the teacher did not select an activity for this phase)`,
+    "This is a recommendation resolved deterministically from the lesson context, shown to the teacher exactly as below — it is **not** a teacher choice. Implement it fully as a complete, classroom-ready activity. Do **not** claim, imply, or narrate that the teacher selected it, and do **not** substitute a different tool.",
   ];
   if (suggested) {
-    lines.push("", `**Suggested default:** ${formatToolPromptLine(suggested)}`);
+    lines.push("", `**Use this recommended tool:** ${formatToolPromptLine(suggested)}`);
+  } else {
+    // Defensive fallback only — AFL_RECOMMENDED_IDS covers every phase, so this
+    // should not happen in practice.
+    const catalogTools = toolsForPhase(catalogPhase);
+    lines.push(
+      "",
+      `**No recommendation resolved — choose the single most suitable tool from this catalog and use only that one:**`,
+      formatToolCatalogLines(catalogTools),
+    );
   }
-  lines.push(
-    "",
-    `**Catalog — ${AFL_PHASE_GROUPS.find((g) => g.phase === catalogPhase)?.title ?? catalogPhase}:**`,
-    formatToolCatalogLines(catalogTools),
-  );
 
   if (slideNumber1Based === 6) {
     lines.push(
       "",
-      "**Main Phase structure (mandatory):** Present **full core teaching content first**, then embed your chosen main-phase AFL tool as interactive activities.",
+      "**Main Phase structure (mandatory):** Present **full core teaching content first**, then embed the recommended main-phase AFL tool as interactive activities.",
     );
   }
   if (slideNumber1Based === 7) {
     lines.push(
       "",
-      "**Differentiation structure (mandatory):** Use your chosen differentiation AFL tool to set tasks for **lower**, **middle**, and **higher** achievers aligned with the lesson.",
+      "**Differentiation structure (mandatory):** Use the recommended differentiation AFL tool to set tasks for **lower**, **middle**, and **higher** achievers aligned with the lesson.",
     );
   }
   if (slideNumber1Based === 11) {
@@ -957,70 +975,55 @@ export function formatAflForSinglePptSlidePrompt(
   return formatAutoSelectAflBlock(slideNumber1Based, binding, ctx);
 }
 
+/**
+ * Per-phase AFL instructions for the shared teacher-package system prompt (Full Lesson Plan,
+ * Worksheet, Assessment Questions, Homework Task, Teacher Notes). Each of the 6 phases is
+ * resolved independently — a teacher can select some phases and leave others blank in the same
+ * request (e.g. Starter selected, Main left blank, Plenary selected), and each phase must keep
+ * its own correct provenance rather than the presence of any one selection silently erasing
+ * guidance for the rest. See CASE 6 in the AFL selection/recommendation test matrix.
+ */
 export function formatAflForAiPrompt(
   selections: AflSelectionsPayload,
   ctx?: PptSlideAflContext,
 ): string {
-  const hasTeacherPicks = AFL_PHASE_IDS.some((p) => (selections[p]?.length ?? 0) > 0);
-  const lines: string[] = [PPT_AFL_DRIVEN_SYSTEM_RULES, ""];
+  const lines: string[] = [
+    PPT_AFL_DRIVEN_SYSTEM_RULES,
+    "",
+    "### AFL per phase (resolved independently — a teacher selection in one phase does not affect any other)",
+    "For each phase below: if the teacher selected tool(s), use **exactly** those — do **NOT** substitute or add others. If a phase has no teacher selection, use the **system-recommended** tool given for that phase exactly as written — it is a recommendation resolved deterministically from the lesson context, **not** a teacher choice; do not claim, imply, or narrate that the teacher chose it. Implement every phase as a **full classroom activity** with teacher instructions and student tasks for this topic, grade, and subject.",
+    "",
+    "**PPT Slide Content:** Embed tools on slide **2** Starter, **6** Main Phase (after teaching), **7** Differentiation, **9** Plenary, **11** Exit Ticket, **12** Success Criteria. Slide **8** = one connection only (no AFL phase). Slide **10** = extended task only (no AFL phase).",
+    "",
+    "**Picture Prompt Image Analysis (if selected):** Write the exact observation and prediction prompts for the starter image.",
+    "",
+  ];
 
-  if (hasTeacherPicks) {
-    lines.push(
-      "### Teacher-selected AFL tools (MANDATORY — override AI selection)",
-      "Use **exactly** the teacher's picks — **do NOT** substitute. Implement each as **full classroom activities** with teacher instructions and student tasks for this topic, grade, and subject.",
-      "",
-      "**PPT Slide Content:** Embed tools on slide **2** Starter, **6** Main Phase (after teaching), **7** Differentiation, **9** Plenary, **11** Exit Ticket, **12** Success Criteria. Slide **8** = one connection only (no AFL phase). Slide **10** = extended task only (no AFL phase).",
-      "",
-      "**Picture Prompt Image Analysis (if selected):** Write the exact observation and prediction prompts for the starter image.",
-      "",
-      "**Teacher selections (implement fully):**",
-      "",
-    );
-    let listedAny = false;
-    for (const group of AFL_PHASE_GROUPS) {
-      const ids = selections[group.phase];
-      if (!ids?.length) continue;
-      listedAny = true;
-      lines.push(`**${group.title}**`);
+  let addedAny = false;
+  for (const group of AFL_PHASE_GROUPS) {
+    const ids = selections[group.phase];
+    if (ids?.length) {
+      addedAny = true;
+      lines.push(`**${group.title} — TEACHER-SELECTED (mandatory, do not substitute)**`);
       for (const id of ids) {
         const t = getAflToolById(id);
         if (!t) continue;
         lines.push(formatToolPromptLine(t));
       }
       lines.push("");
+      continue;
     }
-    if (!listedAny) return "";
-    return lines.join("\n").trim();
-  }
-
-  if (!ctx) return "";
-
-  lines.push(
-    "### No teacher AFL selections — AI must auto-select per AFL-powered slide",
-    "Auto-select the best tool per phase for slides **2, 6, 7, 9, 11, 12** and implement fully.",
-    "",
-    "**Per-slide guidance:**",
-  );
-
-  for (const slideNum of [2, 6, 7, 9, 11, 12] as const) {
-    const binding = PPT_SLIDE_AFL_BINDINGS[slideNum];
-    if (!binding) continue;
-    const suggestedId = suggestAutoAflToolId(slideNum, ctx);
+    if (!ctx) continue;
+    const suggestedId = suggestRecommendedToolId(group.phase, ctx);
     const suggested = suggestedId ? getAflToolById(suggestedId) : undefined;
-    lines.push(
-      `- Slide **${slideNum}** (${binding.stageLabel}): auto-select from **${binding.autoSelectPhase}**${
-        suggested ? ` — suggested: **${suggested.label}**` : ""
-      }`,
-    );
-  }
-
-  lines.push("", "**Full 87-tool catalog:**", "");
-  for (const group of AFL_PHASE_GROUPS) {
-    lines.push(`**${group.title}**`);
-    lines.push(formatToolCatalogLines(group.tools));
+    if (!suggested) continue;
+    addedAny = true;
+    lines.push(`**${group.title} — SYSTEM-RECOMMENDED (not teacher-selected)**`);
+    lines.push(formatToolPromptLine(suggested));
     lines.push("");
   }
 
+  if (!addedAny) return "";
   return lines.join("\n").trim();
 }
 
@@ -1089,8 +1092,12 @@ export function buildAflActivitySheetsUserMessage(params: {
   input: { subject: string; grade: string; topic: string; chapter: string; curriculumType: string };
   selections: AflSelectionsPayload;
   sourceMaterialBlock?: string;
+  /** True when `selections` is the system-recommended fallback (teacher picked no AFL tools at
+   *  all) rather than the teacher's own choices — keeps the generated sheet from implying the
+   *  teacher selected these tools when they didn't. */
+  isRecommended?: boolean;
 }): string | null {
-  const { input, selections, sourceMaterialBlock } = params;
+  const { input, selections, sourceMaterialBlock, isRecommended } = params;
   const selectedTools: AflToolDefinition[] = [];
   for (const group of AFL_PHASE_GROUPS) {
     const ids = selections[group.phase] ?? [];
@@ -1123,7 +1130,7 @@ Generate a complete set of **printable AFL Activity Sheets** — one sheet per A
 - Topic: ${input.topic}
 ${sourceMaterialBlock ?? ""}
 
-### Selected AFL tools (generate one sheet per tool in this order)
+### ${isRecommended ? "System-recommended AFL tools (the teacher did not select any — do NOT imply they chose these)" : "Selected AFL tools"} (generate one sheet per tool in this order)
 ${toolList}
 
 ### Rules for EVERY sheet

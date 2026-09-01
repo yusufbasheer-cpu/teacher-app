@@ -6,8 +6,11 @@ import {
   AFL_PHASE_GROUPS,
   AFL_PHASE_IDS,
   AFL_RECOMMENDED_IDS,
+  getAflToolById,
+  suggestRecommendedToolId,
   type AflPhaseId,
   type AflSelectionsPayload,
+  type PptSlideAflContext,
 } from "@/lib/afl-tools";
 import { LockedFeaturePanel } from "@/components/premium/locked-feature-panel";
 import { LockedPreviewPill } from "@/components/premium/locked-preview-pill";
@@ -21,6 +24,10 @@ type AflSelectorProps = {
   onChange: (next: AflSelectionsPayload) => void;
   locked: boolean;
   onUpgrade: () => void;
+  /** Current lesson context (subject/grade/topic/objectives) — used to resolve the same
+   *  per-phase recommendation generation will use when a phase is left unselected, via the
+   *  exact same deterministic function, so what's shown here can never drift from generation. */
+  context: PptSlideAflContext;
 };
 
 function countSelected(selected: AflSelectionsPayload): number {
@@ -80,12 +87,24 @@ function ToolCheckbox({
  * flat list for anyone who wants to browse everything. For Free users the
  * whole thing renders inside a LockedFeaturePanel with only the phase
  * categories + counts visible — never the full interactive catalog. */
-export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelectorProps) {
+export function AflSelector({ selected, onChange, locked, onUpgrade, context }: AflSelectorProps) {
   const [tab, setTab] = useState<Tab>("phase");
   const [expanded, setExpanded] = useState<Set<AflPhaseId>>(new Set());
   const [search, setSearch] = useState("");
 
   const totalSelected = countSelected(selected);
+
+  /** Recommended tool id per unselected phase — recomputed as the lesson context changes, using
+   *  the same deterministic function generation calls with the same inputs at submit time. */
+  const recommendedByPhase = useMemo(() => {
+    const out: Partial<Record<AflPhaseId, string>> = {};
+    for (const phase of AFL_PHASE_IDS) {
+      if ((selected[phase]?.length ?? 0) > 0) continue;
+      const id = suggestRecommendedToolId(phase, context);
+      if (id) out[phase] = id;
+    }
+    return out;
+  }, [selected, context]);
 
   const togglePhaseExpanded = (phase: AflPhaseId) => {
     setExpanded((prev) => {
@@ -223,6 +242,10 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
           {AFL_PHASE_GROUPS.map((group) => {
             const isOpen = expanded.has(group.phase);
             const count = selected[group.phase]?.length ?? 0;
+            const recommendedTool =
+              count === 0 && recommendedByPhase[group.phase]
+                ? getAflToolById(recommendedByPhase[group.phase]!)
+                : undefined;
             return (
               <div key={group.phase} className="rounded-xl border border-[var(--border-subtle)] bg-surface shadow-sm transition-colors duration-150">
                 <button
@@ -231,18 +254,25 @@ export function AflSelector({ selected, onChange, locked, onUpgrade }: AflSelect
                   className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition-colors duration-150 hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] ${isOpen ? "rounded-t-xl" : "rounded-xl"}`}
                   aria-expanded={isOpen}
                 >
-                  <span className="flex items-center gap-2 text-sm font-bold text-ink">
-                    {group.title.replace(" AFL Tools", "")}
-                    {count > 0 ? (
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[11px] font-bold"
-                        style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: "var(--brand-active)" }}
-                      >
-                        {count}
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 text-sm font-bold text-ink">
+                      {group.title.replace(" AFL Tools", "")}
+                      {count > 0 ? (
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[11px] font-bold"
+                          style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: "var(--brand-active)" }}
+                        >
+                          {count}
+                        </span>
+                      ) : null}
+                    </span>
+                    {recommendedTool ? (
+                      <span className="mt-0.5 block truncate text-[11px] text-faint">
+                        Recommended: <span className="font-medium text-muted">{recommendedTool.label}</span>
                       </span>
                     ) : null}
                   </span>
-                  <span className="flex items-center gap-2 text-xs text-faint">
+                  <span className="flex shrink-0 items-center gap-2 text-xs text-faint">
                     {group.tools.length} activities
                     <ChevronDown
                       size={16}

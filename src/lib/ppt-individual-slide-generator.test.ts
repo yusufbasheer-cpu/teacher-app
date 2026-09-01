@@ -143,4 +143,32 @@ describe("PPT isolated slide generators — topic propagation (regression for cr
       expect(call.system).not.toMatch(/Topic:\s*$/m);
     }
   });
+
+  describe("Slide 6 (Main Phase) — I Do/We Do/You Do is structural, AFL selection is separate", () => {
+    it("keeps the gradual-release structure whether or not an AFL tool block is supplied", async () => {
+      const { calls: withBlock } = mockDeepSeekFetch();
+      await generateSlide6({ ...FRICTION_PARAMS, mainAflBlock: "AFL Main Phase Tool: Jigsaw Activity details here" });
+      expect(withBlock[0]!.user).toMatch(/I Do[\s\S]*We Do[\s\S]*You Do/);
+
+      vi.unstubAllGlobals();
+      const { calls: withoutBlock } = mockDeepSeekFetch();
+      await generateSlide6({ ...FRICTION_PARAMS, mainAflBlock: undefined });
+      expect(withoutBlock[0]!.user).toMatch(/I Do[\s\S]*We Do[\s\S]*You Do/);
+    });
+
+    it("embeds exactly the supplied AFL block text — no separate hardcoded activity substituted", async () => {
+      const { calls } = mockDeepSeekFetch();
+      await generateSlide6({
+        ...FRICTION_PARAMS,
+        mainAflBlock: "AFL Main Phase Tool: Socratic Questioning — teacher poses open questions.",
+      });
+      expect(calls[0]!.user).toContain("Socratic Questioning");
+    });
+
+    it("omits the AFL Main Phase Tool line entirely when no block is supplied, rather than inventing one", async () => {
+      const { calls } = mockDeepSeekFetch();
+      await generateSlide6({ ...FRICTION_PARAMS, mainAflBlock: undefined });
+      expect(calls[0]!.user).not.toContain("AFL Main Phase Tool:");
+    });
+  });
 });
