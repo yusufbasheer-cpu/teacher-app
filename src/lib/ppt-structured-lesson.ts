@@ -477,10 +477,21 @@ function extractFromPptContent(ppt: string, needles: string[]): string {
   return "";
 }
 
-function mergeBodies(primary: string, secondary: string, topicLine: string): string {
+/** Exported for testing only — see SLIDE_BODY_LIMIT above for the same rationale. */
+export function mergeBodies(primary: string, secondary: string, topicLine: string): string {
   const a = primary.trim();
   const b = secondary.trim();
-  if (a && b && a !== b) return polishBody(`${a}\n\n${b}`, SECTION_MAX_CHARS);
+  // extractFromPptContent takes a fixed-width slice starting at a matched needle, so two
+  // needles that both occur inside the same source text (e.g. "uae" and "cross curricular"
+  // both appearing in one slide-8 body) produce two overlapping windows — the later-starting
+  // one ends up an outright substring of the earlier one once both windows run past the end
+  // of a short source string. Concatenating them then repeats that whole shared tail verbatim.
+  // Treat full containment as the same content, not two things to join.
+  if (a && b) {
+    if (a === b || a.includes(b)) return polishBody(a, SECTION_MAX_CHARS);
+    if (b.includes(a)) return polishBody(b, SECTION_MAX_CHARS);
+    return polishBody(`${a}\n\n${b}`, SECTION_MAX_CHARS);
+  }
   if (a) return a;
   if (b) return b;
   return polishBody(topicLine, 800);
@@ -968,13 +979,42 @@ function applyAflDeckInjections(slides: StructuredLessonSlideModel[], afl: AflSe
   go(11, "successCriteria", afl.successCriteria);
 }
 
+/**
+ * Minimum length of a repeated chunk that counts as duplication rather than coincidental
+ * phrase reuse — long enough that ordinary domain vocabulary ("quadratic equation", "the
+ * discriminant") recurring across a body never trips this, short enough to still catch a
+ * repeated sentence or paragraph.
+ */
+const DEDUP_MIN_CHARS = 60;
+
+/**
+ * Cuts a body off at the point where it starts repeating a chunk of text already seen
+ * earlier — a model occasionally restates an earlier paragraph near the end of a slide, and
+ * merging two overlapping extractions of the same source (see mergeBodies) can produce the
+ * same shape. Left alone, that repeated block either reads as a jarring duplicate paragraph
+ * or — once the per-slide char cap below fires partway through it — gets truncated mid-
+ * sentence with a trailing ellipsis, which is worse than simply not including it.
+ */
+/** Exported for testing only — see SLIDE_BODY_LIMIT above for the same rationale. */
+export function dropRepeatedTail(s: string): string {
+  if (s.length < DEDUP_MIN_CHARS * 2) return s;
+  for (let i = DEDUP_MIN_CHARS; i <= s.length - DEDUP_MIN_CHARS; i++) {
+    const window = s.slice(i, i + DEDUP_MIN_CHARS);
+    if (s.slice(0, i).includes(window)) {
+      return s.slice(0, i).trim();
+    }
+  }
+  return s;
+}
+
 function clampSlideBodyToDeckRules(slides: StructuredLessonSlideModel[]): void {
   const aflHeavy = new Set([1, 5, 6, 7, 8, 9, 10, 11]);
   for (let i = 0; i < slides.length; i++) {
     const lim = SLIDE_BODY_LIMIT[i] ?? { chars: 2200, lines: 16 };
     const maxLines = aflHeavy.has(i) ? BULLET_MAX_LINES_WITH_AFL : BULLET_MAX_LINES;
+    const deduped = dropRepeatedTail((slides[i]!.body ?? "").trim());
     slides[i]!.body = stripMarkdownSymbolsForStudents(
-      polishBody(slides[i]!.body ?? "", lim.chars, Math.min(maxLines, lim.lines)),
+      polishBody(deduped, lim.chars, Math.min(maxLines, lim.lines)),
     );
   }
 }
