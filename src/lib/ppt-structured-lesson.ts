@@ -47,6 +47,9 @@ const SECTION_MAX_CHARS = 4000;
  * cross-curricular link, MOE alignment, SDG context), so a real UAE-framework generation was
  * silently cut mid-sentence with an ellipsis, dropping the alignment and SDG paragraphs entirely
  * from the exported deck. Raised to match the deck's densest slides rather than staying an outlier.
+ * Index 9 (Extended Task) hit the same failure mode for the same reason: a genuinely elaborate
+ * task (a multi-step design challenge with a diagram requirement and a "connection to future
+ * learning" section) exceeded its 2800-char cap and got cut mid-sentence — raised alongside it.
  */
 export const SLIDE_BODY_LIMIT: readonly { chars: number; lines: number }[] = [
   { chars: 220, lines: 4 },
@@ -58,7 +61,7 @@ export const SLIDE_BODY_LIMIT: readonly { chars: number; lines: number }[] = [
   { chars: 3600, lines: 22 },
   { chars: 5000, lines: 26 },
   { chars: 3400, lines: 22 },
-  { chars: 2800, lines: 18 },
+  { chars: 3600, lines: 22 },
   { chars: 1200, lines: 12 },
   { chars: 2600, lines: 18 },
   { chars: 420, lines: 6 },

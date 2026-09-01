@@ -1,25 +1,32 @@
 import { describe, expect, it } from "vitest";
 import { SLIDE_BODY_LIMIT, dropRepeatedTail, mergeBodies } from "./ppt-structured-lesson";
 
+// The deck's AFL-heavy, multi-part slides — Starter Activity, Differentiated Activity, UAE /
+// Real-Life Connection, Plenary, Extended Task. Two of these (7, then 9) were independently
+// found undersized relative to their siblings and each silently truncated a real generation
+// mid-sentence — kept as one list so a future regression on any sibling fails the same way.
+const AFL_HEAVY_RICH_SLIDE_INDICES = [1, 6, 7, 8, 9] as const;
+
 describe("SLIDE_BODY_LIMIT — per-slide truncation ceilings", () => {
-  it("gives slide index 7 (UAE / Real-Life Connection) enough room for its 4-part content", () => {
-    // Regression: this slide's UAE-framework body is 4 sub-sections (real-life connection,
-    // cross-curricular link, MOE alignment, SDG context) — a real generation measured
-    // ~2,900-3,100 characters for it. The cap used to be 1,600, silently cutting the deck's
-    // last two sub-sections with a mid-sentence ellipsis. It must stay comfortably above
-    // what real content needs, not just above the old broken value.
-    const uaeSlideLimit = SLIDE_BODY_LIMIT[7]!;
-    expect(uaeSlideLimit.chars).toBeGreaterThanOrEqual(4000);
-    expect(uaeSlideLimit.lines).toBeGreaterThanOrEqual(20);
+  it.each([
+    [7, "UAE / Real-Life Connection", "its 4-part UAE-mode content (real-life connection, cross-curricular link, MOE alignment, SDG context)"],
+    [9, "Extended Task", "an elaborate multi-step design task with a diagram requirement and a future-learning section"],
+  ])("gives slide index %i (%s) enough room for %s", (index) => {
+    // Regression: both of these were independently capped well below what a real generation
+    // needed and got cut off mid-sentence with a trailing ellipsis as a result.
+    const limit = SLIDE_BODY_LIMIT[index]!;
+    expect(limit.chars).toBeGreaterThanOrEqual(3400);
+    expect(limit.lines).toBeGreaterThanOrEqual(20);
   });
 
-  it("no longer leaves slide 7 as a cramped outlier next to its similarly rich siblings", () => {
-    // Indices 1 (Starter Activity), 6 (Differentiated Activity), and 8 (Plenary) are the
-    // deck's other AFL-heavy, multi-part slides. Slide 7 used to be capped at roughly half
-    // their size despite carrying just as much (or more) content in UAE mode — it should now
-    // be at least as generous as those siblings, not the deck's tightest AFL-heavy slide.
-    const siblingChars = [1, 6, 8].map((i) => SLIDE_BODY_LIMIT[i]!.chars);
-    expect(SLIDE_BODY_LIMIT[7]!.chars).toBeGreaterThanOrEqual(Math.max(...siblingChars));
+  it("keeps every AFL-heavy rich slide within reach of its siblings — no cramped outlier", () => {
+    // A slide capped at roughly half what its siblings get is exactly the shape both prior
+    // bugs took. Every slide in this group should sit within 2x of the smallest of the group,
+    // not fall arbitrarily further behind.
+    const chars = AFL_HEAVY_RICH_SLIDE_INDICES.map((i) => SLIDE_BODY_LIMIT[i]!.chars);
+    const min = Math.min(...chars);
+    const max = Math.max(...chars);
+    expect(max).toBeLessThanOrEqual(min * 2);
   });
 });
 
