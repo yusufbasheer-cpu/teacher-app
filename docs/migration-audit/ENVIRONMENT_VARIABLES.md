@@ -33,6 +33,8 @@ Actual values were not copied. Variable names were gathered from `.env.example` 
 | `SENTRY_PROJECT` | Sentry source-map upload project | build/CI | No | DEPLOYMENT | `next.config.ts` |
 | `SENTRY_AUTH_TOKEN` | Sentry source-map upload token | build/CI | Yes | DEPLOYMENT | `next.config.ts` |
 | `SCHOOL_ADMIN_BYPASS_AUTH` | bypass flag for school admin auth | server | High-risk if enabled | BACKEND | env reference grep |
+| `PYTHON_BACKEND_URL` | server-side FastAPI base URL for explicitly opted-in Next routing seams | server only | No, but internal topology | DEPLOYMENT/BACKEND | `src/lib/backend-routing.ts` |
+| `BACKEND_ROUTE_GEO` | explicit opt-in for routing `GET /api/geo` through Python when set to `python`; missing/unknown values use Next | server only | No | DEPLOYMENT/BACKEND | `src/lib/backend-routing.ts`, `src/app/api/geo/route.ts` |
 | `NODE_ENV` | runtime mode | build/server | No | DEPLOYMENT | `next.config.ts` |
 | `NEXT_RUNTIME` | Next runtime discriminator | server | No | DEPLOYMENT | env reference grep |
 | `PORT` | Flask port | Python server | No | BACKEND/PPT service | `python-ppt-api/main.py` |
@@ -55,3 +57,5 @@ Known frontend-exposed variables are prefixed `NEXT_PUBLIC_*`. No server-only se
 - `SUPABASE_SERVICE_ROLE_KEY` and other server-only secrets must never enter the browser API-client abstraction.
 - The FastAPI pilot reuses the existing Supabase URL and anon-key variable names; no Python-specific duplicate secret is introduced.
 - `backend-python/.env.integration.example` is a local integration-test template only. It must not be populated with production or unknown hosted credentials.
+- `PYTHON_BACKEND_URL` is server-only routing topology. It must not use a `NEXT_PUBLIC_` prefix, and clients must not be able to choose this URL through query parameters or headers.
+- `BACKEND_ROUTE_GEO=python` is the only Checkpoint 14 routing opt-in. Missing, `next`, unknown, or malformed config keeps `GET /api/geo` on the existing Next implementation.

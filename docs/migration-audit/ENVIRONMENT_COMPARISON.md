@@ -14,6 +14,8 @@ Checkpoint 11 local RLS comparison status: not run. Local Supabase is blocked by
 
 Checkpoint 12 local RLS comparison status: not run. Schema forensics selected `HYBRID_TRANSITION_REQUIRED`; ordered migrations are not yet sufficient for fresh local reset.
 
+Checkpoint 14 routing comparison status: not run against deployed URLs. Routing infrastructure now exists for `GET /api/geo`, but default configuration remains Next. Python routing requires server-only `BACKEND_ROUTE_GEO=python` plus a valid `PYTHON_BACKEND_URL`; no real URLs were added or tested.
+
 ## Comparison Matrix
 
 | Feature / Behavior | Production | Staging | Current branch | Difference | Expected? | Source-code explanation | Migration implication |
@@ -36,6 +38,13 @@ Provide production, staging, and preview URLs plus test credentials. Then run:
 - Razorpay test-mode checkout/webhook replay
 - responsive screenshots
 - network/console error capture
+
+For geo routing verification, additionally test:
+
+- default environment: `/api/geo` resolves through the existing Next geo service
+- opt-in environment: `/api/geo` proxies to FastAPI without changing browser URL
+- rollback: removing `BACKEND_ROUTE_GEO` or setting it to `next` restores Next behavior
+- transport failure: Python connection failure falls back to Next for geo only
 
 ## Local RLS Test Configuration
 

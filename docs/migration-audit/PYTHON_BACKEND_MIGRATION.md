@@ -42,6 +42,20 @@ Checkpoint 13 defines a baseline reconciliation strategy for `lesson_plans`, `sa
 | `POST /api/question-paper` | Not promoted | usage, generation persistence, AI providers | Supabase auth/session | Yes | quota and AI/persistence parity |
 | `POST /api/razorpay/webhook` | No | billing tables | Razorpay HMAC/service-role writes | Yes | money-impacting webhook replay and idempotency |
 
+## Temporary Strangler Routing
+
+Checkpoint 14 introduces a small Next route-boundary routing seam for eligible Track B endpoints:
+
+```text
+Browser keeps stable /api/... URL
+  -> Next migration seam
+  -> existing Next implementation or explicit Python proxy
+```
+
+For the pilot, only `GET /api/geo` is allowlisted. The default remains the existing Next geo service; Python is selected only when server-side configuration explicitly sets `BACKEND_ROUTE_GEO=python` and `PYTHON_BACKEND_URL` is valid.
+
+This is migration infrastructure, not the final topology. It avoids frontend URL churn while parity is being proven. After the repository/deployment split matures, traffic can move to the final backend route shape selected by deployment architecture.
+
 ## Endpoint Migration Map
 
 | Existing area | Python target | Compatibility requirement |
