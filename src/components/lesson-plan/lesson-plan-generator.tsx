@@ -40,6 +40,7 @@ import {
   mergePptSlideImageUrlsIntoPlan,
   mergeSectionImagesMeta,
   parseSectionImagesMeta,
+  resolveGenerationTopic,
   resolveLessonTitle,
 } from "@/lib/lesson-plan";
 import { writeDiffPackSession } from "@/lib/differentiated-pack-session";
@@ -1253,6 +1254,12 @@ export function LessonPlanGenerator() {
                       onChange={(next) => setAflSelected(next as Record<AflPhaseId, string[]>)}
                       locked={!entitlements.afl}
                       onUpgrade={() => setPaymentModalOpen(true)}
+                      context={{
+                        subject: form.subject.trim(),
+                        grade: form.grade.trim(),
+                        topic: resolveGenerationTopic(form.topic, form.chapter),
+                        learningObjectives: form.learningObjectives.trim(),
+                      }}
                     />
                   </Disclosure>
 
