@@ -1,12 +1,19 @@
 # Database Schema
 
-Database: Supabase Postgres with Supabase Auth users. Schema management is raw SQL in `supabase/schema.sql` and `supabase/migrations`.
+Database: Supabase Postgres with Supabase Auth users. Schema management is currently split between `supabase/schema.sql`, `supabase/migrations`, and a small amount of legacy application-embedded SQL. See `DATABASE_SOURCE_OF_TRUTH.md` and `SUPABASE_SCHEMA_DRIFT.md`.
+
+## Verification Labels
+
+- `VERIFIED FROM SQL`: directly present in tracked SQL.
+- `VERIFIED FROM APPLICATION USAGE`: required by TypeScript/Python code or tests.
+- `INFERRED`: likely from code/docs, but not directly proven by executable SQL.
+- `UNKNOWN`: requires live schema inspection or missing historical migration recovery.
 
 ## Tables and Models
 
 | Table | Purpose | Key fields / relationships | Readers/writers | Evidence |
 | --- | --- | --- | --- | --- |
-| `lesson_plans` | Saved teacher packages | `id`, `user_id -> auth.users`, `curriculum_type`, `curriculum_framework`, `chapter`, `subject`, `grade`, `topic`, `learning_objectives`, `lesson_plan jsonb`, `created_at`; RLS own-user CRUD | client `LessonPlanGenerator`, saved lesson components, account export, moderation | `supabase/schema.sql`, `src/components/lesson-plan/lesson-plan-generator.tsx` |
+| `lesson_plans` | Saved teacher packages | `id`, `user_id -> auth.users`, `curriculum_type`, `curriculum_framework`, `chapter`, `subject`, `grade`, `topic`, `learning_objectives`, `lesson_plan jsonb`, `created_at`; RLS own-user CRUD | client `LessonPlanGenerator`, saved lesson components, account export, moderation | `VERIFIED FROM SQL`: `supabase/schema.sql`; `VERIFIED FROM APPLICATION USAGE`: lesson-plan save services/tests |
 | `active_sessions` | One active login/session per account | `user_id`, `session_token`, `device_info`, `created_at`; RLS own-user CRUD | `src/lib/active-session.ts` | migrations `20260519120000`, `20260526120000` |
 | `user_usage` | Plan, quota, status, welcome-email flag | `user_id`, `plan_type`, `generations_used`, `generations_limit`, `reset_date`, `welcome_email_sent`, `account_status`, suspension fields | usage APIs, generation routes, auth/session, billing, admin | `supabase/schema.sql`, usage migrations, `src/lib/user-usage-server.ts` |
 | `school_accounts` | Approved schools/tenants | name/domain/admin/plan/max/active/status/reason fields | enrollment, school admin, super admin | `20260524143000_school_accounts.sql`, later migrations |
@@ -44,6 +51,29 @@ RLS is enabled on user-owned tables such as `lesson_plans`, `active_sessions`, `
 
 Migration risk: Python backend must preserve both Supabase Auth compatibility and the exact security-definer RPC behavior for atomic usage gating.
 
+## lesson_plans Contract Detail
+
+`VERIFIED FROM SQL`:
+
+- columns: `id`, `user_id`, `curriculum_type`, `subject`, `grade`, `chapter`, `curriculum_framework`, `topic`, `learning_objectives`, `lesson_plan`, `created_at`
+- primary key: `id`
+- foreign key: `user_id references auth.users(id) on delete cascade`
+- defaults: `gen_random_uuid()` for `id`, `'Other'` for `curriculum_type`, `''` for `chapter`, `''` for `curriculum_framework`, `now()` for `created_at`
+- RLS enabled on `public.lesson_plans`
+- insert/select/update/delete owner policies using `auth.uid() = user_id`
+
+`VERIFIED FROM APPLICATION USAGE`:
+
+- `POST /api/lesson-plan/save` writes `curriculum_type`, `curriculum_framework`, `subject`, `grade`, `chapter`, `topic`, `learning_objectives`, and `lesson_plan`.
+- Python parity pilot writes the same fields through PostgREST with caller bearer authorization.
+- Contract fixtures cover insert/update request shape, not live database policy decisions.
+
+`UNKNOWN`:
+
+- whether deployed production/staging have extra `lesson_plans` indexes, grants, triggers, or columns not represented in tracked SQL
+- whether `schema.sql` was manually authored or exported from an early Supabase project
+- whether a missing historical base migration exists outside this repository
+
 ## FastAPI Lesson-Plan Pilot
 
 - The pilot writes only `lesson_plans` through PostgREST.
@@ -51,3 +81,4 @@ Migration risk: Python backend must preserve both Supabase Auth compatibility an
 - Update filters by both `id` and the authenticated `user_id`, while the table's `using` and `with check` policies remain active.
 - No service-role key, direct Postgres connection, SQLAlchemy, or migration change is introduced.
 - Checkpoint 9 inspected the policy SQL from `supabase/schema.sql`, but did not run it against a live Supabase database because no non-production target was safely identifiable.
+- Checkpoint 12 added a static SQL invariant test for `lesson_plans` owner RLS, but live RLS verification is still blocked.

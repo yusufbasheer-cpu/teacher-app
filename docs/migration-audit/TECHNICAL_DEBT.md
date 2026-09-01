@@ -14,5 +14,6 @@
 | Python PPT service permissive CORS/no auth | confirmed visible | `python-ppt-api/main.py` | High if publicly exposed. |
 | No proven non-production Supabase RLS integration environment | confirmed | Checkpoint 9/10 inspection, `FASTAPI_RLS_INTEGRATION.md` | Blocks authenticated Python cutover candidacy. |
 | FastAPI bearer validation depends on Supabase Auth availability per request | confirmed | `backend-python/app/auth/dependencies.py` | Adds latency/availability coupling until a later auth architecture decision. |
+| Database schema source of truth is hybrid/drifted | confirmed | `DATABASE_SOURCE_OF_TRUTH.md`, `SUPABASE_SCHEMA_DRIFT.md` | Fresh local reset and backend-owned schema migration remain blocked. |
 
 Nothing should be removed solely from this list.

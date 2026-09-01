@@ -6,16 +6,16 @@ Date: 2026-09-01
 
 This local environment is intended to verify authenticated Python migrations against real Supabase Auth, PostgREST, Postgres, and RLS without touching production or unknown hosted projects.
 
-## Checkpoint 11 Status
+## Checkpoint 11/12 Status
 
 Status: `BLOCKED`
 
-Local Supabase was not feasible in this workspace during Checkpoint 11 because:
+Local Supabase was not feasible in this workspace during Checkpoints 11 and 12 because:
 
 - Supabase CLI is not available on PATH.
 - Docker is not available on PATH.
 - `supabase/config.toml` does not exist.
-- The tracked migration chain does not create `public.lesson_plans`; see `SUPABASE_SCHEMA_DRIFT.md`.
+- The tracked migration chain does not create `public.lesson_plans` or `saved_lessons`; see `SUPABASE_SCHEMA_DRIFT.md`.
 
 No local Supabase runtime was started and no integration mutation was run.
 
@@ -33,9 +33,9 @@ Do not install global tooling silently as part of a migration checkpoint.
 
 Current faithful source for `lesson_plans` shape and RLS policy text: `supabase/schema.sql`.
 
-Current migration-chain status: incomplete for fresh local reset because the initial `lesson_plans` creation migration is missing.
+Current migration-chain status: incomplete for fresh local reset because the initial `lesson_plans` creation migration is missing. Checkpoint 12 also found representative broader drift around `saved_lessons` and `school_templates`.
 
-Before running local RLS tests, reconcile the migration chain and schema snapshot. Do not create a reduced one-table schema just to make tests pass.
+Before running local RLS tests, reconcile the migration chain and schema snapshot according to `DATABASE_SOURCE_OF_TRUTH.md`. Do not create a reduced one-table schema just to make tests pass.
 
 ## Auth And PostgREST Behavior
 
@@ -81,7 +81,8 @@ The exact commands depend on the chosen schema reconciliation strategy. The inte
 
 ```powershell
 supabase start
-# initialize/reset local database from reconciled schema source
+# initialize/reset local database from reconciled canonical schema source
+# verify lesson_plans columns and RLS policies
 python -m pytest backend-python/tests/integration -m integration
 supabase stop
 ```

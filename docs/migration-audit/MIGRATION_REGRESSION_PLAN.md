@@ -35,6 +35,8 @@ Checkpoint 9 adds an explicit integration test harness at `backend-python/tests/
 
 Checkpoint 11 hardened the local guard so `SUPABASE_INTEGRATION_ENVIRONMENT=local` requires a localhost URL. It also documented that local Supabase reset is blocked until runtime tooling exists and `SUPABASE_SCHEMA_DRIFT.md` is resolved.
 
+Checkpoint 12 adds `backend-python/tests/test_supabase_schema_contract.py`, a static regression test that protects the `lesson_plans` owner-RLS fragments in `supabase/schema.sql`. This does not replace live RLS integration.
+
 ## Critical User Journeys
 
 - signup/login/logout/OAuth callback

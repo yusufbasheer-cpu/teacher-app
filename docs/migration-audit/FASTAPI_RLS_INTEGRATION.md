@@ -12,6 +12,8 @@ Checkpoint 10 re-ran the environment classification step and reached the same sa
 
 Checkpoint 11 attempted to establish local Supabase reproducibility, but stopped before local startup because the required runtime tools are unavailable and the tracked migration chain does not create `public.lesson_plans`. See `LOCAL_SUPABASE_TESTING.md` and `SUPABASE_SCHEMA_DRIFT.md`.
 
+Checkpoint 12 resolved the source-of-truth question as `HYBRID_TRANSITION_REQUIRED`: `schema.sql` is currently the only SQL source for the `lesson_plans` base contract, while ordered migrations are incomplete for fresh reset. No live RLS test was run.
+
 ## Environment Inspection
 
 Repository evidence:
@@ -22,7 +24,7 @@ Repository evidence:
 - Supabase CLI was not available on PATH during this checkpoint.
 - Docker was not available on PATH during this checkpoint.
 - `supabase/config.toml` was not created because schema-source drift must be resolved first.
-- The migration chain has no initial `lesson_plans` creation migration.
+- The migration chain has no initial `lesson_plans` or `saved_lessons` creation migration.
 - `.github/workflows/ci.yml` uses placeholder Supabase values for fast checks only.
 - `.env.local` contains Supabase URL, anon key, and service-role key, but no `SUPABASE_ENVIRONMENT`, staging marker, test marker, or mutation approval marker.
 
@@ -167,6 +169,12 @@ Checkpoint 11 blocker:
 - Docker-compatible runtime is absent.
 - The migration chain does not create `public.lesson_plans`; later migrations assume it already exists.
 - The harness local guard was hardened so `SUPABASE_INTEGRATION_ENVIRONMENT=local` requires a localhost target.
+
+Checkpoint 12 blocker refinement:
+
+- `lesson_plans` first appears in `supabase/schema.sql` in the first commit, not as an ordered migration.
+- Representative drift also exists for `saved_lessons` and `school_templates`.
+- A static SQL invariant test now guards `lesson_plans` owner RLS, but live Supabase RLS remains unverified.
 
 ## Auth Provider Coupling
 

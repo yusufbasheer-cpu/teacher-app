@@ -51,6 +51,8 @@ Checkpoint 10 repeated the classification and found the same blocker. The `.env.
 
 Checkpoint 11 found that local Supabase is not yet reproducible because the CLI/runtime are absent and the migration chain does not create `public.lesson_plans`.
 
+Checkpoint 12 clarified the blocker: the Python implementation is unit-contract ready, but database reproducibility is not ready. `lesson_plans` has a verified contract in `schema.sql`, while ordered migrations are incomplete for fresh local reset. Live RLS remains unverified.
+
 Required before cutover candidacy:
 
 - local Supabase runtime with Auth/PostgREST/RLS, or

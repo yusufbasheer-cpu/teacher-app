@@ -12,6 +12,8 @@ No browser/network comparison was performed because there were no concrete deplo
 
 Checkpoint 11 local RLS comparison status: not run. Local Supabase is blocked by missing Supabase CLI/Docker runtime and schema-source drift for `lesson_plans`.
 
+Checkpoint 12 local RLS comparison status: not run. Schema forensics selected `HYBRID_TRANSITION_REQUIRED`; ordered migrations are not yet sufficient for fresh local reset.
+
 ## Comparison Matrix
 
 | Feature / Behavior | Production | Staging | Current branch | Difference | Expected? | Source-code explanation | Migration implication |

@@ -169,3 +169,15 @@ Alternatives considered: Creating a minimal `supabase/config.toml` immediately, 
 Impact: The integration harness local guard is stricter, local env documentation exists, and the exact schema/tooling blocker is documented. `POST /api/lesson-plan/save` remains `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`.
 
 Status: Implemented.
+
+## 2026-09-01
+
+Decision: Use `HYBRID_TRANSITION_REQUIRED` as the current database source-of-truth strategy.
+
+Reason: `supabase/schema.sql` is the only tracked source for the `lesson_plans` base table and owner-RLS contract, while ordered migrations represent many later changes but miss early baseline objects such as `lesson_plans` and `saved_lessons`. Some schema still exists as application-comment SQL, notably `school_templates`.
+
+Alternatives considered: Declaring migrations canonical immediately, declaring `schema.sql` canonical permanently, or adding a copied `lesson_plans` migration without resolving broader baseline drift.
+
+Impact: No migration SQL was created in Checkpoint 12. Static RLS invariant coverage was added, but live local RLS verification and cutover candidacy remain blocked until the schema baseline is reconciled.
+
+Status: Implemented.

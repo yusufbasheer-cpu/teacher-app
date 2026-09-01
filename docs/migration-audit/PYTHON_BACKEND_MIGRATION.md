@@ -6,6 +6,8 @@ The backend is mostly Next.js route handlers in `src/app/api`, with business mod
 
 There is already a separate Python Flask service in `python-ppt-api`, but it is limited to PPT template generation and is not the main backend.
 
+Python backend migration does not imply database schema migration. Database changes remain governed by the canonical Supabase/Postgres source of truth documented in `DATABASE_SOURCE_OF_TRUTH.md`.
+
 ## Proposed Python Stack
 
 - FastAPI for HTTP APIs, async endpoints, streaming responses, generated OpenAPI.
@@ -19,7 +21,7 @@ There is already a separate Python Flask service in `python-ppt-api`, but it is 
 
 Checkpoint 8 implements the first authenticated parity endpoint with a smaller, configuration-compatible strategy: Supabase Auth validates the bearer token through `/auth/v1/user`, then the same token is forwarded to PostgREST. Local JWT/JWKS verification is deferred until the project's signing configuration and issuer/audience contract are explicitly established.
 
-Checkpoint 9 adds a guarded real-RLS integration harness for `POST /api/lesson-plan/save`, but the real run is blocked until a non-production Supabase environment is explicitly identified. Checkpoint 10 classified available targets and found no safe local/test/staging Supabase environment. Checkpoint 11 attempted local enablement and found missing runtime tooling plus `lesson_plans` schema-source drift, so the endpoint is `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`, not a cutover candidate.
+Checkpoint 9 adds a guarded real-RLS integration harness for `POST /api/lesson-plan/save`, but the real run is blocked until a non-production Supabase environment is explicitly identified. Checkpoint 10 classified available targets and found no safe local/test/staging Supabase environment. Checkpoint 11 attempted local enablement and found missing runtime tooling plus `lesson_plans` schema-source drift. Checkpoint 12 selected `HYBRID_TRANSITION_REQUIRED` for database source-of-truth recovery and added a static RLS invariant test, but did not create migration SQL. The endpoint remains `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`, not a cutover candidate.
 
 ## Endpoint Migration Map
 
