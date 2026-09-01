@@ -34,6 +34,19 @@ GitHub Actions workflow `.github/workflows/ci.yml` runs on pull requests and pus
 
 Active deployment platform cannot be proven from repository alone.
 
+## FastAPI Backend (`backend-python/`)
+
+Checkpoint 15 confirmed no deployment configuration exists for
+`backend-python`: no `Dockerfile`, `Procfile`, `render.yaml`, `railway.json`,
+or CI job that builds/deploys it. `.github/workflows/ci.yml` only covers the
+Next app. The only documented way to run it is local (`README.md`:
+`python -m uvicorn app.main:app --app-dir backend-python ...`).
+
+Checkpoint 15 ran it locally on `127.0.0.1:8001` (port 8000 was occupied by
+an unrelated pre-existing local process) purely for live routing/rollback
+verification. The process was stopped afterward; nothing was deployed.
+Choosing a real hosting platform for `backend-python` remains open work.
+
 ## Infrastructure Gaps
 
 - No Terraform, Pulumi, Kubernetes manifests, Dockerfile, docker-compose, nginx config, serverless config, Netlify config, or Fly config were found.

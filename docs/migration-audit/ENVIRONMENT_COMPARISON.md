@@ -16,6 +16,8 @@ Checkpoint 12 local RLS comparison status: not run. Schema forensics selected `H
 
 Checkpoint 14 routing comparison status: not run against deployed URLs. Routing infrastructure now exists for `GET /api/geo`, but default configuration remains Next. Python routing requires server-only `BACKEND_ROUTE_GEO=python` plus a valid `PYTHON_BACKEND_URL`; no real URLs were added or tested.
 
+Checkpoint 15 routing comparison status: run locally only (`127.0.0.1` Next + `127.0.0.1` FastAPI), not against any deployed URL — none exists for `backend-python`. Direct Python health/readiness/geo, Next reference geo, routed geo, transport-failure fallback, and rollback were all verified live. See `GEO_PYTHON_CUTOVER.md` for full results.
+
 ## Comparison Matrix
 
 | Feature / Behavior | Production | Staging | Current branch | Difference | Expected? | Source-code explanation | Migration implication |

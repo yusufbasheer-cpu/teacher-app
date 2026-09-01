@@ -1,8 +1,17 @@
 # Backend Routing And Rollback
 
-Date: 2026-09-01
+Date: 2026-09-01 (Checkpoint 14), updated 2026-09-01 (Checkpoint 15)
 
 Status: `ROUTING_INFRASTRUCTURE_READY_FOR_GEO_ONLY`.
+
+## Checkpoint 15 Live Verification
+
+The routing seam described below was exercised live against a local FastAPI
+instance (`python -m uvicorn`, loopback only). Routing selection, header
+allowlisting, transport fallback, and rollback all behaved exactly as
+documented here. No deployed (non-local) FastAPI target exists yet, so
+Python routing was not left enabled in any persisted configuration. Full
+detail: `GEO_PYTHON_CUTOVER.md`.
 
 ## Architecture
 

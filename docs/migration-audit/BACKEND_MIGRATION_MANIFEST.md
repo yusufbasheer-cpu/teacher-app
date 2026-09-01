@@ -17,7 +17,7 @@ Status legend:
 
 | Area | Status | Routing infrastructure | Cutover | Notes |
 | --- | --- | --- | --- | --- |
-| `GET /api/geo` | `PYTHON_CUTOVER_CANDIDATE` | ready for explicit opt-in via `BACKEND_ROUTE_GEO=python` | not cut over | low-risk Track B pilot; parity proved in Python foundation; default remains Next |
+| `GET /api/geo` | `CUTOVER_VALIDATED` | ready for explicit opt-in via `BACKEND_ROUTE_GEO=python` | not cut over (no deployed FastAPI target exists) | low-risk Track B pilot; Checkpoint 15 proved routing/security/rollback live against a local FastAPI instance; default remains Next until a real deployment target exists |
 | `POST /api/lesson-plan/save` | `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER` | not enabled for routing | not cut over | authenticated unit-contract parity proved; local verification blocked by Supabase runtime/schema/RLS issues |
 | `POST /api/lesson-plan` | `FUTURE_AI_SERVICE` | none | not cut over | generation remains Next-owned for now |
 | `POST /api/question-paper` | `FUTURE_AI_SERVICE` | none | not cut over | AI and quota heavy |
@@ -35,6 +35,7 @@ Status legend:
 
 - Geo remains the only cutover candidate; no production routing moved.
 - Checkpoint 14 adds explicit geo-only routing infrastructure. Python routing still requires server-side opt-in; default configuration stays on Next.
+- Checkpoint 15 proved the routing seam live (local Next + local FastAPI): direct Python health/readiness/geo, semantic contract parity, dual-sided routing evidence, Authorization/Cookie exclusion, transport-failure fallback, and rollback all passed. Classification: `VALIDATED_BUT_LEFT_ON_NEXT` — no deployed FastAPI target exists yet, so nothing was left cut over. See `GEO_PYTHON_CUTOVER.md`.
 - `lesson-plan/save` is a no-cutover authenticated parity implementation with unit-contract evidence, a guarded integration harness, and static SQL invariant coverage. Checkpoint 12 did not promote it because live RLS verification still needs a reproducible Supabase environment.
 - Checkpoint 13 keeps `lesson-plan/save` at `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`. Schema reconciliation planning narrows the blocker but does not remove the need for live RLS verification.
 - No repository split happened yet.

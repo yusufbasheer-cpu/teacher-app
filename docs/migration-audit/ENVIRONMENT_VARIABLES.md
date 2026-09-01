@@ -59,3 +59,4 @@ Known frontend-exposed variables are prefixed `NEXT_PUBLIC_*`. No server-only se
 - `backend-python/.env.integration.example` is a local integration-test template only. It must not be populated with production or unknown hosted credentials.
 - `PYTHON_BACKEND_URL` is server-only routing topology. It must not use a `NEXT_PUBLIC_` prefix, and clients must not be able to choose this URL through query parameters or headers.
 - `BACKEND_ROUTE_GEO=python` is the only Checkpoint 14 routing opt-in. Missing, `next`, unknown, or malformed config keeps `GET /api/geo` on the existing Next implementation.
+- Checkpoint 15 confirmed neither `PYTHON_BACKEND_URL` nor `BACKEND_ROUTE_GEO` is set in `.env.local` or `.env.example`. Both were verified live using ephemeral shell-environment values pointed at a local FastAPI process only; neither variable was persisted anywhere.

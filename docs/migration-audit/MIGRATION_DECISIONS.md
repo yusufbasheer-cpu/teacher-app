@@ -181,3 +181,15 @@ Alternatives considered: Declaring migrations canonical immediately, declaring `
 Impact: No migration SQL was created in Checkpoint 12. Static RLS invariant coverage was added, but live local RLS verification and cutover candidacy remain blocked until the schema baseline is reconciled.
 
 Status: Implemented.
+
+## 2026-09-01 (Checkpoint 15)
+
+Decision: Verify the Checkpoint 14 geo routing seam live using a local FastAPI process instead of a deployed environment, and classify the outcome `VALIDATED_BUT_LEFT_ON_NEXT`.
+
+Reason: `backend-python` has no deployment configuration anywhere in the repository (no Dockerfile, Procfile, render.yaml, railway.json, or CI deploy job), and no `PYTHON_BACKEND_URL`/`BACKEND_ROUTE_GEO` value exists in any env file. Inventing new infrastructure is out of scope for this checkpoint. The documented "safe environment priority" places local Next + local FastAPI first, and it was sufficient to prove routing, security, contract parity, transport fallback, and rollback end-to-end.
+
+Alternatives considered: Provisioning a new hosting platform for `backend-python` to enable a "real" cutover; skipping live verification and relying only on Checkpoint 14's automated tests.
+
+Impact: The geo routing mechanism is now proven correct end-to-end with live evidence (not just unit tests), but Python routing was not left enabled in any persisted configuration because no deployed target exists to leave it enabled against. Choosing/provisioning a real FastAPI hosting platform is separate, future work.
+
+Status: Implemented.
