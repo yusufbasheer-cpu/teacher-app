@@ -809,14 +809,30 @@ function pickDeck(
   _contextAnchor: string,
   pptIsolatedBody?: string,
 ): { body: string; notes: string } {
-  const fromPlan = plan ? extractFromFullPlanDeck(plan, kind) : "";
-  // Use pre-isolated body when available to prevent cross-slide content bleed.
-  const fromPpt = pptIsolatedBody?.trim() || (ppt ? extractFromPptContent(ppt, pptHints) : "");
-  const bodyRaw = mergeBodies(fromPlan, fromPpt, topicFallback);
+  const isolated = pptIsolatedBody?.trim() ?? "";
+  // The isolated per-slide generator body (when available) is the single authoritative
+  // source for this slide's content — it comes from a DeepSeek call scoped to this slide
+  // alone, so it physically cannot contain another slide's text. `fromPlan`/`fromPpt` below
+  // are a fallback ONLY for plans that never went through the isolated generator: they do a
+  // loose heading-line keyword search over a combined multi-section document, which can
+  // match mid-body inside an unrelated slide (e.g. "SDG Goal: ..." inside slide 3's body
+  // satisfying a "sdg"/"global" hint) and then capture everything up to the next stop
+  // keyword — potentially spanning several other slides. Once an authoritative isolated
+  // body exists, that risky search must never be blended on top of it.
+  let fromPlan = "";
+  let fromPpt = "";
+  let bodyRaw: string;
+  if (isolated) {
+    bodyRaw = isolated;
+  } else {
+    fromPlan = plan ? extractFromFullPlanDeck(plan, kind) : "";
+    fromPpt = ppt ? extractFromPptContent(ppt, pptHints) : "";
+    bodyRaw = mergeBodies(fromPlan, fromPpt, topicFallback);
+  }
   const body = stripMarkdownSymbolsForStudents(bodyRaw);
   const notes = buildTeacherSlideNotes(
     suggestedTiming,
-    `${fromPlan || fromPpt || topicFallback}`.replace(/\s+/g, " ").trim(),
+    `${isolated || fromPlan || fromPpt || topicFallback}`.replace(/\s+/g, " ").trim(),
     isAr,
   );
   return { body, notes };
@@ -837,19 +853,25 @@ function pickUaeFrameworkSlide8(
   suggestedTiming: string,
   pptIsolatedBody?: string,
 ): { body: string; notes: string } {
-  // Use isolated body when available to prevent fetching content from adjacent slides.
-  const pptSearch = pptIsolatedBody?.trim() || ppt;
-  const uaePlan = plan ? extractFromFullPlanDeck(plan, "uaeOnly") : "";
-  const crossPlan = plan ? extractFromFullPlanDeck(plan, "crossOnly") : "";
-  const pptUae = pptSearch ? extractFromPptContent(pptSearch, ["uae", "emirates", "khda", "spea", "moe", "الإمارات"]) : "";
-  const pptCross = pptSearch ? extractFromPptContent(pptSearch, ["cross curricular", "cross-curricular", "الربط"]) : "";
-  let body = stripMarkdownSymbolsForStudents(
-    mergeBodies(
-      mergeBodies(uaePlan, crossPlan, ""),
-      mergeBodies(pptUae, pptCross, ""),
-      "",
-    ).trim(),
-  );
+  // The isolated per-slide generator body is authoritative when available (see pickDeck for
+  // why the plan/ppt keyword search below must not be blended on top of it once it exists).
+  const isolated = pptIsolatedBody?.trim() ?? "";
+  let body: string;
+  if (isolated) {
+    body = stripMarkdownSymbolsForStudents(isolated);
+  } else {
+    const uaePlan = plan ? extractFromFullPlanDeck(plan, "uaeOnly") : "";
+    const crossPlan = plan ? extractFromFullPlanDeck(plan, "crossOnly") : "";
+    const pptUae = ppt ? extractFromPptContent(ppt, ["uae", "emirates", "khda", "spea", "moe", "الإمارات"]) : "";
+    const pptCross = ppt ? extractFromPptContent(ppt, ["cross curricular", "cross-curricular", "الربط"]) : "";
+    body = stripMarkdownSymbolsForStudents(
+      mergeBodies(
+        mergeBodies(uaePlan, crossPlan, ""),
+        mergeBodies(pptUae, pptCross, ""),
+        "",
+      ).trim(),
+    );
+  }
   if (body.replace(/\s+/g, "").length < MIN_SINGLE_LINK_CHARS) {
     body = stripMarkdownSymbolsForStudents(
       isAr
@@ -878,38 +900,46 @@ function pickNonUaeSlide8(
   suggestedTiming: string,
   pptIsolatedBody?: string,
 ): { body: string; notes: string } {
-  // Use isolated body when available to prevent fetching content from adjacent slides.
-  const pptSearch = pptIsolatedBody?.trim() || ppt;
+  // The isolated per-slide generator body is authoritative when available (see pickDeck for
+  // why the plan/ppt keyword search below must not be blended on top of it once it exists).
+  const isolated = pptIsolatedBody?.trim() ?? "";
   type Key = NonUaeLinkKey;
-  const fromPlan = (k: Key) => {
-    if (!plan) return "";
-    if (k === "realLife") return extractFromFullPlanDeck(plan, "realLifeOnly");
-    if (k === "cross") return extractFromFullPlanDeck(plan, "crossOnly");
-    if (k === "career") return extractFromFullPlanDeck(plan, "careerOnly");
-    if (k === "global") return extractFromFullPlanDeck(plan, "globalOnly");
-    return extractFromFullPlanDeck(plan, "subjectIntegrationOnly");
-  };
-  const fromPptBlocks: Record<Key, string> = {
-    cross: pptSearch ? extractFromPptContent(pptSearch, ["cross curricular", "cross-curricular", "الربط"]) : "",
-    realLife: pptSearch ? extractFromPptContent(pptSearch, ["real life", "real world", "الحياة"]) : "",
-    career: pptSearch ? extractFromPptContent(pptSearch, ["career", "profession", "مهنة"]) : "",
-    global: pptSearch ? extractFromPptContent(pptSearch, ["global", "world", "sdg", "عالمي"]) : "",
-    subjectIntegration: pptSearch
-      ? extractFromPptContent(pptSearch, ["integrate with", "subject integration", "science", "math", "english"])
-      : "",
-  };
-  const merged = (k: Key) =>
-    stripMarkdownSymbolsForStudents(mergeBodies(fromPlan(k), fromPptBlocks[k], "").trim());
+  let body: string;
+  let bestKey: Key | null = null;
+  if (isolated) {
+    body = stripMarkdownSymbolsForStudents(isolated);
+  } else {
+    const fromPlan = (k: Key) => {
+      if (!plan) return "";
+      if (k === "realLife") return extractFromFullPlanDeck(plan, "realLifeOnly");
+      if (k === "cross") return extractFromFullPlanDeck(plan, "crossOnly");
+      if (k === "career") return extractFromFullPlanDeck(plan, "careerOnly");
+      if (k === "global") return extractFromFullPlanDeck(plan, "globalOnly");
+      return extractFromFullPlanDeck(plan, "subjectIntegrationOnly");
+    };
+    const fromPptBlocks: Record<Key, string> = {
+      cross: ppt ? extractFromPptContent(ppt, ["cross curricular", "cross-curricular", "الربط"]) : "",
+      realLife: ppt ? extractFromPptContent(ppt, ["real life", "real world", "الحياة"]) : "",
+      career: ppt ? extractFromPptContent(ppt, ["career", "profession", "مهنة"]) : "",
+      global: ppt ? extractFromPptContent(ppt, ["global", "world", "sdg", "عالمي"]) : "",
+      subjectIntegration: ppt
+        ? extractFromPptContent(ppt, ["integrate with", "subject integration", "science", "math", "english"])
+        : "",
+    };
+    const merged = (k: Key) =>
+      stripMarkdownSymbolsForStudents(mergeBodies(fromPlan(k), fromPptBlocks[k], "").trim());
 
-  const scored: { key: Key; text: string; len: number }[] = (
-    ["cross", "realLife", "career", "global", "subjectIntegration"] as const
-  ).map((key) => {
-    const text = merged(key);
-    return { key, text, len: text.replace(/\s+/g, "").length };
-  });
-  scored.sort((a, b) => b.len - a.len);
-  const best = scored.find((s) => s.len >= MIN_SINGLE_LINK_CHARS) ?? scored[0]!;
-  let body = best.text;
+    const scored: { key: Key; text: string; len: number }[] = (
+      ["cross", "realLife", "career", "global", "subjectIntegration"] as const
+    ).map((key) => {
+      const text = merged(key);
+      return { key, text, len: text.replace(/\s+/g, "").length };
+    });
+    scored.sort((a, b) => b.len - a.len);
+    const best = scored.find((s) => s.len >= MIN_SINGLE_LINK_CHARS) ?? scored[0]!;
+    bestKey = best.key;
+    body = best.text;
+  }
   if (body.replace(/\s+/g, "").length < MIN_SINGLE_LINK_CHARS) {
     body = stripMarkdownSymbolsForStudents(
       isAr
@@ -924,11 +954,12 @@ function pickNonUaeSlide8(
     global: isAr ? "قضية عالمية/هدف تنمية" : "global/SDG link",
     subjectIntegration: isAr ? "دمج مواد" : "subject integration",
   };
+  const linkLabel = bestKey ? label[bestKey] : isAr ? "من المولّد المعزول" : "isolated generator";
   const notes = buildTeacherSlideNotes(
     suggestedTiming,
     isAr
-      ? `شريحة 8 — ربط واحد فقط (${label[best.key]}).`
-      : `Slide 8 — one link only (${label[best.key]}). No UAE content.`,
+      ? `شريحة 8 — ربط واحد فقط (${linkLabel}).`
+      : `Slide 8 — one link only (${linkLabel}). No UAE content.`,
     isAr,
   );
   return { body, notes };
