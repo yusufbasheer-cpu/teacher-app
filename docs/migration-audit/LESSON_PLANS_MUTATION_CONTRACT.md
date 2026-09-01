@@ -57,3 +57,5 @@ User A must not be able to:
 ## Checkpoint 9 Status
 
 Real isolated RLS integration verification is not yet complete. The integration harness exists, but the run is blocked until a non-production Supabase target is explicitly configured.
+
+Checkpoint 10 status: `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`. No safe local, dedicated test, or controlled staging Supabase environment was identified from repository evidence.

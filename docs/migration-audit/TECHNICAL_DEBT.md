@@ -12,7 +12,7 @@
 | `ai-research` and `obsidian-vault` not runtime-classified | unknown/probably non-runtime | top-level dirs | Low, but inspect before repo split. |
 | One-off Razorpay plan creation script mutates external resources | confirmed | `scripts/create-razorpay-pro-plan.cjs` | Operational risk if run casually. |
 | Python PPT service permissive CORS/no auth | confirmed visible | `python-ppt-api/main.py` | High if publicly exposed. |
-| No proven non-production Supabase RLS integration environment | confirmed | Checkpoint 9 inspection, `FASTAPI_RLS_INTEGRATION.md` | Blocks authenticated Python cutover candidacy. |
+| No proven non-production Supabase RLS integration environment | confirmed | Checkpoint 9/10 inspection, `FASTAPI_RLS_INTEGRATION.md` | Blocks authenticated Python cutover candidacy. |
 | FastAPI bearer validation depends on Supabase Auth availability per request | confirmed | `backend-python/app/auth/dependencies.py` | Adds latency/availability coupling until a later auth architecture decision. |
 
 Nothing should be removed solely from this list.

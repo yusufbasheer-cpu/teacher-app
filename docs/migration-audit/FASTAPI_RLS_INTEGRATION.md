@@ -8,6 +8,8 @@ Result: `NO - blocked before mutation`
 
 Checkpoint 9 could not run real Supabase mutation tests because the available environment could not be proven non-production.
 
+Checkpoint 10 re-ran the environment classification step and reached the same safety result: no local, dedicated test, or controlled staging Supabase target is currently available from repository evidence. No mutation test was run.
+
 ## Environment Inspection
 
 Repository evidence:
@@ -22,13 +24,14 @@ Repository evidence:
 
 Environment classification:
 
-| Candidate | Classification | Decision |
-| --- | --- | --- |
-| `.env.local` Supabase project | unknown | refused for mutation tests |
-| local Supabase | unavailable | no CLI config/runtime present |
-| dedicated test project | not configured | no marker/credentials provided |
-| controlled staging project | not configured | no marker/credentials provided |
-| production | unknown | treated as unsafe |
+| Environment | Source | Project ref / identifier | Classification | Mutation safe? | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| `.env.local` Supabase project | `.env.local` | `jbwevzvtloahjoamwnjt` | `UNKNOWN` | No | URL, anon key, and service-role key are present, but no repo doc or env marker identifies it as local/test/staging. |
+| CI placeholder Supabase | `.github/workflows/ci.yml` | `placeholder` | `UNKNOWN` | No | Placeholder values are for fast checks only and are not a real Supabase target. |
+| Local Supabase | `supabase/` directory | none | `LOCAL` unavailable | No | `supabase/schema.sql` and migrations exist, but no `supabase/config.toml`, Supabase CLI, or Docker runtime is available. |
+| Dedicated test Supabase | repository docs/config | none | `DEDICATED_TEST` unavailable | No | No dedicated test project reference or credentials found. |
+| Controlled staging Supabase | repository docs/config | none | `CONTROLLED_STAGING` unavailable | No | Staging URLs in docs are placeholders; no staging Supabase project reference found. |
+| Production Supabase | repository docs/config | unknown | `UNKNOWN` | No | Production identity is not documented in repo; unknown is treated as unsafe. |
 
 Proof it was non-production: not available.
 
@@ -144,6 +147,15 @@ Real integration result: not run.
 
 Reason: no local/dedicated test/controlled staging Supabase environment was available or safely identifiable.
 
+Checkpoint 10 blocker:
+
+- The only concrete hosted project discovered is `.env.local` project ref `jbwevzvtloahjoamwnjt`.
+- It cannot be positively classified as non-production from repository evidence.
+- Local Supabase cannot be started from current repo/tooling because `supabase/config.toml`, Supabase CLI, and Docker are unavailable.
+- Creating a hosted Supabase project is outside this checkpoint and is not an automated workflow in this repository.
+
+`POST /api/lesson-plan/save` therefore moves from plain `PYTHON_PARITY` to `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`.
+
 ## Auth Provider Coupling
 
 The current FastAPI auth path validates each bearer token through Supabase Auth `/auth/v1/user`. Operational consequences:
@@ -159,10 +171,35 @@ Code inspection found no FastAPI logging of bearer tokens, refresh tokens, cooki
 
 ## CI Strategy
 
-Recommended status: manual only for now.
+Recommended status: `LOCAL_ONLY` / manual only for now.
 
 Do not add automatic CI integration mutations until a dedicated Supabase test project or local Supabase runtime exists with isolated credentials stored as CI secrets and an explicit mutation approval marker.
 
+Future CI classification can become `MANUAL_CI` once a dedicated test project exists. It should become `AUTOMATED_CI` only after the project is exclusively test-owned, cleanup is reliable, and secrets are stored under CI with the same explicit mutation flags.
+
+## Reusable Test Environment Strategy
+
+Future authenticated Python migrations should reuse this same guarded Supabase integration path rather than inventing per-endpoint environments.
+
+Required hosted strategy:
+
+- Provision one dedicated Supabase test project or explicitly controlled staging project.
+- Apply the repository schema source of truth: first reconcile `supabase/schema.sql` and `supabase/migrations/`, then initialize the environment from the agreed source.
+- Keep `lesson_plans` RLS policies identical to `supabase/schema.sql` unless a real migration changes production policy.
+- Store only test-environment credentials in local shell/CI secret storage, never in docs.
+- Set `SUPABASE_INTEGRATION_ENVIRONMENT` to `test` or `staging`.
+- Use `RUN_SUPABASE_INTEGRATION_TESTS=1` and `ALLOW_SUPABASE_INTEGRATION_MUTATIONS=1` for each intentional run.
+- Create synthetic users through fixture setup authority.
+- Use real user bearer tokens for the FastAPI requests under test.
+- Clean synthetic rows by run-owned metadata and synthetic user IDs.
+
+Required local strategy:
+
+- Add the minimal Supabase CLI configuration needed to run Auth, PostgREST, and Postgres locally.
+- Apply the same lesson-plan schema and RLS policies.
+- Run with `SUPABASE_INTEGRATION_ENVIRONMENT=local`.
+- Do not reduce policies just to make integration tests pass.
+
 ## Limitation
 
-`POST /api/lesson-plan/save` remains `PYTHON_PARITY`, not `PYTHON_CUTOVER_CANDIDATE`, until the guarded integration suite is run successfully against a proven non-production Supabase environment.
+`POST /api/lesson-plan/save` remains `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`, not `PYTHON_CUTOVER_CANDIDATE`, until the guarded integration suite is run successfully against a proven non-production Supabase environment.

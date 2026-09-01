@@ -145,3 +145,15 @@ Alternatives considered: Local JWT/JWKS verification before the Supabase signing
 Impact: Python unit-contract parity is demonstrated; real isolated Supabase RLS integration and all production cutover work remain separate requirements.
 
 Status: Implemented.
+
+## 2026-09-01
+
+Decision: Keep `POST /api/lesson-plan/save` at `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER` after Checkpoint 10.
+
+Reason: The existing `.env.local` Supabase project is real but unclassified, CI uses placeholder Supabase values, and local Supabase cannot be started from current repo/tooling. No target could be positively identified as local, dedicated test, or controlled staging.
+
+Alternatives considered: Running the guarded harness against `.env.local`, creating a hosted Supabase project automatically, or weakening the harness to accept unknown environments.
+
+Impact: No unsafe mutation occurred. Cutover candidacy is blocked only by provisioning/identifying a safe Supabase RLS integration environment and running the existing harness successfully.
+
+Status: Implemented.

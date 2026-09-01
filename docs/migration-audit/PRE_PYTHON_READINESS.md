@@ -47,6 +47,8 @@ Status: `NO`
 
 Checkpoint 9 added a guarded integration harness for `POST /api/lesson-plan/save`, but did not run it because no Supabase target could be classified as local, dedicated test, or controlled staging. The current `.env.local` project is unmarked and therefore unsafe for mutation tests.
 
+Checkpoint 10 repeated the classification and found the same blocker. The `.env.local` project ref `jbwevzvtloahjoamwnjt` is still `UNKNOWN`, not mutation-safe.
+
 Required before cutover candidacy:
 
 - local Supabase runtime with Auth/PostgREST/RLS, or
