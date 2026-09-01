@@ -1,7 +1,8 @@
 import "server-only";
 
-export type BackendRouteEndpoint = "geo";
+export type BackendRouteEndpoint = "geo" | "verify-captcha";
 export type BackendRouteTarget = "next" | "python";
+type BackendRouteUpstreamPath = "/api/geo" | "/api/auth/verify-captcha";
 
 export type BackendRouteDecision = {
   endpoint: BackendRouteEndpoint;
@@ -19,11 +20,21 @@ export type BackendRouteDecision = {
 const PYTHON_ROUTE_VALUE = "python";
 const NEXT_ROUTE_VALUE = "next";
 
+// Fixed, server-controlled allowlist. Adding an endpoint here is the only
+// way to make it eligible for Python routing — there is no client input
+// path that can select or extend this mapping.
+const ENDPOINT_ROUTE_ENV_VAR: Record<BackendRouteEndpoint, string> = {
+  geo: "BACKEND_ROUTE_GEO",
+  "verify-captcha": "BACKEND_ROUTE_VERIFY_CAPTCHA",
+};
+
+const ENDPOINT_UPSTREAM_PATH: Record<BackendRouteEndpoint, BackendRouteUpstreamPath> = {
+  geo: "/api/geo",
+  "verify-captcha": "/api/auth/verify-captcha",
+};
+
 function getEndpointRouteValue(endpoint: BackendRouteEndpoint): string {
-  if (endpoint === "geo") {
-    return process.env.BACKEND_ROUTE_GEO?.trim().toLowerCase() ?? "";
-  }
-  return "";
+  return process.env[ENDPOINT_ROUTE_ENV_VAR[endpoint]]?.trim().toLowerCase() ?? "";
 }
 
 export function resolvePythonBackendBaseUrl(): URL | null {
@@ -41,7 +52,7 @@ export function resolvePythonBackendBaseUrl(): URL | null {
   }
 }
 
-export function buildPythonBackendUrl(baseUrl: URL, path: "/api/geo"): URL {
+export function buildPythonBackendUrl(baseUrl: URL, path: BackendRouteUpstreamPath): URL {
   return new URL(path, baseUrl);
 }
 
@@ -80,7 +91,7 @@ export function resolveBackendRoute(endpoint: BackendRouteEndpoint): BackendRout
   return {
     endpoint,
     target: "python",
-    pythonUrl: buildPythonBackendUrl(baseUrl, "/api/geo"),
+    pythonUrl: buildPythonBackendUrl(baseUrl, ENDPOINT_UPSTREAM_PATH[endpoint]),
     reason: "python_selected",
   };
 }

@@ -94,4 +94,38 @@ describe("backend routing", () => {
       buildPythonBackendUrl(new URL("https://example.internal/"), "/api/geo").toString(),
     ).toBe("https://example.internal/api/geo");
   });
+
+  it("defaults verify-captcha to Next when no routing config is present", async () => {
+    const { resolveBackendRoute } = await import("./backend-routing");
+
+    expect(resolveBackendRoute("verify-captcha")).toMatchObject({
+      target: "next",
+      pythonUrl: null,
+      reason: "default_next",
+    });
+  });
+
+  it("uses Python for verify-captcha only when its own flag and backend URL are valid", async () => {
+    vi.stubEnv("BACKEND_ROUTE_VERIFY_CAPTCHA", "python");
+    vi.stubEnv("PYTHON_BACKEND_URL", "https://python.internal");
+
+    const { resolveBackendRoute } = await import("./backend-routing");
+
+    const decision = resolveBackendRoute("verify-captcha");
+    expect(decision.target).toBe("python");
+    expect(decision.pythonUrl?.toString()).toBe("https://python.internal/api/auth/verify-captcha");
+  });
+
+  it("keeps geo and verify-captcha routing flags fully independent", async () => {
+    vi.stubEnv("BACKEND_ROUTE_GEO", "python");
+    vi.stubEnv("PYTHON_BACKEND_URL", "https://python.internal");
+
+    const { resolveBackendRoute } = await import("./backend-routing");
+
+    expect(resolveBackendRoute("geo").target).toBe("python");
+    expect(resolveBackendRoute("verify-captcha")).toMatchObject({
+      target: "next",
+      reason: "default_next",
+    });
+  });
 });
