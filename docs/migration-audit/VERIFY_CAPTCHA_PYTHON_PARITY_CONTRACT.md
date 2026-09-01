@@ -225,3 +225,17 @@ confirmed via configuration change only. Manifest status:
 **REMOTE_ROUTING_AND_PROVIDER_VALIDATED (local Next dev + remote
 Preview backend)** — not yet full Preview-to-Preview, not
 `CUTOVER_ACTIVE`.
+
+## Checkpoint 21 Addendum
+
+The Root Directory blocker is fixed (see `REMOTE_ROUTING_VALIDATION.md`
+for the exact fix). The full safe test matrix — invalid JSON, missing
+token, provider-rejected test token, provider-approved test token — was
+re-run through a **real `project-scquo` Preview deployment** routed to
+the real `layah-backend-python` Preview, all four cases matching the
+frozen contract exactly, with backend-side log evidence (including the
+real outbound Cloudflare call) for each. No real user token was used.
+This endpoint's service-substitution architecture is now considered
+fully validated end-to-end; remaining work is a Production-activation
+decision, not further verification. Final routing state:
+`POST /api/auth/verify-captcha` → NEXT. `PILOT_ENDPOINT_MIGRATION_PHASE = COMPLETE`.

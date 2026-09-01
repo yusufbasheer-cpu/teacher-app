@@ -293,3 +293,15 @@ Final routing state after rollback: `GET /api/geo` → NEXT.
   FastAPI deployment, because none exists yet — that is the natural next
   step if geo cutover is to become real (see Checkpoint 16 recommendation in
   the final report).
+
+## Checkpoint 21 Addendum
+
+The Checkpoint 20 limitation ("local Next dev, not an actual Preview")
+is closed. A real `project-scquo` Preview deployment routed to the real
+`layah-backend-python` Preview, with full contract match, dual-sided log
+correlation (backend-side), header isolation, and configuration-only
+rollback. Full record: `REMOTE_ROUTING_VALIDATION.md`. This endpoint's
+service-substitution architecture is now considered fully validated;
+remaining work is a Production-activation decision, not further
+verification. Final routing state: `GET /api/geo` → NEXT.
+`PILOT_ENDPOINT_MIGRATION_PHASE = COMPLETE`.

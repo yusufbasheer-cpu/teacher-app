@@ -94,9 +94,22 @@ configuration issue: its stored Root Directory setting (`.`) is rejected
 by the current Vercel CLI/API for `vercel deploy` (non-git-integration)
 invocations, blocking any local-CLI-triggered Preview deployment of the
 frontend. This was not introduced by this migration work (the setting is
-115+ days old) and was not fixed (fixing it means modifying
-`project-scquo`, out of scope for this migration's checkpoints). See
-`REMOTE_ROUTING_VALIDATION.md` "Human Action Required."
+115+ days old).
+
+Checkpoint 21 fixed this, now that fixing `project-scquo`'s deployment
+configuration was explicitly in scope: the issue existed in two places —
+`project-scquo`'s server-side project setting (`.`) and, separately, the
+local machine's gitignored `.vercel/repo.json` link file (also `.` for
+this project's entry, which testing showed feeds directly into the
+deploy API's `rootDirectory` request field). Fixed minimally in each:
+`vercel project update project-scquo --auto-detect root-directory`
+server-side, and removing the local override entirely (empty string was
+tried first and rejected too — the field must be a valid non-empty path
+or fully absent). `project-scquo`'s identity, framework preset, and
+production domain (`layah.in`) were confirmed unchanged before and after.
+Real Next Preview deployments now build and deploy successfully. See
+`REMOTE_ROUTING_VALIDATION.md` for the full fix record and the resulting
+Preview-to-Preview validation.
 
 ## Infrastructure Gaps
 

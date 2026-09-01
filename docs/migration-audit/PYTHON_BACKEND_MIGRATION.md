@@ -37,6 +37,8 @@ Checkpoint 19 provisioned the first real remote FastAPI target: Vercel project `
 
 Checkpoint 20 proved the complete remote routing path for both endpoints against the real deployed backend, including verify-captcha's actual Turnstile provider branch (approve and reject) using Cloudflare's official public test credentials. An actual `project-scquo` Preview deployment was blocked by a pre-existing, out-of-scope Root Directory setting, so routing was proven via local Next development instead — the identical production routing code either way. Added a narrow, inert-by-default fix (`applyDeploymentProtectionBypass`) so the routing proxy can reach the protection-gated backend Preview. A Vercel automation-bypass secret was briefly exposed in tool output and immediately rotated with the user's explicit authorization. Full record: `REMOTE_ROUTING_VALIDATION.md`.
 
+Checkpoint 21 closed the pilot phase: fixed `project-scquo`'s Root Directory setting (a two-part fix — server-side project setting plus a local gitignored link-file override, neither of which had been in scope to touch until this checkpoint), produced real Next Preview deployments, and re-ran the complete geo + verify-captcha matrix through actual Preview-to-Preview routing with full contract, security, and observability evidence. Both endpoints' service-substitution architecture is now considered fully validated end-to-end. **`PILOT_ENDPOINT_MIGRATION_PHASE = COMPLETE`. `NEXT MIGRATION MODE = BATCH / SUBSYSTEM WAVES`** — the migration unit changes from one endpoint per checkpoint to subsystem/batch waves for the remaining Next API routes (see `MIGRATION_MASTER_PLAN.md`). Full record: `REMOTE_ROUTING_VALIDATION.md`.
+
 ## Migration Tracks
 
 | Track | Status | Examples | Blocker |

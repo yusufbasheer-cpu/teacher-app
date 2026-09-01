@@ -263,3 +263,13 @@ Verified end-to-end against the real backend — see
 
 This is unrelated to, and does not change, the existing
 Authorization/Cookie exclusion rules above.
+
+## Checkpoint 21: Pilot Phase Closed
+
+Both `geo` and `verify-captcha` routing seams are now validated through
+a real `project-scquo` Preview deployment routed to the real backend
+Preview (not just local dev) — the same bypass mechanism above, unchanged.
+**PILOT_ENDPOINT_MIGRATION_PHASE = COMPLETE.** Full record:
+`REMOTE_ROUTING_VALIDATION.md`. The routing infrastructure in this
+document (allowlist, header rules, fallback policies) is unchanged — this
+checkpoint closed the deployment-validation gap, not the routing design.

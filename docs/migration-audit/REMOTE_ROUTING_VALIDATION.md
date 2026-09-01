@@ -232,10 +232,134 @@ unnecessary) is unaffected. Covered by 4 new tests (2 in
    checkpoint's own rigor standard says not to claim the untested case as
    proven.
 
-## Final State
+## Final State (as of Checkpoint 20)
 
 - `GET /api/geo` → **NEXT** (rollback confirmed)
 - `POST /api/auth/verify-captcha` → **NEXT** (rollback confirmed)
 - No `PYTHON_BACKEND_URL`/`BACKEND_ROUTE_*` persisted anywhere
 - Backend: zero-secret default state restored
 - `project-scquo`: unmodified
+
+## Checkpoint 21: Preview-to-Preview Closure
+
+The gap flagged above — "proven against local dev" vs. "proven against an
+actual Vercel Preview" — is now closed. **DIRECT REMOTE VERIFIED**,
+**NEXT PREVIEW → PYTHON PREVIEW VERIFIED**, **PROVIDER PATH VERIFIED**,
+and **ROLLBACK VERIFIED** are all now true for both endpoints, using a
+real `project-scquo` Preview deployment, not local development.
+
+### Root Directory Fix
+
+**CURRENT ROOT DIRECTORY:** `.` (both `project-scquo`'s server-side
+project setting and, separately, the local `.vercel/repo.json` link
+file's per-project `directory` field — two distinct places carrying the
+same broken value).
+**EXPECTED:** empty/unset (Vercel's convention for "deploy from repo
+root"), matching where `package.json`/`next.config.ts`/`vercel.json`
+actually live.
+**EVIDENCE:** confirmed via repo layout inspection before touching
+anything.
+
+**Fix applied, smallest possible in each place:**
+
+1. Server-side: `vercel project update project-scquo --auto-detect
+   root-directory` — resets to Vercel's own automatic detection rather
+   than a guessed value. Confirmed via the command's own output
+   (`Root Directory: Auto`).
+2. Local: `.vercel/repo.json` had `"directory": "."` for the
+   `project-scquo` entry. This file is gitignored, local-machine-only
+   link metadata — not a repository file, not a server setting. Testing
+   confirmed this field feeds directly into the deploy API's
+   `rootDirectory` payload: setting it to `""` produced a *different*
+   error (`should NOT be shorter than 1 characters`), proving the field
+   must be either a valid non-empty path or **omitted entirely**. Removed
+   the `directory` key from the entry.
+
+Both fixes together produced a working deploy: `vercel deploy --yes`
+succeeded on the first attempt afterward and on every subsequent redeploy
+this checkpoint (5 more, for iterating through the routing/Turnstile test
+matrix).
+
+**Post-change verification:** `project-scquo`'s project ID
+(`prj_evS8AChRJBl5N7nY7ZO5ItrBLhg1`), name, framework preset ("Next.js"),
+and production URL (`https://www.layah.in`) were all confirmed unchanged
+via `vercel project ls`/`vercel project inspect`, before and after.
+`layah-backend-python` was never touched by this fix. No custom domain
+was added or changed.
+
+### Real Next Preview
+
+Multiple genuine Preview deployments were created from the current
+working tree on `phase-1-boundary-stabilization` (iterating to swap
+Turnstile test keys required re-pointing `PYTHON_BACKEND_URL`, which
+requires a fresh Next build to take effect — env var changes are not
+retroactive on already-built deployments). All were `target: null`
+(Preview, never Production) and `readyState: READY`. None were promoted.
+
+### Geo — Preview → Preview
+
+| Check | Result |
+| --- | --- |
+| Routed request | `200 {"country_code":"US","country_name":"US"}` (value varies by Vercel's real edge-detected geolocation for the request's actual source — expected, not a contract issue; shape/type match exactly) |
+| Routing proof | Backend's own `vercel logs`: `GET /api/geo status=200 request_id=<hex> duration_ms=0.6–4.6`, timestamp-correlated to each client request, on a freshly-created Preview URL with no other traffic. **Limitation:** Next's own `console.log` routing-decision line was not retrievable via `vercel logs` for `project-scquo` — every query returned only a bodyless `source: "serverless-middleware"` summary entry (`"logs": []`), a genuine observability gap in this project's log capture, not a routing failure. Routing correctness rests on: the explicit env var configuration verified present before each deploy, the backend's own matching request log, and the isolated nature of each fresh Preview URL. |
+| Security | Synthetic `Authorization`/`Cookie` sent; confirmed absent from backend logs |
+| Latency | Direct backend: ~380–670ms. Routed Preview→Preview: ~600ms–1.05s. The added ~200–400ms reflects a real cross-project Vercel-to-Vercel network hop — not severe, no optimization performed. |
+| Rollback | `BACKEND_ROUTE_GEO` removed from Preview scope, Preview redeployed, confirmed `200 {"country_code":"IN","country_name":"IN"}` (Next's own default path) with **zero** matching entries in backend logs for the same window |
+
+### Verify-Captcha — Preview → Preview
+
+Full requested matrix, all through the actual redeployed Next Preview
+(not direct backend calls), using Cloudflare's official public test
+credentials across two backend secret configurations (each requiring one
+backend + one Next redeploy to propagate):
+
+| Case | Result | Backend log evidence |
+| --- | --- | --- |
+| Invalid JSON | `400 {"ok":false,"error":"Invalid request."}` | `status=400`, matching timestamp |
+| Missing token | `400 {"ok":false,"error":"Missing captcha token."}` | `status=400`, matching timestamp |
+| Rejected test token (`2x0000...AA`) | `403 {"ok":false,"error":"Captcha verification failed. Please try again."}` | Real outbound `POST .../siteverify "HTTP/1.1 200 OK"`, `[captcha] Turnstile verification failed: ['invalid-input-response']`, `status=403` |
+| Approved test token (`1x0000...AA`) | `200 {"ok":true}` | Real outbound `POST .../siteverify "HTTP/1.1 200 OK"`, `status=200` |
+
+No real user token was used at any point — only Cloudflare's officially
+public dummy credentials. Synthetic `Authorization`/`Cookie` sent on the
+rejected-token request; confirmed absent from backend logs. `502`
+no-fallback transport-failure policy unchanged, not live-simulated
+(consistent with Checkpoint 20 — would require disrupting the real
+backend).
+
+**Rollback:** `BACKEND_ROUTE_VERIFY_CAPTCHA` removed from Preview scope,
+redeployed, confirmed `200 {"ok":true}` (Next's own missing-secret
+default — `.env.local` has no `TURNSTILE_SECRET_KEY` either) with zero
+matching backend log entries for the same window.
+
+### Cleanup
+
+- `PYTHON_BACKEND_URL`, `BACKEND_ROUTE_GEO`, `BACKEND_ROUTE_VERIFY_CAPTCHA`,
+  `PYTHON_BACKEND_BYPASS_SECRET` — all removed from `project-scquo`
+  Preview scope, confirmed via `vercel env ls`.
+- `TURNSTILE_SECRET_KEY` — removed from `layah-backend-python`, one final
+  redeploy performed to restore the zero-secret default, confirmed via a
+  direct request showing the missing-secret short-circuit again.
+- Local `.vercel/repo.json` fix is **not** reverted — it's a genuine bug
+  fix to local machine state (gitignored, not a repository file), not
+  temporary test configuration, and reverting it would restore the
+  original deploy failure.
+- No new secret was created this checkpoint; the existing Checkpoint 20
+  bypass secret (never re-displayed) was reused as-is.
+
+### Pilot-Phase Closure
+
+**PILOT_ENDPOINT_MIGRATION_PHASE = COMPLETE.**
+
+`GET /api/geo` and `POST /api/auth/verify-captcha` are both fully
+validated end-to-end: contract parity, real remote deployment, real
+Next-Preview-to-Python-Preview routing, security isolation, observability,
+and configuration-only rollback, including verify-captcha's real
+Turnstile provider branch (both outcomes). Both remain on `NEXT` by
+deliberate choice — Production activation is a separate, not-yet-made
+decision, not a validation gap.
+
+**NEXT MIGRATION MODE = BATCH / SUBSYSTEM WAVES.** Per the user's explicit
+direction, the migration unit changes from "one endpoint per checkpoint"
+to subsystem/batch migration waves for the remaining ~80 Next API routes.
+See `MIGRATION_MASTER_PLAN.md` for the phase structure this maps onto.

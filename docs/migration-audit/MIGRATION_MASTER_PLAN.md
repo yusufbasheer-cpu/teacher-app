@@ -2,6 +2,28 @@
 
 Principle: strangler migration, not big-bang rewrite.
 
+## Pilot Phase Status (as of Checkpoint 21)
+
+**PILOT_ENDPOINT_MIGRATION_PHASE = COMPLETE.**
+
+Phases 4–5 below were executed as a deliberately narrow, one-endpoint-at-a-
+time pilot rather than in full: a FastAPI skeleton was built and deployed
+(Vercel, project `teacher-app/layah-backend-python`), and exactly two
+low-risk endpoints — `GET /api/geo` and `POST /api/auth/verify-captcha`
+— were taken all the way through parity, routing, real Preview-to-Preview
+deployment validation, security isolation, observability, and
+configuration-only rollback. Both remain on Next by deliberate choice
+(Production activation is a separate decision). See
+`docs/migration-audit/REMOTE_ROUTING_VALIDATION.md` for the full
+evidence trail.
+
+**NEXT MIGRATION MODE = BATCH / SUBSYSTEM WAVES.** The remaining ~80 Next
+API routes will not be migrated one-by-one, one-checkpoint-each. Future
+work should batch by subsystem, matching the phase groupings below
+(e.g. one wave for the remaining low-risk public endpoints, one wave for
+document/export, one wave for admin/tenant, etc.), each wave proving
+parity/routing/rollback for its whole batch rather than a single route.
+
 ## Phase 0: Audit Closure
 
 Objective: fill open questions, provide real URLs, identify active deployments.

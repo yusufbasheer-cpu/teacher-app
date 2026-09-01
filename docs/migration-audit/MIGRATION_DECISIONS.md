@@ -313,3 +313,27 @@ Alternatives considered: Leaving the exposed secret in place since its blast rad
 Impact: Old secret value revoked and confirmed non-functional (structural check: `protectionBypass` key count returned to 0 before the new one was created — never by printing values). New secret generated and piped directly between `vercel` CLI invocations via shell command substitution, so its value was never displayed, and its correctness was confirmed indirectly by successful routed requests rather than by reading it back (Vercel deliberately excludes sensitive-marked values from `vercel env pull`, by design). `git status` was re-checked after every step; nothing landed in a repository file.
 
 Status: Implemented.
+
+## 2026-09-01 (Checkpoint 21)
+
+Decision: Fix `project-scquo`'s Root Directory setting in two places — the server-side project setting (via `vercel project update --auto-detect root-directory`) and, separately, a local gitignored `.vercel/repo.json` link-file override — rather than working around the blocker again.
+
+Reason: This checkpoint explicitly authorized fixing the frontend's deployment configuration, unlike Checkpoints 19–20 where `project-scquo` was strictly off-limits. Repository evidence (`package.json`, `next.config.ts`, `vercel.json` all at repo root) made the correct value unambiguous: empty/unset, not the stored literal `.`. The server-side fix alone did not resolve the deploy failure — a retry after that change reproduced the identical error, revealing that the local `.vercel/repo.json` link file's own `directory` field (also `.`) independently feeds into the deploy API's `rootDirectory` request payload. Testing an empty string there produced a different, more specific error (`should NOT be shorter than 1 characters`), which precisely identified the required fix: omit the field entirely rather than send any string value.
+
+Alternatives considered: Guessing a specific path string for either setting (rejected — `--auto-detect` is the smallest, most correct mechanism, and guessing risks introducing a different wrong value); fixing only one of the two locations (rejected — empirically insufficient, confirmed by the repeated failure after the server-side-only fix); leaving the local `.vercel/repo.json` fix in place only temporarily (rejected — it's a genuine bug fix to local, non-shared, non-repository machine state, not test configuration, so there is nothing to "roll back").
+
+Impact: `vercel deploy` (Preview, non-git-integration) now succeeds reliably against `project-scquo` — proven by 6 successful Preview deployments across this checkpoint. `project-scquo`'s identity (project ID), framework preset, and production domain (`layah.in`) confirmed unchanged before and after. No repository file was touched (`.vercel/` is gitignored). This unblocked full real Preview-to-Preview validation for both pilot endpoints — see the Checkpoint 21 addendum in `REMOTE_ROUTING_VALIDATION.md`.
+
+Status: Implemented.
+
+## 2026-09-01 (Checkpoint 21)
+
+Decision: Declare `PILOT_ENDPOINT_MIGRATION_PHASE = COMPLETE` and shift the migration unit to `NEXT MIGRATION MODE = BATCH / SUBSYSTEM WAVES`, per the user's explicit direction.
+
+Reason: Both pilot endpoints (`geo`, `verify-captcha`) are now validated at every layer this migration cares about — contract parity, Python implementation, disabled-by-default routing, real remote deployment, real Preview-to-Preview routing (including verify-captcha's actual provider branch), security isolation, observability, and configuration-only rollback. Continuing to spend one checkpoint per additional low-risk endpoint would repeat already-proven infrastructure work rather than testing anything new; the architectural question this whole pilot existed to answer is answered.
+
+Alternatives considered: Continuing one-endpoint-per-checkpoint for the remaining low-risk routes (rejected — explicitly against the user's direction, and would not produce meaningfully new evidence); immediately beginning a Production canary (deferred, not rejected — a real option for Checkpoint 22, but a separate decision from closing the pilot phase itself).
+
+Impact: `docs/migration-audit/MIGRATION_MASTER_PLAN.md` now records the pilot-phase closure and the batch/subsystem-wave direction for future migration work. `BACKEND_MIGRATION_MANIFEST.md`, `GEO_PYTHON_CUTOVER.md`, and `VERIFY_CAPTCHA_PYTHON_PARITY_CONTRACT.md` all updated to reflect final validated status. No endpoint was cut over to Production; that remains a distinct, unmade decision.
+
+Status: Implemented.
