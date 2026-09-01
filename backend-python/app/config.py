@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     geo_default_country_name: str = "UAE"
     geo_provider_timeout_seconds: float = 4.0
     geo_user_agent: str = "LayahPricing/1.0"
+
+    supabase_url: str = Field(
+        default="", validation_alias=AliasChoices("NEXT_PUBLIC_SUPABASE_URL", "supabase_url")
+    )
+    supabase_anon_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("NEXT_PUBLIC_SUPABASE_ANON_KEY", "supabase_anon_key"),
+    )
 
 
 @lru_cache(maxsize=1)

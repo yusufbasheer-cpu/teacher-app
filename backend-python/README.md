@@ -32,9 +32,11 @@ python -m ruff check backend-python/app backend-python/tests
 - `GET /health`
 - `GET /ready`
 - `GET /api/geo`
+- `POST /api/lesson-plan/save` (authenticated parity pilot; not production traffic)
 
 ## Notes
 
 - The backend is isolated in `backend-python/` so it can later become its own repository.
 - This checkpoint does not cut frontend traffic over to Python.
 - Geo is the first low-risk parity pilot.
+- The lesson-plan save pilot validates bearer tokens through Supabase Auth and forwards the same token to PostgREST; it never uses the service-role key.

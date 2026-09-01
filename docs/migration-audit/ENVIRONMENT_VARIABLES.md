@@ -8,8 +8,8 @@ Actual values were not copied. Variable names were gathered from `.env.example` 
 | `FAL_API_KEY` | fal.ai credentials | server | Yes | AI-SERVICES | fal helpers, `.env.example` |
 | `FAL_KEY` | alternate fal.ai credential name | server | Yes | AI-SERVICES | `src/lib/fal-flux-section-images.ts` |
 | `PEXELS_API_KEY` | Pexels API | server | Yes | AI-SERVICES | Pexels helpers, `.env.example` |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase URL | browser/server | No | SHARED/DEPLOYMENT | Supabase helpers |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | browser/server | Public credential | FRONTEND/SHARED | Supabase helpers |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase URL; also used by the FastAPI Auth/PostgREST pilot | browser/server/Python | No | SHARED/DEPLOYMENT | Supabase helpers, `backend-python/app/config.py` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key; public API key for the FastAPI Auth/PostgREST pilot | browser/server/Python | Public credential | FRONTEND/SHARED | Supabase helpers, `backend-python/app/config.py` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin bypass RLS | server only | Yes | BACKEND | `src/lib/supabase-admin.ts` |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile site key | browser | No | FRONTEND | auth widget, `.env.example` |
 | `TURNSTILE_SECRET_KEY` | Turnstile verify secret | server | Yes | BACKEND | verify captcha route |
@@ -47,3 +47,4 @@ Known frontend-exposed variables are prefixed `NEXT_PUBLIC_*`. No server-only se
 - `src/lib/auth-headers.ts` is the browser-side auth header helper and must stay client-safe.
 - `src/lib/try-parse-api-json.ts` is frontend-safe and should be reused for local API responses instead of ad hoc parsers.
 - `SUPABASE_SERVICE_ROLE_KEY` and other server-only secrets must never enter the browser API-client abstraction.
+- The FastAPI pilot reuses the existing Supabase URL and anon-key variable names; no Python-specific duplicate secret is introduced.

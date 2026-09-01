@@ -29,6 +29,8 @@
 - Verify admin audit logs and billing state transitions.
 - Decommission legacy handlers only after parity passes and monitoring is quiet.
 
+Checkpoint 8 adds unit-contract coverage for authenticated lesson-plan persistence: bearer validation, server-derived identity, insert/update payloads, caller-token forwarding, ownership filters, generic persistence failures, and the User A/User B update case. A live isolated Supabase test remains required to verify actual RLS decisions.
+
 ## Critical User Journeys
 
 - signup/login/logout/OAuth callback

@@ -1,0 +1,18 @@
+{
+  "form": {
+    "curriculumType": "CBSE/NCERT",
+    "curriculumFramework": "  ",
+    "grade": "Grade 3",
+    "subject": "Math",
+    "chapter": "  Fractions ",
+    "topic": "Decimals",
+    "learningObjectives": "Compare decimal values"
+  },
+  "lessonPlan": {
+    "Full Lesson Plan": "Synthetic lesson content"
+  },
+  "sectionImages": {
+    "Full Lesson Plan": ["https://example.test/image.png"]
+  },
+  "pptSlideImageUrls": ["https://example.test/slide.png", null]
+}

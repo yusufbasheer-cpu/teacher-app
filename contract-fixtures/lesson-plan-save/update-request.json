@@ -1,0 +1,15 @@
+{
+  "activePlanId": "00000000-0000-4000-8000-000000000001",
+  "form": {
+    "curriculumType": "CBSE/NCERT",
+    "curriculumFramework": "",
+    "grade": "Grade 3",
+    "subject": "Math",
+    "chapter": "Fractions",
+    "topic": "Decimals",
+    "learningObjectives": "Compare decimal values"
+  },
+  "lessonPlan": {
+    "Full Lesson Plan": "Updated synthetic lesson content"
+  }
+}

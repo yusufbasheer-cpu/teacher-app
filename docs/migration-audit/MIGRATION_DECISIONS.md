@@ -121,3 +121,15 @@ Alternatives considered: Leaving the fetches inline until a larger AI refactor o
 Impact: `src/lib/deepseek-lesson-provider.ts` now owns the lesson DeepSeek HTTP contract, while `src/app/api/lesson-plan/route.ts` keeps business orchestration and response shaping.
 
 Status: Implemented.
+
+## 2026-09-01
+
+Decision: Implement the first FastAPI authenticated endpoint as a no-cutover `lesson-plan/save` parity pilot using Supabase Auth validation plus caller-token PostgREST requests.
+
+Reason: The browser already sends a bearer token, Supabase Auth provides the project-compatible validation boundary, and forwarding that token preserves RLS without introducing service-role persistence or guessed local JWT configuration.
+
+Alternatives considered: Local JWT/JWKS verification before the Supabase signing configuration was established, service-role writes, direct Postgres access, or moving frontend traffic.
+
+Impact: Python unit-contract parity is demonstrated; real isolated Supabase RLS integration and all production cutover work remain separate requirements.
+
+Status: Implemented.

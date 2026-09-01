@@ -21,6 +21,8 @@
 | `src/lib/school-*`, `src/app/api/school-*`, `hod-server.ts` | BACKEND | tenant/admin business logic | Python backend should own. |
 | `src/lib/super-admin.ts`, admin APIs | BACKEND | privileged authorization/business ops | Python backend should own with tests. |
 | `supabase/**` | SHARED DATA/INFRASTRUCTURE | schema and migrations | Own from backend repo, but frontend/AI need contracts. |
+
+Checkpoint 8 adds the isolated Python ownership proof for `POST /api/lesson-plan/save`; the existing Next route and frontend remain authoritative until live Auth/RLS integration verification and a separately approved cutover.
 | `python-ppt-api/**` | BACKEND/document service | Flask PPT generator | Could merge into Python backend or keep separate service. |
 | `next.config.ts`, `vercel.json`, Sentry configs | INFRASTRUCTURE/FRONTEND deployment | Next/Vercel-specific | Frontend repo owns after split; backend gets separate infra. |
 | `scripts/create-razorpay-pro-plan.cjs` | BACKEND/OPERATIONS | mutates Razorpay resources | Do not run without authorization; move to backend ops. |

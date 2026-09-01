@@ -22,6 +22,10 @@ Two patterns exist:
 - Bearer token auth via `authenticateRequest(req)` in `src/lib/user-usage-server.ts`. Used by generation, usage, account, school enrollment, exports, and other APIs.
 - Cookie/SSR Supabase auth via `createServerSupabaseClient()` in route handlers and pages.
 
+FastAPI pilot boundary:
+
+- `POST /api/lesson-plan/save` validates the existing bearer token through Supabase Auth `/auth/v1/user`, derives the user ID from the validated response, and forwards the same token to PostgREST. It does not use the service-role client.
+
 ## Authorization Models
 
 | Area | Model | Evidence |

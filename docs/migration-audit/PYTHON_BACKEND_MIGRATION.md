@@ -17,6 +17,8 @@ There is already a separate Python Flask service in `python-ppt-api`, but it is 
 - Background jobs: start without Celery/RQ because no durable queue exists today; add Celery/RQ/Dramatiq plus Redis only when replacing long-running cron/email/AI processing.
 - Auth: verify Supabase JWTs and preserve user ID/claims. Service role remains server-only.
 
+Checkpoint 8 implements the first authenticated parity endpoint with a smaller, configuration-compatible strategy: Supabase Auth validates the bearer token through `/auth/v1/user`, then the same token is forwarded to PostgREST. Local JWT/JWKS verification is deferred until the project's signing configuration and issuer/audience contract are explicitly established.
+
 ## Endpoint Migration Map
 
 | Existing area | Python target | Compatibility requirement |

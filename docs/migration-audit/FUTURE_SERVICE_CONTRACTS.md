@@ -20,6 +20,8 @@ Scope:
 - uploads and downloads
 - streaming helpers where needed
 
+The authenticated `lesson-plan/save` FastAPI pilot is the current reference for future persistence services: validate caller identity at the route boundary, pass an explicit authenticated context into a focused service, and preserve caller authorization when calling Supabase. It is a parity proof point, not a generic repository or service-role write pattern.
+
 Out of scope:
 
 - generic third-party service wrapping
@@ -80,3 +82,6 @@ Proven examples:
 - `POST /api/lesson-plan/save` -> `src/lib/lesson-plan-save.ts`
 
 These are the reference seams for later FastAPI extraction because they isolate HTTP transport from application logic without changing observable contracts.
+# Future Service Contracts
+
+The authenticated `lesson-plan/save` FastAPI pilot is the current reference for future persistence services: validate caller identity at the route boundary, pass an explicit authenticated context into a focused service, and preserve caller authorization when calling Supabase. It is a parity proof point, not a license to introduce a generic repository layer or service-role writes.

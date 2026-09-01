@@ -1,0 +1,7 @@
+{
+  "insert": {"status": 201, "body": {"action": "inserted", "id": "00000000-0000-4000-8000-000000000002"}},
+  "update": {"status": 200, "body": {"action": "updated", "id": "00000000-0000-4000-8000-000000000001"}},
+  "invalid": {"status": 400, "body": {"error": "Invalid request."}},
+  "unauthenticated": {"status": 401, "body": {"error": "Unauthorized"}},
+  "persistence_failure": {"status": 500, "body": {"error": "Something went wrong. Please try again."}}
+}

@@ -43,3 +43,10 @@ Evidence: `supabase/migrations/20260728120000_usage_gate_functions.sql`, `src/li
 RLS is enabled on user-owned tables such as `lesson_plans`, `active_sessions`, `user_usage`, `school_accounts`, `school_teachers`, feedback/waitlist/billing/admin tables. Many admin workflows intentionally bypass RLS through `SUPABASE_SERVICE_ROLE_KEY` after application-level checks.
 
 Migration risk: Python backend must preserve both Supabase Auth compatibility and the exact security-definer RPC behavior for atomic usage gating.
+
+## FastAPI Lesson-Plan Pilot
+
+- The pilot writes only `lesson_plans` through PostgREST.
+- Insert uses the validated caller token and RLS `with check (auth.uid() = user_id)`.
+- Update filters by both `id` and the authenticated `user_id`, while the table's `using` and `with check` policies remain active.
+- No service-role key, direct Postgres connection, SQLAlchemy, or migration change is introduced.

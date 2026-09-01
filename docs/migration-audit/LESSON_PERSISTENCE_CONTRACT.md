@@ -21,3 +21,9 @@ Date: 2026-08-31
 - Saving is user-visible and irreversible once content is reused across screens.
 - The persistence path must keep row ownership checks, response shapes, and failure behavior intact.
 
+## FastAPI Checkpoint 8
+
+- `POST /api/lesson-plan/save` is implemented in `backend-python/` as a no-cutover parity pilot.
+- Identity comes from Supabase Auth validation, never from a request `user_id`.
+- Insert and update use the caller bearer token with PostgREST so `lesson_plans` RLS remains active.
+- Unit-contract parity is covered; live isolated Supabase RLS verification remains outstanding.

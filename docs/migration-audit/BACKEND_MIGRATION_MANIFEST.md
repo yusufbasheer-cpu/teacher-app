@@ -1,6 +1,6 @@
 # Backend Migration Manifest
 
-Date: 2026-08-31
+Date: 2026-09-01
 
 Status legend:
 
@@ -17,12 +17,12 @@ Status legend:
 | Area | Status | Notes |
 | --- | --- | --- |
 | `GET /api/geo` | `PYTHON_CUTOVER_CANDIDATE` | low-risk pilot; parity proved in Python foundation |
-| `POST /api/lesson-plan/save` | `PYTHON_PARITY` | authenticated persistence seam, already extracted in TypeScript |
+| `POST /api/lesson-plan/save` | `PYTHON_PARITY` | authenticated unit-contract parity proved; Next remains authoritative and real RLS integration is still required before cutover candidacy |
 | `POST /api/lesson-plan` | `FUTURE_AI_SERVICE` | generation remains Next-owned for now |
 | `POST /api/question-paper` | `FUTURE_AI_SERVICE` | AI and quota heavy |
 | `POST /api/question-paper/blueprint` | `FUTURE_AI_SERVICE` | AI heavy |
 | `POST /api/differentiated-pack` | `FUTURE_AI_SERVICE` | AI heavy |
-| `POST /api/razorpay/webhook` | `NEXT_ONLY` | money-impacting, not a checkpoint-7 pilot |
+| `POST /api/razorpay/webhook` | `NEXT_ONLY` | money-impacting, not a parity pilot |
 | `POST /api/razorpay/*` admin/user flows | `NEXT_ONLY` | billing remains in Next for now |
 | `/api/school-admin/*`, `/api/super-admin/*`, `/api/hod/me` | `NEXT_ONLY` | high-risk authorization/tenant flows |
 | `POST /api/lesson-plan/export/*`, `POST /api/question-paper/export/*`, `POST /api/differentiated-pack/export-*` | `PYTHON_PARITY` | document/export seams are future backend candidates |
@@ -32,6 +32,6 @@ Status legend:
 
 ## Pilot Notes
 
-- Geo is the only endpoint migrated in this checkpoint.
-- No production routing moved.
+- Geo remains the only cutover candidate; no production routing moved.
+- `lesson-plan/save` is a no-cutover authenticated parity implementation with unit-contract evidence only.
 - No repository split happened yet.
