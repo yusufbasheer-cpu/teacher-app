@@ -13,7 +13,9 @@
 
 ## CI/CD
 
-GitHub Actions workflow `.github/workflows/ci.yml` runs on pull requests and pushes to `main`:
+GitHub Actions workflow `.github/workflows/ci.yml` runs on pull requests and pushes to `main`, with two independent jobs:
+
+`build` (Node):
 
 1. checkout
 2. setup Node 22 with npm cache
@@ -22,6 +24,16 @@ GitHub Actions workflow `.github/workflows/ci.yml` runs on pull requests and pus
 5. `npm run lint`
 6. `npm run test`
 7. `npm run build` with placeholder Supabase public env vars
+
+`backend-python` (added Checkpoint 16):
+
+1. checkout
+2. setup Python 3.12
+3. `pip install -e "backend-python[dev]"`
+4. `python -m pytest backend-python/tests` (no `RUN_SUPABASE_INTEGRATION_TESTS`/`SUPABASE_INTEGRATION_*` env vars are set, so the networked RLS integration test self-skips, matching local behavior)
+5. `python -m ruff check backend-python/app backend-python/tests`
+
+CI does not build or deploy `backend-python` to any hosting platform — it only runs tests/lint.
 
 ## Python PPT API
 
@@ -36,16 +48,27 @@ Active deployment platform cannot be proven from repository alone.
 
 ## FastAPI Backend (`backend-python/`)
 
-Checkpoint 15 confirmed no deployment configuration exists for
-`backend-python`: no `Dockerfile`, `Procfile`, `render.yaml`, `railway.json`,
-or CI job that builds/deploys it. `.github/workflows/ci.yml` only covers the
-Next app. The only documented way to run it is local (`README.md`:
-`python -m uvicorn app.main:app --app-dir backend-python ...`).
+Checkpoint 15 confirmed no deployment configuration existed for
+`backend-python` at that time. Checkpoint 15 ran it locally on
+`127.0.0.1:8001` (port 8000 was occupied by an unrelated pre-existing
+local process) purely for live routing/rollback verification. The process
+was stopped afterward; nothing was deployed.
 
-Checkpoint 15 ran it locally on `127.0.0.1:8001` (port 8000 was occupied by
-an unrelated pre-existing local process) purely for live routing/rollback
-verification. The process was stopped afterward; nothing was deployed.
-Choosing a real hosting platform for `backend-python` remains open work.
+Checkpoint 16 added repository-side deployment readiness:
+
+- `backend-python/render.yaml` — a Render Blueprint (documented, not yet
+  provisioned; see `FASTAPI_DEPLOYMENT_DECISION.md` for why Render was
+  selected over the equally-plausible Railway, and why Vercel Python
+  hosting was deferred).
+- `backend-python/app/observability.py` — request-ID + timing/error
+  logging middleware, wired into `app/main.py`.
+- A `backend-python` job in `.github/workflows/ci.yml` (pytest + ruff;
+  see CI/CD above).
+
+No account access exists in this session for Render, Railway, or Vercel,
+so **no real deployment was created**. Status:
+`DEPLOYMENT_READY_EXTERNAL_PROVISIONING_REQUIRED` — see
+`FASTAPI_DEPLOYMENT_RUNBOOK.md` for the exact remaining external steps.
 
 ## Infrastructure Gaps
 

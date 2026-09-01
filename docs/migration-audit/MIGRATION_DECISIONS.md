@@ -193,3 +193,27 @@ Alternatives considered: Provisioning a new hosting platform for `backend-python
 Impact: The geo routing mechanism is now proven correct end-to-end with live evidence (not just unit tests), but Python routing was not left enabled in any persisted configuration because no deployed target exists to leave it enabled against. Choosing/provisioning a real FastAPI hosting platform is separate, future work.
 
 Status: Implemented.
+
+## 2026-09-01 (Checkpoint 16)
+
+Decision: Recommend Render (not yet provisioned) as the technically preferred FastAPI deployment platform, over Railway and Vercel-Python, without finalizing the choice.
+
+Reason: The only repository evidence of platform intent is the unrelated legacy `python-ppt-api` service's two drafted-but-unused configs (`render.yaml` and `railway.json`, added in the same commit, never iterated on, no proven live URL). Render's config is the more explicit/self-documenting of the two. Vercel-Python was considered given existing account access for the frontend, but adopting it changes the two-repo hosting topology this migration is deliberately building toward and requires an interactive `vercel login` this session cannot perform. No Render/Railway/Vercel credentials are available in this session, so no platform choice could be finalized as a business/cost decision — only recommended.
+
+Alternatives considered: Railway (equally plausible, deferred as documented fallback with portable commands), Vercel Fluid Compute Python hosting (deferred, topology-changing), Docker/self-managed (rejected, unnecessary complexity, Docker unavailable locally anyway).
+
+Impact: `backend-python/render.yaml` documents the intended Render service config and was validated locally (`pip install --dry-run ./backend-python` resolves cleanly). No account was created, no deployment occurred. Geo remains `CUTOVER_VALIDATED`, not `CUTOVER_ACTIVE`.
+
+Status: Implemented (repository-side only; external provisioning remains open).
+
+## 2026-09-01 (Checkpoint 16)
+
+Decision: Add lightweight request-ID + duration logging middleware to `backend-python`, but defer Next→Python request-ID propagation and defer adding Sentry to Python.
+
+Reason: Checkpoint 16 requires enough operational visibility to safely route endpoints to Python, without building a distributed-tracing stack. A single-process middleware (generate or safely echo `x-request-id`, log method/path/status/duration, log exceptions without leaking them to the client) meets that bar with ~50 lines of testable code and zero new dependencies. Propagating the ID from Next through the existing geo proxy would touch frontend code and add cross-service coordination that isn't justified yet for a single-hop, geo-only, unshipped pilot. No Sentry Python dependency/config exists anywhere in the repo, so adding one would not be "trivial and non-invasive" as required.
+
+Alternatives considered: Full request-ID propagation from Next through `buildGeoProxyHeaders`; adding `sentry-sdk` to `backend-python`; using only Uvicorn's default access log with no additional structure.
+
+Impact: `backend-python/app/observability.py` plus five new tests in `backend-python/tests/test_observability.py`. `PYTHON_SENTRY_DEFERRED` and Next-side request-ID propagation are both explicitly documented as deferred, not silently skipped, in `FASTAPI_DEPLOYMENT_RUNBOOK.md`.
+
+Status: Implemented (middleware); propagation and Sentry explicitly deferred, not implemented.

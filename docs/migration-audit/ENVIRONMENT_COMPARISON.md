@@ -18,6 +18,8 @@ Checkpoint 14 routing comparison status: not run against deployed URLs. Routing 
 
 Checkpoint 15 routing comparison status: run locally only (`127.0.0.1` Next + `127.0.0.1` FastAPI), not against any deployed URL — none exists for `backend-python`. Direct Python health/readiness/geo, Next reference geo, routed geo, transport-failure fallback, and rollback were all verified live. See `GEO_PYTHON_CUTOVER.md` for full results.
 
+Checkpoint 16 status: still no deployed URL for `backend-python` to compare against. Repository-side deployment readiness (Render Blueprint, CI, observability) was completed and locally validated (`pip install --dry-run`, full local test suite), but no remote environment exists yet, so no new environment comparison could run. See `FASTAPI_DEPLOYMENT_DECISION.md`.
+
 ## Comparison Matrix
 
 | Feature / Behavior | Production | Staging | Current branch | Difference | Expected? | Source-code explanation | Migration implication |

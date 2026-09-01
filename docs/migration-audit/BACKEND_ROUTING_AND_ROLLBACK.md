@@ -13,6 +13,16 @@ documented here. No deployed (non-local) FastAPI target exists yet, so
 Python routing was not left enabled in any persisted configuration. Full
 detail: `GEO_PYTHON_CUTOVER.md`.
 
+## Checkpoint 16 Deployment Readiness
+
+Checkpoint 16 prepared `backend-python` for real deployment (see
+`FASTAPI_DEPLOYMENT_DECISION.md`, `FASTAPI_DEPLOYMENT_RUNBOOK.md`), but no
+Render/Railway/Vercel account access was available in this session, so no
+deployment was created and no remote routing test occurred. This routing
+seam's behavior remains verified only locally (Checkpoint 15). Nothing in
+this document changed as a result — the routing mechanism itself needed no
+modification, only a real target to route to.
+
 ## Architecture
 
 Checkpoint 14 adds a small strangler routing seam at the existing Next route boundary:

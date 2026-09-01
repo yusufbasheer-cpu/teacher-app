@@ -25,6 +25,10 @@ Checkpoint 9 adds a guarded real-RLS integration harness for `POST /api/lesson-p
 
 Checkpoint 13 defines a baseline reconciliation strategy for `lesson_plans`, `saved_lessons`, and `school_templates`, but does not create executable SQL. Authenticated database migration remains blocked by schema reproducibility plus live RLS verification. Non-DB/public Python migration work is a separate track and is not automatically blocked by that authenticated DB blocker.
 
+Checkpoint 15 proved the Checkpoint 14 geo routing seam live against a local FastAPI instance: contract parity, dual-sided routing evidence, Authorization/Cookie exclusion, transport-failure fallback, and rollback all passed (`VALIDATED_BUT_LEFT_ON_NEXT` — no deployed target existed to leave routing enabled against).
+
+Checkpoint 16 built the first real deployment foundation for `backend-python`: a Render Blueprint (`backend-python/render.yaml`), a production-safe start command (`uvicorn app.main:app --host 0.0.0.0 --port $PORT`), request-ID/timing/error-logging middleware, and a `backend-python` CI job (pytest + ruff). No hosting account access existed in-session, so no real deployment occurred; classification is `DEPLOYMENT_READY_EXTERNAL_PROVISIONING_REQUIRED`. See `FASTAPI_DEPLOYMENT_DECISION.md` and `FASTAPI_DEPLOYMENT_RUNBOOK.md`.
+
 ## Migration Tracks
 
 | Track | Status | Examples | Blocker |

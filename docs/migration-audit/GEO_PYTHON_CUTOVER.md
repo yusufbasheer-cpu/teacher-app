@@ -224,6 +224,20 @@ active because:
   which is explicitly out of scope for this checkpoint's local
   verification-only mandate.
 
+## Checkpoint 16 Addendum
+
+Checkpoint 16 built repository-side deployment readiness for
+`backend-python` (Render Blueprint, production start command,
+observability middleware, CI job — see `FASTAPI_DEPLOYMENT_DECISION.md`
+and `FASTAPI_DEPLOYMENT_RUNBOOK.md`) but had **no hosting account access**
+in-session for Render, Railway, or Vercel. No real deployment was created,
+so none of the remote verification steps in Checkpoint 16's scope (remote
+health/readiness, remote direct geo, Next→remote routing, remote rollback)
+could run. Everything in this document (`GEO_PYTHON_CUTOVER.md`) remains
+**LOCAL VERIFIED** only, not **REMOTE VERIFIED**. Final routing state is
+unchanged: `GET /api/geo` → NEXT. Geo manifest status is unchanged:
+`CUTOVER_VALIDATED`, not `CUTOVER_ACTIVE`.
+
 ## Known Limitations
 
 - Verification was local-only; no preview/staging/production FastAPI
