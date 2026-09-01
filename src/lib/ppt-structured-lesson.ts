@@ -38,8 +38,17 @@ const BULLET_MAX_LINES = 16;
 const BULLET_MAX_LINES_WITH_AFL = 22;
 const SECTION_MAX_CHARS = 4000;
 
-/** Per-slide caps: rich content allowed; still one physical slide (export truncates tail if needed). */
-const SLIDE_BODY_LIMIT: readonly { chars: number; lines: number }[] = [
+/**
+ * Per-slide safety ceilings, not a "must fit on one physical slide" budget — the PPT export's
+ * chunker (`chunkLinesByHeight` in ppt-template-engine.ts) already spills any slide onto as many
+ * "Continued" physical slides as it needs, so these exist only to bound a pathological/runaway
+ * model response, not to force brevity. Index 7 (UAE / Real-Life Connection) was previously capped
+ * at 1600 chars — far too small for its own UAE-mode content (4 sub-sections: real-life connection,
+ * cross-curricular link, MOE alignment, SDG context), so a real UAE-framework generation was
+ * silently cut mid-sentence with an ellipsis, dropping the alignment and SDG paragraphs entirely
+ * from the exported deck. Raised to match the deck's densest slides rather than staying an outlier.
+ */
+export const SLIDE_BODY_LIMIT: readonly { chars: number; lines: number }[] = [
   { chars: 220, lines: 4 },
   { chars: 3400, lines: 22 },
   { chars: 1200, lines: 12 },
@@ -47,7 +56,7 @@ const SLIDE_BODY_LIMIT: readonly { chars: number; lines: number }[] = [
   { chars: 2600, lines: 18 },
   { chars: 4800, lines: 26 },
   { chars: 3600, lines: 22 },
-  { chars: 1600, lines: 14 },
+  { chars: 5000, lines: 26 },
   { chars: 3400, lines: 22 },
   { chars: 2800, lines: 18 },
   { chars: 1200, lines: 12 },

@@ -288,9 +288,11 @@ export function drawBulletBlock(
     // see isGroupHeaderLine. Rendered as a heading: no bullet marker (it isn't a list item),
     // bold + the theme's accent colour (the same role colour section chips already use, so a
     // teacher reads "accent-coloured text" as "this is a label" consistently across the slide),
-    // one size up from body text, with a short accent rule underneath in place of a marker glyph.
-    // The gap this reserves above itself was already folded into `rowH` by estimateRowHeight, so
-    // it never has to compete with the previous group's last line for space.
+    // one size up from body text. No underline/rule beneath it — bold + colour + size already
+    // read clearly as a heading, and a drawn rule under wrapped or descender-heavy text read as
+    // a stray, badly-placed line rather than a deliberate design element. The gap this reserves
+    // above itself was already folded into `rowH` by estimateRowHeight, so it never has to
+    // compete with the previous group's last line for space.
     //
     // Scoped to `variant === "activity"` — see estimateRowHeight's doc comment for why checklist/
     // plain-bullet content is excluded.
@@ -302,15 +304,19 @@ export function drawBulletBlock(
         fontSize: bodyFontSize + 1, bold: true, color: c.accent, fontFace: f.face,
         valign: "top", lineSpacingMultiple: 1.1, fit: "shrink",
       });
-      slide.addShape(pptx.ShapeType.line, {
-        x: textX, y: headerY + ROW_LINE_H * scale - 0.03, w: Math.min(1.3, textW * 0.35), h: 0,
-        line: { color: c.accent, pt: 0.75 },
-      });
       curY += rowH;
       continue;
     }
 
     const markerY = curY + Math.max(0, (ROW_MIN_H * scale - markerSize) / 2);
+
+    // A "Label: rest" lead-in row (e.g. "Step 1 (2 minutes): ...") is already visually anchored
+    // by its bold, accent-coloured, upsized label — drawing the same round marker every plain
+    // instruction gets makes the label read as just another bullet instead of a sub-heading.
+    // Checklist rows keep their checkbox regardless: the row's own bordered box is what carries
+    // its meaning there (a checkable item), not the marker glyph.
+    const { label, rest } = splitLeadIn(raw);
+    const suppressMarker = label !== null && variant !== "checklist";
 
     if (variant === "checklist") {
       slide.addShape(pptx.ShapeType.roundRect, {
@@ -326,20 +332,19 @@ export function drawBulletBlock(
         x: markerX, y: markerY, w: markerSize, h: markerSize,
         fontSize: 10 * scale, bold: true, color: "FFFFFF", align: "center", valign: "middle",
       });
-    } else if (variant === "activity") {
+    } else if (!suppressMarker && variant === "activity") {
       slide.addShape(pptx.ShapeType.roundRect, {
         x: markerX, y: markerY + markerSize * 0.15, w: markerSize * 0.7, h: markerSize * 0.7,
         rectRadius: 0.03,
         fill: { color: c.accent }, line: { color: c.accent },
       });
-    } else {
+    } else if (!suppressMarker) {
       slide.addShape(pptx.ShapeType.ellipse, {
         x: markerX + markerSize * 0.25, y: markerY + markerSize * 0.25, w: markerSize * 0.5, h: markerSize * 0.5,
         fill: { color: c.accent }, line: { color: c.accent },
       });
     }
 
-    const { label, rest } = splitLeadIn(raw);
     if (label) {
       slide.addText(
         [

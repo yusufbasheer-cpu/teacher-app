@@ -27,6 +27,7 @@ import {
   estimateRowHeight,
   estimateBlockHeight,
   getImageNaturalSize,
+  isGroupHeaderLine,
   type BulletVariant,
 } from "@/lib/ppt-render-primitives";
 
@@ -179,13 +180,30 @@ function normalizeToLines(body: string): string[] {
  * `estimateRowHeight` so a group-header row (activity slides only) is budgeted the same extra
  * height it's actually drawn with, rather than the chunker under-reserving for it.
  */
-function chunkLinesByHeight(lines: string[], cpl: number, maxHeight: number, variant?: BulletVariant): string[][] {
+/** Exported for testing only — see computeDeckLayoutStats above for the same rationale. */
+export function chunkLinesByHeight(lines: string[], cpl: number, maxHeight: number, variant?: BulletVariant): string[][] {
   const chunks: string[][] = [];
   let cur: string[] = [];
   let used = 0;
   for (const line of lines) {
     const h = estimateRowHeight(line, cpl, 1, variant);
-    if (used + h > maxHeight && cur.length > 0) { chunks.push(cur); cur = []; used = 0; }
+    if (used + h > maxHeight && cur.length > 0) {
+      // Never end a chunk with a standalone sub-heading ("Step 2", "Higher Achievers task")
+      // as its last line — that strands the heading alone on one slide with none of its own
+      // content, which then opens a "Continued" slide with no heading at all. Carry the
+      // heading forward into the new chunk instead so it stays paired with its content.
+      let carry: string[] = [];
+      let carryUsed = 0;
+      const lastLine = cur[cur.length - 1];
+      if (variant === "activity" && lastLine !== undefined && isGroupHeaderLine(lastLine)) {
+        cur.pop();
+        carry = [lastLine];
+        carryUsed = estimateRowHeight(lastLine, cpl, 1, variant);
+      }
+      if (cur.length > 0) chunks.push(cur);
+      cur = carry;
+      used = carryUsed;
+    }
     cur.push(line);
     used += h;
   }
