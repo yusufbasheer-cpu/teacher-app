@@ -42,6 +42,51 @@ def test_lesson_plans_schema_preserves_owner_rls_contract() -> None:
     assert "for delete using (auth.uid() = user_id)" in sql
 
 
+def test_lesson_plans_baseline_reconciliation_migration_matches_schema_contract() -> None:
+    migration = _normalized_file(
+        MIGRATIONS_DIR / "20260101000000_lesson_plans_baseline_reconciliation.sql"
+    )
+
+    # Fresh-bootstrap ordering: this file must sort before the earliest
+    # ALTER-style lesson_plans migration, which assumes the table exists.
+    earliest_alter_migration = "20260210120000_lesson_plans_curriculum_chapter.sql"
+    assert (
+        "20260101000000_lesson_plans_baseline_reconciliation.sql" < earliest_alter_migration
+    )
+
+    # Existing-database safety: the whole baseline is guarded by a single
+    # existence check, so it is a no-op wherever lesson_plans already
+    # exists (every currently deployed environment).
+    assert "if not exists (" in migration
+    assert (
+        "select 1 from information_schema.tables where table_schema = 'public' "
+        "and table_name = 'lesson_plans'"
+        in migration
+    )
+
+    # The guarded baseline must match DATABASE_BASELINE_SPEC.md's verified
+    # pre-202602 shape — the same contract fragments the schema.sql test
+    # above protects, so schema.sql and this migration cannot silently
+    # diverge on the owner-RLS contract.
+    assert "user_id uuid not null references auth.users(id) on delete cascade" in migration
+    assert "alter table public.lesson_plans enable row level security" in migration
+    assert 'create policy "users can insert their own lesson plans"' in migration
+    assert "for insert with check (auth.uid() = user_id)" in migration
+    assert 'create policy "users can view their own lesson plans"' in migration
+    assert "for select using (auth.uid() = user_id)" in migration
+
+    # This baseline intentionally does NOT include the later update/delete
+    # policies or curriculum_type/chapter/curriculum_framework columns —
+    # those are added by the existing later migrations that already assume
+    # the table exists, exactly as documented in DATABASE_BASELINE_SPEC.md.
+    # (Checked as column/policy SQL fragments, not bare substrings, since
+    # the migration's own explanatory comments reference those later
+    # migrations by filename.)
+    assert "curriculum_type text" not in migration
+    assert "for update using" not in migration
+    assert "for delete using" not in migration
+
+
 def test_saved_lessons_later_migrations_preserve_verified_columns() -> None:
     migrations = {
         path.name: _normalized_file(path)
