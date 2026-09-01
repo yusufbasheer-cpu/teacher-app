@@ -26,6 +26,8 @@ Both implementations write `user_id`, `curriculum_type`, normalized `curriculum_
 
 The current Next route authenticates its SSR client from cookies, while the Python pilot authenticates the bearer token explicitly. The browser already sends that bearer token through the shared API client, so no frontend change is required. Cookie-only requests are not a supported Python pilot input. This difference must be covered before cutover.
 
+Checkpoint 9 adds a guarded integration harness but did not run real mutations because no local/test/staging Supabase environment was safely identifiable. Live status/error behavior for RLS-hidden zero-row updates still needs to be recorded against an isolated project before cutover candidacy.
+
 ## Fixtures
 
 Synthetic request and response fixtures live under `contract-fixtures/lesson-plan-save/`. They contain no real identities, content, tokens, or secrets.

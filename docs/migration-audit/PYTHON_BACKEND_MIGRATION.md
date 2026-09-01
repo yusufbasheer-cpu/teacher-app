@@ -19,6 +19,8 @@ There is already a separate Python Flask service in `python-ppt-api`, but it is 
 
 Checkpoint 8 implements the first authenticated parity endpoint with a smaller, configuration-compatible strategy: Supabase Auth validates the bearer token through `/auth/v1/user`, then the same token is forwarded to PostgREST. Local JWT/JWKS verification is deferred until the project's signing configuration and issuer/audience contract are explicitly established.
 
+Checkpoint 9 adds a guarded real-RLS integration harness for `POST /api/lesson-plan/save`, but the real run is blocked until a non-production Supabase environment is explicitly identified. The endpoint remains `PYTHON_PARITY`, not a cutover candidate.
+
 ## Endpoint Migration Map
 
 | Existing area | Python target | Compatibility requirement |
@@ -54,3 +56,4 @@ Checkpoint 8 implements the first authenticated parity endpoint with a smaller, 
 - Razorpay webhook idempotency and status transitions.
 - Usage quota reservation/refund under concurrency.
 - Client-side direct Supabase writes for saved lessons.
+- No currently runnable local Supabase stack or marked test/staging Supabase project exists for authenticated RLS integration verification.

@@ -17,4 +17,4 @@ Date: 2026-08-31
 
 - Authentication headers and cookies must remain consistent across later API-client and backend migrations.
 - Do not import server-only auth behavior into client bundles.
-
+- The FastAPI lesson-plan pilot validates bearer tokens remotely through Supabase Auth and must not accept request-body identity as a replacement for the authenticated principal.

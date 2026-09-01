@@ -50,3 +50,4 @@ Migration risk: Python backend must preserve both Supabase Auth compatibility an
 - Insert uses the validated caller token and RLS `with check (auth.uid() = user_id)`.
 - Update filters by both `id` and the authenticated `user_id`, while the table's `using` and `with check` policies remain active.
 - No service-role key, direct Postgres connection, SQLAlchemy, or migration change is introduced.
+- Checkpoint 9 inspected the policy SQL from `supabase/schema.sql`, but did not run it against a live Supabase database because no non-production target was safely identifiable.

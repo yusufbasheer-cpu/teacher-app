@@ -74,6 +74,18 @@ Impact: The first production-code persistence boundary now lives in `POST /api/l
 
 Status: Implemented.
 
+## 2026-09-01
+
+Decision: Refuse real Supabase RLS mutation tests unless the target is explicitly marked local, dedicated test, or controlled staging.
+
+Reason: The repository has Supabase migrations and a schema snapshot, but no runnable local Supabase config/runtime was available, and the only present `.env.local` Supabase project had no non-production marker. Running authenticated write tests against an ambiguous project would violate the migration safety rules.
+
+Alternatives considered: Using the existing `.env.local` credentials, assuming the hosted project was safe, or skipping integration infrastructure entirely.
+
+Impact: Checkpoint 9 adds a guarded integration harness and blocker documentation, but `POST /api/lesson-plan/save` remains `PYTHON_PARITY` until the harness passes against a proven non-production Supabase environment.
+
+Status: Implemented.
+
 ## 2026-08-31
 
 Decision: Introduce an internal AI facade before physically reorganizing provider modules.

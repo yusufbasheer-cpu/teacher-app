@@ -31,6 +31,9 @@ include = ["app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+  "integration: networked tests that require an explicitly approved isolated external environment",
+]
 
 [tool.ruff]
 line-length = 100

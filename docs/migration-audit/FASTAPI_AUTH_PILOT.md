@@ -30,6 +30,12 @@ The PostgREST adapter sends:
 
 Unit tests prove token forwarding, payload construction, ownership filtering, generic error handling, and the User A/User B contract. They do not prove a live database policy decision. A dedicated local or isolated staging Supabase integration test is still required before any Python cutover candidate decision.
 
+Checkpoint 9 added that integration test harness, but did not execute it because the only configured Supabase credentials were not labeled as local, dedicated test, or controlled staging. The route therefore remains verified by unit-contract tests only.
+
+## Auth Availability Coupling
+
+Every authenticated FastAPI request currently depends on Supabase Auth `/auth/v1/user`. If that endpoint is slow or unavailable, authenticated Python routes can become slow or fail even when PostgREST and the application are healthy. This checkpoint intentionally does not optimize that behavior; local JWT validation, token caching, or session caching require a separate auth-architecture decision.
+
 ## Rollback
 
 Rollback is trivial while no traffic is routed to Python: continue using the existing Next route. The pilot can be disabled or removed without changing production behavior.

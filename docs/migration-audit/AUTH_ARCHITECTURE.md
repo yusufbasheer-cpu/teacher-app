@@ -25,6 +25,7 @@ Two patterns exist:
 FastAPI pilot boundary:
 
 - `POST /api/lesson-plan/save` validates the existing bearer token through Supabase Auth `/auth/v1/user`, derives the user ID from the validated response, and forwards the same token to PostgREST. It does not use the service-role client.
+- Checkpoint 9 did not change this strategy. The operational tradeoff is that each authenticated FastAPI request depends on Supabase Auth availability and latency unless a later checkpoint adds a verified local JWT/session validation approach.
 
 ## Authorization Models
 

@@ -29,7 +29,9 @@
 - Verify admin audit logs and billing state transitions.
 - Decommission legacy handlers only after parity passes and monitoring is quiet.
 
-Checkpoint 8 adds unit-contract coverage for authenticated lesson-plan persistence: bearer validation, server-derived identity, insert/update payloads, caller-token forwarding, ownership filters, generic persistence failures, and the User A/User B update case. A live isolated Supabase test remains required to verify actual RLS decisions.
+Checkpoint 8 adds unit-contract coverage for authenticated lesson-plan persistence: bearer validation, server-derived identity, insert/update payloads, caller-token forwarding, ownership filters, generic persistence failures, and the User A/User B update case.
+
+Checkpoint 9 adds an explicit integration test harness at `backend-python/tests/integration/test_lesson_plan_rls.py`. It is skipped unless a non-production Supabase target is deliberately configured with `RUN_SUPABASE_INTEGRATION_TESTS=1`, `ALLOW_SUPABASE_INTEGRATION_MUTATIONS=1`, and `SUPABASE_INTEGRATION_ENVIRONMENT=local|test|staging`. A successful real run is still required before lesson-plan save can become a Python cutover candidate.
 
 ## Critical User Journeys
 

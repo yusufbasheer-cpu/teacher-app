@@ -37,6 +37,12 @@ Actual values were not copied. Variable names were gathered from `.env.example` 
 | `NEXT_RUNTIME` | Next runtime discriminator | server | No | DEPLOYMENT | env reference grep |
 | `PORT` | Flask port | Python server | No | BACKEND/PPT service | `python-ppt-api/main.py` |
 | `FLASK_DEBUG` | Flask debug mode | Python server | No but risky | BACKEND/PPT service | `python-ppt-api/main.py` |
+| `RUN_SUPABASE_INTEGRATION_TESTS` | explicit opt-in for networked Supabase integration tests | test only | No | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
+| `ALLOW_SUPABASE_INTEGRATION_MUTATIONS` | explicit approval for isolated Supabase test mutations | test only | No but high-impact | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
+| `SUPABASE_INTEGRATION_ENVIRONMENT` | environment safety marker; must be `local`, `test`, or `staging` | test only | No | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
+| `SUPABASE_INTEGRATION_URL` | isolated Supabase target for RLS integration tests | test only | No | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
+| `SUPABASE_INTEGRATION_ANON_KEY` | anon key for isolated Supabase RLS integration tests | test only | Public credential | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
+| `SUPABASE_INTEGRATION_SERVICE_ROLE_KEY` | fixture-admin key for creating synthetic users and verifying cleanup in isolated tests | test only | Yes | BACKEND/QA | `backend-python/tests/integration/test_lesson_plan_rls.py` |
 
 ## Frontend Secret Exposure Check
 

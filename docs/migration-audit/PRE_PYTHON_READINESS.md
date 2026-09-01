@@ -40,3 +40,17 @@ Reason:
 
 - Lesson generation, billing, admin/school flows, and authenticated writes remain out of scope for the skeleton pilot.
 - This readiness pass does not change production routing.
+
+## Authenticated Python RLS Integration
+
+Status: `NO`
+
+Checkpoint 9 added a guarded integration harness for `POST /api/lesson-plan/save`, but did not run it because no Supabase target could be classified as local, dedicated test, or controlled staging. The current `.env.local` project is unmarked and therefore unsafe for mutation tests.
+
+Required before cutover candidacy:
+
+- local Supabase runtime with Auth/PostgREST/RLS, or
+- dedicated test Supabase project, or
+- explicitly controlled staging Supabase project
+
+The environment must set explicit integration variables and mutation approval flags documented in `FASTAPI_RLS_INTEGRATION.md`.
