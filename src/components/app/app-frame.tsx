@@ -487,7 +487,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
   const railWidth = collapsed ? "lg:w-14" : "lg:w-[232px]";
 
   return (
-    <div className="flex min-h-screen bg-canvas">
+    <div className="flex h-screen overflow-hidden bg-canvas">
       <CommandPalette roles={roles} />
 
       {/* ---- Rail (desktop) ---- */}
@@ -579,7 +579,15 @@ export function AppFrame({ user, children }: { user: User; children: React.React
       ) : null}
 
       {/* ---- Main column ---- */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* This, not the document, is the scroll container: with the outer row
+          fixed to h-screen, the rail's own h-screen box never has to hold a
+          sticky position past its own bottom edge (the classic reason a
+          `sticky` sidebar still scrolls away — its containing block runs out
+          of room once the page grows past one viewport height). Scoping
+          overflow here instead keeps the rail (and this header, sticky
+          *within* this container) pinned regardless of how long the page
+          content is. */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         <header className="sticky top-0 z-40 flex h-[52px] shrink-0 items-center gap-2 border-b border-line-subtle bg-canvas/85 px-3 backdrop-blur-md sm:px-4">
           <Button
             variant="ghost"
