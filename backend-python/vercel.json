@@ -1,0 +1,18 @@
+{
+  "services": {
+    "layah-backend-python": {
+      "root": ".",
+      "buildCommand": "pip install .",
+      "entrypoint": "app.main:app"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "type": "service",
+        "service": "layah-backend-python"
+      }
+    }
+  ]
+}
