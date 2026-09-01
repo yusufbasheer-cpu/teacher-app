@@ -37,6 +37,18 @@ Current migration-chain status: incomplete for fresh local reset because the ini
 
 Before running local RLS tests, reconcile the migration chain and schema snapshot according to `DATABASE_SOURCE_OF_TRUTH.md`. Do not create a reduced one-table schema just to make tests pass.
 
+Checkpoint 13 strategy: `BASELINE_PLUS_FORWARD_RECONCILIATION`.
+
+Separate prerequisites:
+
+| Area | Required |
+| --- | --- |
+| Tooling | Docker-compatible runtime and Supabase CLI. |
+| Schema | Canonical baseline/reconciliation for `lesson_plans`, `saved_lessons`, and `school_templates`; see `DATABASE_BASELINE_SPEC.md` and `SCHEMA_RECONCILIATION_PLAN.md`. |
+| Test | Existing guarded RLS harness with explicit local/test/staging mutation approval flags. |
+
+The schema blocker is distinct from the tooling blocker. Installing CLI/Docker alone does not make a local reset trustworthy until missing baseline objects are reconciled.
+
 ## Auth And PostgREST Behavior
 
 The local runtime must expose:

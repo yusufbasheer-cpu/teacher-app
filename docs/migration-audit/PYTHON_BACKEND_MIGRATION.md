@@ -23,6 +23,25 @@ Checkpoint 8 implements the first authenticated parity endpoint with a smaller, 
 
 Checkpoint 9 adds a guarded real-RLS integration harness for `POST /api/lesson-plan/save`, but the real run is blocked until a non-production Supabase environment is explicitly identified. Checkpoint 10 classified available targets and found no safe local/test/staging Supabase environment. Checkpoint 11 attempted local enablement and found missing runtime tooling plus `lesson_plans` schema-source drift. Checkpoint 12 selected `HYBRID_TRANSITION_REQUIRED` for database source-of-truth recovery and added a static RLS invariant test, but did not create migration SQL. The endpoint remains `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`, not a cutover candidate.
 
+Checkpoint 13 defines a baseline reconciliation strategy for `lesson_plans`, `saved_lessons`, and `school_templates`, but does not create executable SQL. Authenticated database migration remains blocked by schema reproducibility plus live RLS verification. Non-DB/public Python migration work is a separate track and is not automatically blocked by that authenticated DB blocker.
+
+## Migration Tracks
+
+| Track | Status | Examples | Blocker |
+| --- | --- | --- | --- |
+| Track A: authenticated DB migration | blocked for cutover | `POST /api/lesson-plan/save`, future saved lesson CRUD | reproducible schema plus live RLS integration |
+| Track B: non-DB/public migration | not blocked by RLS schema drift | `GET /api/geo`, public form pilots where parity already exists | endpoint-specific parity and routing approval |
+
+## Cutover Readiness Matrix
+
+| Endpoint | Python parity | DB dependency | Auth dependency | Live integration required | Cutover blocker |
+| --- | --- | --- | --- | --- | --- |
+| `GET /api/geo` | Yes | None | None | No | None known; still no traffic cutover |
+| `POST /api/lesson-plan/save` | Yes | `lesson_plans` and owner RLS | Supabase bearer token | Yes | schema reproducibility and safe RLS target |
+| `POST /api/lesson-plan` | No cutover parity | usage, generation events, AI providers | Supabase auth/session | Yes | quota, streaming, provider payload parity |
+| `POST /api/question-paper` | Not promoted | usage, generation persistence, AI providers | Supabase auth/session | Yes | quota and AI/persistence parity |
+| `POST /api/razorpay/webhook` | No | billing tables | Razorpay HMAC/service-role writes | Yes | money-impacting webhook replay and idempotency |
+
 ## Endpoint Migration Map
 
 | Existing area | Python target | Compatibility requirement |

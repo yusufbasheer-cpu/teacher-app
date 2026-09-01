@@ -17,7 +17,7 @@ Status legend:
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| `GET /api/geo` | `PYTHON_CUTOVER_CANDIDATE` | low-risk pilot; parity proved in Python foundation |
+| `GET /api/geo` | `PYTHON_CUTOVER_CANDIDATE` | low-risk Track B pilot; parity proved in Python foundation; no DB/RLS blocker |
 | `POST /api/lesson-plan/save` | `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER` | authenticated unit-contract parity proved; guarded RLS integration harness and static RLS invariant test added; local verification is blocked by missing Supabase runtime tooling and broader schema-source drift |
 | `POST /api/lesson-plan` | `FUTURE_AI_SERVICE` | generation remains Next-owned for now |
 | `POST /api/question-paper` | `FUTURE_AI_SERVICE` | AI and quota heavy |
@@ -35,4 +35,5 @@ Status legend:
 
 - Geo remains the only cutover candidate; no production routing moved.
 - `lesson-plan/save` is a no-cutover authenticated parity implementation with unit-contract evidence, a guarded integration harness, and static SQL invariant coverage. Checkpoint 12 did not promote it because live RLS verification still needs a reproducible Supabase environment.
+- Checkpoint 13 keeps `lesson-plan/save` at `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`. Schema reconciliation planning narrows the blocker but does not remove the need for live RLS verification.
 - No repository split happened yet.

@@ -145,6 +145,16 @@ Reason:
 
 Safe next migration work should first choose a baseline strategy for all missing baseline objects needed by local reset, then create reviewed idempotent SQL or a documented bootstrap path.
 
+Checkpoint 13 chose a documented strategy, not executable SQL.
+
+Recommended model: `BASELINE_PLUS_FORWARD_RECONCILIATION`.
+
+- `lesson_plans` is sufficiently specified for a fresh baseline spec, but existing policy/table drift is still uninspected.
+- `saved_lessons` has a clear application contract and later alter migrations, but no tracked base table/RLS policy SQL.
+- `school_templates` has embedded setup SQL and route fallback instructions, but no migration and no inspected deployed catalog.
+
+See `SCHEMA_RECONCILIATION_MATRIX.md`, `DATABASE_BASELINE_SPEC.md`, and `SCHEMA_RECONCILIATION_PLAN.md`.
+
 ## Production Migration Risk
 
 Do not apply a newly invented baseline migration to production or the unclassified `.env.local` project.

@@ -70,10 +70,30 @@ Recommended controls:
 - Add a documented command for regenerating or validating `schema.sql` after migrations once Supabase CLI/Docker are available.
 - Keep application-comment SQL, such as `school_templates`, out of runtime code by moving it into reviewed migrations.
 
+## Future Contributor Rule
+
+Every schema change must:
+
+1. have an ordered migration
+2. include RLS changes where applicable
+3. update or regenerate the reviewed schema snapshot
+4. add or update contract tests for security-critical invariants
+5. document runtime dependencies or fallback behavior when relevant
+
+No new table, column, policy, index, trigger, or function should originate only from route fallback SQL, application comments, or `supabase/schema.sql`.
+
+## Checkpoint 13 Reconciliation Strategy
+
+Checkpoint 13 separates fresh bootstrap from existing-database upgrade safety.
+
+Current recommendation: `BASELINE_PLUS_FORWARD_RECONCILIATION`, documented in `DATABASE_BASELINE_SPEC.md`, `SCHEMA_RECONCILIATION_MATRIX.md`, and `SCHEMA_RECONCILIATION_PLAN.md`.
+
+No executable migration SQL was created in Checkpoint 13 because existing catalog state and policy drift have not been inspected. `lesson_plans` is verified well enough for a baseline spec, while `saved_lessons` and `school_templates` remain partial contracts that need catalog confirmation before production-safe SQL.
+
 ## Unresolved
 
 - Whether deployed production/staging has objects not represented in either `schema.sql` or migrations.
 - Whether `schema.sql` was manually authored or exported from an early Supabase project.
-- The canonical base definition for `saved_lessons`.
-- The canonical migration path for `school_templates`.
+- The deployed canonical base definition for `saved_lessons`, including exact RLS policies and indexes.
+- The deployed canonical migration path for `school_templates`, including whether the embedded SQL was manually applied.
 - Whether future migrations should reconcile existing deployed environments with `IF NOT EXISTS` / `DROP POLICY IF EXISTS` patterns or require a one-time audited baseline.

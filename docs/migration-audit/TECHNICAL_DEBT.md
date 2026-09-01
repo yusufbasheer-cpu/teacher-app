@@ -8,7 +8,7 @@
 | Large route handlers with many responsibilities | confirmed | `src/app/api/lesson-plan/route.ts` | High testability/migration risk. |
 | Extensive production `console.log`/`warn`/`error` | confirmed | grep across generation, admin, school, email modules | Medium privacy/noise risk. |
 | No central request/response schema definitions | confirmed by route review | handlers validate manually | High parity risk. |
-| `school_templates` table schema not located in summarized migration pass | unknown | API references table | High until verified. |
+| `school_templates` table schema is outside canonical migrations | confirmed | embedded SQL in `src/lib/pptx-template.ts`; upload route returns manual ALTER instructions for `logo_base64`/`file_data` | High until moved into reviewed migration. Runtime fallback is `MIGRATION_DEBT`, not schema authority. |
 | `ai-research` and `obsidian-vault` not runtime-classified | unknown/probably non-runtime | top-level dirs | Low, but inspect before repo split. |
 | One-off Razorpay plan creation script mutates external resources | confirmed | `scripts/create-razorpay-pro-plan.cjs` | Operational risk if run casually. |
 | Python PPT service permissive CORS/no auth | confirmed visible | `python-ppt-api/main.py` | High if publicly exposed. |
