@@ -55,7 +55,7 @@ function addendumUae(): string {
   return `## Mandatory educational framework (UAE — MOE, KHDA, SPEA)
 The teacher selected UAE national expectations. Treat this as a binding quality layer on top of the stated curriculum type, grade, subject, chapter, topic, and learning objectives.
 
-Apply UAE MOE, KHDA, and SPEA expectations to **every** generated field you output (Full Lesson Plan, PPT Slide Content, Worksheet, Assessment Questions, Homework Task, Teacher Notes): standards alignment, inspection-quality teaching and learning, assessment design, inclusion, digital and innovation literacy where appropriate, and moral / national identity / wellbeing threads where they fit the subject matter—without inventing school-specific policies.
+Let UAE MOE, KHDA, and SPEA expectations quietly shape **every** generated field you output (Full Lesson Plan, PPT Slide Content, Worksheet, Assessment Questions, Homework Task, Teacher Notes): inspection-quality teaching and learning, assessment design, inclusion, digital and innovation literacy where appropriate, and moral / national identity / wellbeing threads where they fit the subject matter—without inventing school-specific policies.
 
 Naturally embed priorities from these domains (do not dump them as a checklist unless a section genuinely benefits from a compact rubric or criteria list):
 
@@ -95,6 +95,16 @@ Align all sections with CBSE-style learning outcomes and assessment patterns whe
 }
 
 /**
+ * Applies to every framework: the framework is a silent content-shaping layer, not a
+ * script the model should recite. Keeps the "curriculum guides content, not becomes
+ * the content" invariant consistent across all consumers of the addendum.
+ */
+function silentApplicationGuidance(): string {
+  return `## How to apply this framework
+Use the framework above to silently shape objectives, terminology, grade-appropriateness, pedagogical structure, and relevant local/contextual examples. Do NOT insert explicit statements such as "this aligns with...", "this meets...", "according to [framework]...", or "this supports curriculum standards..." into ordinary sections — that reads as narration, not teaching content, and is not something this application formally verifies. Only name the framework or its bodies explicitly inside a section whose deliberate purpose is to report curriculum/standards connections (for example a dedicated real-life/curriculum-connection slide) — never as a claim sprinkled through the rest of the content.`;
+}
+
+/**
  * Returns extra system-prompt text appended when a framework is selected; `null` if none.
  */
 export function buildCurriculumFrameworkSystemAddendum(
@@ -103,24 +113,29 @@ export function buildCurriculumFrameworkSystemAddendum(
   const v = frameworkValue.trim();
   if (!v) return null;
 
-  switch (v) {
-    case "uae_moe_khda_spea":
-      return addendumUae();
-    case "uk_ofsted":
-      return addendumUk();
-    case "usa_common_core":
-      return addendumUsa();
-    case "australia_acara":
-      return addendumAustralia();
-    case "singapore_moe":
-      return addendumSingapore();
-    case "finland_nccf":
-      return addendumFinland();
-    case "india_cbse_nep":
-      return addendumIndia();
-    default:
-      return null;
-  }
+  const base = ((): string | null => {
+    switch (v) {
+      case "uae_moe_khda_spea":
+        return addendumUae();
+      case "uk_ofsted":
+        return addendumUk();
+      case "usa_common_core":
+        return addendumUsa();
+      case "australia_acara":
+        return addendumAustralia();
+      case "singapore_moe":
+        return addendumSingapore();
+      case "finland_nccf":
+        return addendumFinland();
+      case "india_cbse_nep":
+        return addendumIndia();
+      default:
+        return null;
+    }
+  })();
+
+  if (!base) return null;
+  return `${base}\n\n${silentApplicationGuidance()}`;
 }
 
 /** Short line for image prompts (FLUX / PPT slide images). */

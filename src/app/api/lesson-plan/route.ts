@@ -40,6 +40,7 @@ import {
   buildSourceMaterialPromptBlock,
   isLanguageTeachingSubject,
   mergePptSlideImageUrlsIntoPlan,
+  resolveGenerationTopic,
   usesArabicPptSlideTitles,
   type LessonPlanGenerateBody,
   type LessonPlanInput,
@@ -305,12 +306,12 @@ async function generatePptSlideContentSlideBySlide(params: {
     formatAflForSinglePptSlidePrompt(slide, aflSelections, {
       subject: input.subject.trim(),
       grade: input.grade.trim(),
-      topic: input.topic.trim(),
+      topic: resolveGenerationTopic(input.topic, input.chapter),
       learningObjectives: input.learningObjectives.trim(),
     });
 
   const slideParams: SlideGenParams = {
-    topic: input.topic.trim(),
+    topic: resolveGenerationTopic(input.topic, input.chapter),
     subject: input.subject.trim(),
     grade: input.grade.trim(),
     chapter: input.chapter.trim(),

@@ -1,5 +1,7 @@
 /** System + user prompts for differentiated worksheet pack (DeepSeek). */
 
+import { buildCurriculumFrameworkSystemAddendum } from "@/lib/curriculum-framework";
+
 export type DifferentiatedLevel = "foundation" | "core" | "extension";
 
 function levelLabel(level: DifferentiatedLevel): string {
@@ -22,20 +24,24 @@ function worksheetEndMarker(level: DifferentiatedLevel): string {
 
 function levelRules(level: DifferentiatedLevel): string {
   if (level === "foundation") {
-    return "Simple vocabulary/language, include word bank, fill-in-the-blanks, match-the-following, picture-based questions where relevant, step-by-step instructions, SEN/ELL accommodations, Arabic vocabulary support, UAE real-life examples, and maximum 8 questions.";
+    return "Simple vocabulary/language, include word bank, fill-in-the-blanks, match-the-following, picture-based questions where relevant, step-by-step instructions, SEN/ELL accommodations, real-life examples relevant to the student's context, and maximum 8 questions.";
   }
   if (level === "core") {
     return "Mix question types, include short answer, true/false with explanation, diagram labeling where relevant, real-life application, light scaffolding, and maximum 8 questions.";
   }
-  return "Use HOTS analytical/evaluative and creative open-ended tasks, research/problem-solving, no word bank, no scaffolding, UAE and global connections, and maximum 8 questions.";
+  return "Use HOTS analytical/evaluative and creative open-ended tasks, research/problem-solving, no word bank, no scaffolding, global and real-world connections, and maximum 8 questions.";
 }
 
-export function buildDiffPackLevelSystemPrompt(level: DifferentiatedLevel): string {
+export function buildDiffPackLevelSystemPrompt(
+  level: DifferentiatedLevel,
+  curriculumFramework?: string,
+): string {
   const worksheetStart = worksheetStartMarker(level);
   const worksheetEnd = worksheetEndMarker(level);
   const label = levelLabel(level);
+  const frameworkAddendum = buildCurriculumFrameworkSystemAddendum(curriculumFramework ?? "");
 
-  return `You are an expert UAE-aligned classroom teacher and assessment designer.
+  return `You are an expert classroom teacher and assessment designer.
 
 Generate ONLY the ${label} level pack and concise teacher resources.
 
@@ -55,10 +61,9 @@ END SELF ASSESSMENT CHECKLIST
 START PEER ASSESSMENT SHEET
 END PEER ASSESSMENT SHEET
 - Do NOT output other worksheet markers.
-- Worksheet must start with: "Curriculum alignment: UAE MOE / KHDA expectations — [subject], [grade] — differentiated task."
 - Keep content short and classroom-ready.
 - ${levelRules(level)}
-
+${frameworkAddendum ? `\n${frameworkAddendum}\n` : ""}
 Be specific, practical, and ready to print.`.trim();
 }
 
