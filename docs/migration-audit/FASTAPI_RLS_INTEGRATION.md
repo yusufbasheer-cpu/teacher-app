@@ -221,6 +221,32 @@ Required local strategy:
 - Run with `SUPABASE_INTEGRATION_ENVIRONMENT=local`.
 - Do not reduce policies just to make integration tests pass.
 
+## Checkpoint 23 Re-Check
+
+Environment classification re-run: unchanged. `.env.local` project
+(`jbwevzvtloahjoamwnjt`) remains `UNKNOWN`; no dedicated test/staging
+project exists; local Supabase remains unavailable (no CLI, no Docker).
+No new mutation-safe target appeared.
+
+What changed: `lesson_plans` is now reproducible from a fresh migration
+run (`20260101000000_lesson_plans_baseline_reconciliation.sql` — see
+`DATABASE_SOURCE_OF_TRUTH.md` and `SCHEMA_RECONCILIATION_PLAN.md`), and
+the zero-row-update false-positive-success behavior referenced implicitly
+by this harness's cross-user assertions (line ~247,
+`cross_user.status_code == 200` followed by verifying the *underlying
+row* is untouched via direct admin fetch) is now explicitly documented
+in `LESSON_PLANS_MUTATION_CONTRACT.md` — the harness already correctly
+accounted for this; no harness change was needed.
+
+The guarded integration harness itself
+(`backend-python/tests/integration/test_lesson_plan_rls.py`) was
+re-reviewed in full and found complete: fail-closed target guard, real
+synthetic User A/B via Auth admin authority, real bearer tokens for the
+route under test, service-role confined to fixture setup/teardown only,
+cross-user isolation proven both through the app and via a **direct**
+PostgREST call bypassing the app (proving RLS itself). No changes made —
+"reuse and improve," and no gap was found to improve.
+
 ## Limitation
 
-`POST /api/lesson-plan/save` remains `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`, not `PYTHON_CUTOVER_CANDIDATE`, until the guarded integration suite is run successfully against a proven non-production Supabase environment.
+`POST /api/lesson-plan/save` remains `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`, not `PYTHON_CUTOVER_CANDIDATE`, until the guarded integration suite is run successfully against a proven non-production Supabase environment. That remains true after Checkpoint 23 — reproducibility improved, but live verification is still blocked externally (Docker/CLI/dedicated test project availability), not by anything this repository controls.

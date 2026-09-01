@@ -101,6 +101,19 @@ supabase stop
 
 Do not run the integration command until the schema drift is resolved.
 
+## Checkpoint 23 Re-Check
+
+Re-verified this checkpoint: still no Supabase CLI, still no Docker, no
+`supabase/config.toml`. Unchanged from Checkpoints 11–12. The schema
+blocker is now partially resolved for `lesson_plans` only —
+`supabase/migrations/20260101000000_lesson_plans_baseline_reconciliation.sql`
+makes `lesson_plans` reproducible from `supabase migration up` once
+Docker/CLI exist — but the tooling blocker (Docker/CLI availability)
+remains entirely unresolved and was not attempted, since installing
+Docker is a heavyweight system-level change outside what this checkpoint
+should do autonomously. See `AUTHENTICATED_BACKEND_PATTERN.md` for the
+full target-classification evidence and the exact remaining steps.
+
 ## CI Suitability
 
 Current recommendation: `LOCAL_ONLY`.

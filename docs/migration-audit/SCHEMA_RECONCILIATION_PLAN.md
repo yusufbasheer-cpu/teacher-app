@@ -133,9 +133,35 @@ Unknown items:
 
 Lesson-plan save being blocked does not block public/non-DB Python work such as `GET /api/geo`.
 
+## Checkpoint 23: `lesson_plans` Plan Executed (SQL Written, Not Applied)
+
+The `lesson_plans` fresh-install plan above is now implemented exactly as
+specified: `supabase/migrations/20260101000000_lesson_plans_baseline_reconciliation.sql`
+creates the pre-202602 base table + RLS + insert/select policies, guarded
+by a single `information_schema.tables` existence check so it is a
+complete no-op wherever the table already exists — satisfying "if
+present, inspect columns... do not drop/recreate table... do not replace
+policies without security review" by simply not touching an existing
+table at all. Static regression:
+`backend-python/tests/test_supabase_schema_contract.py::test_lesson_plans_baseline_reconciliation_migration_matches_schema_contract`
+proves this migration's SQL fragments match `schema.sql`'s verified
+`lesson_plans` contract, so the two sources cannot silently diverge.
+
+**Not applied to any database.** No Supabase CLI, Docker, or
+positively-classified non-production Supabase target was available this
+checkpoint. `saved_lessons` and `school_templates` plans above remain
+exactly as specified — not implemented, still blocked on catalog
+inspection this checkpoint could not safely perform.
+
 ## Next Safe Step
 
 Run read-only catalog inspection against a classified non-production database or an approved production schema dump. Then create either:
 
 - an early baseline used only for fresh bootstrap plus clear existing-environment handling, or
 - a forward reconciliation migration that conditionally establishes missing objects with explicit catalog checks.
+
+For `lesson_plans` specifically, the next safe step is narrower: obtain a
+`LOCAL_DISPOSABLE`/`TEST`/`STAGING` Supabase target (Docker install, or a
+dedicated hosted test project) and run the already-written migration plus
+the already-written guarded integration harness — no further planning or
+SQL authoring is needed for this one table.

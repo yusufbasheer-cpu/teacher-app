@@ -108,8 +108,8 @@ Current conclusion: `DOCUMENTATION_ONLY_FOR_CHECKPOINT_13`. No executable migrat
 
 ## Reproducibility Check
 
-| Object | Can current fresh migration sequence create it? | Checkpoint 13 status |
+| Object | Can current fresh migration sequence create it? | Status |
 | --- | --- | --- |
-| `lesson_plans` | No | `PLANNED_BUT_NOT_EXECUTABLE` |
-| `saved_lessons` | No | `PLANNED_BUT_NOT_EXECUTABLE` |
-| `school_templates` | No | `PLANNED_BUT_NOT_EXECUTABLE` |
+| `lesson_plans` | Yes, as of Checkpoint 23 | `RECONCILIATION_SQL_WRITTEN_UNTESTED` — `20260101000000_lesson_plans_baseline_reconciliation.sql` added; not applied/tested against any live database (no safe target available) |
+| `saved_lessons` | No | `PLANNED_BUT_NOT_EXECUTABLE` — still `PARTIAL` confidence, deliberately deferred (not needed by the one endpoint this checkpoint's foundation targets) |
+| `school_templates` | No | `PLANNED_BUT_NOT_EXECUTABLE` — still `PARTIAL` confidence, deliberately deferred |

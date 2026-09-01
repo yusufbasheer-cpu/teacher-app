@@ -97,3 +97,28 @@ No executable migration SQL was created in Checkpoint 13 because existing catalo
 - The deployed canonical base definition for `saved_lessons`, including exact RLS policies and indexes.
 - The deployed canonical migration path for `school_templates`, including whether the embedded SQL was manually applied.
 - Whether future migrations should reconcile existing deployed environments with `IF NOT EXISTS` / `DROP POLICY IF EXISTS` patterns or require a one-time audited baseline.
+
+## Checkpoint 23: `lesson_plans` Reconciliation Written (Not Yet Applied/Tested)
+
+`supabase/migrations/20260101000000_lesson_plans_baseline_reconciliation.sql`
+now exists — an existence-guarded migration that creates `lesson_plans`
+(exact `DATABASE_BASELINE_SPEC.md`-verified shape: table, RLS, original
+insert/select policies) on a fresh database, and is a complete no-op on
+any database where the table already exists (no catalog inspection was
+possible for any hosted environment, so it deliberately does not touch
+policies on an existing table). This makes `lesson_plans` reproducible
+from `supabase migration up` alone for the first time.
+
+**Not applied or tested against any live database.** No Supabase CLI, no
+Docker, and no positively-classified non-production Supabase target were
+available this checkpoint (re-checked; unchanged from Checkpoints 9–13 —
+see `AUTHENTICATED_BACKEND_PATTERN.md` for full target-classification
+evidence). `saved_lessons` and `school_templates` remain unreconciled —
+still `PARTIAL` confidence, deliberately deferred (smallest correct
+reconciliation slice for the one endpoint, `lesson-plan/save`, that
+actually needs it).
+
+Updated classification: source of truth remains `HYBRID_TRANSITION_REQUIRED`
+in practice (nothing was proven live), but `lesson_plans`
+reproducibility specifically has moved from `PLANNED_BUT_NOT_EXECUTABLE`
+to `RECONCILIATION_SQL_WRITTEN_UNTESTED`.

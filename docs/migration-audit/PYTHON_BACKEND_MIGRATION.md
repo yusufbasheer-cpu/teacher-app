@@ -110,3 +110,5 @@ This is migration infrastructure, not the final topology. It avoids frontend URL
 - Usage quota reservation/refund under concurrency.
 - Client-side direct Supabase writes for saved lessons.
 - No currently runnable local Supabase stack or marked test/staging Supabase project exists for authenticated RLS integration verification; `SUPABASE_SCHEMA_DRIFT.md` must be resolved before local reset can be trusted.
+
+Checkpoint 23 update: `lesson_plans`' half of that blocker (schema reproducibility) is now resolved — `20260101000000_lesson_plans_baseline_reconciliation.sql` makes it creatable from a fresh migration run. The tooling half (Docker/Supabase CLI availability) and the environment half (a positively-classified non-production Supabase target) remain unresolved, re-confirmed unchanged this checkpoint. `saved_lessons`/`school_templates` schema reconciliation remains untouched, deliberately deferred. Full pattern and evidence: `AUTHENTICATED_BACKEND_PATTERN.md`.

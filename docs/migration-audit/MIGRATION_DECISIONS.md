@@ -349,3 +349,39 @@ Alternatives considered: Migrating an authenticated read endpoint (e.g. `hod/me`
 Impact: `docs/migration-audit/BACKEND_WAVE_1_INVESTIGATION.md` records the full per-route classification and reasoning. `BACKEND_MIGRATION_MANIFEST.md`, `PYTHON_BACKEND_MIGRATION.md`, and `MIGRATION_MASTER_PLAN.md` updated to correct the prior assumption that a "remaining low-risk public endpoints" wave existed — it does not. No application code, tests, or routing configuration changed. The practical implication is that the next real migration unlock is the database source-of-truth track (Track A/C), not further endpoint-by-endpoint or batch migration work under the current constraints.
 
 Status: Implemented (investigation); no migration performed (correctly, per evidence).
+
+## 2026-09-01 (Checkpoint 23)
+
+Decision: Write and statically test a `lesson_plans` baseline reconciliation migration, but do not attempt to apply it (or run any live RLS/auth test) against any database this checkpoint.
+
+Reason: Re-checking the target-investigation evidence from Checkpoints 9–13 found nothing had changed: no Supabase CLI, no Docker (installing it is a heavyweight system-level change outside autonomous scope), and the only hosted Supabase project remains `UNKNOWN` (no repository or environment marker classifies it as local/test/staging). Per this checkpoint's own mandatory stop rule, an `UNKNOWN`/production-only situation means live testing must not be forced. However, `DATABASE_BASELINE_SPEC.md` already contained a `VERIFIED`-confidence exact SQL shape for `lesson_plans` (unlike `saved_lessons`/`school_templates`, which remain `PARTIAL`), so writing that one migration — guarded to be a complete no-op wherever the table already exists — was safe repository work that materially improves reproducibility without touching any live system.
+
+Alternatives considered: Also writing baseline migrations for `saved_lessons`/`school_templates` (rejected — both remain `PARTIAL` confidence; writing SQL from an unverified shape risks encoding a wrong contract, and neither is needed by the one endpoint, `lesson-plan/save`, this checkpoint's foundation targets — "smallest correct reconciliation slice"); attempting to apply the migration to the `.env.local` project anyway since it's "probably fine" (rejected — explicitly the scenario the checkpoint's safety rules forbid); skipping the migration entirely since it can't be tested this checkpoint (rejected — the migration is independently verifiable via a static test proving its SQL matches `schema.sql`'s already-verified contract, so "untested against a live database" does not mean "unverified").
+
+Impact: `supabase/migrations/20260101000000_lesson_plans_baseline_reconciliation.sql` added. `backend-python/tests/test_supabase_schema_contract.py` gained a new static test proving consistency with `schema.sql`. `lesson_plans` reproducibility status moves from `PLANNED_BUT_NOT_EXECUTABLE` to `RECONCILIATION_SQL_WRITTEN_UNTESTED`. No database was mutated.
+
+Status: Implemented.
+
+## 2026-09-01 (Checkpoint 23)
+
+Decision: Document and add regression coverage for the zero-row-update false-positive-success behavior in `lesson-plan/save`, in both Next and Python, without changing either implementation's behavior.
+
+Reason: Investigating this checkpoint's flagged "prior unresolved zero-row update issue" found that Next's existing `saveLessonPlanRecord` (`src/lib/lesson-plan-save.ts`) never inspects PostgREST's affected-row count — a plain SQL `UPDATE` against a filter that matches zero rows (wrong id, or an id owned by another user and blocked by RLS) is not an error, so it returns `204` either way, and the existing code reports `{"action": "updated", ...}` regardless. The Python parity implementation already replicates this exactly (also checks only HTTP status, not row count). This is a genuine, previously-undocumented behavior, but it is *already-matched* parity, not a bug introduced by migration — the checkpoint's own rule is "preserve that semantic in Python... do not improve behavior unless contract documentation explicitly calls for change," and no such call exists.
+
+Alternatives considered: "Fixing" both implementations to detect and report zero-row updates as a 404 or similar (rejected — no contract documentation calls for this change, and doing it silently during a migration checkpoint is exactly the kind of behavior change this migration's rules forbid without an explicit, separate product decision); leaving it undocumented since Python already matches Next (rejected — the checkpoint explicitly asked to "resolve it with evidence" and "add regression coverage," and an undocumented surprising behavior is a liability for whoever touches this code next, migration-related or not).
+
+Impact: `docs/migration-audit/LESSON_PLANS_MUTATION_CONTRACT.md` documents the behavior explicitly. New regression tests added to both `src/lib/lesson-plan-save.test.ts` and `backend-python/tests/test_lesson_plan.py`, both asserting the exact false-positive-success response. No production code changed in either language.
+
+Status: Implemented.
+
+## 2026-09-01 (Checkpoint 23)
+
+Decision: Classify this checkpoint `AUTHENTICATED_DB_FOUNDATION_PARTIAL`, not `AUTHENTICATED_DB_FOUNDATION_VERIFIED` or `AUTHENTICATED_DB_FOUNDATION_EXTERNALLY_BLOCKED`.
+
+Reason: `VERIFIED` requires live RLS cross-user isolation and live authenticated persistence verification, neither of which was possible (no safe target). `EXTERNALLY_BLOCKED` would be accurate only if no safe repository-side progress were possible either — but real, concrete, independently-verifiable progress was made: `lesson_plans` reproducibility, zero-row-update semantics resolved and tested, and confirmation (not new work — the code was already correctly scoped) that the auth/persistence foundation is reusable for a future authenticated endpoint. `PARTIAL` is the label that doesn't overstate unproven live behavior while still crediting real, evidenced work.
+
+Alternatives considered: `VERIFIED` (rejected — would be a fabricated claim; no live database was ever touched); `EXTERNALLY_BLOCKED` (rejected — undersells the reconciliation migration, the zero-row-update resolution, and the confirmed-complete integration harness, all of which are real and independently checkable without a live target).
+
+Impact: `docs/migration-audit/AUTHENTICATED_BACKEND_PATTERN.md` created as the canonical reference for the next authenticated migration wave. Wave 2 readiness: `PARTIALLY` unblocked — the pattern, the reusable code, and (for `lesson_plans` specifically) the schema are ready; a safe execution target and an Authorization-forwarding routing design remain the two concrete external/design prerequisites.
+
+Status: Implemented.
