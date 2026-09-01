@@ -166,6 +166,34 @@ def test_user_a_cannot_target_user_b_row_through_update_contract() -> None:
     assert call["headers"]["Authorization"] != f"Bearer {TOKEN_B}"
 
 
+def test_zero_row_update_returns_false_positive_success_matching_next() -> None:
+    """Existing, preserved behavior — not introduced by this migration.
+
+    PostgREST's UPDATE returns 204 with no error whenever zero rows match
+    the filter (wrong id, or an id owned by another user and blocked by
+    RLS) — a plain SQL UPDATE against a false WHERE clause is not an
+    error condition. Neither this Python persistence client nor the
+    existing Next implementation (src/lib/lesson-plan-save.ts) requests
+    `Prefer: return=representation` or inspects `Content-Range` to detect
+    "0 rows affected", so both report a false-positive
+    `{"action": "updated", ...}` success for an id that does not exist,
+    or does not belong to the caller. See
+    docs/migration-audit/LESSON_PLANS_MUTATION_CONTRACT.md.
+    """
+    client = FakeSupabaseClient([response(204, None)])
+    persistence = SupabaseRestClient(client, SETTINGS)
+
+    result = asyncio.run(
+        save_lesson_plan(
+            parsed_request(activePlanId="does-not-exist-or-not-owned"),
+            AuthenticatedUser(USER_A, TOKEN_A),
+            persistence,
+        )
+    )
+
+    assert result == {"action": "updated", "id": "does-not-exist-or-not-owned"}
+
+
 def test_route_matches_next_error_and_success_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     import app.api.routes.lesson_plan as route_module
 

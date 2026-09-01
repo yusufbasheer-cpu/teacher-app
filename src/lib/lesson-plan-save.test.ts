@@ -116,6 +116,41 @@ describe("saveLessonPlanRecord", () => {
     });
   });
 
+  it("returns a false-positive 'updated' success when no row actually matched (existing, preserved behavior)", async () => {
+    // Supabase's update() resolves with { error: null } whenever zero rows
+    // match .eq("id", ...).eq("user_id", ...) — a plain SQL UPDATE against
+    // a false WHERE clause is not an error, and this code never checks a
+    // row count. This is true whether activePlanId doesn't exist at all,
+    // or belongs to a different user and is blocked by RLS. The Python
+    // parity implementation preserves this exact behavior — see
+    // backend-python/tests/test_lesson_plan.py's
+    // test_zero_row_update_returns_false_positive_success_matching_next
+    // and docs/migration-audit/LESSON_PLANS_MUTATION_CONTRACT.md.
+    const update = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    });
+    const from = vi.fn().mockReturnValue({ update });
+    const supabase = { from } as never;
+
+    const result = await saveLessonPlanRecord(supabase, "user-1", {
+      activePlanId: "does-not-exist-or-not-owned",
+      form: {
+        curriculumType: "CBSE/NCERT",
+        curriculumFramework: "",
+        grade: "Grade 3",
+        subject: "Math",
+        chapter: "Fractions",
+        topic: "Decimals",
+        learningObjectives: "Objective text",
+      },
+      lessonPlan: { "Full Lesson Plan": "Plan" },
+    });
+
+    expect(result).toEqual({ action: "updated", id: "does-not-exist-or-not-owned" });
+  });
+
   it("throws when updating fails", async () => {
     const update = vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({

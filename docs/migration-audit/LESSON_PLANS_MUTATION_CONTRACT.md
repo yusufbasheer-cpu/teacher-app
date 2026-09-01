@@ -34,6 +34,27 @@ Update behavior:
 - Python filters by `id` and authenticated `user_id`
 - RLS must still be active and enforce ownership
 
+### Zero-Row Update Semantics (Checkpoint 23, existing behavior — preserved, not changed)
+
+If `activePlanId` does not exist, or exists but is owned by a different
+user (blocked by RLS), the update filters to **zero rows**. Neither the
+existing Next implementation (`src/lib/lesson-plan-save.ts`) nor the
+Python parity implementation requests `Prefer: return=representation` or
+inspects `Content-Range` to detect this — a plain SQL `UPDATE` against a
+false `WHERE` clause is not an error, so PostgREST returns `204` either
+way. Both implementations therefore return a **false-positive success**:
+`200 { "action": "updated", "id": "<activePlanId>" }`, even though no row
+was actually modified.
+
+This is confirmed identical in both implementations (regression coverage:
+`src/lib/lesson-plan-save.test.ts` and
+`backend-python/tests/test_lesson_plan.py`'s
+`test_zero_row_update_returns_false_positive_success_matching_next`).
+It is **not** a Python-introduced bug — it is existing, preserved Next
+behavior. Do not "fix" this during migration without an explicit,
+separate product decision to change it in both implementations
+together.
+
 ## RLS Contract
 
 Source evidence: `supabase/schema.sql`.
