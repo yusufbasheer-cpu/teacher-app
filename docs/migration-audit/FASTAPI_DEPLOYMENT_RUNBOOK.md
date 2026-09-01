@@ -200,3 +200,15 @@ deployment artifact) is complete and locally verified. No Render account
 access exists in this session, so no real deployment was created. `GET
 /api/geo` continues to serve from Next; geo's manifest status remains
 `CUTOVER_VALIDATED`, not `CUTOVER_ACTIVE`.
+
+**Checkpoint 17:** attempted to move from readiness to an actual
+deployment. Confirmed (again) that no Render/Railway/Vercel CLI, MCP tool,
+or credential exists in this session. No account access, no service
+creation, no remote verification was possible. Nothing above changed —
+repository readiness remains valid as documented. The single remaining
+blocker before any remote verification (Steps 4–15 of Checkpoint 17) can
+run is: **a human with Render (or an authorized alternative platform)
+account access needs to create the service** — either via Blueprint sync
+from `backend-python/render.yaml` or manual creation with Root Directory
+`backend-python` — and share the resulting HTTPS URL back for the next
+checkpoint to configure `PYTHON_BACKEND_URL` against.

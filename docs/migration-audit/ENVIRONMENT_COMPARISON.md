@@ -20,6 +20,8 @@ Checkpoint 15 routing comparison status: run locally only (`127.0.0.1` Next + `1
 
 Checkpoint 16 status: still no deployed URL for `backend-python` to compare against. Repository-side deployment readiness (Render Blueprint, CI, observability) was completed and locally validated (`pip install --dry-run`, full local test suite), but no remote environment exists yet, so no new environment comparison could run. See `FASTAPI_DEPLOYMENT_DECISION.md`.
 
+Checkpoint 17 status: attempted to provision a real remote target for comparison; blocked by lack of Render/Railway/Vercel account access in this session. Still no deployed URL exists. See `FASTAPI_DEPLOYMENT_DECISION.md` Checkpoint 17 addendum.
+
 ## Comparison Matrix
 
 | Feature / Behavior | Production | Staging | Current branch | Difference | Expected? | Source-code explanation | Migration implication |

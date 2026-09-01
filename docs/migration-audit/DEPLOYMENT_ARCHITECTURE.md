@@ -70,6 +70,10 @@ so **no real deployment was created**. Status:
 `DEPLOYMENT_READY_EXTERNAL_PROVISIONING_REQUIRED` — see
 `FASTAPI_DEPLOYMENT_RUNBOOK.md` for the exact remaining external steps.
 
+Checkpoint 17 re-checked for Render/Railway CLI, MCP tooling, and
+credentials (none found) and confirmed the blocker is unchanged: this is
+purely an account-access gap, not a repository/runtime problem.
+
 ## Infrastructure Gaps
 
 - No Terraform, Pulumi, Kubernetes manifests, Dockerfile, docker-compose, nginx config, serverless config, Netlify config, or Fly config were found.

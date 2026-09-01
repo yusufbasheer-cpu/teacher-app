@@ -168,6 +168,18 @@ endpoint has been deployed or tested against Render in this or any prior
 checkpoint. Treat this as an open question to verify explicitly before any
 future streaming cutover, not as a proven capability.
 
+## Checkpoint 17 Attempt
+
+Checkpoint 17 re-verified this decision against the current repository
+state (`render.yaml`, `pyproject.toml`, `app/main.py`, `app/config.py` all
+still consistent) and attempted to move to actual provisioning. No Render,
+Railway, or Vercel CLI, MCP tool, or credential is available in this
+session, and no prior confirmation of Render/Railway account access exists
+(only Vercel and Supabase dashboard access were previously confirmed).
+Per the checkpoint's authorization rule, provisioning was not attempted.
+Classification: `EXTERNAL_PROVISIONING_BLOCKED`. See "Known
+External/Manual Steps Required" below — unchanged from Checkpoint 16.
+
 ## Known External/Manual Steps Required
 
 1. A human with Render account access must create the account/service

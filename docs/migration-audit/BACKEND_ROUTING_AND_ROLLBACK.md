@@ -23,6 +23,13 @@ seam's behavior remains verified only locally (Checkpoint 15). Nothing in
 this document changed as a result — the routing mechanism itself needed no
 modification, only a real target to route to.
 
+## Checkpoint 17 Attempt
+
+Checkpoint 17 re-confirmed the same account-access gap (no Render/Railway/
+Vercel CLI, MCP tool, or credential in this session) and did not attempt
+remote routing. The routing/rollback mechanism described above is
+unchanged and still only verified locally.
+
 ## Architecture
 
 Checkpoint 14 adds a small strangler routing seam at the existing Next route boundary:

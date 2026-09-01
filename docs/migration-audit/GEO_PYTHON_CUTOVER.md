@@ -238,6 +238,17 @@ could run. Everything in this document (`GEO_PYTHON_CUTOVER.md`) remains
 unchanged: `GET /api/geo` → NEXT. Geo manifest status is unchanged:
 `CUTOVER_VALIDATED`, not `CUTOVER_ACTIVE`.
 
+## Checkpoint 17 Addendum
+
+Checkpoint 17 attempted to establish the first real remote FastAPI
+deployment and run remote health/readiness/geo/routing/rollback
+verification. No Render, Railway, or Vercel account access, CLI, or
+credential exists in this session, so no service was created and none of
+the remote verification steps could run. Classification:
+`EXTERNAL_PROVISIONING_BLOCKED`. This document remains **LOCAL VERIFIED**
+only. No repository/runtime defect was found — the blocker is purely
+external account access.
+
 ## Known Limitations
 
 - Verification was local-only; no preview/staging/production FastAPI

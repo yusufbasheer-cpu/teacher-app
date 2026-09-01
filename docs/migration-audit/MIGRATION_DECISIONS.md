@@ -217,3 +217,15 @@ Alternatives considered: Full request-ID propagation from Next through `buildGeo
 Impact: `backend-python/app/observability.py` plus five new tests in `backend-python/tests/test_observability.py`. `PYTHON_SENTRY_DEFERRED` and Next-side request-ID propagation are both explicitly documented as deferred, not silently skipped, in `FASTAPI_DEPLOYMENT_RUNBOOK.md`.
 
 Status: Implemented (middleware); propagation and Sentry explicitly deferred, not implemented.
+
+## 2026-09-01 (Checkpoint 17)
+
+Decision: Do not provision a remote FastAPI deployment this checkpoint; classify as `EXTERNAL_PROVISIONING_BLOCKED` and stop before any resource creation.
+
+Reason: Checkpoint 16 recommended Render (not yet provisioned) and left the exact remaining external steps documented. Checkpoint 17's authorization rule requires confirming platform account access, authorization, target-environment clarity, and cost implications before creating any external resource. This session has no Render, Railway, or Vercel CLI, MCP tool, or credential available, and no prior session confirmed Render/Railway account access for this project (only Vercel and Supabase dashboard access were previously confirmed). Proceeding without that access would mean either fabricating verification or attempting resource creation without authorization, both explicitly disallowed.
+
+Alternatives considered: Falling back to Railway (same access gap applies — no credentials for either platform); attempting Vercel Python hosting (same gap, plus the topology-change concern already raised in Checkpoint 16); simulating/fabricating remote verification results (explicitly disallowed).
+
+Impact: No repository runtime/config changes were needed — Checkpoint 16's deployment readiness was re-verified and remains valid as-is. Only documentation was updated to record the attempt and the exact human action still required (a person with Render, or an authorized alternative platform, account access must create the service and share the resulting URL). Geo remains `CUTOVER_VALIDATED`; `GET /api/geo` continues to serve from Next.
+
+Status: Blocked, pending external human action. Not implemented.
