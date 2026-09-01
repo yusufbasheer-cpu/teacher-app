@@ -36,3 +36,24 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
         run: npm run build
+
+  backend-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend-python
+        run: python -m pip install -e "backend-python[dev]"
+
+      - name: Test
+        # No RUN_SUPABASE_INTEGRATION_TESTS / SUPABASE_INTEGRATION_* env vars are
+        # set here, so the networked RLS integration test self-skips. Do not add
+        # Supabase or other production secrets to this job.
+        run: python -m pytest backend-python/tests
+
+      - name: Ruff
+        run: python -m ruff check backend-python/app backend-python/tests
