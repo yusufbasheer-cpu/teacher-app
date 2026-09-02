@@ -10,7 +10,7 @@ import {
   type PaidPlanKey,
   type PricingRegion,
 } from "@/lib/pricing-regions";
-import { NAVY, TEAL, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
+import { NAVY, TEAL, TEAL_DARK, TEXT_INVERSE, TEXT_MUTED, withAlpha } from "@/lib/design-tokens";
 import { PLANS } from "@/lib/plans";
 import { BorderTrail } from "@/components/motion-primitives/border-trail";
 
@@ -163,7 +163,7 @@ function PlanPrice({
     return (
       <p
         className="text-3xl font-extrabold tracking-tight"
-        style={{ color: lightText ? "#fff" : NAVY }}
+        style={{ color: lightText ? TEXT_INVERSE : NAVY }}
       >
         {plan.variant === "school" ? "Custom Pricing" : "Free Forever"}
       </p>
@@ -180,14 +180,14 @@ function PlanPrice({
       {showStrike ? (
         <p
           className="text-sm line-through"
-          style={{ color: lightText ? "rgba(255,255,255,0.5)" : "var(--text-disabled)" }}
+          style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.5) : "var(--text-disabled)" }}
         >
           {formatRegionalPrice(region, prices.monthly * 12, "year")}
         </p>
       ) : null}
       <p
         className="text-3xl font-extrabold tracking-tight"
-        style={{ color: lightText ? "#fff" : NAVY }}
+        style={{ color: lightText ? TEXT_INVERSE : NAVY }}
       >
         {formatRegionalPrice(region, amount, period)}
       </p>
@@ -202,7 +202,7 @@ function PlanPrice({
       {billing === "monthly" ? (
         <p
           className="mt-2 text-sm"
-          style={{ color: lightText ? "rgba(255,255,255,0.65)" : "var(--text-secondary)" }}
+          style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.65) : "var(--text-secondary)" }}
         >
           Or {formatRegionalPrice(region, prices.annual, "year")}
         </p>
@@ -230,8 +230,8 @@ function PricingCard({
   const ctaStyle = isFeatured
     ? { background: TEAL, color: NAVY }
     : plan.id === "schools-institutes"
-      ? { background: NAVY, color: "#fff", border: `2px solid ${TEAL}` }
-      : { background: NAVY, color: "#fff" };
+      ? { background: NAVY, color: TEXT_INVERSE, border: `2px solid ${TEAL}` }
+      : { background: NAVY, color: TEXT_INVERSE };
 
   return (
     <article
@@ -255,14 +255,14 @@ function PricingCard({
           className="absolute right-5 top-5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide"
           style={{
             background: plan.badge === "Best Value" ? NAVY : TEAL,
-            color: plan.badge === "Best Value" ? "#fff" : NAVY,
+            color: plan.badge === "Best Value" ? TEXT_INVERSE : NAVY,
           }}
         >
           {plan.badge}
         </span>
       ) : null}
 
-      <h3 className="text-xl font-bold" style={{ color: lightText ? "#fff" : NAVY }}>
+      <h3 className="text-xl font-bold" style={{ color: lightText ? TEXT_INVERSE : NAVY }}>
         {plan.name}
       </h3>
 
@@ -274,7 +274,7 @@ function PricingCard({
         {plan.generations}
       </p>
       {plan.teachers ? (
-        <p className="mt-1 text-sm" style={{ color: lightText ? "rgba(255,255,255,0.75)" : "var(--text-secondary)" }}>
+        <p className="mt-1 text-sm" style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.75) : "var(--text-secondary)" }}>
           {plan.teachers}
         </p>
       ) : null}
@@ -284,7 +284,7 @@ function PricingCard({
           <li
             key={item}
             className="flex items-start gap-2.5 text-sm leading-snug"
-            style={{ color: lightText ? "rgba(255,255,255,0.9)" : "var(--text)" }}
+            style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.9) : "var(--text)" }}
           >
             <span
               className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full"
@@ -385,7 +385,7 @@ export function PricingPage() {
               className={`rounded-full px-6 py-3 text-sm font-semibold transition ${FOCUS_RING}`}
               style={{
                 background: !isAnnual ? NAVY : "transparent",
-                color: !isAnnual ? "#fff" : "var(--text-secondary)",
+                color: !isAnnual ? TEXT_INVERSE : "var(--text-secondary)",
               }}
             >
               Monthly
@@ -396,7 +396,7 @@ export function PricingPage() {
               className={`rounded-full px-6 py-3 text-sm font-semibold transition ${FOCUS_RING}`}
               style={{
                 background: isAnnual ? NAVY : "transparent",
-                color: isAnnual ? "#fff" : "var(--text-secondary)",
+                color: isAnnual ? TEXT_INVERSE : "var(--text-secondary)",
               }}
             >
               Annual

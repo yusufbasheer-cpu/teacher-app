@@ -32,6 +32,8 @@ export const BORDER = "var(--border)";
 export const TEXT = "var(--text)";
 /** Secondary/supporting text. */
 export const TEXT_MUTED = "var(--text-secondary)";
+/** Text on a dark/ink-coloured fill (e.g. the featured pricing card's gradient). */
+export const TEXT_INVERSE = "var(--text-inverse)";
 
 /** Panel corner radius, in px, for the few places that need the number. */
 export const RADIUS = 10;

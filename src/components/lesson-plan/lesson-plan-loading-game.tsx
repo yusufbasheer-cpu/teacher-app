@@ -129,7 +129,7 @@ function computeProgress(
 }
 
 // ── Confetti helper ───────────────────────────────────────────────────────────
-const CONFETTI_COLORS = ["var(--brand)", "var(--text)", "#FFD700", "#FFFFFF"];
+const CONFETTI_COLORS = ["var(--brand)", "var(--text)", "#FFD700", "var(--text-inverse)"];
 
 function fireConfetti() {
   console.log("Celebration triggered");
@@ -236,7 +236,7 @@ function StatusIcon({ status }: { status: SectionStatus }) {
   return (
     <span
       className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2"
-      style={{ borderColor: "rgba(255,255,255,0.15)" }}
+      style={{ borderColor: "color-mix(in oklch, var(--text-inverse) 15%, transparent)" }}
       aria-label="Waiting"
     />
   );
@@ -463,7 +463,7 @@ export function LessonPlanLoadingGame({
             </div>
 
             {/* Title */}
-            <p style={{ textAlign: "center", fontSize: 17, fontWeight: 700, color: "#FFFFFF", marginBottom: 4 }}>
+            <p style={{ textAlign: "center", fontSize: 17, fontWeight: 700, color: "var(--text-inverse)", marginBottom: 4 }}>
               {copy.title}
             </p>
             <p style={{ textAlign: "center", fontSize: 13, color: "var(--text-disabled)", marginBottom: 20 }}>
@@ -473,7 +473,7 @@ export function LessonPlanLoadingGame({
             {/* Progress bar label */}
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)" }}>Progress</span>
-              <span style={{ fontSize: 20, fontWeight: 800, color: "#FFFFFF" }}>{pct}%</span>
+              <span style={{ fontSize: 20, fontWeight: 800, color: "var(--text-inverse)" }}>{pct}%</span>
             </div>
 
             {/* Progress bar track */}
@@ -481,7 +481,7 @@ export function LessonPlanLoadingGame({
               style={{
                 width: "100%",
                 height: 10,
-                backgroundColor: "rgba(255,255,255,0.15)",
+                backgroundColor: "color-mix(in oklch, var(--text-inverse) 15%, transparent)",
                 borderRadius: 99,
                 overflow: "hidden",
                 marginBottom: 24,
@@ -512,7 +512,7 @@ export function LessonPlanLoadingGame({
                       style={{
                         fontSize: 15,
                         fontWeight: isActive ? 700 : 400,
-                        color: isDone ? "rgba(255,255,255,0.5)" : "#FFFFFF",
+                        color: isDone ? "color-mix(in oklch, var(--text-inverse) 50%, transparent)" : "var(--text-inverse)",
                         textDecoration: isDone ? "line-through" : "none",
                         flex: 1,
                       }}
@@ -528,7 +528,7 @@ export function LessonPlanLoadingGame({
                       <span style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)" }}>Done ✓</span>
                     )}
                     {status === "waiting" && (
-                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Waiting</span>
+                      <span style={{ fontSize: 12, color: "color-mix(in oklch, var(--text-inverse) 35%, transparent)" }}>Waiting</span>
                     )}
                   </div>
                 );
@@ -536,13 +536,13 @@ export function LessonPlanLoadingGame({
             </div>
 
             {/* Divider */}
-            <div style={{ height: 1, backgroundColor: "rgba(255,255,255,0.1)", marginBottom: 16 }} />
+            <div style={{ height: 1, backgroundColor: "color-mix(in oklch, var(--text-inverse) 10%, transparent)", marginBottom: 16 }} />
 
             {/* Fun fact */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
               <span style={{ fontSize: 16, flexShrink: 0 }} aria-hidden>💡</span>
               <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--border)", margin: 0 }}>
-                <span style={{ fontWeight: 700, color: "#FFFFFF" }}>Did you know?&nbsp;</span>
+                <span style={{ fontWeight: 700, color: "var(--text-inverse)" }}>Did you know?&nbsp;</span>
                 {FUN_FACTS[factIdx]}
               </p>
             </div>
@@ -578,14 +578,14 @@ export function LessonPlanLoadingGame({
               }}
             >
               <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-                <path d="M8 22l9 9 19-18" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M8 22l9 9 19-18" stroke="var(--brand-on)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
 
             <p style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>
               {copy.celebrateTitle}
             </p>
-            <p style={{ fontSize: 14, color: "#6b7280" }}>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>
               {copy.celebrateSub}
             </p>
           </div>

@@ -73,7 +73,7 @@ function FooterLinkGroup({ title, links }: { title: string; links: { label: stri
                 <a
                   href={link.href}
                   className="inline-flex min-h-[44px] items-center py-1 text-sm transition hover:opacity-100"
-                  style={{ color: "rgba(255,255,255,0.65)" }}
+                  style={{ color: "color-mix(in oklch, var(--text-inverse) 65%, transparent)" }}
                   target={link.href.startsWith("http") ? "_blank" : undefined}
                   rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
                 >
@@ -83,7 +83,7 @@ function FooterLinkGroup({ title, links }: { title: string; links: { label: stri
                 <Link
                   href={link.href}
                   className="inline-flex min-h-[44px] items-center py-1 text-sm transition hover:opacity-100"
-                  style={{ color: "rgba(255,255,255,0.65)" }}
+                  style={{ color: "color-mix(in oklch, var(--text-inverse) 65%, transparent)" }}
                 >
                   {link.label}
                 </Link>
@@ -111,7 +111,7 @@ export function Footer() {
                 style={{ height: 36, width: "auto" }}
               />
             </Link>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>
+            <p className="mt-4 max-w-xs text-sm leading-relaxed" style={{ color: "color-mix(in oklch, var(--text-inverse) 55%, transparent)" }}>
               AI-powered lesson planning for teachers worldwide. Generate complete lesson plans, PPTs, worksheets, and more in minutes.
             </p>
             <div className="mt-5 flex gap-3">
@@ -123,7 +123,7 @@ export function Footer() {
                   rel="noopener noreferrer"
                   aria-label={social.label}
                   className="flex h-11 w-11 items-center justify-center rounded-xl transition hover:opacity-100"
-                  style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
+                  style={{ background: "color-mix(in oklch, var(--text-inverse) 8%, transparent)", color: "color-mix(in oklch, var(--text-inverse) 60%, transparent)" }}
                 >
                   <social.icon />
                 </a>
@@ -139,9 +139,9 @@ export function Footer() {
         {/* Product Hunt badge */}
         <div
           className="mt-12 flex flex-col items-center gap-3 border-t pt-8"
-          style={{ borderColor: "rgba(255,255,255,0.08)" }}
+          style={{ borderColor: "color-mix(in oklch, var(--text-inverse) 8%, transparent)" }}
         >
-          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "color-mix(in oklch, var(--text-inverse) 30%, transparent)" }}>
             Featured on
           </p>
           <a
@@ -163,12 +163,12 @@ export function Footer() {
         {/* Copyright bar */}
         <div
           className="mt-6 flex flex-col items-center gap-2 border-t pt-6 text-center sm:flex-row sm:justify-between"
-          style={{ borderColor: "rgba(255,255,255,0.08)" }}
+          style={{ borderColor: "color-mix(in oklch, var(--text-inverse) 8%, transparent)" }}
         >
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <p className="text-xs" style={{ color: "color-mix(in oklch, var(--text-inverse) 40%, transparent)" }}>
             &copy; 2026 Layah. All rights reserved.
           </p>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <p className="text-xs" style={{ color: "color-mix(in oklch, var(--text-inverse) 35%, transparent)" }}>
             Made with love for teachers worldwide
           </p>
         </div>

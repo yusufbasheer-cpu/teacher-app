@@ -25,10 +25,10 @@ export function Toaster() {
           description: "text-sm leading-snug opacity-90",
           closeButton:
             "!left-auto !right-1.5 !top-1.5 !border-none !bg-transparent !text-current opacity-50 hover:opacity-100",
-          error: "!border-[#F0C6C6] !bg-[#FDF2F2] !text-[#7A2020]",
-          success: "!border-[#BFE3D8] !bg-[#EEF7F4] !text-[#0E5B4E]",
-          warning: "!border-[#EFD9A0] !bg-[#FDF6E9] !text-[#6B4E10]",
-          info: "!border-[color-mix(in oklch, var(--brand) 30%, transparent)] !bg-[var(--canvas)] !text-[var(--text)]",
+          error: "!border-danger-border !bg-danger-subtle !text-danger-text",
+          success: "!border-brand-border !bg-brand-subtle !text-brand-text",
+          warning: "!border-gen-border !bg-gen-subtle !text-gen-text",
+          info: "!border-[color-mix(in oklch, var(--brand) 30%, transparent)] !bg-canvas !text-ink",
         },
       }}
     />
