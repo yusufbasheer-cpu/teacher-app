@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { NAVY, TEXT_MUTED } from "@/lib/design-tokens";
 
 const STEPS = [
