@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { clearActiveSession } from "@/lib/active-session";
-import { isProtectedAppPath } from "@/lib/protected-routes";
+import { isProtectedClientRoute } from "@/lib/protected-routes";
 import { supabase } from "@/lib/supabase";
 import { hasCompletedTeacherProfile } from "@/lib/user-profile";
 import { Navbar } from "./navbar";
@@ -12,20 +12,6 @@ import { AppFrame } from "@/components/app/app-frame";
 
 function isAuthRoute(pathname: string): boolean {
   return pathname === "/login" || pathname === "/signup" || pathname.startsWith("/auth");
-}
-
-function isProtectedClientRoute(pathname: string): boolean {
-  return (
-    pathname === "/dashboard" ||
-    pathname === "/overview" ||
-    pathname === "/settings" ||
-    pathname === "/onboarding" ||
-    pathname === "/school-admin" ||
-    pathname === "/hod-dashboard" ||
-    pathname === "/my-lesson-plans" ||
-    pathname.startsWith("/my-lesson-plans/") ||
-    isProtectedAppPath(pathname)
-  );
 }
 
 /**
