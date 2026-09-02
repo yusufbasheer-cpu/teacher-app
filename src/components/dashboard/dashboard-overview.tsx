@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import type { User } from "@supabase/supabase-js";
 import { BookOpen, FileStack, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";

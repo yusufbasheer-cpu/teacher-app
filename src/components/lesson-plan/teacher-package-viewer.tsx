@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/panel";
 import { useErrorToast } from "@/hooks/use-error-toast";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {

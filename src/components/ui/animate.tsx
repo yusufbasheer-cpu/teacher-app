@@ -10,8 +10,7 @@
  *  - Skeleton           — shimmer placeholder for loading states
  */
 
-import { motion, AnimatePresence, animate } from "framer-motion";
-import { useInView } from "framer-motion";
+import { motion, AnimatePresence, animate, useInView } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode, HTMLAttributes } from "react";
 
