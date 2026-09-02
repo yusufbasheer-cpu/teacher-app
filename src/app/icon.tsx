@@ -3,6 +3,11 @@ import { ImageResponse } from "next/og";
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
+// NOTE: this route renders through satori (next/og) into a PNG on the server.
+// There is no document here, so CSS custom properties do not resolve — every
+// colour below must stay a literal. Keep these in step with the brand tokens
+// in src/styles/tokens.css by hand.
+
 // Three stacked rotated squares that recreate the Layah logo icon.
 // Positions mirror the logo: top diamond is upper-right (lightest teal),
 // bottom diamond is lower-left (darkest teal), matching the stacked-layers look.
@@ -24,7 +29,7 @@ export default function Icon() {
         style={{
           width: "100%",
           height: "100%",
-          background: "#241A12",
+          background: "#172325",
           borderRadius: "6px",
           display: "flex",
           position: "relative",
@@ -32,9 +37,9 @@ export default function Icon() {
         }}
       >
         {/* Bottom diamond (back layer, darkest) */}
-        <div style={{ ...diamond(15, 7, "#0B6B5F"), boxShadow: "0 0 3px #0E9484" }} />
+        <div style={{ ...diamond(15, 7, "#1E5F53"), boxShadow: "0 0 3px #278263" }} />
         {/* Middle diamond */}
-        <div style={{ ...diamond(9, 9, "#0E9484"), boxShadow: "0 0 3px #0E9484" }} />
+        <div style={{ ...diamond(9, 9, "#278263"), boxShadow: "0 0 3px #278263" }} />
         {/* Top diamond (front layer, lightest) */}
         <div style={{ ...diamond(4, 11, "#5FC4B3"), boxShadow: "0 0 4px #5FC4B3" }} />
       </div>

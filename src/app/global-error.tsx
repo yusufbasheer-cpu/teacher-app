@@ -35,10 +35,10 @@ export default function GlobalError({
           }}
         >
           <p style={{ fontSize: "2rem" }}>⚠️</p>
-          <h1 style={{ fontSize: "1.25rem", fontWeight: 600, color: "#241A12" }}>
+          <h1 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text)" }}>
             Something went wrong
           </h1>
-          <p style={{ maxWidth: 420, fontSize: "0.875rem", color: "#6b5d4f" }}>
+          <p style={{ maxWidth: 420, fontSize: "0.875rem", color: "var(--text-secondary)" }}>
             Layah ran into an unexpected error. It has been reported — please try again.
           </p>
           <button
@@ -50,7 +50,7 @@ export default function GlobalError({
               fontSize: "0.875rem",
               fontWeight: 600,
               color: "#fff",
-              backgroundColor: "#0E9484",
+              backgroundColor: "var(--brand)",
               border: "none",
               cursor: "pointer",
             }}

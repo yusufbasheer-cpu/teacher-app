@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import {
   type ChangeEvent,
   type FormEvent,
@@ -13,10 +14,12 @@ import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
 import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
-import { PageLoader } from "@/components/ui/animate";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PaymentModal } from "@/components/payment/payment-modal";
+import { EmptyState, PageTitle, Panel, Skeleton } from "@/components/ui/panel";
+import { Button } from "@/components/ui/button";
 import { LockedPageState } from "@/components/premium/locked-page-state";
 import { PLANS } from "@/lib/plans";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
@@ -67,10 +70,10 @@ type ExtractPayload = {
 };
 
 const inputClass =
-  "w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] focus:ring-2";
+  "w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-sm shadow-sm outline-none ring-[var(--brand)] focus:ring-2";
 
 const sectionClass =
-  "rounded-2xl border bg-[#FAF6EF] p-4 shadow-sm sm:p-5";
+  "rounded-2xl border bg-[var(--surface)] p-4 shadow-sm sm:p-5";
 
 const WIZARD_STEPS = [
   { id: 1, label: "Paper Details" },
@@ -116,7 +119,7 @@ export function QuestionPaperGenerator() {
   const [loading, setLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<string | null>(null);
   const [paperReady, setPaperReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [result, setResult] = useState<QuestionPaperResult | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
 
@@ -513,33 +516,42 @@ export function QuestionPaperGenerator() {
 
   if (checkingAuth) {
     return (
-      <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-        <PageLoader label="Checking your account…" />
+      <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="mt-6 h-[420px] rounded-lg" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-stone-900">Login required</h2>
-        <p className="mt-2 text-sm text-stone-600">
-          Please log in to generate question papers and track your monthly generation limit.
-        </p>
-        <Link
-          href="/login"
-          className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
-        >
-          Go to Login
-        </Link>
+      <div className="mx-auto w-full max-w-[440px] px-4 py-16">
+        <Panel>
+          <EmptyState
+            icon={Lock}
+            title="Sign in to continue"
+            description="Your question papers and mark schemes are saved to your account."
+            action={
+              <Button size="lg" render={<Link href="/login" />}>
+                Sign in
+              </Button>
+            }
+            secondaryAction={
+              <Button variant="ghost" size="lg" render={<Link href="/signup" />}>
+                Create an account
+              </Button>
+            }
+          />
+        </Panel>
       </div>
     );
   }
 
   if (usageLoading || !usage) {
     return (
-      <div className="rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-        <PageLoader label="Checking your plan…" />
+      <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="mt-6 h-[420px] rounded-lg" />
       </div>
     );
   }
@@ -548,8 +560,14 @@ export function QuestionPaperGenerator() {
     return (
       <>
         <LockedPageState
-          title="Question Paper"
-          description="Generate curriculum-aligned question papers with a custom blueprint, mark distribution, and answer key — available on Pro and above."
+          title="Question papers"
+          description="Build an exam paper for any chapter, with the mark distribution you set."
+          includes={[
+            "A blueprint you control — sections, question types and marks per section",
+            "Questions written to your curriculum and grade",
+            "A full mark scheme and answer key",
+            "Word and ZIP export, ready to print",
+          ]}
           onUpgrade={() => setPaymentModalOpen(true)}
         />
         <PaymentModal
@@ -563,9 +581,14 @@ export function QuestionPaperGenerator() {
   }
 
   return (
-    <div className="space-y-6" ref={wizardRef}>
+    <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" ref={wizardRef}>
       {!result ? (
         <>
+          <PageTitle
+            title="New question paper"
+            description="Set the blueprint, then generate the paper, mark scheme and answer key together."
+            className="mb-5"
+          />
           <div className={FORM_COLUMN_CLASS}>
             <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
           </div>
@@ -573,12 +596,12 @@ export function QuestionPaperGenerator() {
           <form ref={formRef} onSubmit={onSubmit} noValidate className={`${FORM_COLUMN_CLASS} space-y-6`}>
         {/* ══════════ STEP 1 — PAPER DETAILS ══════════ */}
         <fieldset hidden={step !== 1} className="min-w-0">
-          <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
+          <legend className="block w-full border-b border-line pb-3 text-lg font-semibold text-ink">
             Basic details
           </legend>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-stone-700">Curriculum type</label>
+              <label className="mb-1 block text-sm font-medium text-muted">Curriculum type</label>
               <select
                 value={curriculumType}
                 onChange={(e) => setCurriculumType(e.target.value)}
@@ -597,7 +620,7 @@ export function QuestionPaperGenerator() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-stone-700">Grade</label>
+              <label className="mb-1 block text-sm font-medium text-muted">Grade</label>
               <select value={grade} onChange={(e) => setGrade(e.target.value)} className={inputClass} required>
                 {GRADE_YEAR_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>
@@ -607,7 +630,7 @@ export function QuestionPaperGenerator() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-stone-700">Subject</label>
+              <label className="mb-1 block text-sm font-medium text-muted">Subject</label>
               <select value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} required>
                 <optgroup label="Subjects">
                   {CORE_SUBJECT_OPTIONS.filter(
@@ -635,7 +658,7 @@ export function QuestionPaperGenerator() {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-stone-700">Topic or chapter name</label>
+              <label className="mb-1 block text-sm font-medium text-muted">Topic or chapter name</label>
               <input
                 type="text"
                 value={topic}
@@ -646,7 +669,7 @@ export function QuestionPaperGenerator() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-stone-700">Total marks</label>
+              <label className="mb-1 block text-sm font-medium text-muted">Total marks</label>
               <input
                 type="number"
                 min={1}
@@ -658,7 +681,7 @@ export function QuestionPaperGenerator() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-stone-700">Time allowed</label>
+              <label className="mb-1 block text-sm font-medium text-muted">Time allowed</label>
               <select
                 value={timeAllowed}
                 onChange={(e) =>
@@ -674,7 +697,7 @@ export function QuestionPaperGenerator() {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-stone-700">Difficulty level</label>
+              <label className="mb-1 block text-sm font-medium text-muted">Difficulty level</label>
               <select
                 value={difficulty}
                 onChange={(e) =>
@@ -697,7 +720,7 @@ export function QuestionPaperGenerator() {
             <button
               type="button"
               onClick={goToNextStep}
-              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0E9484] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B6B5F]"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--brand)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-active)]"
             >
               Continue
             </button>
@@ -706,10 +729,10 @@ export function QuestionPaperGenerator() {
 
         {/* ══════════ STEP 2 — SOURCE CONTENT (OPTIONAL) ══════════ */}
         <fieldset hidden={step !== 2} className="min-w-0">
-          <legend className="block w-full border-b border-stone-200 pb-3 text-lg font-semibold text-stone-900">
+          <legend className="block w-full border-b border-line pb-3 text-lg font-semibold text-ink">
             Provide your content
           </legend>
-          <p className="mt-3 text-xs text-stone-600">
+          <p className="mt-3 text-xs text-muted">
             Optional — AI will generate based on topic if no content is provided (except in Strict
             mode).
           </p>
@@ -734,7 +757,7 @@ export function QuestionPaperGenerator() {
               type="button"
               disabled={uploadExtracting || loading}
               onClick={() => pdfInputRef.current?.click()}
-              className="rounded-xl border border-stone-300 bg-[#FAF6EF] px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50"
+              className="rounded-xl border border-line-strong bg-[var(--surface)] px-4 py-2 text-sm font-medium text-ink hover:bg-hover"
             >
               Upload PDF
             </button>
@@ -742,7 +765,7 @@ export function QuestionPaperGenerator() {
               type="button"
               disabled={uploadExtracting || loading}
               onClick={() => imageInputRef.current?.click()}
-              className="rounded-xl border border-stone-300 bg-[#FAF6EF] px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50"
+              className="rounded-xl border border-line-strong bg-[var(--surface)] px-4 py-2 text-sm font-medium text-ink hover:bg-hover"
             >
               Upload image
             </button>
@@ -757,7 +780,7 @@ export function QuestionPaperGenerator() {
           />
           {uploadInfo ? <p className="mt-2 text-xs text-teal-800">{uploadInfo}</p> : null}
           {uploadedChunks.length > 0 ? (
-            <p className="mt-2 text-xs text-stone-600">
+            <p className="mt-2 text-xs text-muted">
               {uploadedChunks.length} file(s) attached ({extractedMaterial.length.toLocaleString()}{" "}
               chars extracted)
             </p>
@@ -769,14 +792,14 @@ export function QuestionPaperGenerator() {
             <button
               type="button"
               onClick={goToPrevStep}
-              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-200 bg-[#FAF6EF] px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-stone-300 hover:text-stone-900"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-[var(--surface)] px-6 py-2.5 text-sm font-semibold text-muted transition hover:border-line-strong hover:text-ink"
             >
               Back
             </button>
             <button
               type="button"
               onClick={goToNextStep}
-              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0E9484] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B6B5F]"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--brand)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--brand-active)]"
             >
               Continue
             </button>
@@ -785,19 +808,19 @@ export function QuestionPaperGenerator() {
 
         {/* ══════════ STEP 3 — GENERATE PACKAGE ══════════ */}
         <fieldset hidden={step !== 3} className="space-y-6">
-        <section className={sectionClass} style={{ borderColor: "rgba(36, 26, 18,0.08)" }}>
-          <h2 className="text-sm font-semibold" style={{ color: "#241A12" }}>
+        <section className={sectionClass} style={{ borderColor: "color-mix(in oklch, var(--text) 8%, transparent)" }}>
+          <h2 className="text-sm font-semibold" style={{ color: "var(--text)" }}>
             Question types
           </h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {QUESTION_TYPE_SPECS.map((spec) => (
               <div
                 key={spec.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-stone-100 bg-stone-50/80 px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-xl border border-line-subtle bg-hover/80 px-3 py-2"
               >
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-stone-900">{spec.label}</p>
-                  <p className="text-[11px] text-stone-500">{spec.description}</p>
+                  <p className="text-xs font-semibold text-ink">{spec.label}</p>
+                  <p className="text-[11px] text-faint">{spec.description}</p>
                 </div>
                 <input
                   type="number"
@@ -805,7 +828,7 @@ export function QuestionPaperGenerator() {
                   max={50}
                   value={questionCounts[spec.id]}
                   onChange={(e) => setCount(spec.id, Number(e.target.value))}
-                  className="w-14 rounded-lg border border-stone-300 bg-white px-2 py-1 text-center text-sm shadow-sm"
+                  className="w-14 rounded-lg border border-line-strong bg-surface px-2 py-1 text-center text-sm shadow-sm"
                   aria-label={`Count for ${spec.label}`}
                 />
               </div>
@@ -813,7 +836,7 @@ export function QuestionPaperGenerator() {
           </div>
           <div
             className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm"
-            style={{ background: "#241A12", color: "#fff" }}
+            style={{ background: "var(--text)", color: "#fff" }}
           >
             <span>
               Total questions: <strong>{totalQuestions}</strong>
@@ -825,11 +848,11 @@ export function QuestionPaperGenerator() {
         </section>
 
         <section className={sectionClass}>
-          <h2 className="text-sm font-semibold" style={{ color: "#241A12" }}>
+          <h2 className="text-sm font-semibold" style={{ color: "var(--text)" }}>
             Generation mode
           </h2>
           <div className="mt-4 space-y-3">
-            <label className="flex cursor-pointer gap-3 rounded-xl border border-stone-200 p-3 has-[:checked]:border-[#0E9484] has-[:checked]:bg-[#0E9484]/5">
+            <label className="flex cursor-pointer gap-3 rounded-xl border border-line p-3 has-[:checked]:border-[var(--brand)] has-[:checked]:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]">
               <input
                 type="radio"
                 name="genMode"
@@ -838,8 +861,8 @@ export function QuestionPaperGenerator() {
                 className="mt-1"
               />
               <span>
-                <span className="font-semibold text-stone-900">Strictly based on my content</span>
-                <span className="mt-1 block text-xs text-stone-600">
+                <span className="font-semibold text-ink">Strictly based on my content</span>
+                <span className="mt-1 block text-xs text-muted">
                   AI will generate questions using ONLY the content you provided. No additional
                   information will be added.
                 </span>
@@ -850,7 +873,7 @@ export function QuestionPaperGenerator() {
                 Please upload or paste your content above for best results.
               </p>
             ) : null}
-            <label className="flex cursor-pointer gap-3 rounded-xl border border-stone-200 p-3 has-[:checked]:border-[#0E9484] has-[:checked]:bg-[#0E9484]/5">
+            <label className="flex cursor-pointer gap-3 rounded-xl border border-line p-3 has-[:checked]:border-[var(--brand)] has-[:checked]:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]">
               <input
                 type="radio"
                 name="genMode"
@@ -859,17 +882,17 @@ export function QuestionPaperGenerator() {
                 className="mt-1"
               />
               <span>
-                <span className="font-semibold text-stone-900">AI enhanced generation</span>
-                <span className="mt-1 block text-xs text-stone-600">
+                <span className="font-semibold text-ink">AI enhanced generation</span>
+                <span className="mt-1 block text-xs text-muted">
                   AI may paraphrase and enhance questions beyond your provided content.
                 </span>
               </span>
             </label>
             {generationMode === "enhanced" ? (
-              <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
-                <div className="flex items-center justify-between text-sm font-medium text-stone-800">
+              <div className="rounded-xl border border-line bg-hover p-4">
+                <div className="flex items-center justify-between text-sm font-medium text-ink">
                   <span>Enhancement level</span>
-                  <span style={{ color: "#0E9484" }}>{enhancementPercent}%</span>
+                  <span style={{ color: "var(--brand)" }}>{enhancementPercent}%</span>
                 </div>
                 <input
                   type="range"
@@ -877,9 +900,9 @@ export function QuestionPaperGenerator() {
                   max={100}
                   value={enhancementPercent}
                   onChange={(e) => setEnhancementPercent(Number(e.target.value))}
-                  className="mt-3 w-full accent-[#0E9484]"
+                  className="mt-3 w-full accent-[var(--brand)]"
                 />
-                <p className="mt-2 text-[11px] text-stone-600">
+                <p className="mt-2 text-[11px] text-muted">
                   0–20%: mostly your content · 21–50%: balanced · 51–80%: mostly AI · 81–100%: fully AI
                   from topic
                 </p>
@@ -889,11 +912,11 @@ export function QuestionPaperGenerator() {
         </section>
 
         <section className={sectionClass}>
-          <h2 className="text-sm font-semibold" style={{ color: "#241A12" }}>
+          <h2 className="text-sm font-semibold" style={{ color: "var(--text)" }}>
             Answer key options
           </h2>
           <div className="mt-3 space-y-2">
-            <label className="flex items-center gap-2 text-sm text-stone-800">
+            <label className="flex items-center gap-2 text-sm text-ink">
               <input
                 type="checkbox"
                 checked={includeAnswerKey}
@@ -901,7 +924,7 @@ export function QuestionPaperGenerator() {
               />
               Include answer key
             </label>
-            <label className="flex items-center gap-2 text-sm text-stone-800">
+            <label className="flex items-center gap-2 text-sm text-ink">
               <input
                 type="checkbox"
                 checked={includeMarkingScheme}
@@ -909,7 +932,7 @@ export function QuestionPaperGenerator() {
               />
               Include marking scheme
             </label>
-            <label className="flex items-center gap-2 text-sm text-stone-800">
+            <label className="flex items-center gap-2 text-sm text-ink">
               <input
                 type="checkbox"
                 checked={includeModelAnswers}
@@ -920,19 +943,19 @@ export function QuestionPaperGenerator() {
           </div>
         </section>
 
-        <section className={sectionClass} style={{ borderColor: "rgba(14, 148, 132,0.2)" }}>
+        <section className={sectionClass} style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}>
           <label className="flex cursor-pointer items-start gap-3">
             <input
               type="checkbox"
               checked={generateBlueprint}
               onChange={(e) => setGenerateBlueprint(e.target.checked)}
-              className="mt-1 size-4 rounded border-stone-300 text-[#0E9484] focus:ring-[#0E9484]"
+              className="mt-1 size-4 rounded border-line-strong text-[var(--brand)] focus:ring-[var(--brand)]"
             />
             <span>
-              <span className="text-sm font-semibold text-stone-900">
+              <span className="text-sm font-semibold text-ink">
                 Generate Blueprint with Question Paper
               </span>
-              <span className="mt-1 block text-xs text-stone-600">
+              <span className="mt-1 block text-xs text-muted">
                 After your paper is ready, a second pass analyzes it and builds chapter-wise,
                 Bloom&apos;s, question-type, and difficulty tables (plain text, not JSON).
               </span>
@@ -948,7 +971,7 @@ export function QuestionPaperGenerator() {
           <button
             type="button"
             onClick={goToPrevStep}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-200 bg-[#FAF6EF] px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-stone-300 hover:text-stone-900"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-[var(--surface)] px-6 py-2.5 text-sm font-semibold text-muted transition hover:border-line-strong hover:text-ink"
           >
             Back
           </button>
@@ -958,7 +981,7 @@ export function QuestionPaperGenerator() {
           type="submit"
           disabled={loading || totalQuestions < 1}
           className="w-full rounded-xl px-6 py-4 text-base font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-50"
-          style={{ background: "#0E9484" }}
+          style={{ background: "var(--brand)" }}
         >
           {loading ? "Generating…" : "Generate question paper"}
         </button>
@@ -968,14 +991,14 @@ export function QuestionPaperGenerator() {
       ) : (
         <section className="mx-auto w-full max-w-[820px] space-y-4">
           <div className="flex items-start justify-between gap-4">
-            <h3 className="text-xl font-semibold text-stone-900">Your question paper is ready</h3>
+            <h3 className="text-xl font-semibold text-ink">Your question paper is ready</h3>
             <button
               type="button"
               onClick={() => {
                 setResult(null);
                 setStep(1);
               }}
-              className="shrink-0 rounded-xl border border-stone-200 bg-[#FAF6EF] px-3 py-2 text-xs font-semibold text-stone-600 transition hover:border-stone-300 hover:text-stone-900"
+              className="shrink-0 rounded-xl border border-line bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-muted transition hover:border-line-strong hover:text-ink"
             >
               ← Edit details
             </button>
@@ -990,30 +1013,30 @@ export function QuestionPaperGenerator() {
               transform: paperReady ? "translateY(0)" : "translateY(-8px)",
               pointerEvents: paperReady ? "auto" : "none",
             }}
-            className="rounded-2xl border border-[#0E9484]/40 bg-[#0E9484]/10 px-4 py-3 text-sm font-semibold text-[#007a66] shadow-sm"
+            className="rounded-2xl border border-[color-mix(in_oklch,var(--brand)_40%,transparent)] bg-[color-mix(in_oklch,var(--brand)_10%,transparent)] px-4 py-3 text-sm font-semibold text-[#007a66] shadow-sm"
           >
             Your Question Paper is ready!
           </div>
 
           <div
             className="min-h-[420px] rounded-2xl border shadow-sm"
-            style={{ borderColor: "rgba(14, 148, 132,0.3)", background: "#FFFCF7" }}
+            style={{ borderColor: "color-mix(in oklch, var(--brand) 30%, transparent)", background: "var(--surface-raised)" }}
           >
             <div
               className="rounded-t-2xl px-4 py-3 text-sm font-semibold text-white sm:px-5"
-              style={{ background: "#241A12" }}
+              style={{ background: "var(--text)" }}
             >
               Preview
             </div>
             {result?.blueprintText ? (
-              <div className="flex border-b border-stone-200 bg-stone-50 px-2 pt-2">
+              <div className="flex border-b border-line bg-hover px-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setPreviewTab("paper")}
                   className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
                   style={{
                     background: previewTab === "paper" ? "#fff" : "transparent",
-                    color: previewTab === "paper" ? "#241A12" : "#7a6e5f",
+                    color: previewTab === "paper" ? "var(--text)" : "var(--text-secondary)",
                   }}
                 >
                   Question paper
@@ -1024,7 +1047,7 @@ export function QuestionPaperGenerator() {
                   className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
                   style={{
                     background: previewTab === "blueprint" ? "#fff" : "transparent",
-                    color: previewTab === "blueprint" ? "#241A12" : "#7a6e5f",
+                    color: previewTab === "blueprint" ? "var(--text)" : "var(--text-secondary)",
                   }}
                 >
                   Blueprint
@@ -1041,7 +1064,7 @@ export function QuestionPaperGenerator() {
                   available.
                 </p>
               ) : null}
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-stone-800">
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink">
                 {previewText}
               </pre>
             </div>
@@ -1050,7 +1073,7 @@ export function QuestionPaperGenerator() {
           <div
             id="download-section"
             className="rounded-2xl border px-4 py-5 shadow-sm sm:px-5"
-            style={{ borderColor: "rgba(14, 148, 132,0.3)", background: "#FFFCF7" }}
+            style={{ borderColor: "color-mix(in oklch, var(--brand) 30%, transparent)", background: "var(--surface-raised)" }}
           >
             <div className="flex flex-col gap-3">
               <button
@@ -1058,7 +1081,7 @@ export function QuestionPaperGenerator() {
                 disabled={!!downloading}
                 onClick={() => downloadQuestionPaper()}
                 className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                style={{ background: "#0E9484" }}
+                style={{ background: "var(--brand)" }}
               >
                 {downloading === "paper" ? "Downloading…" : "Download Question Paper as Word"}
               </button>
@@ -1067,7 +1090,7 @@ export function QuestionPaperGenerator() {
                 disabled={!!downloading || !result?.blueprintText}
                 onClick={() => downloadBlueprint()}
                 className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                style={{ background: "#241A12" }}
+                style={{ background: "var(--text)" }}
               >
                 {downloading === "blueprint" ? "Downloading…" : "Download Blueprint as Word"}
               </button>
@@ -1077,7 +1100,7 @@ export function QuestionPaperGenerator() {
                 onClick={() => downloadZip()}
                 className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
                 style={{
-                  background: "linear-gradient(135deg, #0E9484 0%, #241A12 100%)",
+                  background: "linear-gradient(135deg, var(--brand) 0%, var(--text) 100%)",
                 }}
               >
                 {downloading === "zip" ? "Downloading…" : "Download Complete Pack as ZIP"}

@@ -3,6 +3,7 @@ import { applySchoolPlanForEmail } from "@/lib/auth-callback-school";
 import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 import { sendWelcomeEmailIfNew } from "@/lib/welcome-email";
 import { sanitizeUserMessage } from "@/lib/user-facing-errors";
+import { hasCompletedTeacherProfile } from "@/lib/user-profile";
 
 export const runtime = "nodejs";
 
@@ -51,7 +52,12 @@ export async function GET(request: Request) {
       console.log("[auth/callback] Triggering welcome email for:", email);
       await sendWelcomeEmailIfNew(userId, email, user?.user_metadata?.full_name);
     }
-    return NextResponse.redirect(new URL(customRedirect, origin).toString());
+    return NextResponse.redirect(
+      new URL(
+        hasCompletedTeacherProfile(user) ? customRedirect : "/onboarding",
+        origin,
+      ).toString(),
+    );
   }
 
   const redirectUrl = new URL("/dashboard", origin);
@@ -70,6 +76,11 @@ export async function GET(request: Request) {
   }
 
   redirectUrl.searchParams.set("school_matched", schoolMatched);
+
+  if (!hasCompletedTeacherProfile(user)) {
+    console.log("[auth/callback] Profile incomplete â€” redirecting to onboarding");
+    return NextResponse.redirect(new URL("/onboarding", origin).toString());
+  }
 
   console.log("[auth/callback] school_matched:", schoolMatched);
   console.log("[auth/callback] Redirecting to /dashboard");

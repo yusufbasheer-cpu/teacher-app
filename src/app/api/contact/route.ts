@@ -35,13 +35,13 @@ export async function POST(request: Request) {
       ].join("\n"),
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px;">
-          <h2 style="color: #241A12;">New Contact Form Submission</h2>
+          <h2 style="color: var(--text);">New Contact Form Submission</h2>
           <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 8px 0; color: #7a6e5f; font-size: 14px;"><strong>Name:</strong></td><td style="padding: 8px 0; font-size: 14px;">${body.name}</td></tr>
-            <tr><td style="padding: 8px 0; color: #7a6e5f; font-size: 14px;"><strong>Email:</strong></td><td style="padding: 8px 0; font-size: 14px;"><a href="mailto:${body.email}">${body.email}</a></td></tr>
-            <tr><td style="padding: 8px 0; color: #7a6e5f; font-size: 14px;"><strong>Subject:</strong></td><td style="padding: 8px 0; font-size: 14px;">${body.subject}</td></tr>
+            <tr><td style="padding: 8px 0; color: var(--text-secondary); font-size: 14px;"><strong>Name:</strong></td><td style="padding: 8px 0; font-size: 14px;">${body.name}</td></tr>
+            <tr><td style="padding: 8px 0; color: var(--text-secondary); font-size: 14px;"><strong>Email:</strong></td><td style="padding: 8px 0; font-size: 14px;"><a href="mailto:${body.email}">${body.email}</a></td></tr>
+            <tr><td style="padding: 8px 0; color: var(--text-secondary); font-size: 14px;"><strong>Subject:</strong></td><td style="padding: 8px 0; font-size: 14px;">${body.subject}</td></tr>
           </table>
-          <div style="margin-top: 16px; padding: 16px; background: #f1e9dc; border-radius: 8px; font-size: 14px; line-height: 1.6;">
+          <div style="margin-top: 16px; padding: 16px; background: var(--canvas); border-radius: 8px; font-size: 14px; line-height: 1.6;">
             ${body.message.replace(/\n/g, "<br>")}
           </div>
         </div>

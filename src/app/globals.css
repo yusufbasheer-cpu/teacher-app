@@ -1,27 +1,43 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @plugin "@tailwindcss/typography";
 @import "../styles/tokens.css";
 
 @custom-variant dark (&:is(.dark *));
 
+/* ===========================================================================
+   Typeface roles — three, each with one job
+   ---------------------------------------------------------------------------
+   sans  (Instrument Sans) — all interface chrome. A grotesque with squarish
+         counters and tight spacing; holds up at 13px, which is the size this
+         product's density depends on.
+   serif (Source Serif 4)  — generated artifact content ONLY: lesson plans,
+         worksheets, question papers, slide copy. That content is destined for
+         print, so previewing it in a text serif makes the preview look like
+         the thing it becomes. This split is the system's one deliberate
+         flourish; do not use the serif for chrome.
+   mono  (IBM Plex Mono)   — data and machine facts: period numbers, quotas,
+         dates, IDs, keyboard shortcuts. Never body copy.
+   ========================================================================= */
 @theme {
-  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol";
-  /* Marketing-pages-only type system (Term Planner direction) — display face
-     for headings, mono for tracked-out eyebrow/period labels. Not used
-     outside /landing, /about, /pricing, /faq, /blog. */
-  --font-display: var(--font-space-grotesk), var(--font-sans);
-  --font-mono-editorial: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-serif: var(--font-source-serif), ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", "Cascadia Mono",
+    monospace;
+  /* Legacy aliases — marketing pages still name these roles. Pointed at the
+     new faces so nothing renders in a font that is no longer loaded. */
+  --font-display: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-mono-editorial: var(--font-plex-mono), ui-monospace, monospace;
+  --font-heading: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ===========================================================================
    Semantic tokens → Tailwind utilities
    ---------------------------------------------------------------------------
-   Same bridge as main (src/styles/tokens.css defines the actual values).
-   Component code should reach for these utilities (`bg-surface`,
-   `text-muted`, `border-line`) and never for a raw colour.
+   This block is the only place the design system meets Tailwind. Component
+   code should reach for these utilities (`bg-surface`, `text-muted`,
+   `border-line`) and never for a raw colour.
    ========================================================================= */
 @theme inline {
   /* surfaces */
@@ -31,7 +47,11 @@
   --color-sunken: var(--surface-sunken);
   --color-hover: var(--surface-hover);
 
-  /* text */
+  /* text
+     NOTE: `--color-muted` is *secondary ink*, so `text-muted` is dark. That
+     collides with shadcn's legacy meaning of `bg-muted` ("a muted surface"),
+     which would resolve to near-black here. Use `bg-sunken` for muted
+     surfaces — never `bg-muted`. */
   --color-ink: var(--text);
   --color-muted: var(--text-secondary);
   --color-faint: var(--text-muted);
@@ -68,10 +88,25 @@
   --color-rule: var(--rule);
   --color-rule-active: var(--rule-active);
 
-  /* ---- Legacy shadcn token bridge ----------------------------------------
-     Existing shadcn primitives (button, dialog, input, ...) are built
-     against these names. Pointing them at the new semantic layer means they
-     adopt the new system without being rewritten. */
+  /* radii */
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-2xl: var(--r-xl);
+  --radius-3xl: var(--r-xl);
+
+  /* elevation */
+  --shadow-pop: var(--shadow-pop);
+  --shadow-overlay: var(--shadow-overlay);
+
+  /* ---- Legacy shadcn/base-ui token bridge -------------------------------
+     `components/ui/{button,card,input,dialog,dropdown-menu,sheet,table,
+     tabs,form,checkbox,label}.tsx` are built against these names. Pointing
+     them at the new semantic layer means every one of those primitives
+     adopts the new system without being rewritten, and keeps a single
+     source of truth rather than two palettes drifting apart. */
   --color-background: var(--canvas);
   --color-foreground: var(--text);
   --color-card: var(--surface);
@@ -95,27 +130,6 @@
   --color-navy: var(--l-gray-12);
   --color-navy-rule: var(--l-gray-11);
   --color-chalk: var(--l-gray-2);
-
-  /* Sidebar (unused by staging's own dashboard chrome, kept for any shadcn
-     primitive that reads it raw). */
-  --color-sidebar: var(--surface);
-  --color-sidebar-foreground: var(--text);
-  --color-sidebar-primary: var(--brand);
-  --color-sidebar-primary-foreground: var(--brand-on);
-  --color-sidebar-accent: var(--surface-hover);
-  --color-sidebar-accent-foreground: var(--text);
-  --color-sidebar-border: var(--border-subtle);
-  --color-sidebar-ring: var(--brand);
-
-  /* Radius scale unchanged from staging's own — a spacing/shape system, not
-     part of the color-token fix. */
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 /* shadcn's own non-inline vars, for the few primitives that read them raw. */
@@ -137,7 +151,7 @@
   --destructive: var(--danger);
   --input: var(--border);
   --ring: var(--brand);
-  --radius: 0.75rem;
+  --radius: 8px;
   --navy: var(--l-gray-12);
   --navy-rule: var(--l-gray-11);
   --chalk: var(--l-gray-2);
@@ -156,72 +170,282 @@
   color-scheme: dark;
 }
 
-/* Layah wordmark only — body uses Inter via --font-inter from next/font */
-.font-layah-logo {
-  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
-}
-
-/* The marketing pages opt into `.site-editorial`. Matches main: one palette
-   everywhere now, so this only softens the canvas a half-step for
-   long-form reading instead of swapping in a separate warm palette. */
+/* The marketing pages opt into `.site-editorial`. It used to swap in a warmer
+   cream palette; the new system is one palette everywhere, so this now only
+   softens the canvas a half-step for long-form reading. */
 .site-editorial {
   --canvas: var(--l-gray-2);
   --surface: var(--l-gray-1);
 }
 
-html {
-  -webkit-text-size-adjust: 100%;
-  scroll-behavior: smooth;
+/* ===========================================================================
+   Base
+   ========================================================================= */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    font-family: var(--font-sans);
+  }
+
+  body {
+    min-height: 100vh;
+    background: var(--canvas);
+    color: var(--text);
+    font-family: var(--font-sans);
+    /* 13px base. The whole density argument rests on this: at 13/20 an
+       interface fits a working amount of information on a laptop without
+       feeling cramped. Long-form artifact content overrides it locally. */
+    font-size: 13px;
+    line-height: 1.538;
+    font-feature-settings: "cv05" 1, "ss01" 1;
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Numbers in data positions should never jitter as they change. */
+  table, .tabular, [data-tabular] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.011em;
+    text-wrap: balance;
+  }
+
+  /* One focus treatment for the whole product: a brand ring with an offset
+     that reads on every surface, light or dark. Never remove it — components
+     that want a different shape should restyle, not disable. */
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: var(--r-xs);
+  }
+
+  ::selection {
+    background: var(--brand-subtle);
+    color: var(--brand-text);
+  }
+
+  /* Scrollbars, so dark mode doesn't get bright OS-default gutters. */
+  * {
+    scrollbar-color: var(--l-gray-8) transparent;
+    scrollbar-width: thin;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--l-gray-7);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--l-gray-8);
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
 }
 
-body {
-  min-height: 100vh;
-  background: var(--canvas);
+/* ===========================================================================
+   Artifact typography
+   ---------------------------------------------------------------------------
+   Applied to generated lesson content wherever it's previewed. This is the
+   serif half of the type system and the reason the preview reads as a
+   document rather than as more UI.
+   ========================================================================= */
+.artifact {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.65;
   color: var(--text);
-  font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
-  overscroll-behavior: none;
+  max-width: var(--measure);
 }
 
-/* No special containment on main — any contain/transform/filter on a
-   parent creates a new containing block for position:fixed children
-   which breaks full-screen overlays. Leave main as a plain block. */
-
-/* Prevent animated elements from causing layout shifts during scroll.
-   NOTE: Only opacity — never will-change:transform on layout-level wrappers
-   because transform creates a new containing block for position:fixed children. */
-.animate-shake {
-  will-change: transform;
-}
-.animate-slide-up,
-.animate-fade-in,
-.animate-dropdown {
-  will-change: opacity;
+.artifact h1,
+.artifact h2,
+.artifact h3,
+.artifact h4 {
+  font-family: var(--font-sans);
+  letter-spacing: -0.014em;
+  color: var(--text);
 }
 
-/* Confetti canvas must never shift page layout */
-canvas {
-  pointer-events: none;
+.artifact h2 {
+  font-size: 15px;
+  font-weight: 650;
+  margin-top: 1.75em;
+  margin-bottom: 0.5em;
 }
 
-@keyframes fade-in {
+.artifact h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 1.4em;
+  margin-bottom: 0.4em;
+}
+
+.artifact p {
+  margin-bottom: 0.85em;
+}
+
+.artifact ul,
+.artifact ol {
+  margin: 0.5em 0 1em;
+  padding-left: 1.35em;
+}
+
+.artifact li {
+  margin-bottom: 0.3em;
+}
+
+.artifact ul > li {
+  list-style: none;
+  position: relative;
+}
+
+/* An en-dash bullet, set in the mono face — a planner's hand-ruled list
+   rather than a web bullet. */
+.artifact ul > li::before {
+  content: "–";
+  position: absolute;
+  left: -1.05em;
+  color: var(--text-disabled);
+  font-family: var(--font-mono);
+}
+
+.artifact ol {
+  list-style: none;
+  counter-reset: artifact-ol;
+}
+
+.artifact ol > li {
+  counter-increment: artifact-ol;
+  position: relative;
+}
+
+.artifact ol > li::before {
+  content: counter(artifact-ol);
+  position: absolute;
+  left: -1.6em;
+  width: 1.2em;
+  text-align: right;
+  color: var(--text-disabled);
+  font-family: var(--font-mono);
+  font-size: 0.78em;
+  top: 0.34em;
+}
+
+.artifact strong {
+  font-weight: 650;
+}
+
+.artifact table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+.artifact th {
+  text-align: left;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.artifact td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+
+.artifact blockquote {
+  border-left: 2px solid var(--brand-border);
+  padding-left: 1em;
+  margin: 1em 0;
+  color: var(--text-secondary);
+}
+
+.artifact code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--surface-sunken);
+  padding: 0.12em 0.34em;
+  border-radius: var(--r-xs);
+}
+
+/* ===========================================================================
+   Motion
+   ---------------------------------------------------------------------------
+   Every keyframe here communicates a state change or a spatial origin.
+   Ambient/decorative animation was removed rather than restyled: the old
+   pulse-glow CTA, border-trail on the stepper, and scroll-triggered count-up
+   stats all drew attention without carrying information.
+   ========================================================================= */
+@keyframes l-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes l-rise {
   from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in {
-  animation: fade-in 0.5s ease both;
+@keyframes l-pop {
+  from { opacity: 0; transform: scale(0.97) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-@keyframes glow-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.85; transform: scale(1.06); }
+@keyframes l-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
 }
 
-/* ── Skeleton shimmer ──────────────────────────────────────────────────────── */
-@keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+@keyframes l-shimmer {
+  from { background-position: -320px 0; }
+  to { background-position: 320px 0; }
 }
+
+@keyframes l-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* A slow sweep down the rule beside an in-progress step. It marks *which*
+   thing is working, which is information a spinner alone doesn't carry. */
+@keyframes l-rule-travel {
+  0% { transform: scaleY(0); transform-origin: top; }
+  45% { transform: scaleY(1); transform-origin: top; }
+  55% { transform: scaleY(1); transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
+}
+
+.animate-fade-in { animation: l-fade-in var(--t) var(--ease) both; }
+.animate-rise { animation: l-rise var(--t) var(--ease) both; }
+.animate-pop { animation: l-pop var(--t) var(--ease-out) both; }
+.animate-shake { animation: l-shake 0.3s var(--ease) both; }
+.animate-spin-slow { animation: l-spin 1s linear infinite; }
+.animate-rule-travel { animation: l-rule-travel 1.8s var(--ease) infinite; }
+
+/* Legacy animation class names still referenced by marketing/admin surfaces,
+   retuned to the new durations rather than left at the old 380–450ms. */
+.animate-slide-up { animation: l-rise var(--t-slow) var(--ease) both; }
+.animate-dropdown { animation: l-pop var(--t-fast) var(--ease-out) both; }
 
 .skeleton-shimmer {
   background: linear-gradient(
@@ -230,146 +454,84 @@ canvas {
     var(--surface-hover) 50%,
     var(--surface-sunken) 75%
   );
-  background-size: 800px 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
+  background-size: 640px 100%;
+  animation: l-shimmer 1.4s ease-in-out infinite;
 }
 
-/* ── Keyboard focus states — WCAG AA (Fix 4) ──────────────────────────────── */
-:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
+.stagger-1 { animation-delay: 20ms; }
+.stagger-2 { animation-delay: 40ms; }
+.stagger-3 { animation-delay: 60ms; }
+.stagger-4 { animation-delay: 80ms; }
+.stagger-5 { animation-delay: 100ms; }
+.stagger-6 { animation-delay: 120ms; }
+.stagger-7 { animation-delay: 140ms; }
+.stagger-8 { animation-delay: 160ms; }
+
+/* Retired decorations, neutralised so any straggling call site is inert
+   rather than broken. */
+.btn-pulse,
+.progress-bar-glow,
+.card-hover { animation: none; box-shadow: none; }
+
+.font-layah-logo { font-family: var(--font-sans); font-weight: 650; letter-spacing: -0.02em; }
+.font-caveat { font-family: var(--font-serif); font-style: italic; }
+
+/* ===========================================================================
+   The rule — the system's signature
+   ---------------------------------------------------------------------------
+   A ruled margin borrowed from a lesson planner's page, used wherever
+   content is genuinely a *sequence*: the phases of a lesson, the steps of a
+   composer, the sections of a generated package. Numbering is only applied
+   where order carries meaning the reader needs — never as decoration.
+   ========================================================================= */
+.rule-rail {
+  position: relative;
+  padding-left: 34px;
 }
 
-/* Form inputs retain box-shadow glow instead of outline */
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  outline: none;
+.rule-rail::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--rule);
 }
 
-/* ── Form input focus glow ─────────────────────────────────────────────────── */
-input:focus,
-textarea:focus,
-select:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--brand) 22%, transparent);
-  border-color: var(--brand) !important;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+.rule-item {
+  position: relative;
 }
 
-/* ── Button press / hover micro-interaction ────────────────────────────────── */
-button, [role="button"] {
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease,
-              border-color 0.2s ease, color 0.2s ease, opacity 0.15s ease;
+/* The marker sits *on* the rule, so the sequence reads as one continuous
+   ruled margin rather than a column of disconnected badges. */
+.rule-item::before {
+  content: attr(data-rule-num);
+  position: absolute;
+  left: -34px;
+  top: 0;
+  width: 23px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--rail-num);
+  background: var(--canvas);
+  transition: color var(--t) var(--ease);
 }
 
-button:active:not(:disabled), [role="button"]:active:not([aria-disabled="true"]) {
-  transform: scale(0.97);
+.rule-item[data-state="active"]::before,
+.rule-item[data-state="done"]::before {
+  color: var(--rail-num-active);
 }
 
-/* ── Error shake animation ─────────────────────────────────────────────────── */
-@keyframes error-shake {
-  0%, 100% { transform: translateX(0); }
-  20%       { transform: translateX(-6px); }
-  40%       { transform: translateX(6px); }
-  60%       { transform: translateX(-4px); }
-  80%       { transform: translateX(4px); }
-}
+/* On a surface rather than the canvas, the marker's backing has to match or
+   the rule appears to pass through a hole. */
+.on-surface .rule-item::before { background: var(--surface); }
 
-.animate-shake {
-  animation: error-shake 0.45s ease both;
-}
-
-/* ── Progress bar teal glow ────────────────────────────────────────────────── */
-.progress-bar-glow {
-  box-shadow: 0 0 8px 2px color-mix(in oklch, var(--brand) 55%, transparent);
-}
-
-/* ── Smooth dropdown open ──────────────────────────────────────────────────── */
-@keyframes dropdown-open {
-  from { opacity: 0; transform: translateY(-6px) scaleY(0.96); }
-  to   { opacity: 1; transform: translateY(0)    scaleY(1); }
-}
-
-.animate-dropdown {
-  animation: dropdown-open 0.18s ease both;
-  transform-origin: top;
-}
-
-/* ── Smooth checkbox check ─────────────────────────────────────────────────── */
-input[type="checkbox"] {
-  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-}
-
-input[type="checkbox"]:checked {
-  transform: scale(1.08);
-}
-
-/* ── Card hover lift ───────────────────────────────────────────────────────── */
-.card-hover {
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.card-hover:hover {
-  box-shadow: 0 8px 28px color-mix(in oklch, var(--brand) 14%, transparent),
-    0 2px 8px color-mix(in oklch, var(--text) 7%, transparent);
-}
-
-/* ── Slide-in from bottom (results reveal) ─────────────────────────────────── */
-@keyframes slide-up-in {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.animate-slide-up {
-  animation: slide-up-in 0.38s cubic-bezier(0.0, 0.0, 0.2, 1) both;
-}
-
-/* ── Staggered children helper ─────────────────────────────────────────────── */
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.10s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.20s; }
-.stagger-5 { animation-delay: 0.25s; }
-.stagger-6 { animation-delay: 0.30s; }
-.stagger-7 { animation-delay: 0.35s; }
-.stagger-8 { animation-delay: 0.40s; }
-
-/* Handwritten accent font */
-.font-caveat {
-  font-family: var(--font-caveat), cursive;
-}
-
-/* CTA pulse glow */
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--brand) 45%, transparent); }
-  50%       { box-shadow: 0 0 0 14px color-mix(in oklch, var(--brand) 0%, transparent); }
-}
-
-.btn-pulse {
-  animation: pulse-glow 2.2s ease-in-out infinite;
-}
-
-@theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: var(--font-sans);
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
-}
-
-/* Respect the OS-level reduced-motion preference site-wide: collapse
-   animation/transition duration to near-zero instead of disabling motion
-   selectively per component. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

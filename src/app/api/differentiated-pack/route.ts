@@ -158,7 +158,7 @@ export async function POST(req: Request) {
         temperature: 0.45,
         max_tokens: DEEPSEEK_MAX_TOKENS,
         messages: [
-          { role: "system", content: buildDiffPackLevelSystemPrompt(level) },
+          { role: "system", content: buildDiffPackLevelSystemPrompt(level, body.curriculumFramework) },
           { role: "user", content: userMessage },
         ],
       }),

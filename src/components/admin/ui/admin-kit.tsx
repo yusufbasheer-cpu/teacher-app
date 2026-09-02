@@ -85,7 +85,7 @@ export function AdminCard({
   const toneBorder = tone === "danger" ? "rgba(179,38,30,0.28)" : tone === "warning" ? "rgba(154,107,20,0.3)" : BORDER;
   return (
     <div
-      className={cn("rounded-xl bg-white shadow-[0_1px_2px_rgba(23,22,27,0.04)]", padded && "p-5", className)}
+      className={cn("rounded-xl bg-surface shadow-[0_1px_2px_rgba(23,22,27,0.04)]", padded && "p-5", className)}
       style={{ border: `1px solid ${toneBorder}` }}
       {...props}
     />
@@ -189,7 +189,7 @@ export function Badge({ tone = "neutral", children }: { tone?: Tone; children: R
 // ---------------------------------------------------------------------------
 
 const fieldBase =
-  "w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-offset-0";
+  "w-full rounded-lg border bg-surface px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-offset-0";
 
 export function AdminInput(props: React.ComponentProps<"input">) {
   return (
@@ -308,7 +308,7 @@ function ToastStack({ items, onDismiss }: { items: ToastItem[]; onDismiss: (id: 
       {items.map((t) => (
         <div
           key={t.id}
-          className="pointer-events-auto flex items-start gap-2.5 rounded-xl bg-white p-3.5 shadow-lg ring-1 ring-black/5"
+          className="pointer-events-auto flex items-start gap-2.5 rounded-xl bg-surface p-3.5 shadow-lg ring-1 ring-black/5"
           style={{ borderLeft: `3px solid ${t.tone === "success" ? POSITIVE : DANGER}` }}
         >
           {t.tone === "success" ? (

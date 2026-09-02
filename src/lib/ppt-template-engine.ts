@@ -27,6 +27,7 @@ import {
   estimateRowHeight,
   estimateBlockHeight,
   getImageNaturalSize,
+  isGroupHeaderLine,
   type BulletVariant,
 } from "@/lib/ppt-render-primitives";
 
@@ -173,14 +174,36 @@ function normalizeToLines(body: string): string[] {
     .filter((l) => l.length > 0);
 }
 
-/** Splits `lines` into per-slide chunks that fit within `maxHeight`, using real row heights. */
-function chunkLinesByHeight(lines: string[], cpl: number, maxHeight: number): string[][] {
+/**
+ * Splits `lines` into per-slide chunks that fit within `maxHeight`, using real row heights.
+ * `variant` must match what `drawBulletBlock` will render these lines with — passed through to
+ * `estimateRowHeight` so a group-header row (activity slides only) is budgeted the same extra
+ * height it's actually drawn with, rather than the chunker under-reserving for it.
+ */
+/** Exported for testing only — see computeDeckLayoutStats above for the same rationale. */
+export function chunkLinesByHeight(lines: string[], cpl: number, maxHeight: number, variant?: BulletVariant): string[][] {
   const chunks: string[][] = [];
   let cur: string[] = [];
   let used = 0;
   for (const line of lines) {
-    const h = estimateRowHeight(line, cpl);
-    if (used + h > maxHeight && cur.length > 0) { chunks.push(cur); cur = []; used = 0; }
+    const h = estimateRowHeight(line, cpl, 1, variant);
+    if (used + h > maxHeight && cur.length > 0) {
+      // Never end a chunk with a standalone sub-heading ("Step 2", "Higher Achievers task")
+      // as its last line — that strands the heading alone on one slide with none of its own
+      // content, which then opens a "Continued" slide with no heading at all. Carry the
+      // heading forward into the new chunk instead so it stays paired with its content.
+      let carry: string[] = [];
+      let carryUsed = 0;
+      const lastLine = cur[cur.length - 1];
+      if (variant === "activity" && lastLine !== undefined && isGroupHeaderLine(lastLine)) {
+        cur.pop();
+        carry = [lastLine];
+        carryUsed = estimateRowHeight(lastLine, cpl, 1, variant);
+      }
+      if (cur.length > 0) chunks.push(cur);
+      cur = carry;
+      used = carryUsed;
+    }
     cur.push(line);
     used += h;
   }
@@ -442,9 +465,15 @@ function doContentSlide(
   const titleX = isCont ? 0.3 : L.headerTitleX;
   const titleW = isCont ? L.header.w - 0.4 : L.header.w - L.headerTitleX - 0.2;
   if (isCont) {
+    // Uses headerText, not accent: this label sits on the header bar, which
+    // is the ONE surface every template already guarantees enough contrast
+    // for (it's what the slide title itself depends on). accent's contrast
+    // against the header bar isn't guaranteed — three of the five bundled
+    // templates fail WCAG AA there (2:1–3.7:1) because accent is tuned to
+    // read on the body background, not on the header fill.
     slide.addText("CONTINUED", {
       x: titleX, y: 0.14, w: titleW, h: 0.24,
-      fontSize: 10.5, bold: true, color: c.accent, fontFace: f.face, charSpacing: 1,
+      fontSize: 10.5, bold: true, color: c.headerText, fontFace: f.face, charSpacing: 1.5,
     });
   }
   slide.addText(rawTitle, {
@@ -476,13 +505,13 @@ function doContentSlide(
   // the top — a 1-2 line body left top-aligned in a 5.65" box reads as broken/empty, not minimal.
   const availableBottom = CONTENT_Y + CONTENT_H;
   const budgetH = availableBottom - bodyY;
-  const baseUsedH = estimateBlockHeight(chunk, cpl);
+  const baseUsedH = estimateBlockHeight(chunk, cpl, 1, variant);
   const fillRatio = budgetH > 0 ? baseUsedH / budgetH : 1;
   // Sparse slide — grow the body text instead of leaving it small in a mostly-empty box.
   // Capped well short of 1.0x-to-2.0x so this never risks overflowing the height this chunk
   // was already budgeted for by chunkLinesByHeight.
   const fontScale = fillRatio < 0.5 ? 1.2 : fillRatio < 0.72 ? 1.1 : 1;
-  const usedH = fontScale === 1 ? baseUsedH : estimateBlockHeight(chunk, cpl, fontScale);
+  const usedH = fontScale === 1 ? baseUsedH : estimateBlockHeight(chunk, cpl, fontScale, variant);
   const slack = Math.max(0, availableBottom - bodyY - usedH);
   bodyY += slack / 2;
 
@@ -535,11 +564,12 @@ export function computeDeckLayoutStats(
     }
     const hasImg = Boolean(slideImageUrls?.[i]);
     const cpl = hasImg ? CPL_IMAGE : CPL_FULL;
+    const variant = bulletVariantFor(kind);
     const chipReserve = chipLabelFor(kind, i) ? CHIP_RESERVE_H : 0;
     const budget = CONTENT_H - chipReserve;
     const lines = normalizeToLines(slides[i]!.body);
-    const chunks = chunkLinesByHeight(lines, cpl, budget);
-    const usedH = estimateBlockHeight(lines, cpl);
+    const chunks = chunkLinesByHeight(lines, cpl, budget, variant);
+    const usedH = estimateBlockHeight(lines, cpl, 1, variant);
     stats.push({
       deckIdx: i, kind, hasImage: hasImg,
       physicalSlideCount: chunks.length,
@@ -594,7 +624,7 @@ export async function buildPptxFromTemplateEngine(params: {
     const kind = SLIDE_KIND_BY_INDEX[i] ?? "standard";
     const budget = chipLabelFor(kind, i) ? CONTENT_H - CHIP_RESERVE_H : CONTENT_H;
     const lines = normalizeToLines(deck[i]!.body);
-    const chunks = chunkLinesByHeight(lines, cpl, budget);
+    const chunks = chunkLinesByHeight(lines, cpl, budget, bulletVariantFor(kind));
     chunksByDeckIdx[i] = chunks;
     totalPhysical += chunks.length;
   }

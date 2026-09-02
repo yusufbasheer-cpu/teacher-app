@@ -194,7 +194,7 @@ function PlanPrice({
       {billing === "annual" ? (
         <span
           className="mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide"
-          style={{ background: withAlpha(TEAL, 0.2), color: TEAL }}
+          style={{ background: "color-mix(in oklch, var(--brand) 20%, transparent)", color: TEAL }}
         >
           Save 2 months
         </span>
@@ -202,7 +202,7 @@ function PlanPrice({
       {billing === "monthly" ? (
         <p
           className="mt-2 text-sm"
-          style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.65) : TEXT_MUTED }}
+          style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.65) : "var(--text-secondary)" }}
         >
           Or {formatRegionalPrice(region, prices.annual, "year")}
         </p>
@@ -243,11 +243,11 @@ function PricingCard({
           ? {
               background: `linear-gradient(160deg, ${NAVY} 0%, var(--l-gray-11) 55%, ${NAVY} 100%)`,
               border: `2px solid ${TEAL}`,
-              boxShadow: `0 24px 60px -12px ${withAlpha(TEAL, 0.35)}, 0 0 0 1px ${withAlpha(TEAL, 0.15)}`,
+              boxShadow: `0 24px 60px -12px color-mix(in oklch, var(--brand) 35%, transparent), 0 0 0 1px color-mix(in oklch, var(--brand) 15%, transparent)`,
             }
           : isSchool
             ? { background: "var(--surface-raised)", border: `2px solid ${NAVY}` }
-            : { background: "var(--surface-raised)", border: `1px solid ${withAlpha(NAVY, 0.12)}` }
+            : { background: "var(--surface-raised)", border: `1px solid color-mix(in oklch, var(--text) 12%, transparent)` }
       }
     >
       {plan.badge ? (
@@ -270,11 +270,11 @@ function PricingCard({
         <PlanPrice plan={plan} region={region} billing={billing} lightText={lightText} />
       </div>
 
-      <p className="mt-4 text-sm font-semibold" style={{ color: lightText ? TEAL : TEAL_DARK }}>
+      <p className="mt-4 text-sm font-semibold" style={{ color: lightText ? TEAL : "var(--brand-active)" }}>
         {plan.generations}
       </p>
       {plan.teachers ? (
-        <p className="mt-1 text-sm" style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.75) : TEXT_MUTED }}>
+        <p className="mt-1 text-sm" style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.75) : "var(--text-secondary)" }}>
           {plan.teachers}
         </p>
       ) : null}
@@ -284,11 +284,11 @@ function PricingCard({
           <li
             key={item}
             className="flex items-start gap-2.5 text-sm leading-snug"
-            style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.9) : NAVY }}
+            style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.9) : "var(--text)" }}
           >
             <span
               className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full"
-              style={{ background: lightText ? withAlpha(TEAL, 0.22) : withAlpha(TEAL, 0.12) }}
+              style={{ background: lightText ? "color-mix(in oklch, var(--brand) 22%, transparent)" : "color-mix(in oklch, var(--brand) 12%, transparent)" }}
             >
               <CheckIcon
                 className={`!size-3 ${lightText ? "text-[var(--brand)]" : "text-[var(--brand-active)]"}`}
@@ -310,7 +310,7 @@ function PricingCard({
             <BorderTrail
               className="bg-[var(--text)]"
               size={40}
-              style={{ boxShadow: `0 0 8px 2px ${withAlpha(NAVY, 0.5)}, 0 0 16px 4px ${withAlpha(NAVY, 0.25)}` }}
+              style={{ boxShadow: "0 0 8px 2px color-mix(in oklch, var(--text) 50%, transparent), 0 0 16px 4px color-mix(in oklch, var(--text) 25%, transparent)" }}
             />
           ) : null}
           {plan.cta.label}
@@ -338,14 +338,14 @@ export function PricingPage() {
   const openPayment = (planKey: UpgradePlanKey) => { setPaymentPlan(planKey); setPaymentOpen(true); };
 
   return (
-    <main className="min-h-screen bg-canvas pb-24">
+    <main className="min-h-screen bg-[var(--surface)] pb-24">
       <Container>
         {/* Standard secondary-page hero: badge + headline + subtext, matching
             the landing page's hero pattern. */}
         <section className="mx-auto max-w-[820px] px-4 pb-4 pt-14 text-center sm:px-6">
           <span
             className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-            style={{ background: withAlpha(TEAL, 0.1), color: TEAL_DARK }}
+            style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL_DARK }}
           >
             Pricing
           </span>
@@ -363,7 +363,7 @@ export function PricingPage() {
         <div className="mx-auto mt-6 flex justify-center">
           <p
             className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm"
-            style={{ background: "var(--surface-raised)", border: `1px solid ${withAlpha(TEAL, 0.3)}`, color: NAVY }}
+            style={{ background: "var(--surface-raised)", border: `1px solid color-mix(in oklch, var(--brand) 30%, transparent)`, color: NAVY }}
           >
             <span className="text-lg leading-none" aria-hidden>{region.flag}</span>
             <span>
@@ -375,7 +375,7 @@ export function PricingPage() {
         <div className="mx-auto mt-10 flex flex-col items-center gap-3">
           <div
             className="inline-flex rounded-full p-1 shadow-sm"
-            style={{ background: "var(--surface-raised)", border: `1px solid ${withAlpha(NAVY, 0.12)}` }}
+            style={{ background: "var(--surface-raised)", border: `1px solid color-mix(in oklch, var(--text) 12%, transparent)` }}
             role="group"
             aria-label="Billing period"
           >
@@ -385,7 +385,7 @@ export function PricingPage() {
               className={`rounded-full px-6 py-3 text-sm font-semibold transition ${FOCUS_RING}`}
               style={{
                 background: !isAnnual ? NAVY : "transparent",
-                color: !isAnnual ? TEXT_INVERSE : TEXT_MUTED,
+                color: !isAnnual ? TEXT_INVERSE : "var(--text-secondary)",
               }}
             >
               Monthly
@@ -396,7 +396,7 @@ export function PricingPage() {
               className={`rounded-full px-6 py-3 text-sm font-semibold transition ${FOCUS_RING}`}
               style={{
                 background: isAnnual ? NAVY : "transparent",
-                color: isAnnual ? TEXT_INVERSE : TEXT_MUTED,
+                color: isAnnual ? TEXT_INVERSE : "var(--text-secondary)",
               }}
             >
               Annual
@@ -405,7 +405,7 @@ export function PricingPage() {
           {isAnnual ? (
             <p
               className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold"
-              style={{ background: withAlpha(TEAL, 0.12), color: TEAL_DARK }}
+              style={{ background: "color-mix(in oklch, var(--brand) 12%, transparent)", color: "var(--brand-active)" }}
             >
               <span className="inline-block h-2 w-2 rounded-full" style={{ background: TEAL }} aria-hidden />
               Save 2 months on all annual plans
@@ -431,16 +431,16 @@ export function PricingPage() {
           className="mt-20 rounded-3xl p-6 sm:p-10"
           style={{
             background: `linear-gradient(135deg, ${NAVY} 0%, var(--l-gray-11) 100%)`,
-            border: `1px solid ${withAlpha(TEAL, 0.25)}`,
+            border: `1px solid color-mix(in oklch, var(--brand) 25%, transparent)`,
           }}
         >
           <h2 className="text-center text-sm font-bold uppercase tracking-widest text-[var(--brand)]">
             For schools
           </h2>
-          <p className="mt-2 text-center text-lg font-semibold text-inverse sm:text-xl">
+          <p className="mt-2 text-center text-lg font-semibold text-white sm:text-xl">
             School &amp; district plans
           </p>
-          <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-inverse/65">
+          <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-white/65">
             Unlimited generations for every teacher on your plan. Enterprise includes custom branding and API access.
           </p>
           <div className="mx-auto mt-10 max-w-md">
@@ -449,7 +449,7 @@ export function PricingPage() {
             ))}
           </div>
           <div className="mt-10 text-center">
-            <p className="text-sm text-inverse/50">Prefer to self-serve?</p>
+            <p className="text-sm text-white/50">Prefer to self-serve?</p>
             <Link
               href="/school-register"
               className={`mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--text)]`}
@@ -469,7 +469,7 @@ export function PricingPage() {
               </svg>
               Register Your School
             </Link>
-            <p className="mt-3 text-sm text-inverse/50">
+            <p className="mt-3 text-sm text-white/50">
               Set up your own plan and our team will onboard you within 24 hours
             </p>
           </div>
@@ -483,8 +483,8 @@ export function PricingPage() {
             {FAQ.map((item) => (
               <details
                 key={item.q}
-                className="group rounded-2xl border bg-canvas p-5 shadow-sm transition hover:shadow-md open:shadow-md"
-                style={{ borderColor: withAlpha(TEAL, 0.25) }}
+                className="group rounded-2xl border bg-[var(--surface)] p-5 shadow-sm transition hover:shadow-md open:shadow-md"
+                style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
               >
                 <summary
                   className={`cursor-pointer list-none rounded-lg text-base font-semibold marker:content-none ${FOCUS_RING}`}
@@ -501,7 +501,7 @@ export function PricingPage() {
                     </span>
                   </span>
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed" style={{ color: TEXT_MUTED }}>
+                <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                   {item.a}
                 </p>
               </details>

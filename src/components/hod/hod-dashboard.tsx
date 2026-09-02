@@ -2,7 +2,9 @@
 
 import type { HodDashboardData } from "@/lib/hod-server";
 import { resolveLessonTitle, resolveLessonTopicNote } from "@/lib/lesson-plan";
-import { NAVY, TEAL } from "@/lib/design-tokens";
+
+const TEAL = "var(--brand)";
+const NAVY = "var(--text)";
 
 function formatDate(iso: string): string {
   try {
@@ -29,7 +31,7 @@ type StatCardProps = {
 function StatCard({ label, value, sub }: StatCardProps) {
   return (
     <div
-      className="rounded-2xl bg-surface p-5 shadow-sm"
+      className="rounded-2xl bg-[var(--surface)] p-5 shadow-sm"
       style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
     >
       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: TEAL }}>
@@ -105,7 +107,7 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
 
         {departmentTeachers.length === 0 ? (
           <div
-            className="rounded-2xl bg-surface px-6 py-10 text-center shadow-sm"
+            className="rounded-2xl bg-[var(--surface)] px-6 py-10 text-center shadow-sm"
             style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -117,7 +119,7 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
           </div>
         ) : (
           <div
-            className="overflow-hidden rounded-2xl bg-surface shadow-sm"
+            className="overflow-hidden rounded-2xl bg-[var(--surface)] shadow-sm"
             style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
             <table className="w-full text-sm">
@@ -191,7 +193,7 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
 
         {recentLessons.length === 0 ? (
           <div
-            className="rounded-2xl bg-surface px-6 py-10 text-center shadow-sm"
+            className="rounded-2xl bg-[var(--surface)] px-6 py-10 text-center shadow-sm"
             style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -200,7 +202,7 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
           </div>
         ) : (
           <div
-            className="overflow-hidden rounded-2xl bg-surface shadow-sm"
+            className="overflow-hidden rounded-2xl bg-[var(--surface)] shadow-sm"
             style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
             <table className="w-full text-sm">

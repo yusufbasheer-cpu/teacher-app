@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import type { SchoolAdminDashboardData, SchoolAdminTeacher } from "@/lib/school-admin-server";
 import { supabase } from "@/lib/supabase";
 
-const NAVY = "#241A12";
-const TEAL = "#0E9484";
-const MUTED = "#6B5D4F";
+const NAVY = "var(--text)";
+const TEAL = "var(--brand)";
+const MUTED = "var(--text-secondary)";
 
 const ROLE_OPTIONS: { value: SchoolAdminTeacher["role"]; label: string }[] = [
   { value: "teacher", label: "Teacher" },
@@ -48,14 +49,14 @@ type SchoolAdminDashboardProps = {
 export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps) {
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   // Per-teacher pending role/department edits
   const [pendingEdits, setPendingEdits] = useState<Record<string, RoleState>>({});
   const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
   const [roleSuccessId, setRoleSuccessId] = useState<string | null>(null);
-  const [roleError, setRoleError] = useState<string | null>(null);
+  const [roleError, setRoleError] = useErrorToast();
 
   const getTeacherRole = (teacher: SchoolAdminTeacher): RoleState =>
     pendingEdits[teacher.userId] ?? { role: teacher.role, department: teacher.department };
@@ -190,7 +191,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
     return (
       <div
         className="flex min-h-[40vh] items-center justify-center rounded-2xl border"
-        style={{ borderColor: "rgba(14, 148, 132,0.25)", background: "#FFFCF7" }}
+        style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)", background: "var(--surface-raised)" }}
       >
         <p className="text-sm font-medium" style={{ color: MUTED }}>
           Loading school admin…
@@ -207,13 +208,13 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
       <header
         className="rounded-2xl p-6 sm:p-8"
         style={{
-          background: `linear-gradient(135deg, ${NAVY} 0%, #3a2a1e 55%, rgba(14, 148, 132,0.15) 100%)`,
+          background: `linear-gradient(135deg, ${NAVY} 0%, var(--l-gray-11) 55%, color-mix(in oklch, var(--brand) 15%, transparent) 100%)`,
           color: "white",
         }}
       >
         <p
           className="mb-3 inline-flex rounded-full border px-3 py-1 text-xs font-semibold"
-          style={{ borderColor: TEAL, color: TEAL, background: "rgba(14, 148, 132,0.12)" }}
+          style={{ borderColor: TEAL, color: TEAL, background: "color-mix(in oklch, var(--brand) 12%, transparent)" }}
         >
           School Admin
         </p>
@@ -238,12 +239,12 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
           School overview
         </h2>
         <div
-          className="rounded-2xl border bg-[#FAF6EF] p-5 shadow-sm sm:p-6"
-          style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
+          className="rounded-2xl border bg-[var(--surface)] p-5 shadow-sm sm:p-6"
+          style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
         >
           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
                 School name
               </dt>
               <dd className="mt-1 text-base font-semibold" style={{ color: NAVY }}>
@@ -251,7 +252,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
                 Plan type
               </dt>
               <dd className="mt-1 text-base font-semibold" style={{ color: TEAL }}>
@@ -259,7 +260,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
                 Active teachers (of max)
               </dt>
               <dd className="mt-1 text-base font-semibold" style={{ color: NAVY }}>
@@ -267,7 +268,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
                 Email domain
               </dt>
               <dd className="mt-1 text-base font-semibold" style={{ color: NAVY }}>
@@ -284,8 +285,8 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
         </h2>
         {teachers.length === 0 ? (
           <div
-            className="rounded-2xl border bg-[#FAF6EF] p-6 text-sm"
-            style={{ borderColor: "rgba(14, 148, 132,0.25)", color: MUTED }}
+            className="rounded-2xl border bg-[var(--surface)] p-6 text-sm"
+            style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)", color: MUTED }}
           >
             No teachers have joined yet. Teachers with a{" "}
             <strong>@{school.emailDomain}</strong> Google account will appear here after they sign
@@ -294,10 +295,10 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden overflow-x-auto rounded-2xl border bg-[#FAF6EF] shadow-sm md:block" style={{ borderColor: "rgba(14, 148, 132,0.25)" }}>
+            <div className="hidden overflow-x-auto rounded-2xl border bg-[var(--surface)] shadow-sm md:block" style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}>
               <table className="min-w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b bg-stone-50" style={{ borderColor: "#E3D9C8" }}>
+                  <tr className="border-b bg-hover" style={{ borderColor: "var(--border)" }}>
                     <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Teacher name</th>
                     <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Email</th>
                     <th className="px-4 py-3 font-semibold" style={{ color: NAVY }}>Join date</th>
@@ -315,14 +316,14 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                     const isSuccess = roleSuccessId === teacher.userId;
 
                     return (
-                      <tr key={teacher.userId} className="border-b last:border-b-0" style={{ borderColor: "#E3D9C8" }}>
+                      <tr key={teacher.userId} className="border-b last:border-b-0" style={{ borderColor: "var(--border)" }}>
                         <td className="px-4 py-3 font-medium" style={{ color: NAVY }}>
                           {teacher.name}
                           {teacher.role === "hod" && (
-                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "rgba(14, 148, 132,0.12)", color: TEAL }}>HOD</span>
+                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "color-mix(in oklch, var(--brand) 12%, transparent)", color: TEAL }}>HOD</span>
                           )}
                           {teacher.role === "admin" && (
-                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "rgba(36, 26, 18,0.08)", color: NAVY }}>Admin</span>
+                            <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "color-mix(in oklch, var(--text) 8%, transparent)", color: NAVY }}>Admin</span>
                           )}
                         </td>
                         <td className="px-4 py-3" style={{ color: MUTED }}>{teacher.email}</td>
@@ -337,7 +338,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                                 department: pendingEdits[teacher.userId]?.department ?? teacher.department,
                               })
                             }
-                            className="rounded-lg border border-stone-300 px-2 py-1.5 text-xs outline-none focus:ring-2"
+                            className="rounded-lg border border-line-strong px-2 py-1.5 text-xs outline-none focus:ring-2"
                             style={{ color: NAVY, minWidth: 90 }}
                           >
                             {ROLE_OPTIONS.map((opt) => (
@@ -354,7 +355,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                                 department: e.target.value || null,
                               })
                             }
-                            className="rounded-lg border border-stone-300 px-2 py-1.5 text-xs outline-none focus:ring-2"
+                            className="rounded-lg border border-line-strong px-2 py-1.5 text-xs outline-none focus:ring-2"
                             style={{ color: NAVY, minWidth: 130 }}
                           >
                             <option value="">— None —</option>
@@ -377,8 +378,8 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                                 className="rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-40"
                                 style={
                                   isDirty && !isSaving
-                                    ? { borderColor: TEAL, color: TEAL, background: "rgba(14, 148, 132,0.07)" }
-                                    : { borderColor: "#D9CCB8", color: "#a79a87" }
+                                    ? { borderColor: TEAL, color: TEAL, background: "color-mix(in oklch, var(--brand) 7%, transparent)" }
+                                    : { borderColor: "#D9CCB8", color: "var(--text-disabled)" }
                                 }
                               >
                                 {isSaving ? "Saving…" : "Save"}
@@ -412,8 +413,8 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                 return (
                   <div
                     key={teacher.userId}
-                    className="rounded-2xl border bg-[#FAF6EF] p-4 shadow-sm"
-                    style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
+                    className="rounded-2xl border bg-[var(--surface)] p-4 shadow-sm"
+                    style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -423,8 +424,8 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                             className="mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold"
                             style={
                               teacher.role === "hod"
-                                ? { background: "rgba(14, 148, 132,0.12)", color: TEAL }
-                                : { background: "rgba(36, 26, 18,0.08)", color: NAVY }
+                                ? { background: "color-mix(in oklch, var(--brand) 12%, transparent)", color: TEAL }
+                                : { background: "color-mix(in oklch, var(--text) 8%, transparent)", color: NAVY }
                             }
                           >
                             {teacher.role === "hod" ? "HOD" : "Admin"}
@@ -451,7 +452,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                               department: pendingEdits[teacher.userId]?.department ?? teacher.department,
                             })
                           }
-                          className="w-full rounded-lg border border-stone-300 px-2 py-2 text-xs outline-none"
+                          className="w-full rounded-lg border border-line-strong px-2 py-2 text-xs outline-none"
                           style={{ color: NAVY }}
                         >
                           {ROLE_OPTIONS.map((opt) => (
@@ -469,7 +470,7 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                               department: e.target.value || null,
                             })
                           }
-                          className="w-full rounded-lg border border-stone-300 px-2 py-2 text-xs outline-none"
+                          className="w-full rounded-lg border border-line-strong px-2 py-2 text-xs outline-none"
                           style={{ color: NAVY }}
                         >
                           <option value="">— None —</option>
@@ -492,8 +493,8 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
                         className="mt-3 w-full rounded-lg border py-2 text-sm font-semibold transition disabled:opacity-40"
                         style={
                           isDirty && !isSaving
-                            ? { borderColor: TEAL, color: TEAL, background: "rgba(14, 148, 132,0.07)" }
-                            : { borderColor: "#D9CCB8", color: "#a79a87" }
+                            ? { borderColor: TEAL, color: TEAL, background: "color-mix(in oklch, var(--brand) 7%, transparent)" }
+                            : { borderColor: "#D9CCB8", color: "var(--text-disabled)" }
                         }
                       >
                         {isSaving ? "Saving…" : "Save Role"}
@@ -522,10 +523,10 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div
-            className="rounded-2xl border bg-[#FAF6EF] p-5 shadow-sm"
-            style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
+            className="rounded-2xl border bg-[var(--surface)] p-5 shadow-sm"
+            style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
           >
-            <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+            <p className="text-xs font-semibold uppercase tracking-wide text-faint">
               Total generations used this month
             </p>
             <p className="mt-2 text-3xl font-bold" style={{ color: NAVY }}>
@@ -536,10 +537,10 @@ export function SchoolAdminDashboard({ initialData }: SchoolAdminDashboardProps)
             </p>
           </div>
           <div
-            className="rounded-2xl border bg-[#FAF6EF] p-5 shadow-sm"
-            style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
+            className="rounded-2xl border bg-[var(--surface)] p-5 shadow-sm"
+            style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
           >
-            <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+            <p className="text-xs font-semibold uppercase tracking-wide text-faint">
               Most active teacher
             </p>
             {usage.mostActiveTeacher ? (

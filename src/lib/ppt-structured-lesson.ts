@@ -38,8 +38,20 @@ const BULLET_MAX_LINES = 16;
 const BULLET_MAX_LINES_WITH_AFL = 22;
 const SECTION_MAX_CHARS = 4000;
 
-/** Per-slide caps: rich content allowed; still one physical slide (export truncates tail if needed). */
-const SLIDE_BODY_LIMIT: readonly { chars: number; lines: number }[] = [
+/**
+ * Per-slide safety ceilings, not a "must fit on one physical slide" budget — the PPT export's
+ * chunker (`chunkLinesByHeight` in ppt-template-engine.ts) already spills any slide onto as many
+ * "Continued" physical slides as it needs, so these exist only to bound a pathological/runaway
+ * model response, not to force brevity. Index 7 (UAE / Real-Life Connection) was previously capped
+ * at 1600 chars — far too small for its own UAE-mode content (4 sub-sections: real-life connection,
+ * cross-curricular link, MOE alignment, SDG context), so a real UAE-framework generation was
+ * silently cut mid-sentence with an ellipsis, dropping the alignment and SDG paragraphs entirely
+ * from the exported deck. Raised to match the deck's densest slides rather than staying an outlier.
+ * Index 9 (Extended Task) hit the same failure mode for the same reason: a genuinely elaborate
+ * task (a multi-step design challenge with a diagram requirement and a "connection to future
+ * learning" section) exceeded its 2800-char cap and got cut mid-sentence — raised alongside it.
+ */
+export const SLIDE_BODY_LIMIT: readonly { chars: number; lines: number }[] = [
   { chars: 220, lines: 4 },
   { chars: 3400, lines: 22 },
   { chars: 1200, lines: 12 },
@@ -47,9 +59,9 @@ const SLIDE_BODY_LIMIT: readonly { chars: number; lines: number }[] = [
   { chars: 2600, lines: 18 },
   { chars: 4800, lines: 26 },
   { chars: 3600, lines: 22 },
-  { chars: 1600, lines: 14 },
+  { chars: 5000, lines: 26 },
   { chars: 3400, lines: 22 },
-  { chars: 2800, lines: 18 },
+  { chars: 3600, lines: 22 },
   { chars: 1200, lines: 12 },
   { chars: 2600, lines: 18 },
   { chars: 420, lines: 6 },
@@ -468,10 +480,21 @@ function extractFromPptContent(ppt: string, needles: string[]): string {
   return "";
 }
 
-function mergeBodies(primary: string, secondary: string, topicLine: string): string {
+/** Exported for testing only — see SLIDE_BODY_LIMIT above for the same rationale. */
+export function mergeBodies(primary: string, secondary: string, topicLine: string): string {
   const a = primary.trim();
   const b = secondary.trim();
-  if (a && b && a !== b) return polishBody(`${a}\n\n${b}`, SECTION_MAX_CHARS);
+  // extractFromPptContent takes a fixed-width slice starting at a matched needle, so two
+  // needles that both occur inside the same source text (e.g. "uae" and "cross curricular"
+  // both appearing in one slide-8 body) produce two overlapping windows — the later-starting
+  // one ends up an outright substring of the earlier one once both windows run past the end
+  // of a short source string. Concatenating them then repeats that whole shared tail verbatim.
+  // Treat full containment as the same content, not two things to join.
+  if (a && b) {
+    if (a === b || a.includes(b)) return polishBody(a, SECTION_MAX_CHARS);
+    if (b.includes(a)) return polishBody(b, SECTION_MAX_CHARS);
+    return polishBody(`${a}\n\n${b}`, SECTION_MAX_CHARS);
+  }
   if (a) return a;
   if (b) return b;
   return polishBody(topicLine, 800);
@@ -786,14 +809,30 @@ function pickDeck(
   _contextAnchor: string,
   pptIsolatedBody?: string,
 ): { body: string; notes: string } {
-  const fromPlan = plan ? extractFromFullPlanDeck(plan, kind) : "";
-  // Use pre-isolated body when available to prevent cross-slide content bleed.
-  const fromPpt = pptIsolatedBody?.trim() || (ppt ? extractFromPptContent(ppt, pptHints) : "");
-  const bodyRaw = mergeBodies(fromPlan, fromPpt, topicFallback);
+  const isolated = pptIsolatedBody?.trim() ?? "";
+  // The isolated per-slide generator body (when available) is the single authoritative
+  // source for this slide's content — it comes from a DeepSeek call scoped to this slide
+  // alone, so it physically cannot contain another slide's text. `fromPlan`/`fromPpt` below
+  // are a fallback ONLY for plans that never went through the isolated generator: they do a
+  // loose heading-line keyword search over a combined multi-section document, which can
+  // match mid-body inside an unrelated slide (e.g. "SDG Goal: ..." inside slide 3's body
+  // satisfying a "sdg"/"global" hint) and then capture everything up to the next stop
+  // keyword — potentially spanning several other slides. Once an authoritative isolated
+  // body exists, that risky search must never be blended on top of it.
+  let fromPlan = "";
+  let fromPpt = "";
+  let bodyRaw: string;
+  if (isolated) {
+    bodyRaw = isolated;
+  } else {
+    fromPlan = plan ? extractFromFullPlanDeck(plan, kind) : "";
+    fromPpt = ppt ? extractFromPptContent(ppt, pptHints) : "";
+    bodyRaw = mergeBodies(fromPlan, fromPpt, topicFallback);
+  }
   const body = stripMarkdownSymbolsForStudents(bodyRaw);
   const notes = buildTeacherSlideNotes(
     suggestedTiming,
-    `${fromPlan || fromPpt || topicFallback}`.replace(/\s+/g, " ").trim(),
+    `${isolated || fromPlan || fromPpt || topicFallback}`.replace(/\s+/g, " ").trim(),
     isAr,
   );
   return { body, notes };
@@ -814,19 +853,25 @@ function pickUaeFrameworkSlide8(
   suggestedTiming: string,
   pptIsolatedBody?: string,
 ): { body: string; notes: string } {
-  // Use isolated body when available to prevent fetching content from adjacent slides.
-  const pptSearch = pptIsolatedBody?.trim() || ppt;
-  const uaePlan = plan ? extractFromFullPlanDeck(plan, "uaeOnly") : "";
-  const crossPlan = plan ? extractFromFullPlanDeck(plan, "crossOnly") : "";
-  const pptUae = pptSearch ? extractFromPptContent(pptSearch, ["uae", "emirates", "khda", "spea", "moe", "الإمارات"]) : "";
-  const pptCross = pptSearch ? extractFromPptContent(pptSearch, ["cross curricular", "cross-curricular", "الربط"]) : "";
-  let body = stripMarkdownSymbolsForStudents(
-    mergeBodies(
-      mergeBodies(uaePlan, crossPlan, ""),
-      mergeBodies(pptUae, pptCross, ""),
-      "",
-    ).trim(),
-  );
+  // The isolated per-slide generator body is authoritative when available (see pickDeck for
+  // why the plan/ppt keyword search below must not be blended on top of it once it exists).
+  const isolated = pptIsolatedBody?.trim() ?? "";
+  let body: string;
+  if (isolated) {
+    body = stripMarkdownSymbolsForStudents(isolated);
+  } else {
+    const uaePlan = plan ? extractFromFullPlanDeck(plan, "uaeOnly") : "";
+    const crossPlan = plan ? extractFromFullPlanDeck(plan, "crossOnly") : "";
+    const pptUae = ppt ? extractFromPptContent(ppt, ["uae", "emirates", "khda", "spea", "moe", "الإمارات"]) : "";
+    const pptCross = ppt ? extractFromPptContent(ppt, ["cross curricular", "cross-curricular", "الربط"]) : "";
+    body = stripMarkdownSymbolsForStudents(
+      mergeBodies(
+        mergeBodies(uaePlan, crossPlan, ""),
+        mergeBodies(pptUae, pptCross, ""),
+        "",
+      ).trim(),
+    );
+  }
   if (body.replace(/\s+/g, "").length < MIN_SINGLE_LINK_CHARS) {
     body = stripMarkdownSymbolsForStudents(
       isAr
@@ -855,38 +900,46 @@ function pickNonUaeSlide8(
   suggestedTiming: string,
   pptIsolatedBody?: string,
 ): { body: string; notes: string } {
-  // Use isolated body when available to prevent fetching content from adjacent slides.
-  const pptSearch = pptIsolatedBody?.trim() || ppt;
+  // The isolated per-slide generator body is authoritative when available (see pickDeck for
+  // why the plan/ppt keyword search below must not be blended on top of it once it exists).
+  const isolated = pptIsolatedBody?.trim() ?? "";
   type Key = NonUaeLinkKey;
-  const fromPlan = (k: Key) => {
-    if (!plan) return "";
-    if (k === "realLife") return extractFromFullPlanDeck(plan, "realLifeOnly");
-    if (k === "cross") return extractFromFullPlanDeck(plan, "crossOnly");
-    if (k === "career") return extractFromFullPlanDeck(plan, "careerOnly");
-    if (k === "global") return extractFromFullPlanDeck(plan, "globalOnly");
-    return extractFromFullPlanDeck(plan, "subjectIntegrationOnly");
-  };
-  const fromPptBlocks: Record<Key, string> = {
-    cross: pptSearch ? extractFromPptContent(pptSearch, ["cross curricular", "cross-curricular", "الربط"]) : "",
-    realLife: pptSearch ? extractFromPptContent(pptSearch, ["real life", "real world", "الحياة"]) : "",
-    career: pptSearch ? extractFromPptContent(pptSearch, ["career", "profession", "مهنة"]) : "",
-    global: pptSearch ? extractFromPptContent(pptSearch, ["global", "world", "sdg", "عالمي"]) : "",
-    subjectIntegration: pptSearch
-      ? extractFromPptContent(pptSearch, ["integrate with", "subject integration", "science", "math", "english"])
-      : "",
-  };
-  const merged = (k: Key) =>
-    stripMarkdownSymbolsForStudents(mergeBodies(fromPlan(k), fromPptBlocks[k], "").trim());
+  let body: string;
+  let bestKey: Key | null = null;
+  if (isolated) {
+    body = stripMarkdownSymbolsForStudents(isolated);
+  } else {
+    const fromPlan = (k: Key) => {
+      if (!plan) return "";
+      if (k === "realLife") return extractFromFullPlanDeck(plan, "realLifeOnly");
+      if (k === "cross") return extractFromFullPlanDeck(plan, "crossOnly");
+      if (k === "career") return extractFromFullPlanDeck(plan, "careerOnly");
+      if (k === "global") return extractFromFullPlanDeck(plan, "globalOnly");
+      return extractFromFullPlanDeck(plan, "subjectIntegrationOnly");
+    };
+    const fromPptBlocks: Record<Key, string> = {
+      cross: ppt ? extractFromPptContent(ppt, ["cross curricular", "cross-curricular", "الربط"]) : "",
+      realLife: ppt ? extractFromPptContent(ppt, ["real life", "real world", "الحياة"]) : "",
+      career: ppt ? extractFromPptContent(ppt, ["career", "profession", "مهنة"]) : "",
+      global: ppt ? extractFromPptContent(ppt, ["global", "world", "sdg", "عالمي"]) : "",
+      subjectIntegration: ppt
+        ? extractFromPptContent(ppt, ["integrate with", "subject integration", "science", "math", "english"])
+        : "",
+    };
+    const merged = (k: Key) =>
+      stripMarkdownSymbolsForStudents(mergeBodies(fromPlan(k), fromPptBlocks[k], "").trim());
 
-  const scored: { key: Key; text: string; len: number }[] = (
-    ["cross", "realLife", "career", "global", "subjectIntegration"] as const
-  ).map((key) => {
-    const text = merged(key);
-    return { key, text, len: text.replace(/\s+/g, "").length };
-  });
-  scored.sort((a, b) => b.len - a.len);
-  const best = scored.find((s) => s.len >= MIN_SINGLE_LINK_CHARS) ?? scored[0]!;
-  let body = best.text;
+    const scored: { key: Key; text: string; len: number }[] = (
+      ["cross", "realLife", "career", "global", "subjectIntegration"] as const
+    ).map((key) => {
+      const text = merged(key);
+      return { key, text, len: text.replace(/\s+/g, "").length };
+    });
+    scored.sort((a, b) => b.len - a.len);
+    const best = scored.find((s) => s.len >= MIN_SINGLE_LINK_CHARS) ?? scored[0]!;
+    bestKey = best.key;
+    body = best.text;
+  }
   if (body.replace(/\s+/g, "").length < MIN_SINGLE_LINK_CHARS) {
     body = stripMarkdownSymbolsForStudents(
       isAr
@@ -901,11 +954,12 @@ function pickNonUaeSlide8(
     global: isAr ? "قضية عالمية/هدف تنمية" : "global/SDG link",
     subjectIntegration: isAr ? "دمج مواد" : "subject integration",
   };
+  const linkLabel = bestKey ? label[bestKey] : isAr ? "من المولّد المعزول" : "isolated generator";
   const notes = buildTeacherSlideNotes(
     suggestedTiming,
     isAr
-      ? `شريحة 8 — ربط واحد فقط (${label[best.key]}).`
-      : `Slide 8 — one link only (${label[best.key]}). No UAE content.`,
+      ? `شريحة 8 — ربط واحد فقط (${linkLabel}).`
+      : `Slide 8 — one link only (${linkLabel}). No UAE content.`,
     isAr,
   );
   return { body, notes };
@@ -959,13 +1013,42 @@ function applyAflDeckInjections(slides: StructuredLessonSlideModel[], afl: AflSe
   go(11, "successCriteria", afl.successCriteria);
 }
 
+/**
+ * Minimum length of a repeated chunk that counts as duplication rather than coincidental
+ * phrase reuse — long enough that ordinary domain vocabulary ("quadratic equation", "the
+ * discriminant") recurring across a body never trips this, short enough to still catch a
+ * repeated sentence or paragraph.
+ */
+const DEDUP_MIN_CHARS = 60;
+
+/**
+ * Cuts a body off at the point where it starts repeating a chunk of text already seen
+ * earlier — a model occasionally restates an earlier paragraph near the end of a slide, and
+ * merging two overlapping extractions of the same source (see mergeBodies) can produce the
+ * same shape. Left alone, that repeated block either reads as a jarring duplicate paragraph
+ * or — once the per-slide char cap below fires partway through it — gets truncated mid-
+ * sentence with a trailing ellipsis, which is worse than simply not including it.
+ */
+/** Exported for testing only — see SLIDE_BODY_LIMIT above for the same rationale. */
+export function dropRepeatedTail(s: string): string {
+  if (s.length < DEDUP_MIN_CHARS * 2) return s;
+  for (let i = DEDUP_MIN_CHARS; i <= s.length - DEDUP_MIN_CHARS; i++) {
+    const window = s.slice(i, i + DEDUP_MIN_CHARS);
+    if (s.slice(0, i).includes(window)) {
+      return s.slice(0, i).trim();
+    }
+  }
+  return s;
+}
+
 function clampSlideBodyToDeckRules(slides: StructuredLessonSlideModel[]): void {
   const aflHeavy = new Set([1, 5, 6, 7, 8, 9, 10, 11]);
   for (let i = 0; i < slides.length; i++) {
     const lim = SLIDE_BODY_LIMIT[i] ?? { chars: 2200, lines: 16 };
     const maxLines = aflHeavy.has(i) ? BULLET_MAX_LINES_WITH_AFL : BULLET_MAX_LINES;
+    const deduped = dropRepeatedTail((slides[i]!.body ?? "").trim());
     slides[i]!.body = stripMarkdownSymbolsForStudents(
-      polishBody(slides[i]!.body ?? "", lim.chars, Math.min(maxLines, lim.lines)),
+      polishBody(deduped, lim.chars, Math.min(maxLines, lim.lines)),
     );
   }
 }

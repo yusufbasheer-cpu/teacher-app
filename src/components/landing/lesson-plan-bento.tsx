@@ -17,10 +17,10 @@ import {
 import { cn } from "@/lib/utils";
 
 const teachers = [
-  { initials: "PS", bg: "#0E9484" },
-  { initials: "RK", bg: "#241A12" },
-  { initials: "AN", bg: "#0E9484" },
-  { initials: "MJ", bg: "#241A12" },
+  { initials: "PS", bg: "var(--brand)" },
+  { initials: "RK", bg: "var(--text)" },
+  { initials: "AN", bg: "var(--brand)" },
+  { initials: "MJ", bg: "var(--text)" },
 ];
 
 interface LessonPlanBentoProps {
@@ -28,7 +28,7 @@ interface LessonPlanBentoProps {
 }
 
 const bentoCardClass = cn(
-  "group relative flex flex-col justify-between overflow-hidden rounded-xl bg-muted p-4 lg:p-6 duration-300 antialiased",
+  "group relative flex flex-col justify-between overflow-hidden rounded-xl bg-sunken p-4 lg:p-6 duration-300 antialiased",
   "shadow-[inset_0_0_2px_2px_rgba(255,255,255,1),inset_0_0_0_1px_rgba(0,0,0,0.2),0px_0px_0px_1px_rgba(0,0,0,0.08),0px_1px_2px_-1px_rgba(0,0,0,0.08),0px_2px_4px_0px_rgba(0,0,0,0.06)]",
   "dark:shadow-[inset_0_0_2px_2px_rgba(255,255,255,0.04),inset_0_0_0_1px_rgba(255,255,255,0.08),0px_0px_0px_1px_rgba(255,255,255,0.06),0px_1px_2px_-1px_rgba(0,0,0,0.5),0px_2px_4px_0px_rgba(0,0,0,0.4)]",
 );
@@ -153,14 +153,14 @@ export function LessonPlanBento({ className }: LessonPlanBentoProps) {
                       <svg className="text-primary size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#0B6B5F" }}>
+                      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--brand-active)" }}>
                         Closure Activities
                       </span>
                     </motion.div>
 
                     <motion.div
                       className="bg-primary/10 border-primary/20 rounded border px-2 py-0.5 text-[9px] font-bold"
-                      style={{ color: "#0B6B5F" }}
+                      style={{ color: "var(--brand-active)" }}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={hoveredCard === 1 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
                       transition={{ type: "spring", delay: hoveredCard === 1 ? 1.8 : 0 }}
@@ -241,7 +241,7 @@ export function LessonPlanBento({ className }: LessonPlanBentoProps) {
               {/* Slide deck glyph + AI sparkle badge */}
               <div className="relative z-10 flex scale-[0.85] items-center justify-center transition-transform duration-500 ease-out">
                 <Presentation
-                  className="text-primary drop-shadow-[0_12px_24px_rgba(14,148,132,0.25)]"
+                  className="text-primary drop-shadow-[0_12px_24px_color-mix(in oklch, var(--brand) 25%, transparent)]"
                   style={{ width: 168, height: 168 }}
                   strokeWidth={1.25}
                 />
@@ -291,7 +291,7 @@ export function LessonPlanBento({ className }: LessonPlanBentoProps) {
                       {teacher.initials}
                     </div>
                   ))}
-                  <div className="border-background bg-muted text-muted-foreground flex size-10 items-center justify-center rounded-full border-2 shadow-sm">
+                  <div className="border-background bg-sunken text-muted-foreground flex size-10 items-center justify-center rounded-full border-2 shadow-sm">
                     <Plus className="size-4" />
                   </div>
                 </div>
@@ -299,19 +299,19 @@ export function LessonPlanBento({ className }: LessonPlanBentoProps) {
                 {/* Mockup UI */}
                 <div className="bg-background border-border relative flex min-h-[220px] w-full flex-col gap-4 overflow-hidden rounded-tl-2xl border-t border-l p-4 pt-8 shadow-sm">
                   <motion.div
-                    className="bg-muted mb-2 h-5 rounded-md"
+                    className="bg-sunken mb-2 h-5 rounded-md"
                     initial={{ width: "75%" }}
                     animate={hoveredCard === 3 ? { width: "80%" } : { width: "75%" }}
                     transition={{ duration: 0.7, ease: "easeOut" }}
                   />
                   <motion.div
-                    className="bg-muted/50 h-3 rounded-md"
+                    className="bg-sunken/50 h-3 rounded-md"
                     initial={{ width: "100%" }}
                     animate={hoveredCard === 3 ? { width: "95%" } : { width: "100%" }}
                     transition={{ duration: 0.7, delay: 0.075, ease: "easeOut" }}
                   />
                   <motion.div
-                    className="bg-muted/50 h-3 rounded-md"
+                    className="bg-sunken/50 h-3 rounded-md"
                     initial={{ width: "83.333333%" }}
                     animate={hoveredCard === 3 ? { width: "85%" } : { width: "83.333333%" }}
                     transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
@@ -331,7 +331,7 @@ export function LessonPlanBento({ className }: LessonPlanBentoProps) {
                   </motion.div>
 
                   <motion.div
-                    className="bg-muted/50 h-3 rounded-md"
+                    className="bg-sunken/50 h-3 rounded-md"
                     initial={{ width: "91.666667%" }}
                     animate={hoveredCard === 3 ? { width: "90%" } : { width: "91.666667%" }}
                     transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}

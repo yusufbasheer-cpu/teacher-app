@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Menu, X } from "lucide-react";
 import { isNavLinkActive } from "@/lib/app-nav-links";
 import { BORDER, NAVY, TEAL, TEXT_MUTED } from "@/lib/design-tokens";
 
-// Rendered only for signed-out visitors — AppShell swaps to AppSidebar once a
-// user session is present, so this never needs to know about auth or admin
-// roles. Same header markup as `/` (the homepage, which renders this
-// component too), so there is exactly one public-facing nav bar in the app.
+// Rendered for signed-out visitors and for signed-in visitors on public
+// pages — AppShell swaps to AppFrame (the dashboard rail) only on actual
+// dashboard routes. Same header markup as `/` (the homepage, which renders
+// this component too), so there is exactly one public-facing nav bar in the app.
 const NAV_LINKS = [
   { href: "/lesson-plan", label: "Lesson Plans" },
   { href: "/differentiated-worksheets", label: "Worksheets" },
@@ -18,7 +19,7 @@ const NAV_LINKS = [
 ] as const;
 
 const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E9484] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAF6EF]";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -38,8 +39,8 @@ export function Navbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 bg-[#FAF6EF]/90 backdrop-blur transition-shadow duration-300 ${
-        scrolled ? "shadow-[0_1px_0_rgba(36,26,18,0.06),0_8px_24px_-16px_rgba(36,26,18,0.25)]" : ""
+      className={`sticky top-0 z-50 bg-[color-mix(in_oklch,var(--surface)_90%,transparent)] backdrop-blur transition-shadow duration-300 ${
+        scrolled ? "shadow-[0_1px_0_color-mix(in oklch, var(--text) 6%, transparent),0_8px_24px_-16px_color-mix(in oklch, var(--text) 25%, transparent)]" : ""
       }`}
       style={{ borderBottom: `1px solid ${BORDER}` }}
     >
@@ -62,10 +63,10 @@ export function Navbar() {
               key={link.href}
               href={link.href}
               aria-current={isNavLinkActive(pathname, link.href) ? "page" : undefined}
-              className={`rounded-full px-3.5 py-2 text-sm font-medium transition hover:bg-stone-50 ${FOCUS_RING}`}
+              className={`rounded-full px-3.5 py-2 text-sm font-medium transition hover:bg-hover ${FOCUS_RING}`}
               style={{
-                color: isNavLinkActive(pathname, link.href) ? "#0B6B5F" : "#2b2118",
-                background: isNavLinkActive(pathname, link.href) ? "rgba(14, 148, 132,0.08)" : "transparent",
+                color: isNavLinkActive(pathname, link.href) ? "var(--brand-active)" : "var(--text)",
+                background: isNavLinkActive(pathname, link.href) ? "color-mix(in oklch, var(--brand) 8%, transparent)" : "transparent",
                 fontWeight: isNavLinkActive(pathname, link.href) ? 600 : 500,
               }}
             >
@@ -78,7 +79,7 @@ export function Navbar() {
           <Link
             href="/login"
             className={`rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-70 ${FOCUS_RING}`}
-            style={{ color: "#2b2118" }}
+            style={{ color: "var(--text)" }}
           >
             Login
           </Link>
@@ -98,16 +99,14 @@ export function Navbar() {
           aria-label="Toggle navigation menu"
           aria-expanded={menuOpen}
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg lg:hidden ${FOCUS_RING}`}
-          style={{ border: `1px solid ${BORDER}`, color: "#2b2118" }}
+          style={{ border: `1px solid ${BORDER}`, color: "var(--text)" }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
+          {menuOpen ? <X size={18} aria-hidden /> : <Menu size={18} aria-hidden />}
         </button>
 
         {menuOpen ? (
           <div
-            className="fixed inset-x-0 top-16 flex flex-col gap-1 bg-[#FAF6EF] p-4 shadow-md lg:hidden"
+            className="fixed inset-x-0 top-16 flex flex-col gap-1 bg-[var(--surface)] p-4 shadow-md lg:hidden"
             style={{ borderBottom: `1px solid ${BORDER}` }}
           >
             {NAV_LINKS.map((link) => (
@@ -116,8 +115,8 @@ export function Navbar() {
                 href={link.href}
                 className={`rounded-lg px-3 py-2.5 text-sm font-medium ${FOCUS_RING}`}
                 style={{
-                  color: isNavLinkActive(pathname, link.href) ? "#0B6B5F" : "#2b2118",
-                  background: isNavLinkActive(pathname, link.href) ? "rgba(14, 148, 132,0.08)" : "transparent",
+                  color: isNavLinkActive(pathname, link.href) ? "var(--brand-active)" : "var(--text)",
+                  background: isNavLinkActive(pathname, link.href) ? "color-mix(in oklch, var(--brand) 8%, transparent)" : "transparent",
                 }}
               >
                 {link.label}
@@ -127,7 +126,7 @@ export function Navbar() {
               <Link
                 href="/login"
                 className={`rounded-lg px-3 py-2.5 text-center text-sm font-semibold ${FOCUS_RING}`}
-                style={{ color: "#2b2118", border: `1px solid ${BORDER}` }}
+                style={{ color: "var(--text)", border: `1px solid ${BORDER}` }}
               >
                 Login
               </Link>

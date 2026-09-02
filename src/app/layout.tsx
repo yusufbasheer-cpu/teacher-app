@@ -1,46 +1,40 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Caveat, IBM_Plex_Mono, Plus_Jakarta_Sans, Poppins, Space_Grotesk } from "next/font/google";
+import { IBM_Plex_Mono, Instrument_Sans, Source_Serif_4 } from "next/font/google";
 import { ActiveSessionGuard } from "@/components/auth/active-session-guard";
 import { CookieBanner } from "@/components/layout/cookie-banner";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageTransitionWrapper } from "@/components/layout/page-transition-wrapper";
 import { SentryProvider } from "@/components/sentry-provider";
 import { PostHogProvider } from "@/providers/posthog-provider";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+/* Three faces, three jobs — see the type-role note in globals.css.
+   This replaces five families (Plus Jakarta, Poppins, Caveat, Space Grotesk,
+   Plex Mono) that were all loading on every route while only ever being used
+   on a subset of them. */
+const instrumentSans = Instrument_Sans({
   subsets: ["latin"],
-  variable: "--font-jakarta",
-  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-instrument",
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
-const caveat = Caveat({
+// Generated artifact content only (lesson plans, worksheets, papers).
+const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
-  variable: "--font-caveat",
-  weight: ["400", "600", "700"],
+  variable: "--font-source-serif",
+  weight: ["400", "600"],
+  display: "swap",
 });
 
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-  variable: "--font-poppins",
-});
-
-// Marketing-pages-only typography (see docs/architecture.md §6 — no nested
-// layout.tsx exists, so fonts load globally here but are only applied via
-// font-display/font-mono-editorial classes on the `/` homepage, /about,
-// /pricing, /faq, /blog routes).
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-space-grotesk",
-});
-
+// Data and machine facts: period numbers, quotas, dates, keyboard shortcuts.
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["500"],
   variable: "--font-plex-mono",
+  weight: ["400", "500"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -83,7 +77,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#241A12",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f8f8" },
+    { media: "(prefers-color-scheme: dark)", color: "#181c1e" },
+  ],
 };
 
 export default function RootLayout({
@@ -125,17 +122,31 @@ export default function RootLayout({
   ];
 
   return (
-    <html lang="en">
+    // The font variables must live on <html>, not <body>: `--font-sans` is
+    // composed from them at :root by the @theme block in globals.css, and a
+    // var() only defined further down the tree resolves to nothing there —
+    // which silently drops the whole stack to Times.
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+      className={`${instrumentSans.variable} ${sourceSerif.variable} ${plexMono.variable}`}
+    >
       <head>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        {/* Resolve the theme before first paint. Without this the page paints
+            light and then flips, which is worse than no dark mode at all for
+            the night-time planning session this feature exists for. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("layah:theme")||"system";var d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d);document.documentElement.style.colorScheme=d?"dark":"light";}catch(e){}})()`,
+          }}
+        />
       </head>
-      <body
-        className={`${plusJakartaSans.variable} ${caveat.variable} ${poppins.variable} ${spaceGrotesk.variable} ${plexMono.variable} min-w-0 overflow-x-hidden font-sans antialiased`}
-        style={{ color: "#241A12" }}
-      >
+      <body className="min-w-0 overflow-x-hidden font-sans antialiased">
         <SentryProvider />
         <PostHogProvider>
           <AppShell>
@@ -145,6 +156,7 @@ export default function RootLayout({
           </AppShell>
           <CookieBanner />
         </PostHogProvider>
+        <Toaster />
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       </body>
     </html>

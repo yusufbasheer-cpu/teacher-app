@@ -19,11 +19,25 @@ const STATS: Stat[] = [
   { value: 87, suffix: "", label: "Activity Sheet AFL tools" },
 ];
 
+/**
+ * Counts up to `target` once the section scrolls into view.
+ *
+ * Starts *at* the target rather than at zero. Previously every stat rendered
+ * "0+" until the section was scrolled to — so the first paint, any screenshot,
+ * and anyone with reduced motion or JS still loading all saw a wall of zeros
+ * that reads as a broken page rather than as a pending animation.
+ */
 function useCountUp(target: number, duration: number, trigger: boolean) {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(target);
 
   useEffect(() => {
     if (!trigger) return;
+    // Respect the OS preference: land on the number without animating.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setCount(target);
+      return;
+    }
+    setCount(0);
     let start = 0;
     const startTime = performance.now();
 
@@ -55,7 +69,7 @@ function StatCard({ stat, inView }: { stat: Stat; inView: boolean }) {
   const count = useCountUp(stat.value, 1500, inView);
 
   return (
-    <Card className="items-center border border-border bg-[#FFFCF7] py-7 text-center shadow-sm ring-0 transition-shadow duration-300 hover:shadow-md">
+    <Card className="items-center border border-border bg-[var(--surface-raised)] py-7 text-center shadow-sm ring-0 transition-shadow duration-300 hover:shadow-md">
       <p className="font-display text-4xl font-semibold tracking-tight text-primary sm:text-5xl">
         {count}
         {stat.suffix}

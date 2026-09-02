@@ -5,12 +5,15 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, type Variants } from "motion/react";
 import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
-import { completeEmailPostAuthLogin, completePhonePostAuthLogin } from "@/lib/auth-post-login";
+import { completeEmailPostAuthLogin } from "@/lib/auth-post-login";
+import { hasCompletedTeacherProfile } from "@/lib/user-profile";
 import { supabase } from "@/lib/supabase";
 import { sanitizeUserMessage, toUserFacingError } from "@/lib/user-facing-errors";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 const MIN_SIGNUP_MS = 3000;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type AuthMode = "login" | "signup";
 
@@ -57,7 +60,7 @@ function GoogleLogo() {
 function GoogleSpinner() {
   return (
     <svg
-      className="size-5 animate-spin text-stone-500"
+      className="size-5 animate-spin text-faint"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden
@@ -95,14 +98,12 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>(defaultMode);
-  const [identifier, setIdentifier] = useState<"email" | "phone">("email");
   const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [message, setMessage] = useState<string | null>(null);
   const [showResend, setShowResend] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -142,6 +143,10 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
         provider: "google",
         options: {
           redirectTo: window.location.origin + "/auth/callback",
+          // Ask Google to show the account chooser instead of reusing the last account.
+          queryParams: {
+            prompt: "select_account",
+          },
         },
       });
       if (oauthError) throw oauthError;
@@ -154,6 +159,10 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const onResendConfirmation = async () => {
     setError(null);
     setMessage(null);
+    if (!EMAIL_RE.test(email.trim())) {
+      setError("Enter a valid email address.");
+      return;
+    }
     setResendLoading(true);
     try {
       const { error: resendError } = await supabase.auth.resend({
@@ -177,6 +186,13 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
     setLoading(true);
 
     try {
+      const trimmedEmail = email.trim();
+      if (!EMAIL_RE.test(trimmedEmail)) {
+        setError("Enter a valid email address.");
+        setLoading(false);
+        return;
+      }
+
       if (mode === "signup") {
         // 1. Honeypot — bots fill hidden fields, humans never see it
         if (honeypot) {
@@ -211,51 +227,13 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           }
         }
 
-        if (identifier === "phone") {
-          const res = await fetch("/api/auth/signup-with-phone", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fullName: fullName.trim(), phone: phone.trim(), password }),
-          });
-          const data = (await res.json()) as {
-            access_token?: string;
-            refresh_token?: string;
-            error?: string;
-          };
-
-          if (!res.ok || !data.access_token || !data.refresh_token) {
-            setError(data.error ?? "Something went wrong creating your account.");
-            setLoading(false);
-            return;
-          }
-
-          const { error: setSessionError } = await supabase.auth.setSession({
-            access_token: data.access_token,
-            refresh_token: data.refresh_token,
-          });
-          if (setSessionError) throw setSessionError;
-
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.user) {
-            const postAuth = await completePhonePostAuthLogin(session.user.id);
-            if (!postAuth.ok) {
-              setError(postAuth.message);
-              return;
-            }
-          }
-          router.push("/lesson-plan");
-          router.refresh();
-          return;
-        }
-
         const { data, error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
+          email: trimmedEmail,
           password,
           options: {
             data: {
               full_name: fullName.trim(),
+              profile_completed: false,
             },
           },
         });
@@ -268,7 +246,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             setError(postAuth.message);
             return;
           }
-          router.push("/lesson-plan");
+          router.replace(hasCompletedTeacherProfile(data.session.user) ? "/overview" : "/onboarding");
           router.refresh();
           return;
         }
@@ -277,45 +255,9 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           "Account created. If email confirmation is enabled, check your inbox before logging in.",
         );
         setMode("login");
-      } else if (identifier === "phone") {
-        const res = await fetch("/api/auth/login-with-phone", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone: phone.trim(), password }),
-        });
-        const data = (await res.json()) as {
-          access_token?: string;
-          refresh_token?: string;
-          error?: string;
-        };
-
-        if (!res.ok || !data.access_token || !data.refresh_token) {
-          setError(data.error ?? "Invalid phone number or password.");
-          setLoading(false);
-          return;
-        }
-
-        const { error: setSessionError } = await supabase.auth.setSession({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
-        });
-        if (setSessionError) throw setSessionError;
-
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.user) {
-          const postAuth = await completePhonePostAuthLogin(session.user.id);
-          if (!postAuth.ok) {
-            setError(postAuth.message);
-            return;
-          }
-        }
-        router.push("/lesson-plan");
-        router.refresh();
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email: trimmedEmail,
           password,
         });
         if (signInError) throw signInError;
@@ -328,9 +270,10 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             setError(postAuth.message);
             return;
           }
+          router.replace(hasCompletedTeacherProfile(session.user) ? "/overview" : "/onboarding");
+          router.refresh();
+          return;
         }
-        router.push("/lesson-plan");
-        router.refresh();
       }
     } catch (err) {
       const code = typeof err === "object" && err !== null ? (err as { code?: string }).code : undefined;
@@ -349,11 +292,12 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
 
   const footerPrefix = mode === "login" ? "Need an account?" : "Already have an account?";
   const footerAction = mode === "login" ? "Sign up" : "Login";
-  const inputClass =
-    "w-full rounded-[14px] border bg-white px-4 py-3.5 text-sm outline-none transition placeholder:text-stone-400";
-  const inputStyle = { borderColor: "#D9CCB8", color: "#241A12" };
-  const onInputFocus = (e: React.FocusEvent<HTMLInputElement>) => (e.target.style.borderColor = "#0E9484");
-  const onInputBlur = (e: React.FocusEvent<HTMLInputElement>) => (e.target.style.borderColor = "#D9CCB8");
+  const inputClass = [
+    "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-[13px] text-ink",
+    "outline-none transition-[border-color,box-shadow] duration-[110ms]",
+    "placeholder:text-disabled hover:border-line-strong",
+    "focus:border-brand focus:ring-2 focus:ring-brand/25",
+  ].join(" ");
 
   return (
     <motion.div
@@ -363,10 +307,10 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       className="w-full max-w-[400px]"
     >
       <motion.div variants={itemVariants} className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#241A12" }}>
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">
           {mode === "login" ? "Teacher Login" : "Create Teacher Account"}
         </h1>
-        <p className="mt-2 text-sm" style={{ color: "#6B5D4F" }}>
+        <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
           {mode === "login"
             ? "Login to access your lesson plans."
             : "Tell us a bit about yourself to get started."}
@@ -378,24 +322,24 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           type="button"
           onClick={() => void onGoogleSignIn()}
           disabled={loading || googleLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-full border bg-white py-3.5 text-[13px] font-semibold transition-transform hover:bg-stone-50 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-70"
-          style={{ borderColor: "#dadce0", color: "#241A12" }}
+          className="flex w-full items-center justify-center gap-2.5 rounded-md border border-line bg-surface py-2.5 text-[13px] font-medium text-ink transition-colors duration-[110ms] hover:border-line-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-60"
+          style={{ borderColor: "#dadce0", color: "var(--text)" }}
         >
           {googleLoading ? <GoogleSpinner /> : <GoogleLogo />}
           <span>{googleLoading ? "Connecting…" : "Continue with Google"}</span>
         </button>
 
-        <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: "#7a6e5f" }}>
+        <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
           School teachers: Sign in with your school Google account to access your school plan
         </p>
       </motion.div>
 
       <motion.div variants={itemVariants} className="relative mb-6 flex items-center">
-        <div className="grow border-t" style={{ borderColor: "#E3D9C8" }} />
-        <span className="px-4 text-[11px] font-semibold tracking-wider uppercase" style={{ color: "#a79a87" }}>
+        <div className="grow border-t" style={{ borderColor: "var(--border)" }} />
+        <span className="px-4 text-[11px] font-semibold tracking-wider uppercase" style={{ color: "var(--text-disabled)" }}>
           Or
         </span>
-        <div className="grow border-t" style={{ borderColor: "#E3D9C8" }} />
+        <div className="grow border-t" style={{ borderColor: "var(--border)" }} />
       </motion.div>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-5">
@@ -413,7 +357,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
 
         {mode === "signup" && (
           <motion.div variants={itemVariants} className="flex flex-col gap-2">
-            <label htmlFor="full-name" className="text-sm font-medium" style={{ color: "#241A12" }}>
+            <label htmlFor="full-name" className="text-sm font-medium" style={{ color: "var(--text)" }}>
               Full name
             </label>
             <input
@@ -424,76 +368,28 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
               onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Priya Sharma"
               className={inputClass}
-              style={inputStyle}
-              onFocus={onInputFocus}
-              onBlur={onInputBlur}
               required
             />
           </motion.div>
         )}
-
-        <motion.div variants={itemVariants} className="flex gap-1 rounded-full p-1" style={{ background: "rgba(14, 148, 132,0.08)" }}>
-          {(["email", "phone"] as const).map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setIdentifier(option)}
-              className="flex-1 rounded-full py-1.5 text-xs font-semibold capitalize transition"
-              style={{
-                background: identifier === option ? "#FAF6EF" : "transparent",
-                color: identifier === option ? "#0E9484" : "#7a6e5f",
-                boxShadow: identifier === option ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-              }}
-            >
-              {option}
-            </button>
-          ))}
+        <motion.div variants={itemVariants} className="flex flex-col gap-2">
+          <label htmlFor="email" className="text-sm font-medium" style={{ color: "var(--text)" }}>
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+            className={inputClass}
+            required
+          />
         </motion.div>
 
-        {identifier === "email" ? (
-          <motion.div variants={itemVariants} className="flex flex-col gap-2">
-            <label htmlFor="email" className="text-sm font-medium" style={{ color: "#241A12" }}>
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              className={inputClass}
-              style={inputStyle}
-              onFocus={onInputFocus}
-              onBlur={onInputBlur}
-              required
-            />
-          </motion.div>
-        ) : (
-          <motion.div variants={itemVariants} className="flex flex-col gap-2">
-            <label htmlFor="phone" className="text-sm font-medium" style={{ color: "#241A12" }}>
-              Phone number
-            </label>
-            <input
-              id="phone"
-              type="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+91 98765 43210"
-              pattern="^\+?[0-9\s\-()]{7,20}$"
-              title="Enter a valid phone number, with country code if possible"
-              className={inputClass}
-              style={inputStyle}
-              onFocus={onInputFocus}
-              onBlur={onInputBlur}
-              required
-            />
-          </motion.div>
-        )}
-
         <motion.div variants={itemVariants} className="flex flex-col gap-2">
-          <label htmlFor="password" className="text-sm font-medium" style={{ color: "#241A12" }}>
+          <label htmlFor="password" className="text-sm font-medium" style={{ color: "var(--text)" }}>
             Password
           </label>
           <input
@@ -505,9 +401,6 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             placeholder="Enter your password"
             minLength={6}
             className={inputClass}
-            style={inputStyle}
-            onFocus={onInputFocus}
-            onBlur={onInputBlur}
             required
           />
         </motion.div>
@@ -525,8 +418,8 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           <button
             type="submit"
             disabled={loading || googleLoading}
-            className="w-full rounded-full py-3.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(14,148,132,0.15)] transition-transform hover:opacity-90 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-70"
-            style={{ background: "#0E9484" }}
+            className="w-full rounded-md bg-brand py-2.5 text-[13px] font-medium text-brand-on transition-colors duration-[110ms] hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+            style={{ background: "var(--brand)" }}
           >
             {loading
               ? "Please wait..."
@@ -544,20 +437,20 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           onClick={() => void onResendConfirmation()}
           disabled={resendLoading}
           className="mt-2 text-sm font-medium underline transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-70"
-          style={{ color: "#0E9484" }}
+          style={{ color: "var(--brand)" }}
         >
           {resendLoading ? "Sending…" : "Resend confirmation email"}
         </button>
       ) : null}
-      {message ? <p className="mt-3 text-sm" style={{ color: "#0B6B5F" }}>{message}</p> : null}
+      {message ? <p className="mt-3 text-sm" style={{ color: "var(--brand-active)" }}>{message}</p> : null}
 
-      <motion.div variants={itemVariants} className="mt-6 text-center text-[13px]" style={{ color: "#6B5D4F" }}>
+      <motion.div variants={itemVariants} className="mt-6 text-center text-[13px]" style={{ color: "var(--text-secondary)" }}>
         {footerPrefix}{" "}
         {linkMode ? (
           <Link
             href={mode === "login" ? "/signup" : "/login"}
             className="font-bold transition hover:underline"
-            style={{ color: "#241A12" }}
+            style={{ color: "var(--text)" }}
           >
             {footerAction}
           </Link>
@@ -577,7 +470,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
               setShowResend(false);
             }}
             className="font-bold transition hover:underline"
-            style={{ color: "#241A12" }}
+            style={{ color: "var(--text)" }}
           >
             {footerAction}
           </button>

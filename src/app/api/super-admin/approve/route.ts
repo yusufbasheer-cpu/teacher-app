@@ -93,32 +93,32 @@ export async function POST(req: Request) {
       ].join("\n"),
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: #241A12; padding: 24px; border-radius: 12px 12px 0 0;">
-            <h1 style="color: #0E9484; margin: 0; font-size: 20px;">School Account Activated!</h1>
+          <div style="background: var(--text); padding: 24px; border-radius: 12px 12px 0 0;">
+            <h1 style="color: var(--brand); margin: 0; font-size: 20px;">School Account Activated!</h1>
           </div>
-          <div style="background: #FFFCF7; border: 1px solid #E3D9C8; border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
+          <div style="background: var(--surface-raised); border: 1px solid var(--border); border-top: none; padding: 24px; border-radius: 0 0 12px 12px;">
             <p>Dear School Administrator,</p>
             <p>Great news! Your school account for <strong>${reg.school_name}</strong> has been approved and activated.</p>
             <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin: 16px 0;">
-              <tr style="border-bottom: 1px solid #F1E9DC;">
-                <td style="padding: 10px 8px; color: #7a6e5f;">School Name</td>
-                <td style="padding: 10px 8px; color: #241A12; font-weight: 700;">${reg.school_name}</td>
+              <tr style="border-bottom: 1px solid var(--canvas);">
+                <td style="padding: 10px 8px; color: var(--text-secondary);">School Name</td>
+                <td style="padding: 10px 8px; color: var(--text); font-weight: 700;">${reg.school_name}</td>
               </tr>
-              <tr style="border-bottom: 1px solid #F1E9DC;">
-                <td style="padding: 10px 8px; color: #7a6e5f;">Plan</td>
-                <td style="padding: 10px 8px; color: #0E9484; font-weight: 700;">${reg.plan_selected}</td>
+              <tr style="border-bottom: 1px solid var(--canvas);">
+                <td style="padding: 10px 8px; color: var(--text-secondary);">Plan</td>
+                <td style="padding: 10px 8px; color: var(--brand); font-weight: 700;">${reg.plan_selected}</td>
               </tr>
-              <tr style="border-bottom: 1px solid #F1E9DC;">
-                <td style="padding: 10px 8px; color: #7a6e5f;">Email Domain</td>
-                <td style="padding: 10px 8px; color: #241A12;">@${reg.email_domain}</td>
+              <tr style="border-bottom: 1px solid var(--canvas);">
+                <td style="padding: 10px 8px; color: var(--text-secondary);">Email Domain</td>
+                <td style="padding: 10px 8px; color: var(--text);">@${reg.email_domain}</td>
               </tr>
               <tr>
-                <td style="padding: 10px 8px; color: #7a6e5f;">Max Teachers</td>
-                <td style="padding: 10px 8px; color: #241A12;">${maxTeachers === 999 ? "Unlimited" : maxTeachers}</td>
+                <td style="padding: 10px 8px; color: var(--text-secondary);">Max Teachers</td>
+                <td style="padding: 10px 8px; color: var(--text);">${maxTeachers === 999 ? "Unlimited" : maxTeachers}</td>
               </tr>
             </table>
             <p>Teachers with <strong>@${reg.email_domain}</strong> email addresses can now sign in with Google to automatically join your school plan.</p>
-            <p><a href="https://layah.in/school-admin" style="color: #0E9484;">Manage your school →</a></p>
+            <p><a href="https://layah.in/school-admin" style="color: var(--brand);">Manage your school →</a></p>
           </div>
         </div>
       `.trim(),

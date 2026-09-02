@@ -3,56 +3,126 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { clearActiveSession } from "@/lib/active-session";
+import { isProtectedClientRoute } from "@/lib/protected-routes";
 import { supabase } from "@/lib/supabase";
-import { BG_SOFT } from "@/lib/design-tokens";
-import { isProtectedAppPath } from "@/lib/protected-routes";
+import { hasCompletedTeacherProfile } from "@/lib/user-profile";
 import { Navbar } from "./navbar";
-import { AppSidebar } from "./app-sidebar";
+import { AppFrame } from "@/components/app/app-frame";
 
-/**
- * Dashboard routes beyond PROTECTED_APP_PATHS (protected-routes.ts) — pages
- * that only make sense signed in, but aren't AI-generation routes.
- */
-function isProtectedClientRoute(pathname: string): boolean {
-  return (
-    pathname === "/dashboard" ||
-    pathname === "/overview" ||
-    pathname === "/settings" ||
-    pathname === "/school-admin" ||
-    pathname === "/hod-dashboard" ||
-    isProtectedAppPath(pathname)
-  );
+function isAuthRoute(pathname: string): boolean {
+  return pathname === "/login" || pathname === "/signup" || pathname.startsWith("/auth");
 }
 
-/** Chooses the page chrome: no header on the homepage (`/`, which renders
- * its own Navbar), the marketing top nav for signed-out visitors (or a
- * signed-in visitor on a non-dashboard page — /about, /pricing, etc. — so the
- * app sidebar doesn't leak onto public pages), or the app sidebar on an
- * actual dashboard route once a session is present. */
+/**
+ * Chooses the page chrome.
+ *
+ * - `/` and `/super-admin` render their own shells (the marketing homepage and
+ *   the operator console) and are passed through untouched.
+ * - Signed out: the marketing top nav.
+ * - Signed in: the app frame — rail, top bar, command palette.
+ *
+ * The session is resolved before deciding, and nothing is rendered in the
+ * meantime, so the app never paints signed-out chrome and then swaps it for
+ * signed-in chrome half a second later.
+ */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
+  const [resolved, setResolved] = useState(false);
 
   useEffect(() => {
-    const init = async () => {
+    let cancelled = false;
+
+    const syncAuthAndHistory = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+
+      if (cancelled) return;
+
+      if (session?.user && isAuthRoute(window.location.pathname)) {
+        // Back/forward cache can resurrect an auth page while the user is still
+        // signed in. Treat that as a logout boundary so browser history does not
+        // keep shuttling between a live dashboard and a stale login page.
+        try {
+          await clearActiveSession(session.user.id);
+        } catch {
+          /* ignore â€” local sign-out below still clears this device */
+        }
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch {
+          /* ignore â€” redirect below is the important part */
+        }
+        if (!cancelled) {
+          setUser(null);
+          setResolved(true);
+          window.location.href = "/login";
+        }
+        return;
+      }
+
+      if (!session?.user && isProtectedClientRoute(window.location.pathname)) {
+        // If a protected page is restored from history after logout, do not let
+        // the cached UI linger â€” send the user back to the login screen.
+        setUser(null);
+        setResolved(true);
+        window.location.replace("/login");
+        return;
+      }
+
+      if (
+        session?.user &&
+        !hasCompletedTeacherProfile(session.user) &&
+        window.location.pathname !== "/onboarding"
+      ) {
+        setUser(session.user);
+        setResolved(true);
+        window.location.replace("/onboarding");
+        return;
+      }
+
       setUser(session?.user ?? null);
+      setResolved(true);
     };
 
-    void init();
+    void syncAuthAndHistory();
+
+    const onHistoryNavigate = () => {
+      void syncAuthAndHistory();
+    };
+
+    window.addEventListener("pageshow", onHistoryNavigate);
+    window.addEventListener("popstate", onHistoryNavigate);
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
       setUser(session?.user ?? null);
+      setResolved(true);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("pageshow", onHistoryNavigate);
+      window.removeEventListener("popstate", onHistoryNavigate);
+      subscription.unsubscribe();
+    };
+  }, [pathname]);
 
-  if (pathname === "/" || pathname.startsWith("/super-admin")) {
+  const ownChrome = pathname === "/" || pathname.startsWith("/super-admin");
+  if (ownChrome) return <>{children}</>;
+
+  if (!resolved) {
+    // Hold the frame's shape rather than flashing an unstyled page. No spinner:
+    // this resolves from local storage in a few milliseconds, and a spinner
+    // that appears and vanishes reads as jank.
+    return <div className="min-h-screen bg-canvas" aria-hidden />;
+  }
+
+  if (pathname === "/onboarding") {
     return <>{children}</>;
   }
 
@@ -65,18 +135,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return (
-    <div className="flex min-h-screen">
-      <AppSidebar user={user} />
-      {/* Canvas behind the cards. Same warm-cream family as the sidebar
-          (BG_SOFT is a shade darker than the sidebar/card cream BG) so the
-          two form one continuous surface instead of a cream sidebar sitting
-          next to an unrelated gray page — this is the single source of truth
-          for the authenticated app's background; do not re-override it per
-          page. */}
-      <div className="min-h-screen min-w-0 flex-1" style={{ background: BG_SOFT }}>
-        {children}
-      </div>
-    </div>
-  );
+  return <AppFrame user={user}>{children}</AppFrame>;
 }

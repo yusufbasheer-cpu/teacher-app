@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/panel";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { AnimatePresence, motion } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -8,6 +11,7 @@ import {
   BookOpen,
   CheckCircle2,
   ClipboardCheck,
+  Download,
   FileStack,
   PencilLine,
   Presentation as PresentationIcon,
@@ -165,8 +169,8 @@ function PptImageProgressCard({
       style={{
         marginTop: 16,
         borderRadius: 14,
-        border: "1px solid rgba(14, 148, 132,0.3)",
-        background: "linear-gradient(135deg, #241A12 0%, #3a2a1e 100%)",
+        border: "1px solid color-mix(in oklch, var(--brand) 30%, transparent)",
+        background: "linear-gradient(135deg, var(--text) 0%, var(--l-gray-11) 100%)",
         padding: "20px 24px",
         color: "#fff",
       }}
@@ -196,14 +200,14 @@ function PptImageProgressCard({
             style={{
               height: "100%",
               width: `${(imgCount / TOTAL_IMAGES) * 100}%`,
-              background: "linear-gradient(90deg,#0E9484,#00e8c3)",
+              background: "linear-gradient(90deg,var(--brand),#00e8c3)",
               borderRadius: 99,
-              boxShadow: "0 0 8px rgba(14, 148, 132,0.6)",
+              boxShadow: "0 0 8px color-mix(in oklch, var(--brand) 60%, transparent)",
               transition: "width 0.8s ease",
             }}
           />
         </div>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#0E9484", minWidth: 52, textAlign: "right" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", minWidth: 52, textAlign: "right" }}>
           {imgCount}/{TOTAL_IMAGES}
         </span>
       </div>
@@ -221,7 +225,7 @@ function PptImageProgressCard({
       {allDone ? (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 18 }}>✅</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#0E9484" }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)" }}>
             All done!
           </span>
         </div>
@@ -274,7 +278,7 @@ export function TeacherPackageViewer({
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
   const [busy, setBusy] = useState<ExportKey | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportError, setExportError] = useErrorToast();
 
   const showTeacherDownloads = hasTeacherPackageContent(lessonPlan);
   const hasPpt = hasSectionContent(lessonPlan, "PPT Slide Content");
@@ -554,59 +558,59 @@ export function TeacherPackageViewer({
   const overviewCards = rawOverviewCards.filter((c): c is OverviewCard => c !== null);
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6">
-      {/* ══════════ SUCCESS HEADER ══════════ */}
-      <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-teal-100 bg-[#FAF6EF] p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-600">
-            <CheckCircle2 size={22} />
-          </span>
-          <div>
-            <h2 className="text-lg font-bold text-stone-900 sm:text-xl">Teacher Package Ready</h2>
-            <p className="mt-1 text-sm text-stone-600">
-              Your lesson plan, PPT, worksheets, homework, assessment, and teacher notes have been
-              generated successfully.
-            </p>
+    <div className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-6">
+      {/* Was a full-width banner announcing success and re-listing every
+          artifact by name — a paragraph of confirmation for something the
+          screen already demonstrates. The heading now names the lesson, which
+          is the useful fact, and the actions sit where the eye lands. */}
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="mb-1 flex items-center gap-1.5">
+            <CheckCircle2 className="size-3.5 shrink-0 text-brand-text" aria-hidden />
+            <span className="font-mono text-[10px] uppercase tracking-wider text-brand-text">
+              Package ready
+            </span>
           </div>
+          <h1 className="truncate text-[19px] font-semibold leading-tight tracking-[-0.015em] text-ink">
+            {topic}
+          </h1>
+          <p className="mt-0.5 text-[12px] text-faint">
+            {[subject, grade, curriculumFramework].filter(Boolean).join(" · ")}
+          </p>
         </div>
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+
+        <div className="flex shrink-0 items-center gap-2">
           {onRegenerate ? (
-            <button
-              type="button"
-              onClick={onRegenerate}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-stone-200 bg-[#FAF6EF] px-4 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:bg-stone-50"
-            >
-              Regenerate
-            </button>
+            <Button variant="ghost" size="lg" onClick={onRegenerate}>
+              Edit and regenerate
+            </Button>
           ) : null}
           {showTeacherDownloads ? (
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={onDownloadZip}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-50"
-            >
-              {busy === "zip" ? "Building ZIP…" : "Download ZIP"}
-            </button>
+            <Button size="lg" disabled={busy !== null} onClick={onDownloadZip}>
+              <Download />
+              {busy === "zip" ? "Building ZIP…" : "Download all"}
+            </Button>
           ) : null}
         </div>
       </div>
 
       {exportError ? (
-        <p className="animate-shake mb-4 text-sm text-red-600">{exportError}</p>
+        <Notice tone="danger" className="animate-shake mb-3">
+          {exportError}
+        </Notice>
       ) : null}
       {parseNotice ? (
-        <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <Notice tone="generated" className="mb-3">
           {parseNotice}
-        </p>
+        </Notice>
       ) : null}
 
       {!showTeacherDownloads ? (
-        <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          File downloads (PPT, Word, and ZIP) are available when your plan includes at least one
-          teacher-package section (lesson plan, slides, worksheet, and so on). Legacy-format plans
-          cannot be exported here — generate a new package to unlock downloads.
-        </p>
+        <Notice tone="generated" className="mb-3">
+          Downloads open up once your package includes at least one teacher section — a plan,
+          slides, a worksheet and so on. Plans saved in the older format can&apos;t be exported;
+          generate a new one to unlock them.
+        </Notice>
       ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -614,8 +618,8 @@ export function TeacherPackageViewer({
         <aside className="space-y-6 lg:col-span-4">
           {overviewCards.length > 0 ? (
             <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">
-                Package overview
+              <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-disabled">
+                In this package
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
                 {overviewCards.map((card) => {
@@ -624,31 +628,24 @@ export function TeacherPackageViewer({
                   return (
                     <div
                       key={card.key}
-                      className="rounded-xl border border-stone-200 bg-[#FAF6EF] p-4 shadow-sm transition-shadow hover:shadow-md"
+                      className="rounded-md border border-line-subtle bg-surface p-2.5 transition-colors duration-[110ms] hover:border-line-strong"
                     >
                       <div className="flex items-start gap-3">
-                        <span
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                            isViolet ? "bg-violet-50 text-violet-600" : "bg-teal-50 text-teal-600"
-                          }`}
-                        >
-                          <Icon size={18} />
+                        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-sm bg-sunken text-faint">
+                          <Icon size={13} />
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-stone-900">{card.title}</p>
-                          <p className="mt-0.5 text-xs text-stone-600">{card.description}</p>
-                          <button
-                            type="button"
+                          <p className="text-[13px] font-medium text-ink">{card.title}</p>
+                          <p className="mt-0.5 text-[11px] text-faint">{card.description}</p>
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            className="mt-1.5"
                             disabled={busy !== null}
                             onClick={card.onDownload}
-                            className={`mt-3 inline-flex min-h-8 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition disabled:opacity-50 ${
-                              isViolet
-                                ? "border-violet-300 text-violet-700 hover:bg-violet-50"
-                                : "border-teal-600 text-teal-700 hover:bg-teal-50"
-                            }`}
                           >
                             {busy === card.key ? "Preparing…" : "Download"}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -665,23 +662,14 @@ export function TeacherPackageViewer({
           {onSave || onSendToDifferentiatedPack ? (
             <div className="space-y-2">
               {onSave ? (
-                <button
-                  type="button"
-                  onClick={onSave}
-                  disabled={saving}
-                  className="inline-flex w-full min-h-10 items-center justify-center rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {saving ? "Saving..." : "Save Lesson Plan"}
-                </button>
+                <Button variant="outline" block onClick={onSave} disabled={saving}>
+                  {saving ? "Saving…" : "Save to my lessons"}
+                </Button>
               ) : null}
               {onSendToDifferentiatedPack ? (
-                <button
-                  type="button"
-                  onClick={onSendToDifferentiatedPack}
-                  className="inline-flex w-full min-h-10 items-center justify-center rounded-xl border-2 border-emerald-600 bg-emerald-50 px-4 text-sm font-semibold text-emerald-950 shadow-sm transition hover:bg-emerald-100"
-                >
-                  Generate Differentiated Worksheet Pack
-                </button>
+                <Button variant="ghost" block onClick={onSendToDifferentiatedPack}>
+                  Send to worksheet pack
+                </Button>
               ) : null}
             </div>
           ) : null}
@@ -689,65 +677,58 @@ export function TeacherPackageViewer({
 
         {/* ══════════ MAIN PREVIEW ══════════ */}
         <div className="lg:col-span-8">
-          <div className="overflow-x-auto pb-1">
-            <div
-              className="flex min-w-0 gap-2 border-b border-stone-200 pb-3"
-              role="tablist"
-              aria-label="Teacher package sections"
-            >
-              {sectionKeys.map((key) => {
-                const selected = key === activeKey;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    onClick={() => setActiveKey(key)}
-                    className={`relative shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 min-h-10 ${
-                      selected
-                        ? "text-white"
-                        : "border border-stone-200 bg-[#FAF6EF] text-stone-700 hover:bg-stone-50"
+          {/* Section navigation. Was a row of pill buttons with a spring-
+              animated green blob sliding between them; the package's sections
+              are a *sequence* (starter → main → assessment → homework), so the
+              ruled margin the composer uses carries that better than pills. */}
+          <div
+            className="flex gap-0.5 overflow-x-auto border-b border-line-subtle"
+            role="tablist"
+            aria-label="Package sections"
+          >
+            {sectionKeys.map((key) => {
+              const selected = key === activeKey;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => setActiveKey(key)}
+                  className={`relative shrink-0 px-3 py-2 text-[13px] transition-colors duration-[110ms] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand ${
+                    selected
+                      ? "font-medium text-ink"
+                      : "text-faint hover:text-muted"
+                  }`}
+                >
+                  {getSectionTabLabel(key)}
+                  <span
+                    aria-hidden
+                    className={`absolute inset-x-2 bottom-[-1px] h-[2px] rounded-full bg-brand transition-opacity duration-[110ms] ${
+                      selected ? "opacity-100" : "opacity-0"
                     }`}
-                  >
-                    {selected ? (
-                      <motion.span
-                        layoutId="teacher-package-active-tab"
-                        className="absolute inset-0 rounded-full bg-teal-600 shadow-md"
-                        transition={{ type: "spring", stiffness: 500, damping: 34 }}
-                      />
-                    ) : null}
-                    <span className="relative">{getSectionTabLabel(key)}</span>
-                  </button>
-                );
-              })}
-            </div>
+                  />
+                </button>
+              );
+            })}
           </div>
 
           <article
-            className="mt-4 overflow-hidden rounded-2xl border border-stone-200 bg-[#FAF6EF] p-5 shadow-sm md:p-6"
+            className="on-surface mt-4 overflow-hidden rounded-lg border border-line-subtle bg-surface p-4 md:p-6"
             role="tabpanel"
           >
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.div
                 key={activeKey}
-                initial={{ opacity: 0, x: 28 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -28 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
               >
-                <div className="flex flex-col gap-1 border-b border-stone-200 pb-3 md:flex-row md:items-end md:justify-between">
-                  <div>
-                    <h4 className="text-lg font-bold text-stone-900">
-                      {activeKey ? getSectionTabLabel(activeKey) : "Section"}
-                    </h4>
-                  </div>
-                </div>
-
                 {activeKey === "PPT Slide Content" && hasPpt ? (
-                  <div className="mt-4 border-b border-stone-200 pb-4">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">
-                      Presentation template
+                  <div className="mb-4 border-b border-line-subtle pb-4">
+                    <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-disabled">
+                      Slide template
                     </p>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                       {PPT_THEME_CARDS.map((t) => {
@@ -758,19 +739,21 @@ export function TeacherPackageViewer({
                             type="button"
                             onClick={() => onPptThemeChange?.(t.id)}
                             aria-pressed={selected}
-                            className={`rounded-xl border-2 bg-[#FAF6EF] p-2.5 text-left shadow-sm transition hover:shadow-md ${
-                              selected ? "border-teal-500 ring-2 ring-teal-100" : "border-stone-200 hover:border-stone-300"
+                            className={`rounded-md border bg-surface p-2 text-left transition-colors duration-[110ms] ${
+                              selected
+                                ? "border-brand bg-brand-subtle"
+                                : "border-line-subtle hover:border-line-strong"
                             }`}
                           >
-                            <div className="mb-2 flex h-12 gap-1 overflow-hidden rounded-lg" aria-hidden>
+                            <div className="mb-1.5 flex h-10 gap-0.5 overflow-hidden rounded-sm" aria-hidden>
                               {t.preview.map((hex) => (
                                 <span key={hex} className="h-full min-w-0 flex-1" style={{ backgroundColor: `#${hex}` }} />
                               ))}
                             </div>
-                            <p className="text-[11px] font-medium uppercase tracking-wide text-stone-400">
-                              Template {t.themeNumber}
+                            <p className="font-mono text-[10px] uppercase tracking-wider text-disabled">
+                              {t.themeNumber}
                             </p>
-                            <p className="text-xs font-semibold text-stone-900">{t.name}</p>
+                            <p className="truncate text-[12px] font-medium text-ink">{t.name}</p>
                           </button>
                         );
                       })}
@@ -780,14 +763,12 @@ export function TeacherPackageViewer({
 
                 <div className="mt-4 grid max-h-[min(70vh,780px)] gap-4 overflow-y-auto lg:grid-cols-[1fr_min(280px,32%)]">
                   <div className="min-h-0 min-w-0 overflow-y-auto">
-                    <div className="prose prose-slate prose-sm max-w-none prose-headings:font-bold prose-headings:text-stone-900 prose-p:text-stone-600 prose-li:text-stone-600 prose-strong:text-stone-900 sm:prose-base">
-                      {renderedActiveContent}
-                    </div>
+                    <div className="artifact">{renderedActiveContent}</div>
                   </div>
                   {activeImageList.length > 0 ? (
-                    <aside className="flex min-h-0 flex-col gap-3 border-t border-stone-100 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-                        Section illustration
+                    <aside className="flex min-h-0 flex-col gap-3 border-t border-line-subtle pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-disabled">
+                        Illustration
                       </p>
                       <div className="space-y-3 overflow-y-auto">
                         {activeImageList.map((src) => (
@@ -796,7 +777,7 @@ export function TeacherPackageViewer({
                             href={src}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block overflow-hidden rounded-lg border border-stone-200 bg-stone-50 shadow-sm ring-teal-500 transition hover:ring-2"
+                            className="block overflow-hidden rounded-md border border-line-subtle bg-sunken transition-colors hover:border-brand"
                           >
                             <img
                               src={src}

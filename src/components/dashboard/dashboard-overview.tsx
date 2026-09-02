@@ -8,6 +8,7 @@ import { BookOpen, FileStack, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { resolveLessonTitle, resolveLessonTopicNote } from "@/lib/lesson-plan";
 import { useUserUsage } from "@/hooks/use-user-usage";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { PLANS } from "@/lib/plans";
 import { toUserFacingError } from "@/lib/user-facing-errors";
 import { PageHeader } from "@/components/layout/page-header";
@@ -16,7 +17,7 @@ import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
 import { InView } from "@/components/motion-primitives/in-view";
 
 const CARD_CLASS =
-  "rounded-2xl border border-[#E8DFD1] bg-white p-5 shadow-[0px_4px_20px_rgba(36,26,18,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0px_8px_28px_rgba(36,26,18,0.09)]";
+  "rounded-2xl border border-[var(--border-subtle)] bg-surface p-5 shadow-[0px_4px_20px_color-mix(in oklch, var(--text) 6%, transparent)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0px_8px_28px_color-mix(in oklch, var(--text) 9%, transparent)]";
 
 const cardGroupVariants = {
   container: {
@@ -40,15 +41,15 @@ type SavedLesson = {
   created_at: string;
 };
 
-const TEAL = "#0E9484";
-const NAVY = "#241A12";
+const TEAL = "var(--brand)";
+const NAVY = "var(--text)";
 
 export function DashboardOverview() {
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [lessons, setLessons] = useState<SavedLesson[]>([]);
   const [loadingLessons, setLoadingLessons] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
 
   const { usage, loading: usageLoading } = useUserUsage(Boolean(user));
 
@@ -103,7 +104,7 @@ export function DashboardOverview() {
 
   if (checkingAuth) {
     return (
-      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 shadow-[0px_4px_20px_rgba(36,26,18,0.06)]">
+      <div className="rounded-3xl border border-[var(--border-subtle)] bg-surface p-6 shadow-[0px_4px_20px_color-mix(in oklch, var(--text) 6%, transparent)]">
         <PageLoader label="Loading your dashboard…" />
       </div>
     );
@@ -111,12 +112,12 @@ export function DashboardOverview() {
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-[#E8DFD1] bg-white p-6 shadow-[0px_4px_20px_rgba(36,26,18,0.06)]">
-        <h2 className="text-xl font-semibold text-stone-900">Login required</h2>
-        <p className="mt-2 text-sm text-stone-600">Please log in to see your dashboard.</p>
+      <div className="rounded-3xl border border-[var(--border-subtle)] bg-surface p-6 shadow-[0px_4px_20px_color-mix(in oklch, var(--text) 6%, transparent)]">
+        <h2 className="text-xl font-semibold text-ink">Login required</h2>
+        <p className="mt-2 text-sm text-muted">Please log in to see your dashboard.</p>
         <Link
           href="/login"
-          className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
+          className="mt-5 inline-flex rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--brand-active)]"
         >
           Go to Login
         </Link>
@@ -142,10 +143,10 @@ export function DashboardOverview() {
       <AnimatedGroup variants={cardGroupVariants} className="grid gap-4 sm:grid-cols-3">
         <div className={CARD_CLASS}>
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "rgba(14,148,132,0.1)", color: TEAL }}>
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL }}>
               <Sparkles size={18} />
             </span>
-            <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Plan</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-faint">Plan</p>
           </div>
           <p className="mt-3 text-2xl font-bold" style={{ color: NAVY }}>
             {usageLoading ? "…" : planLabel}
@@ -154,10 +155,10 @@ export function DashboardOverview() {
 
         <div className={CARD_CLASS}>
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "rgba(14,148,132,0.1)", color: TEAL }}>
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL }}>
               <Sparkles size={18} />
             </span>
-            <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-faint">
               Generations left this month
             </p>
           </div>
@@ -173,7 +174,7 @@ export function DashboardOverview() {
             )}
           </p>
           {usage && !usage.unlimited && usage.generationsLimit != null ? (
-            <p className="mt-1 text-xs text-stone-500">
+            <p className="mt-1 text-xs text-faint">
               {usage.generationsUsed} of {usage.generationsLimit} used
             </p>
           ) : null}
@@ -181,10 +182,10 @@ export function DashboardOverview() {
 
         <div className={CARD_CLASS}>
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "rgba(14,148,132,0.1)", color: TEAL }}>
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL }}>
               <BookOpen size={18} />
             </span>
-            <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-faint">
               Lessons saved
             </p>
           </div>
@@ -199,22 +200,22 @@ export function DashboardOverview() {
       ) : null}
 
       {/* Lessons table */}
-      <div className="rounded-3xl border border-[#E8DFD1] bg-white shadow-[0px_4px_20px_rgba(36,26,18,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0px_8px_28px_rgba(36,26,18,0.09)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E8DFD1] px-5 py-4">
+      <div className="rounded-3xl border border-[var(--border-subtle)] bg-surface shadow-[0px_4px_20px_color-mix(in oklch, var(--text) 6%, transparent)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0px_8px_28px_color-mix(in oklch, var(--text) 9%, transparent)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold text-stone-900">My Lessons</h2>
-            <p className="mt-0.5 text-xs text-stone-500">Your most recently generated lessons.</p>
+            <h2 className="text-base font-semibold text-ink">My Lessons</h2>
+            <p className="mt-0.5 text-xs text-faint">Your most recently generated lessons.</p>
           </div>
           <div className="flex gap-2">
             <Link
               href="/my-lesson-plans"
-              className="rounded-xl border border-[#E8DFD1] bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+              className="rounded-xl border border-[var(--border-subtle)] bg-surface px-3 py-2 text-xs font-semibold text-muted hover:bg-hover"
             >
               View all
             </Link>
             <Link
               href="/lesson-plan"
-              className="rounded-xl bg-[#0E9484] px-3 py-2 text-xs font-semibold text-white hover:bg-[#0B6B5F]"
+              className="rounded-xl bg-[var(--brand)] px-3 py-2 text-xs font-semibold text-white hover:bg-[var(--brand-active)]"
             >
               + New Lesson
             </Link>
@@ -224,7 +225,7 @@ export function DashboardOverview() {
         {loadingLessons ? (
           <div className="px-5 py-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-6 border-b border-stone-50 py-3.5 last:border-0">
+              <div key={i} className="flex items-center gap-6 border-b border-line-subtle py-3.5 last:border-0">
                 <Skeleton className="h-4 w-1/3" />
                 <Skeleton className="h-4 w-16" />
                 <Skeleton className="h-4 w-12" />
@@ -244,7 +245,7 @@ export function DashboardOverview() {
                 animate={{ opacity: [0.55, 0.85, 0.55], scale: [1, 1.06, 1] }}
                 transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
               >
-                <FileStack className="text-stone-300" size={28} />
+                <FileStack className="text-disabled" size={28} />
               </motion.div>
             </InView>
             <InView
@@ -252,8 +253,8 @@ export function DashboardOverview() {
               transition={{ duration: 0.35, delay: 0.15 }}
               once
             >
-              <p className="mt-2 text-sm font-medium text-stone-700">No saved lesson plans yet</p>
-              <p className="mt-1 text-xs text-stone-500">
+              <p className="mt-2 text-sm font-medium text-muted">No saved lesson plans yet</p>
+              <p className="mt-1 text-xs text-faint">
                 Generate a lesson plan and it will appear here automatically.
               </p>
             </InView>
@@ -262,7 +263,7 @@ export function DashboardOverview() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-stone-100 text-xs font-semibold uppercase tracking-wide text-stone-500">
+                <tr className="border-b border-line-subtle text-xs font-semibold uppercase tracking-wide text-faint">
                   <th className="px-5 py-3">Title</th>
                   <th className="px-5 py-3">Subject</th>
                   <th className="px-5 py-3">Grade</th>
@@ -272,20 +273,20 @@ export function DashboardOverview() {
               </thead>
               <tbody>
                 {recentLessons.map((lesson) => (
-                  <tr key={lesson.id} className="border-b border-stone-50 last:border-0 hover:bg-stone-50/60">
+                  <tr key={lesson.id} className="border-b border-line-subtle last:border-0 hover:bg-hover/60">
                     <td className="max-w-xs px-5 py-3">
-                      <p className="truncate font-medium text-stone-900">
+                      <p className="truncate font-medium text-ink">
                         {resolveLessonTitle(lesson.topic, lesson.chapter, lesson.subject)}
                       </p>
                       {resolveLessonTopicNote(lesson.topic, lesson.chapter) ? (
-                        <p className="truncate text-xs text-stone-500">
+                        <p className="truncate text-xs text-faint">
                           Topic: {resolveLessonTopicNote(lesson.topic, lesson.chapter)}
                         </p>
                       ) : null}
                     </td>
-                    <td className="px-5 py-3 text-stone-600">{lesson.subject}</td>
-                    <td className="px-5 py-3 text-stone-600">{lesson.grade}</td>
-                    <td className="px-5 py-3 text-stone-500">
+                    <td className="px-5 py-3 text-muted">{lesson.subject}</td>
+                    <td className="px-5 py-3 text-muted">{lesson.grade}</td>
+                    <td className="px-5 py-3 text-faint">
                       {new Date(lesson.created_at).toLocaleDateString("en-GB", {
                         day: "numeric",
                         month: "short",
@@ -295,7 +296,7 @@ export function DashboardOverview() {
                     <td className="px-5 py-3 text-right">
                       <Link
                         href={`/my-lesson-plans/${lesson.id}`}
-                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors duration-150 hover:bg-[#0E9484]/10"
+                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors duration-150 hover:bg-[color-mix(in_oklch,var(--brand)_10%,transparent)]"
                         style={{ color: TEAL }}
                       >
                         View →

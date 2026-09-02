@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/marketing/section-label";
+import { useErrorToast } from "@/hooks/use-error-toast";
 
 const ROLES = ["Teacher", "Head of Department", "Principal", "School Admin", "Other"];
 
@@ -19,7 +20,7 @@ export function FeedbackSection() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -52,7 +52,7 @@ export function BackButtonLogoutModal() {
       aria-modal="true"
       aria-labelledby="back-logout-title"
       className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-      style={{ background: "rgba(36, 26, 18, 0.45)" }}
+      style={{ background: "color-mix(in oklch, var(--text) 45%, transparent)" }}
     >
       <div
         className="w-full max-w-sm rounded-2xl p-6 shadow-xl"

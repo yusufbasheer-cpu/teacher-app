@@ -1,6 +1,9 @@
+"use client";
+
 import type { ReactNode } from "react";
-import { ProBadge } from "@/components/premium/pro-badge";
-import { NAVY, TEAL, TEXT_MUTED } from "@/lib/design-tokens";
+import { Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Disclosure } from "@/components/ui/panel";
 
 type LockedFeaturePanelProps = {
   title: string;
@@ -10,41 +13,49 @@ type LockedFeaturePanelProps = {
   children?: ReactNode;
 };
 
-/** Shared "visible but disabled" treatment for a Pro-only section that
- * should still communicate what it does — Source Content upload, AFL,
- * Teaching & Learning Strategy. Never hides the feature; always explains it
- * and offers a clear way to unlock it. Reused verbatim everywhere this
- * pattern applies so the platform has one consistent premium-lock look. */
-export function LockedFeaturePanel({ title, description, onUpgrade, children }: LockedFeaturePanelProps) {
+/**
+ * The one treatment for a Pro-only section.
+ *
+ * Never hides the feature — a teacher should be able to see what they'd get —
+ * but the preview is now collapsed behind a disclosure rather than expanded by
+ * default. The old panel listed all ten teaching strategies inline, so the
+ * single largest block on the composer was a feature the user couldn't use.
+ * Collapsed, it announces itself in one row and expands only if they're
+ * curious, which is the right weight for an upsell inside a working tool.
+ *
+ * Matches the shape of the unlocked `Disclosure` beside it so locked and
+ * unlocked sections read as the same kind of thing.
+ */
+export function LockedFeaturePanel({
+  title,
+  description,
+  onUpgrade,
+  children,
+}: LockedFeaturePanelProps) {
   return (
-    <div
-      className="rounded-2xl border border-dashed p-4 sm:p-5"
-      style={{ borderColor: "#E8DFD1", background: "rgba(36, 26, 18, 0.02)" }}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-semibold" style={{ color: NAVY }}>
+    <Disclosure
+      title={
+        <span className="flex items-center gap-1.5">
+          <Lock className="size-3 text-gen-text" aria-hidden />
           {title}
-        </h3>
-        <ProBadge />
-      </div>
-      <p className="mt-1.5 text-sm leading-relaxed" style={{ color: TEXT_MUTED }}>
-        {description}
-      </p>
+          <span className="rounded-sm border border-gen-border/50 bg-gen-subtle px-1 py-px text-[10px] font-semibold uppercase tracking-wide text-gen-text">
+            Pro
+          </span>
+        </span>
+      }
+      summary={description}
+    >
+      <p className="text-[12px] leading-relaxed text-muted">{description}</p>
 
       {children ? (
-        <div className="mt-4 select-none" aria-hidden="true">
+        <div className="mt-3 select-none opacity-55" aria-hidden="true">
           {children}
         </div>
       ) : null}
 
-      <button
-        type="button"
-        onClick={onUpgrade}
-        className="mt-4 inline-flex min-h-9 items-center rounded-lg px-4 text-xs font-semibold text-white transition hover:opacity-90"
-        style={{ background: TEAL }}
-      >
+      <Button type="button" size="sm" className="mt-3" onClick={onUpgrade}>
         Upgrade to Pro
-      </button>
-    </div>
+      </Button>
+    </Disclosure>
   );
 }

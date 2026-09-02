@@ -10,17 +10,10 @@ import {
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
-import { FileText, GraduationCap, Sparkles } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { Sparkles, X } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
-import { AnimatedGroup } from "@/components/motion-primitives/animated-group";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
-import { Container } from "@/components/ui/container";
-import { PageLoader } from "@/components/ui/animate";
-import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
 import type {
   LessonPlanInput,
   LessonPlanResult,
@@ -47,6 +40,7 @@ import {
   mergePptSlideImageUrlsIntoPlan,
   mergeSectionImagesMeta,
   parseSectionImagesMeta,
+  resolveGenerationTopic,
   resolveLessonTitle,
 } from "@/lib/lesson-plan";
 import { writeDiffPackSession } from "@/lib/differentiated-pack-session";
@@ -56,8 +50,20 @@ import {
   type TemplateId as PptThemeId,
 } from "@/lib/ppt-template-config";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
+import { Button } from "@/components/ui/button";
+import { CheckField, ChoiceCard, Field, Select, TextArea, TextInput } from "@/components/ui/field";
+import {
+  Disclosure,
+  EmptyState,
+  Notice,
+  PageTitle,
+  Panel,
+  PanelHeader,
+  RuleItem,
+  RuleRail,
+  Skeleton,
+} from "@/components/ui/panel";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
-import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { filterUserFacingNotices } from "@/lib/image-notices";
@@ -65,6 +71,7 @@ import { GENERATION_LIMIT_ERROR_CODE, type UserUsageSnapshot } from "@/lib/user-
 import { supabase } from "@/lib/supabase";
 import { tryParseApiJson } from "@/lib/try-parse-api-json";
 import { sanitizeUserMessage, toUserFacingError, USER_FACING_ERROR, GENERATION_FAILED_ERROR } from "@/lib/user-facing-errors";
+import { useErrorToast } from "@/hooks/use-error-toast";
 import { AFL_PHASE_IDS, type AflPhaseId } from "@/lib/afl-tools";
 import { AflSelector } from "@/components/lesson-plan/afl-selector";
 import { PaymentModal } from "@/components/payment/payment-modal";
@@ -136,77 +143,12 @@ function toAflPayload(map: Record<AflPhaseId, string[]>) {
   return out;
 }
 
-const WIZARD_STEPS: { id: 1 | 2 | 3; label: string }[] = [
-  { id: 1, label: "Class Details" },
-  { id: 2, label: "Source Content" },
-  { id: 3, label: "Generate Package" },
-];
-
-const STEP_SLIDE_VARIANTS = {
-  initial: { opacity: 0, x: 24 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -24 },
-};
-
-const STEP_FIELD_GROUP_VARIANTS = {
-  container: {
-    hidden: {},
-    visible: { transition: { staggerChildren: 0.06 } },
-  },
-  item: {
-    hidden: { opacity: 0, y: 12 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.0, 0.0, 0.2, 1] as const } },
-  },
-};
-
-// Step card chrome — lifts each wizard step off the page background: a white
-// surface with a soft warm border, distinct from the page's own cream tone,
-// so it reads as a card rather than text floating on the canvas.
-const STEP_CARD_CLASS =
-  "min-w-0 rounded-2xl border p-6 sm:p-8 shadow-[0px_4px_20px_rgba(36,26,18,0.06)]";
-const STEP_CARD_STYLE = { background: "#FFFFFF", borderColor: "#E8DFD1" };
-
-// One consistent vertical rhythm between major blocks within a step — was a
-// mix of mt-6/space-y-5 (20–24px) scattered ad hoc; standardized to 32px.
-const STEP_SECTION_GAP_CLASS = "mt-8";
-
-// Nested "grouped content" inside a step card — e.g. "Provide your own
-// teaching content", "Teaching and Learning Strategy", "What to generate".
-// Deliberately NOT a second card (no border/shadow of its own): a subtle
-// tint is enough to read as "grouped" without competing with the outer
-// card's border for visual weight, so nesting levels stay legible instead
-// of stacking near-identical card chrome three deep.
-const NESTED_GROUP_CLASS = "rounded-2xl p-4 sm:p-5";
-const NESTED_GROUP_STYLE = { background: "rgba(250,246,238,0.6)" };
-
-const STEP_LEGEND_CLASS = "flex w-full items-center gap-2 pb-3 text-lg font-semibold text-stone-900";
-const STEP_LEGEND_STYLE = { borderBottom: "1px solid #E8DFD1" };
-
-function StepLegend({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
-  // A <legend> would be the semantically "correct" tag here, but browsers
-  // give a fieldset's first-child <legend> special default positioning that
-  // straddles the fieldset's top border — invisible when these step panels
-  // had no border, but it broke the moment STEP_CARD_CLASS added one. Using
-  // <h2> avoids that UA behavior entirely; each field's own <label> still
-  // carries the real accessibility association, so nothing is lost.
-  return (
-    <h2 className={STEP_LEGEND_CLASS} style={STEP_LEGEND_STYLE}>
-      <Icon className="size-5 shrink-0" style={{ color: "#0E9484" }} />
-      {children}
-    </h2>
-  );
-}
-
-function StepIntro({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      className="mt-3 rounded-lg px-3 py-2.5 text-sm text-stone-600"
-      style={{ background: "rgba(14, 148, 132,0.06)" }}
-    >
-      {children}
-    </p>
-  );
-}
+/* Native file inputs can't be restyled wholesale, so the button half is
+   styled to match the Button primitive and the rest kept quiet. */
+const FILE_INPUT_CLASS =
+  "block w-full text-[12px] text-muted file:mr-2.5 file:h-7 file:cursor-pointer file:rounded-md " +
+  "file:border file:border-line file:bg-surface file:px-2.5 file:text-[12px] file:font-medium " +
+  "file:text-ink hover:file:bg-hover disabled:opacity-60";
 
 export function LessonPlanGenerator() {
   const router = useRouter();
@@ -231,13 +173,12 @@ export function LessonPlanGenerator() {
   const [loading, setLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useErrorToast();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const resultsRef = useRef<HTMLElement | null>(null);
   const wizardRef = useRef<HTMLDivElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
-  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const [sectionSelection, setSectionSelection] =
     useState<Record<TeacherPackageSectionKey, boolean>>(initialSectionSelection);
@@ -249,12 +190,11 @@ export function LessonPlanGenerator() {
   const [uploadExtracting, setUploadExtracting] = useState(false);
   const [uploadInfo, setUploadInfo] = useState<string | null>(null);
   const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
-  const [uploadExtractionError, setUploadExtractionError] = useState<string | null>(null);
+  const [uploadExtractionError, setUploadExtractionError] = useErrorToast();
 
   const [parseNotice, setParseNotice] = useState<string | null>(null);
   const [pptThemeId, setPptThemeId] = useState<PptThemeId>(DEFAULT_PPT_THEME_ID);
   const [teachingStrategy, setTeachingStrategy] = useState<string>("");
-  const [strategyPanelOpen, setStrategyPanelOpen] = useState(false);
   const [aflSelected, setAflSelected] = useState<Record<AflPhaseId, string[]>>(() => emptyAflSelected());
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
@@ -361,18 +301,29 @@ export function LessonPlanGenerator() {
             setError(toUserFacingError(err, "lesson-plan-load"));
           }
         } else {
-          // Pre-fill form from Regenerate button URL params
+          // Pre-fill from URL params — used by the "Regenerate" action on a
+          // saved lesson and by the dashboard's start-a-lesson composer, which
+          // hands over the class context so the teacher doesn't re-pick it.
           const subjectParam = searchParams.get("subject");
           const gradeParam = searchParams.get("grade");
           const topicParam = searchParams.get("topic");
+          const chapterParam = searchParams.get("chapter");
           const objectivesParam = searchParams.get("learningObjectives");
           const curriculumParam = searchParams.get("curriculumType");
-          if (subjectParam || gradeParam || topicParam || objectivesParam || curriculumParam) {
+          if (
+            subjectParam ||
+            gradeParam ||
+            topicParam ||
+            chapterParam ||
+            objectivesParam ||
+            curriculumParam
+          ) {
             setForm((prev) => ({
               ...prev,
               ...(subjectParam && isValidSubjectOption(subjectParam) ? { subject: subjectParam } : {}),
               ...(gradeParam && isValidGradeYear(gradeParam) ? { grade: gradeParam } : {}),
               ...(topicParam ? { topic: topicParam } : {}),
+              ...(chapterParam ? { chapter: chapterParam } : {}),
               ...(objectivesParam ? { learningObjectives: objectivesParam } : {}),
               ...(curriculumParam && isValidCurriculumType(curriculumParam) ? { curriculumType: curriculumParam } : {}),
             }));
@@ -888,731 +839,612 @@ export function LessonPlanGenerator() {
     router.push("/differentiated-worksheets");
   };
 
+  // Skeleton in the composer's own shape, so nothing jumps when it resolves.
   if (checkingAuth) {
     return (
-      <Container className="pt-6">
-        <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-          <PageLoader label="Checking your account…" />
+      <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+        <Skeleton className="h-6 w-40" />
+        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <Skeleton className="h-[420px] rounded-lg" />
+          <Skeleton className="h-[280px] rounded-lg" />
         </div>
-      </Container>
+      </div>
     );
   }
 
+  // Signed-out gate. Previously a small card marooned in the top-left of an
+  // otherwise empty page, under a marketing hero that repeated the pitch to
+  // someone already trying to use the tool.
   if (!user) {
     return (
-      <Container className="pt-6">
-        <div className="max-w-md rounded-3xl border border-[#0E9484]/20 bg-[#FAF6EF] p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-stone-900">Login Required</h2>
-          <p className="mt-2 text-sm text-stone-600">
-            Please login to generate and save your personal lesson plans.
-          </p>
-          <Link
-            href="/login"
-            className="mt-5 inline-flex rounded-xl bg-[#0E9484] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0B6B5F]"
-          >
-            Go to Login
-          </Link>
-        </div>
-      </Container>
+      <div className="mx-auto w-full max-w-[440px] px-4 py-16">
+        <Panel>
+          <EmptyState
+            icon={Sparkles}
+            title="Sign in to generate lessons"
+            description="Your lessons, slides and worksheets are saved to your account so you can come back to them."
+            action={
+              <Button size="lg" render={<Link href="/login" />}>
+                Sign in
+              </Button>
+            }
+            secondaryAction={
+              <Button variant="ghost" size="lg" render={<Link href="/signup" />}>
+                Create an account
+              </Button>
+            }
+          />
+        </Panel>
+      </div>
     );
   }
 
   const selectedGenerationCount = Object.values(sectionSelection).filter(Boolean).length;
 
-  const scrollToWizard = () => {
-    window.setTimeout(() => {
-      wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 0);
-  };
-
-  const goToNextStep = () => {
-    if (formRef.current && !formRef.current.reportValidity()) return;
-    setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
-    scrollToWizard();
-  };
-
-  const goToPrevStep = () => {
-    setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s));
-    scrollToWizard();
-  };
+  const classComplete = Boolean(
+    (form.chapter.trim() || form.topic.trim()) && form.learningObjectives.trim(),
+  );
+  const hasSource = uploadedChunks.length > 0 || pastedContent.trim().length > 0;
+  const aflCount = Object.values(aflSelected).reduce((n, list) => n + list.length, 0);
+  const hasApproach = aflCount > 0 || Boolean(teachingStrategy);
 
   return (
-    <div className="w-full space-y-6" ref={wizardRef}>
+    <div className="w-full" ref={wizardRef}>
       {!lessonPlan ? (
-        <Container className="space-y-10 pt-10">
-          <div className={FORM_COLUMN_CLASS}>
-            <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
-          </div>
+        <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8">
+          <PageTitle
+            title="New lesson"
+            description="One generation produces the whole package — plan, slides, worksheet, homework, assessment and teacher notes."
+          />
 
+          {/* Single screen, not a three-step wizard. The old flow made a
+              teacher click through three screens for what is six required
+              fields, and buried Generate — the product's primary action — on
+              the last of them. Here the inputs sit on the left, the output
+              spec and the Generate button stay in view on the right, and the
+              two optional groups are collapsed rather than mandatory stops. */}
           <form
             ref={formRef}
             onSubmit={onSubmit}
             aria-busy={loading}
             noValidate
-            className={FORM_COLUMN_CLASS}
+            className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"
           >
-            <AnimatePresence mode="wait" initial={false}>
-            {/* ══════════ STEP 1 — CLASS DETAILS ══════════ */}
-            {step === 1 && (
-            <motion.div
-              key="step-1"
-              variants={STEP_SLIDE_VARIANTS}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ duration: 0.18, ease: "easeInOut" }}
-            >
-            <div className={STEP_CARD_CLASS} style={STEP_CARD_STYLE}>
-              <StepLegend icon={GraduationCap}>Class details</StepLegend>
-              <StepIntro>
-                Tell us who this lesson is for. This is the only step required to get started.
-              </StepIntro>
+            <RuleRail className="min-w-0 space-y-5">
+              {/* ── 1. Class ─────────────────────────────────────────── */}
+              <RuleItem num={1} state={classComplete ? "done" : "active"}>
+                <h2 className="text-[13px] font-semibold text-ink">Class</h2>
+                <p className="mt-0.5 text-[12px] text-faint">Who the lesson is for.</p>
 
-        <AnimatedGroup variants={STEP_FIELD_GROUP_VARIANTS} className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label htmlFor="curriculum" className="mb-1 block text-sm font-medium text-stone-700">
-              Curriculum type
-            </label>
-            <select
-              id="curriculum"
-              value={form.curriculumType}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, curriculumType: e.target.value }))
-              }
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
-              required
-            >
-              {CURRICULUM_TYPE_GROUPS.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.options.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
+                <Panel className="mt-2.5 p-3.5">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Curriculum" className="sm:col-span-2">
+                      <Select
+                        value={form.curriculumType}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, curriculumType: e.target.value }))
+                        }
+                        required
+                      >
+                        {CURRICULUM_TYPE_GROUPS.map((group) => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </Select>
+                    </Field>
 
-          <div className="sm:col-span-2">
-            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-stone-500">
-              Curriculum Framework
-            </p>
-            <label
-              htmlFor="curriculum-framework"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
-              Select Educational Framework (Optional)
-            </label>
-            <select
-              id="curriculum-framework"
-              value={form.curriculumFramework}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, curriculumFramework: e.target.value }))
-              }
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm text-stone-900 shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
-            >
-              {CURRICULUM_FRAMEWORK_OPTIONS.map((opt) => (
-                <option key={opt.value === "" ? "none" : opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1.5 text-xs text-stone-500">
-              Leave as &quot;None&quot; for a standard plan. Choosing a framework aligns lesson plan,
-              slides, worksheet, assessment, homework, and teacher notes with that system&apos;s
-              expectations.
-            </p>
-          </div>
+                    <Field label="Grade">
+                      <Select
+                        value={form.grade}
+                        onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
+                        required
+                      >
+                        {GRADE_YEAR_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
 
-          <div className="sm:col-span-2 border-t border-[#E8DFD1]" />
+                    <Field label="Subject">
+                      <Select
+                        value={form.subject}
+                        onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
+                        required
+                      >
+                        <optgroup label="Subjects">
+                          {CORE_SUBJECT_OPTIONS.filter(
+                            (opt) => !(STEM_SUBJECT_OPTIONS as readonly string[]).includes(opt),
+                          ).map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Computer Science and STEM">
+                          {STEM_SUBJECT_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Language subjects">
+                          {LANGUAGE_SUBJECT_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </Select>
+                    </Field>
 
-          <div>
-            <label htmlFor="grade-year" className="mb-1 block text-sm font-medium text-stone-700">
-              Grade / year group
-            </label>
-            <select
-              id="grade-year"
-              value={form.grade}
-              onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
-              required
-            >
-              {GRADE_YEAR_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </div>
+                    <Field
+                      label="Chapter"
+                      hint="Becomes the lesson's title."
+                      className="sm:col-span-2"
+                    >
+                      <TextInput
+                        value={form.chapter}
+                        onChange={(e) => setForm((prev) => ({ ...prev, chapter: e.target.value }))}
+                        placeholder="Chapter 5 — Photosynthesis"
+                      />
+                    </Field>
 
-          <div>
-            <label htmlFor="subject" className="mb-1 block text-sm font-medium text-stone-700">
-              Subject
-            </label>
-            <select
-              id="subject"
-              value={form.subject}
-              onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
-              required
-            >
-              <optgroup label="Subjects">
-                {CORE_SUBJECT_OPTIONS.filter(
-                  (opt) => !(STEM_SUBJECT_OPTIONS as readonly string[]).includes(opt),
-                ).map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Computer Science & STEM">
-                {STEM_SUBJECT_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Language Subjects">
-                {LANGUAGE_SUBJECT_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
+                    <Field
+                      label="Topic"
+                      optional
+                      hint="Narrow the lesson to one part of the chapter."
+                      className="sm:col-span-2"
+                    >
+                      <TextInput
+                        value={form.topic}
+                        onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
+                        placeholder="Light-dependent reactions"
+                      />
+                    </Field>
 
-          <div>
-            <label htmlFor="chapter" className="mb-1 block text-sm font-medium text-stone-700">
-              Chapter name
-            </label>
-            <input
-              id="chapter"
-              type="text"
-              value={form.chapter}
-              onChange={(e) => setForm((prev) => ({ ...prev, chapter: e.target.value }))}
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
-              placeholder="e.g. Chapter 5 - Photosynthesis"
-            />
-          </div>
+                    <Field
+                      label="Learning objectives"
+                      hint="What students should be able to do by the end. One per line."
+                      className="sm:col-span-2"
+                    >
+                      <TextArea
+                        value={form.learningObjectives}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, learningObjectives: e.target.value }))
+                        }
+                        rows={4}
+                        placeholder={"Explain how plants convert light into glucose\nIdentify the reactants and products of photosynthesis"}
+                        required
+                      />
+                    </Field>
 
-          <div>
-            <label htmlFor="topic" className="mb-1 block text-sm font-medium text-stone-700">
-              Topic <span className="font-normal text-stone-400">(optional)</span>
-            </label>
-            <input
-              id="topic"
-              type="text"
-              value={form.topic}
-              onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
-              className="w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
-              placeholder="Specific topic within the chapter (leave blank to use just the chapter name)"
-            />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label
-              htmlFor="objectives"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
-              Learning objectives
-            </label>
-            <textarea
-              id="objectives"
-              value={form.learningObjectives}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, learningObjectives: e.target.value }))
-              }
-              className="min-h-28 w-full rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2"
-              placeholder="List key outcomes students should achieve."
-              required
-            />
-          </div>
-        </AnimatedGroup>
-
-              <div className="mt-6 flex justify-end">
-                <button
-                  type="button"
-                  onClick={goToNextStep}
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0E9484] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B6B5F]"
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-            </motion.div>
-            )}
-
-            {/* ══════════ STEP 2 — SOURCE CONTENT (OPTIONAL) ══════════ */}
-            {step === 2 && (
-            <motion.div
-              key="step-2"
-              variants={STEP_SLIDE_VARIANTS}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ duration: 0.18, ease: "easeInOut" }}
-            >
-            <div className={STEP_CARD_CLASS} style={STEP_CARD_STYLE}>
-              <StepLegend icon={FileText}>Source content</StepLegend>
-              <StepIntro>
-                Add textbook pages, notes, or chapter content to generate a more accurate lesson plan.
-                This step is entirely optional — skip it and Layah will generate content from the topic
-                and objectives alone.
-              </StepIntro>
-
-        {entitlements.sourceContent ? (
-        <div className={cn(STEP_SECTION_GAP_CLASS, NESTED_GROUP_CLASS, "space-y-5")} style={NESTED_GROUP_STYLE}>
-          <div>
-            <p className="text-sm font-semibold text-[#241A12]">
-              Provide your own teaching content (optional)
-            </p>
-            <p className="mt-1 text-xs text-stone-600">
-              Use any combination of PDF upload, image upload, or pasted text. Pasted content is
-              treated as the <strong>primary</strong> source when present.
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-white/70 p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
-              Option 1 — Upload PDF
-            </p>
-            <input
-              ref={pdfInputRef}
-              type="file"
-              multiple
-              accept=".pdf,application/pdf"
-              onChange={(e) => onUploadFileChange(e, "pdf")}
-              disabled={uploadExtracting || loading}
-              className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border file:border-[#E8DFD1] file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#241A12] hover:file:bg-stone-50 disabled:opacity-60"
-            />
-          </div>
-
-          <div className="rounded-xl bg-white/70 p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
-              Option 2 — Upload Image
-            </p>
-            <input
-              ref={imageInputRef}
-              type="file"
-              multiple
-              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-              onChange={(e) => onUploadFileChange(e, "image")}
-              disabled={uploadExtracting || loading}
-              className="mt-2 block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border file:border-[#E8DFD1] file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#241A12] hover:file:bg-stone-50 disabled:opacity-60"
-            />
-          </div>
-
-          <div className="rounded-xl bg-white/70 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-stone-600">
-                Option 3 — Paste Your Content
-              </p>
-              {pastedContent.trim().length > 0 ? (
-                <button
-                  type="button"
-                  onClick={clearPastedContent}
-                  disabled={uploadExtracting || loading}
-                  className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
-                >
-                  Clear pasted content
-                </button>
-              ) : null}
-            </div>
-            <label htmlFor="pasted-content" className="mt-2 block text-sm font-medium text-stone-800">
-              Paste Your Own Content Here (Optional)
-            </label>
-            <textarea
-              id="pasted-content"
-              value={pastedContent}
-              onChange={(e) => setPastedContent(e.target.value)}
-              disabled={uploadExtracting || loading}
-              rows={8}
-              placeholder="Paste your textbook content, notes, chapter text, or any material here and the AI will generate all resources based on your content."
-              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 text-sm text-stone-900 shadow-sm outline-none ring-[#0E9484] transition-colors duration-200 focus:border-[#0E9484] focus:ring-2 disabled:opacity-60"
-            />
-          </div>
-
-          {uploadedChunks.length > 0 ? (
-            <button
-              type="button"
-              onClick={clearUploadedSource}
-              disabled={uploadExtracting || loading}
-              className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-2 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50 disabled:opacity-50"
-            >
-              Clear all uploads
-            </button>
-          ) : null}
-          {uploadExtracting ? (
-            <p className="mt-2 text-xs font-medium text-[#241A12]">
-              Extracting text from your files…
-            </p>
-          ) : null}
-          {uploadExtractionError ? (
-            <div
-              role="alert"
-              className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-900 whitespace-pre-wrap"
-            >
-              {uploadExtractionError}
-            </div>
-          ) : null}
-          {uploadInfo ? (
-            <p className="mt-2 text-xs font-medium text-emerald-800">{uploadInfo}</p>
-          ) : null}
-          {uploadWarnings.length > 0 ? (
-            <ul className="mt-2 list-inside list-disc text-xs font-medium text-amber-900">
-              {uploadWarnings.map((w, i) => (
-                <li key={`warn-${i}`}>{w}</li>
-              ))}
-            </ul>
-          ) : null}
-          {uploadedChunks.length > 0 ? (
-            <ul className="mt-3 divide-y divide-[#0E9484]/20 rounded-lg border border-[#0E9484]/20 bg-[#FAF6EF]/90">
-              {uploadedChunks.map((chunk) => (
-                <li
-                  key={chunk.id}
-                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-stone-900">{chunk.fileName}</p>
-                    <p className="text-xs text-stone-500">
-                      {chunk.kind === "pdf" ? "PDF" : "Image"} ·{" "}
-                      {chunk.text.length.toLocaleString()} characters
-                    </p>
+                    <Field
+                      label="Curriculum framework"
+                      optional
+                      hint="Uses the selected framework to guide objectives, terminology, and structure — not a certified compliance check."
+                      className="sm:col-span-2"
+                    >
+                      <Select
+                        value={form.curriculumFramework}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, curriculumFramework: e.target.value }))
+                        }
+                      >
+                        {CURRICULUM_FRAMEWORK_OPTIONS.map((opt) => (
+                          <option key={opt.value === "" ? "none" : opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeUploadedChunk(chunk.id)}
-                    disabled={uploadExtracting || loading}
-                    className="shrink-0 rounded-lg border border-red-200 bg-[#FAF6EF] px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {uploadedChunks.length > 0 ? (
-            <p className="text-xs text-stone-500">
-              Uploads: {extractedMaterialPreview.length.toLocaleString()} characters across{" "}
-              {uploadedChunks.length} file(s).
-            </p>
-          ) : null}
-          {combinedSourcePreview.length > 0 ? (
-            <div className="mt-2">
-              <label
-                htmlFor="combined-source-preview"
-                className="mb-1 block text-xs font-semibold text-stone-800"
-              >
-                Combined source preview (review before generating)
-              </label>
-              <textarea
-                id="combined-source-preview"
-                readOnly
-                value={combinedSourcePreview}
-                rows={12}
-                spellCheck={false}
-                className="max-h-80 w-full resize-y rounded-xl border border-[#E8DFD1] bg-[#FAF6EF] px-3 py-2.5 font-mono text-xs leading-relaxed text-stone-800 outline-none ring-[#0E9484] focus:ring-2"
-              />
-              <p className="mt-1 text-xs text-stone-500">
-                {pastedContent.trim().length > 0
-                  ? "Pasted content is sent as the primary source; uploads are included as supplementary context."
-                  : "Uploaded extract text sent to the AI when you click Generate."}
-              </p>
-            </div>
-          ) : null}
-        </div>
-        ) : (
-          <div className="mt-6">
-            <LockedFeaturePanel
-              title="Source content"
-              description="Upload your own teaching material — a PDF, images, or pasted text — and let generation use it as the primary source instead of just the topic and objectives."
-              onUpgrade={() => setPaymentModalOpen(true)}
-            >
-              <div className="grid gap-2 sm:grid-cols-3">
-                <LockedPreviewPill label="Upload PDF" />
-                <LockedPreviewPill label="Upload Image" />
-                <LockedPreviewPill label="Paste content" />
-              </div>
-            </LockedFeaturePanel>
-          </div>
-        )}
+                </Panel>
+              </RuleItem>
 
-              <div className={cn(STEP_SECTION_GAP_CLASS, "flex justify-between")}>
-                <button
-                  type="button"
-                  onClick={goToPrevStep}
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl border bg-white px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:bg-stone-50"
-                  style={{ borderColor: "#E8DFD1" }}
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={goToNextStep}
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0E9484] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0B6B5F]"
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-            </motion.div>
-            )}
-
-            {/* ══════════ STEP 3 — GENERATE PACKAGE ══════════ */}
-            {step === 3 && (
-            <motion.div
-              key="step-3"
-              variants={STEP_SLIDE_VARIANTS}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ duration: 0.18, ease: "easeInOut" }}
-            >
-            <div className={STEP_CARD_CLASS} style={STEP_CARD_STYLE}>
-              <StepLegend icon={Sparkles}>Generate package</StepLegend>
-              <StepIntro>Choose what to include, then generate your teacher package.</StepIntro>
-
-        <div className={STEP_SECTION_GAP_CLASS}>
-          <AflSelector
-            selected={aflSelected}
-            onChange={(next) => setAflSelected(next as Record<AflPhaseId, string[]>)}
-            locked={!entitlements.afl}
-            onUpgrade={() => setPaymentModalOpen(true)}
-          />
-        </div>
-
-        {/* ── Teaching & Learning Strategy selector ──────────────────── */}
-        {!entitlements.teachingStrategy ? (
-          <div className={STEP_SECTION_GAP_CLASS}>
-            <LockedFeaturePanel
-              title="Teaching & Learning Strategy"
-              description="Choose a strategy — Project-Based, Inquiry-Based, Flipped Classroom, and more — to shape how activities are delivered. The lesson structure stays the same either way."
-              onUpgrade={() => setPaymentModalOpen(true)}
-            >
-              <div className="grid gap-2 sm:grid-cols-2">
-                {TEACHING_STRATEGIES.map((strategy) => (
-                  <LockedPreviewPill key={strategy.id} label={strategy.name} />
-                ))}
-              </div>
-            </LockedFeaturePanel>
-          </div>
-        ) : !strategyPanelOpen ? (
-          <div className={STEP_SECTION_GAP_CLASS}>
-            <button
-              type="button"
-              onClick={() => setStrategyPanelOpen(true)}
-              className="w-full rounded-xl border border-[#0E9484]/30 bg-[#0E9484]/5 px-4 py-3 text-left text-sm font-semibold text-[#241A12] shadow-sm transition hover:bg-[#0E9484]/10"
-            >
-              {teachingStrategy ? (
-                <span className="flex items-center gap-2">
-                  <span className="inline-block size-2 rounded-full bg-[#0E9484]" />
-                  Teaching Strategy: <span className="font-bold text-[#0E9484]">{TEACHING_STRATEGIES.find((s) => s.name === teachingStrategy)?.name ?? teachingStrategy}</span>
-                </span>
-              ) : (
-                "Teaching and Learning Strategy"
-              )}
-              <span className="mt-1 block text-xs font-normal text-stone-600">
-                Optional: select a strategy to shape how activities are delivered. The lesson structure will remain unchanged.
-              </span>
-            </button>
-          </div>
-        ) : (
-          <div className={cn(STEP_SECTION_GAP_CLASS, NESTED_GROUP_CLASS, "md:p-5")} style={NESTED_GROUP_STYLE}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-semibold text-stone-900">Teaching and Learning Strategy <span className="ml-1 text-xs font-normal text-stone-500">(Optional)</span></h3>
-                <p className="mt-1 text-xs text-stone-500">
-                  Select a strategy to shape how activities are delivered. The lesson structure will remain unchanged.
+              {/* ── 2. Source material ───────────────────────────────── */}
+              <RuleItem num={2} state={hasSource ? "done" : "idle"}>
+                <h2 className="text-[13px] font-semibold text-ink">Source material</h2>
+                <p className="mt-0.5 text-[12px] text-faint">
+                  Optional. Give Layah your textbook pages or notes and it generates from those
+                  instead of from the topic alone.
                 </p>
-              </div>
-              <div className="flex shrink-0 gap-2">
-                {teachingStrategy ? (
-                  <button
-                    type="button"
-                    onClick={() => setTeachingStrategy("")}
-                    className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
-                  >
-                    Clear
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => setStrategyPanelOpen(false)}
-                  className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50"
-                >
-                  Collapse ↑
-                </button>
-              </div>
-            </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {TEACHING_STRATEGIES.map((strategy) => {
-                const isSelected = teachingStrategy === strategy.name;
-                return (
-                  <button
-                    key={strategy.id}
-                    type="button"
-                    onClick={() => setTeachingStrategy(isSelected ? "" : strategy.name)}
-                    aria-pressed={isSelected}
-                    className={`group flex flex-col rounded-xl border-2 p-3.5 text-left transition ${
-                      isSelected
-                        ? "border-[#0E9484] bg-[#0E9484]/8 shadow-md ring-2 ring-[#0E9484]/20"
-                        : "border-[#E8DFD1] bg-white hover:border-[#0E9484]/50 hover:bg-[#0E9484]/5"
-                    }`}
+                {entitlements.sourceContent ? (
+                  <Disclosure
+                    className="mt-2.5"
+                    title="Add your own content"
+                    summary={
+                      hasSource
+                        ? [
+                            uploadedChunks.length
+                              ? `${uploadedChunks.length} file${uploadedChunks.length === 1 ? "" : "s"}`
+                              : null,
+                            pastedContent.trim() ? "pasted text" : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : "PDF, images or pasted text"
+                    }
+                    defaultOpen={hasSource}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`text-sm font-semibold leading-snug ${isSelected ? "text-[#0B6B5F]" : "text-stone-900"}`}>
-                        {strategy.name}
-                      </span>
-                      {isSelected ? (
-                        <span className="shrink-0 rounded-full bg-[#0E9484] p-0.5">
-                          <svg className="size-3 text-white" viewBox="0 0 12 12" fill="currentColor">
-                            <path d="M10 3L5 8.5 2 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                          </svg>
-                        </span>
+                    <div className="space-y-3.5">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Upload PDF" optional>
+                          <input
+                            ref={pdfInputRef}
+                            type="file"
+                            multiple
+                            accept=".pdf,application/pdf"
+                            onChange={(e) => onUploadFileChange(e, "pdf")}
+                            disabled={uploadExtracting || loading}
+                            className={FILE_INPUT_CLASS}
+                          />
+                        </Field>
+                        <Field label="Upload images" optional>
+                          <input
+                            ref={imageInputRef}
+                            type="file"
+                            multiple
+                            accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                            onChange={(e) => onUploadFileChange(e, "image")}
+                            disabled={uploadExtracting || loading}
+                            className={FILE_INPUT_CLASS}
+                          />
+                        </Field>
+                      </div>
+
+                      <Field
+                        label="Paste content"
+                        optional
+                        hint="Pasted text is treated as the primary source when present."
+                        action={
+                          pastedContent.trim().length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={clearPastedContent}
+                              disabled={uploadExtracting || loading}
+                              className="font-medium text-muted underline underline-offset-2 hover:text-ink disabled:opacity-50"
+                            >
+                              Clear
+                            </button>
+                          ) : null
+                        }
+                      >
+                        <TextArea
+                          value={pastedContent}
+                          onChange={(e) => setPastedContent(e.target.value)}
+                          disabled={uploadExtracting || loading}
+                          rows={6}
+                          placeholder="Paste chapter text, notes or any material here."
+                        />
+                      </Field>
+
+                      {uploadExtracting ? <Notice tone="brand">Reading your files…</Notice> : null}
+                      {uploadExtractionError ? (
+                        <Notice
+                          tone="danger"
+                          className="max-h-56 overflow-y-auto whitespace-pre-wrap"
+                        >
+                          {uploadExtractionError}
+                        </Notice>
+                      ) : null}
+                      {uploadInfo ? <Notice tone="brand">{uploadInfo}</Notice> : null}
+                      {uploadWarnings.length > 0 ? (
+                        <Notice tone="generated">
+                          <ul className="list-inside list-disc space-y-0.5">
+                            {uploadWarnings.map((w, i) => (
+                              <li key={`warn-${i}`}>{w}</li>
+                            ))}
+                          </ul>
+                        </Notice>
+                      ) : null}
+
+                      {uploadedChunks.length > 0 ? (
+                        <div>
+                          <div className="mb-1.5 flex items-center justify-between gap-2">
+                            <p className="text-[12px] font-medium text-ink">
+                              {uploadedChunks.length} file
+                              {uploadedChunks.length === 1 ? "" : "s"} ·{" "}
+                              <span className="font-mono tabular-nums text-faint">
+                                {extractedMaterialPreview.length.toLocaleString()} characters
+                              </span>
+                            </p>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="xs"
+                              onClick={clearUploadedSource}
+                              disabled={uploadExtracting || loading}
+                            >
+                              Remove all
+                            </Button>
+                          </div>
+                          <ul className="divide-y divide-line-subtle overflow-hidden rounded-md border border-line-subtle">
+                            {uploadedChunks.map((chunk) => (
+                              <li
+                                key={chunk.id}
+                                className="flex items-center gap-2 bg-surface px-2.5 py-1.5"
+                              >
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-[12px] text-ink">
+                                    {chunk.fileName}
+                                  </span>
+                                  <span className="block font-mono text-[10px] text-disabled">
+                                    {chunk.kind === "pdf" ? "PDF" : "Image"} ·{" "}
+                                    {chunk.text.length.toLocaleString()} chars
+                                  </span>
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  aria-label={`Remove ${chunk.fileName}`}
+                                  className="hover:text-danger-text"
+                                  onClick={() => removeUploadedChunk(chunk.id)}
+                                  disabled={uploadExtracting || loading}
+                                >
+                                  <X />
+                                </Button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+
+                      {combinedSourcePreview.length > 0 ? (
+                        <Field
+                          label="What will be sent"
+                          hint={
+                            pastedContent.trim().length > 0
+                              ? "Pasted content leads; uploads follow as supporting context."
+                              : "Extracted text from your uploads."
+                          }
+                        >
+                          <TextArea
+                            readOnly
+                            value={combinedSourcePreview}
+                            rows={8}
+                            spellCheck={false}
+                            className="max-h-72 font-mono text-[11px] leading-relaxed"
+                          />
+                        </Field>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-xs leading-relaxed text-stone-500 group-hover:text-stone-600">
-                      {strategy.description}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        {/* ── End Teaching Strategy ──────────────────────────────────── */}
-
-        <div className={cn(STEP_SECTION_GAP_CLASS, NESTED_GROUP_CLASS)} style={NESTED_GROUP_STYLE}>
-          <h3 className="text-sm font-semibold text-stone-900">What to generate</h3>
-          <p className="mt-1 text-xs text-stone-600">
-            Only checked sections are sent to the AI — fewer selections usually means a quicker response.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                setSectionSelection(
-                  Object.fromEntries(
-                    TEACHER_PACKAGE_SECTIONS.map((k) => [k, entitlements.allowedSections.includes(k)]),
-                  ) as Record<TeacherPackageSectionKey, boolean>,
-                )
-              }
-              className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
-            >
-              Select All
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setSectionSelection(
-                  Object.fromEntries(TEACHER_PACKAGE_SECTIONS.map((k) => [k, false])) as Record<
-                    TeacherPackageSectionKey,
-                    boolean
-                  >,
-                )
-              }
-              className="rounded-lg border border-[#E8DFD1] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm hover:bg-stone-50"
-            >
-              Deselect All
-            </button>
-          </div>
-          <ul className="mt-4 space-y-2.5">
-            {TEACHER_PACKAGE_SECTIONS.map((key) => {
-              const allowed = entitlements.allowedSections.includes(key);
-              if (!allowed) {
-                return (
-                  <li key={key}>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentModalOpen(true)}
-                      className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-1 py-1 text-left transition hover:bg-[#0E9484]/5"
+                  </Disclosure>
+                ) : (
+                  <div className="mt-2.5">
+                    <LockedFeaturePanel
+                      title="Source content"
+                      description="Upload a PDF, images or pasted text and generate from your own material instead of the topic alone."
+                      onUpgrade={() => setPaymentModalOpen(true)}
                     >
-                      <Checkbox checked={false} disabled className="mt-0.5" />
-                      <span className="flex items-center gap-2 text-sm text-stone-500">
-                        {GENERATION_CHECKBOX_LABELS[key]}
-                        <ProBadge />
-                      </span>
-                    </button>
-                  </li>
-                );
-              }
-              return (
-                <li key={key} className="flex items-start gap-3">
-                  <Checkbox
-                    id={`gen-${key}`}
-                    checked={sectionSelection[key]}
-                    onChange={() =>
-                      setSectionSelection((prev) => ({ ...prev, [key]: !prev[key] }))
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <LockedPreviewPill label="Upload PDF" />
+                        <LockedPreviewPill label="Upload image" />
+                        <LockedPreviewPill label="Paste content" />
+                      </div>
+                    </LockedFeaturePanel>
+                  </div>
+                )}
+              </RuleItem>
+
+              {/* ── 3. Teaching approach ─────────────────────────────── */}
+              <RuleItem num={3} state={hasApproach ? "done" : "idle"}>
+                <h2 className="text-[13px] font-semibold text-ink">Teaching approach</h2>
+                <p className="mt-0.5 text-[12px] text-faint">
+                  Optional. Shapes how activities are delivered; the lesson structure stays the
+                  same either way.
+                </p>
+
+                <div className="mt-2.5 space-y-2">
+                  <Disclosure
+                    title="Assessment for learning"
+                    summary={aflCount > 0 ? `${aflCount} selected` : "Add checks for understanding"}
+                    defaultOpen={aflCount > 0}
+                  >
+                    <AflSelector
+                      selected={aflSelected}
+                      onChange={(next) => setAflSelected(next as Record<AflPhaseId, string[]>)}
+                      locked={!entitlements.afl}
+                      onUpgrade={() => setPaymentModalOpen(true)}
+                      context={{
+                        subject: form.subject.trim(),
+                        grade: form.grade.trim(),
+                        topic: resolveGenerationTopic(form.topic, form.chapter),
+                        learningObjectives: form.learningObjectives.trim(),
+                      }}
+                    />
+                  </Disclosure>
+
+                  {entitlements.teachingStrategy ? (
+                    <Disclosure
+                      title="Teaching strategy"
+                      summary={
+                        teachingStrategy || "Project-based, inquiry, flipped classroom and more"
+                      }
+                      defaultOpen={Boolean(teachingStrategy)}
+                    >
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {TEACHING_STRATEGIES.map((strategy) => (
+                          <ChoiceCard
+                            key={strategy.id}
+                            selected={teachingStrategy === strategy.name}
+                            title={strategy.name}
+                            description={strategy.description}
+                            onClick={() =>
+                              setTeachingStrategy(
+                                teachingStrategy === strategy.name ? "" : strategy.name,
+                              )
+                            }
+                          />
+                        ))}
+                      </div>
+                      {teachingStrategy ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          className="mt-2"
+                          onClick={() => setTeachingStrategy("")}
+                        >
+                          Clear strategy
+                        </Button>
+                      ) : null}
+                    </Disclosure>
+                  ) : (
+                    <LockedFeaturePanel
+                      title="Teaching strategy"
+                      description="Choose a strategy — project-based, inquiry-based, flipped classroom and more — to shape how activities are delivered."
+                      onUpgrade={() => setPaymentModalOpen(true)}
+                    >
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {TEACHING_STRATEGIES.map((strategy) => (
+                          <LockedPreviewPill key={strategy.id} label={strategy.name} />
+                        ))}
+                      </div>
+                    </LockedFeaturePanel>
+                  )}
+                </div>
+              </RuleItem>
+            </RuleRail>
+
+            {/* ── Launch panel: what comes out, and the one button ──── */}
+            <aside className="min-w-0 lg:sticky lg:top-[68px]">
+              <Panel className="overflow-hidden">
+                <PanelHeader
+                  title="What to generate"
+                  actions={
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        onClick={() =>
+                          setSectionSelection(
+                            Object.fromEntries(
+                              TEACHER_PACKAGE_SECTIONS.map((k) => [
+                                k,
+                                entitlements.allowedSections.includes(k),
+                              ]),
+                            ) as Record<TeacherPackageSectionKey, boolean>,
+                          )
+                        }
+                      >
+                        All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        onClick={() =>
+                          setSectionSelection(
+                            Object.fromEntries(
+                              TEACHER_PACKAGE_SECTIONS.map((k) => [k, false]),
+                            ) as Record<TeacherPackageSectionKey, boolean>,
+                          )
+                        }
+                      >
+                        None
+                      </Button>
+                    </div>
+                  }
+                />
+
+                <div className="p-2">
+                  {TEACHER_PACKAGE_SECTIONS.map((key) => {
+                    const allowed = entitlements.allowedSections.includes(key);
+                    if (!allowed) {
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setPaymentModalOpen(true)}
+                          className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-hover"
+                        >
+                          <span
+                            className="size-4 shrink-0 rounded-xs border border-line bg-sunken"
+                            aria-hidden
+                          />
+                          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                            <span className="truncate text-[13px] text-disabled">
+                              {GENERATION_CHECKBOX_LABELS[key]}
+                            </span>
+                            <ProBadge />
+                          </span>
+                        </button>
+                      );
                     }
-                    className="mt-0.5"
-                  />
-                  <label htmlFor={`gen-${key}`} className="text-sm text-stone-800">
-                    {GENERATION_CHECKBOX_LABELS[key]}
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+                    return (
+                      <CheckField
+                        key={key}
+                        id={`gen-${key}`}
+                        checked={sectionSelection[key]}
+                        onChange={() =>
+                          setSectionSelection((prev) => ({ ...prev, [key]: !prev[key] }))
+                        }
+                        label={GENERATION_CHECKBOX_LABELS[key]}
+                      />
+                    );
+                  })}
+                </div>
 
-        <p className={cn(STEP_SECTION_GAP_CLASS, "rounded-xl border px-3 py-2 text-sm text-stone-700")} style={{ borderColor: "#E8DFD1", background: "rgba(250,246,238,0.6)" }}>
-          {selectedGenerationCount === 0 ? (
-            <span className="font-semibold text-stone-900">Select at least one item to generate</span>
-          ) : (
-            <>
-              <span className="font-semibold text-stone-900">{selectedGenerationCount}</span> item
-              {selectedGenerationCount === 1 ? "" : "s"} selected for generation
-            </>
-          )}
-        </p>
+                <div className="border-t border-line-subtle p-3">
+                  <Button
+                    type="submit"
+                    size="xl"
+                    block
+                    disabled={
+                      loading ||
+                      uploadExtracting ||
+                      TEACHER_PACKAGE_SECTIONS.every((k) => !sectionSelection[k])
+                    }
+                  >
+                    {loading ? "Generating…" : "Generate lesson"}
+                  </Button>
 
-        <div className={cn(STEP_SECTION_GAP_CLASS, "flex justify-between")}>
-          <button
-            type="button"
-            onClick={goToPrevStep}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border bg-white px-6 py-2.5 text-sm font-semibold text-stone-600 transition hover:bg-stone-50"
-            style={{ borderColor: "#E8DFD1" }}
-          >
-            Back
-          </button>
-        </div>
+                  <p className="mt-2 text-center text-[11px] text-faint">
+                    {selectedGenerationCount === 0 ? (
+                      "Pick at least one item to generate"
+                    ) : (
+                      <>
+                        <span className="font-mono tabular-nums text-muted">
+                          {selectedGenerationCount}
+                        </span>{" "}
+                        item{selectedGenerationCount === 1 ? "" : "s"} · uses 1 generation
+                      </>
+                    )}
+                  </p>
 
-        <button
-          type="submit"
-          disabled={
-            loading ||
-            uploadExtracting ||
-            TEACHER_PACKAGE_SECTIONS.every((k) => !sectionSelection[k])
-          }
-          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#0E9484] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0B6B5F] disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {loading ? "Generating..." : "Generate Lesson Plan"}
-        </button>
-
-        {error ? (
-          <p className="mt-3 whitespace-pre-wrap break-words text-sm text-red-600">
-            {error.replace("info@layah.in", "").trimEnd()}
-            {error.includes("info@layah.in") ? (
-              <>
-                {" "}
-                <a href="mailto:info@layah.in" className="underline hover:text-red-700">
-                  info@layah.in
-                </a>
-              </>
-            ) : null}
-          </p>
-        ) : null}
-            </div>
-            </motion.div>
-            )}
-            </AnimatePresence>
+                  {error ? (
+                    <Notice tone="danger" className="mt-2.5 whitespace-pre-wrap break-words">
+                      {error.replace("info@layah.in", "").trimEnd()}
+                      {error.includes("info@layah.in") ? (
+                        <>
+                          {" "}
+                          <a
+                            href="mailto:info@layah.in"
+                            className="font-medium underline underline-offset-2"
+                          >
+                            info@layah.in
+                          </a>
+                        </>
+                      ) : null}
+                    </Notice>
+                  ) : null}
+                </div>
+              </Panel>
+            </aside>
           </form>
-        </Container>
+        </div>
       ) : (
-        <section ref={resultsRef} className="animate-slide-up">
+        <section ref={resultsRef} className="animate-rise">
           <TeacherPackageViewer
             lessonPlan={lessonPlan}
             sectionImages={sectionImages ?? undefined}
@@ -1632,8 +1464,9 @@ export function LessonPlanGenerator() {
             }
             parseNotice={parseNotice}
             onRegenerate={() => {
+              // Back to the composer with every input still in place, so
+              // "regenerate" means adjust-and-rerun rather than start over.
               setLessonPlan(null);
-              setStep(1);
             }}
             onSave={onSaveLessonPlan}
             saving={saving}
@@ -1643,7 +1476,7 @@ export function LessonPlanGenerator() {
       )}
 
       {successMessage ? (
-        <div className="animate-slide-up rounded-xl border border-[#0E9484]/30 bg-[#0E9484]/5 px-4 py-3 text-sm text-[#0E9484]">
+        <div className="animate-slide-up rounded-xl border border-[color-mix(in_oklch,var(--brand)_30%,transparent)] bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] px-4 py-3 text-sm text-[var(--brand)]">
           {successMessage}
         </div>
       ) : null}
