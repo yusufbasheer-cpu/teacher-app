@@ -5,12 +5,30 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { BG_SOFT } from "@/lib/design-tokens";
+import { isProtectedAppPath } from "@/lib/protected-routes";
 import { Navbar } from "./navbar";
 import { AppSidebar } from "./app-sidebar";
 
+/**
+ * Dashboard routes beyond PROTECTED_APP_PATHS (protected-routes.ts) — pages
+ * that only make sense signed in, but aren't AI-generation routes.
+ */
+function isProtectedClientRoute(pathname: string): boolean {
+  return (
+    pathname === "/dashboard" ||
+    pathname === "/overview" ||
+    pathname === "/settings" ||
+    pathname === "/school-admin" ||
+    pathname === "/hod-dashboard" ||
+    isProtectedAppPath(pathname)
+  );
+}
+
 /** Chooses the page chrome: no header on the homepage (`/`, which renders
- * its own Navbar), the marketing top nav for signed-out visitors, or the app
- * sidebar once a session is present. */
+ * its own Navbar), the marketing top nav for signed-out visitors (or a
+ * signed-in visitor on a non-dashboard page — /about, /pricing, etc. — so the
+ * app sidebar doesn't leak onto public pages), or the app sidebar on an
+ * actual dashboard route once a session is present. */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
@@ -38,7 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (!user) {
+  if (!user || !isProtectedClientRoute(pathname)) {
     return (
       <>
         <Navbar />
