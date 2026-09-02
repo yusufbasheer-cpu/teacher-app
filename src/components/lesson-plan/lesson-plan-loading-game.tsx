@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
+import { NAVY, TEAL, TEXT_INVERSE, withAlpha } from "@/lib/design-tokens";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type LoadingGamePreset = "lesson-plan" | "question-paper";
@@ -129,6 +130,9 @@ function computeProgress(
 }
 
 // ── Confetti helper ───────────────────────────────────────────────────────────
+// Canvas fillStyle needs literal, resolvable colors — CSS custom properties
+// (var(--brand)) are not valid here, so this intentionally stays hardcoded
+// rather than using the TEAL/NAVY tokens used everywhere else in this file.
 const CONFETTI_COLORS = ["#0E9484", "#241A12", "#FFD700", "#FFFFFF"];
 
 function fireConfetti() {
@@ -213,11 +217,11 @@ function StatusIcon({ status }: { status: SectionStatus }) {
     return (
       <span
         className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full"
-        style={{ background: "#0E9484" }}
+        style={{ background: TEAL }}
         aria-label="Done"
       >
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-          <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="var(--brand-on)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </span>
     );
@@ -226,17 +230,17 @@ function StatusIcon({ status }: { status: SectionStatus }) {
     return (
       <span
         className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2"
-        style={{ borderColor: "#0E9484" }}
+        style={{ borderColor: TEAL }}
         aria-label="Generating"
       >
-        <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: "#0E9484" }} />
+        <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: TEAL }} />
       </span>
     );
   }
   return (
     <span
       className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2"
-      style={{ borderColor: "rgba(255,255,255,0.15)" }}
+      style={{ borderColor: withAlpha(TEXT_INVERSE, 0.15) }}
       aria-label="Waiting"
     />
   );
@@ -415,8 +419,8 @@ export function LessonPlanLoadingGame({
       50%      { opacity:0.6; }
     }
     @keyframes ldGlowRing {
-      0%,100% { box-shadow:0 0 20px 4px rgba(14, 148, 132,0.5); }
-      50%      { box-shadow:0 0 36px 10px rgba(14, 148, 132,0.85); }
+      0%,100% { box-shadow:0 0 20px 4px color-mix(in oklch, var(--brand) 50%, transparent); }
+      50%      { box-shadow:0 0 36px 10px color-mix(in oklch, var(--brand) 85%, transparent); }
     }
   `;
 
@@ -438,7 +442,7 @@ export function LessonPlanLoadingGame({
           alignItems: "center",
           justifyContent: "center",
           padding: 16,
-          backgroundColor: "#241A12",
+          backgroundColor: NAVY,
         }}
         role="dialog"
         aria-modal="true"
@@ -450,8 +454,8 @@ export function LessonPlanLoadingGame({
             style={{
               width: "100%",
               maxWidth: 460,
-              backgroundColor: "#3a2a1e",
-              border: "1px solid rgba(14, 148, 132,0.4)",
+              backgroundColor: "var(--l-gray-11)",
+              border: `1px solid ${withAlpha(TEAL, 0.4)}`,
               borderRadius: 20,
               padding: 28,
               boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
@@ -463,17 +467,17 @@ export function LessonPlanLoadingGame({
             </div>
 
             {/* Title */}
-            <p style={{ textAlign: "center", fontSize: 17, fontWeight: 700, color: "#FFFFFF", marginBottom: 4 }}>
+            <p style={{ textAlign: "center", fontSize: 17, fontWeight: 700, color: TEXT_INVERSE, marginBottom: 4 }}>
               {copy.title}
             </p>
-            <p style={{ textAlign: "center", fontSize: 13, color: "#a79a87", marginBottom: 20 }}>
+            <p style={{ textAlign: "center", fontSize: 13, color: withAlpha(TEXT_INVERSE, 0.65), marginBottom: 20 }}>
               {currentLabel}
             </p>
 
             {/* Progress bar label */}
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#0E9484" }}>Progress</span>
-              <span style={{ fontSize: 20, fontWeight: 800, color: "#FFFFFF" }}>{pct}%</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: TEAL }}>Progress</span>
+              <span style={{ fontSize: 20, fontWeight: 800, color: TEXT_INVERSE }}>{pct}%</span>
             </div>
 
             {/* Progress bar track */}
@@ -481,7 +485,7 @@ export function LessonPlanLoadingGame({
               style={{
                 width: "100%",
                 height: 10,
-                backgroundColor: "rgba(255,255,255,0.15)",
+                backgroundColor: withAlpha(TEXT_INVERSE, 0.15),
                 borderRadius: 99,
                 overflow: "hidden",
                 marginBottom: 24,
@@ -491,9 +495,9 @@ export function LessonPlanLoadingGame({
                 style={{
                   height: "100%",
                   width: `${smoothProgress}%`,
-                  background: "linear-gradient(90deg,#0E9484,#00e8c3)",
+                  background: `linear-gradient(90deg,${TEAL},#00e8c3)`,
                   borderRadius: 99,
-                  boxShadow: "0 0 10px rgba(14, 148, 132,0.7)",
+                  boxShadow: `0 0 10px ${withAlpha(TEAL, 0.7)}`,
                   transition: "width 0.5s ease",
                 }}
               />
@@ -512,7 +516,7 @@ export function LessonPlanLoadingGame({
                       style={{
                         fontSize: 15,
                         fontWeight: isActive ? 700 : 400,
-                        color: isDone ? "rgba(255,255,255,0.5)" : "#FFFFFF",
+                        color: isDone ? withAlpha(TEXT_INVERSE, 0.5) : TEXT_INVERSE,
                         textDecoration: isDone ? "line-through" : "none",
                         flex: 1,
                       }}
@@ -520,15 +524,15 @@ export function LessonPlanLoadingGame({
                       {s.label}
                     </span>
                     {isActive && (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "#0E9484", animation: "ldPulse 1.2s ease infinite" }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: TEAL, animation: "ldPulse 1.2s ease infinite" }}>
                         Generating…
                       </span>
                     )}
                     {isDone && (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "#0E9484" }}>Done ✓</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: TEAL }}>Done ✓</span>
                     )}
                     {status === "waiting" && (
-                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>Waiting</span>
+                      <span style={{ fontSize: 12, color: withAlpha(TEXT_INVERSE, 0.35) }}>Waiting</span>
                     )}
                   </div>
                 );
@@ -536,13 +540,13 @@ export function LessonPlanLoadingGame({
             </div>
 
             {/* Divider */}
-            <div style={{ height: 1, backgroundColor: "rgba(255,255,255,0.1)", marginBottom: 16 }} />
+            <div style={{ height: 1, backgroundColor: withAlpha(TEXT_INVERSE, 0.1), marginBottom: 16 }} />
 
             {/* Fun fact */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
               <span style={{ fontSize: 16, flexShrink: 0 }} aria-hidden>💡</span>
-              <p style={{ fontSize: 13, lineHeight: 1.6, color: "#E3D9C8", margin: 0 }}>
-                <span style={{ fontWeight: 700, color: "#FFFFFF" }}>Did you know?&nbsp;</span>
+              <p style={{ fontSize: 13, lineHeight: 1.6, color: withAlpha(TEXT_INVERSE, 0.75), margin: 0 }}>
+                <span style={{ fontWeight: 700, color: TEXT_INVERSE }}>Did you know?&nbsp;</span>
                 {FUN_FACTS[factIdx]}
               </p>
             </div>
@@ -555,12 +559,12 @@ export function LessonPlanLoadingGame({
             style={{
               width: "90%",
               maxWidth: 400,
-              backgroundColor: "#FFFCF7",
+              backgroundColor: "var(--surface-raised)",
               borderRadius: 24,
               padding: "40px 36px",
               textAlign: "center",
-              border: "2px solid rgba(14, 148, 132,0.5)",
-              boxShadow: "0 0 60px 16px rgba(14, 148, 132,0.35), 0 8px 40px rgba(0,0,0,0.5)",
+              border: `2px solid ${withAlpha(TEAL, 0.5)}`,
+              boxShadow: `0 0 60px 16px ${withAlpha(TEAL, 0.35)}, 0 8px 40px rgba(0,0,0,0.5)`,
             }}
           >
             {/* Glowing checkmark */}
@@ -569,7 +573,7 @@ export function LessonPlanLoadingGame({
                 width: 88,
                 height: 88,
                 borderRadius: "50%",
-                backgroundColor: "#0E9484",
+                backgroundColor: TEAL,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -578,14 +582,14 @@ export function LessonPlanLoadingGame({
               }}
             >
               <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-                <path d="M8 22l9 9 19-18" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M8 22l9 9 19-18" stroke="var(--brand-on)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
 
-            <p style={{ fontSize: 22, fontWeight: 800, color: "#241A12", marginBottom: 8 }}>
+            <p style={{ fontSize: 22, fontWeight: 800, color: NAVY, marginBottom: 8 }}>
               {copy.celebrateTitle}
             </p>
-            <p style={{ fontSize: 14, color: "#6b7280" }}>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>
               {copy.celebrateSub}
             </p>
           </div>

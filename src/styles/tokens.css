@@ -1,0 +1,230 @@
+/* ============================================================================
+   Layah design tokens
+   ============================================================================
+
+   Three layers, in order. Never skip a layer when styling something:
+
+     1. PRIMITIVE  --l-gray-1 … --l-green-12
+        Raw perceptual ramps in OKLCH. No meaning attached. Never referenced
+        directly from a component — only from layer 2.
+
+     2. SEMANTIC   --canvas, --surface, --text, --border, --accent …
+        What a colour is *for*. These flip between light and dark; primitives
+        do not. Components reference these, via the Tailwind utilities mapped
+        in globals.css (`bg-surface`, `text-muted`, `border-subtle`, …).
+
+     3. COMPONENT  set locally by a component when it needs its own scale.
+
+   Why OKLCH: the ramps are perceptually even, so `--l-gray-6` is the same
+   apparent step from 5 as 7 is from 6 — which is what makes a hairline
+   border read as a hairline at every elevation instead of disappearing at
+   some and shouting at others. It also lets light and dark share one set of
+   step *meanings* (step 6 is always "default border") rather than two
+   hand-tuned palettes that drift apart.
+
+   Hue choices:
+   - Neutrals sit at hue 200 with chroma 0.002–0.018 — a cool graphite with a
+     whisper of the accent in it, so greys and greens belong to each other.
+     Deliberately NOT the old #241A12 brown, which tinted every surface sepia
+     and made the whole product read as a consumer app.
+   - Accent is a deep spruce (hue 166). It descends from the old brand teal
+     (#0E9484) so the logo and brand still hold, but it's darker and less
+     cyan, which is what lets it work as *text* on light surfaces — the old
+     teal failed contrast at body sizes and had to be paired with a darker
+     twin everywhere.
+   - Amber (hue 65) is reserved for "the machine made this" and "needs your
+     attention". Red (hue 27) is destructive only. Nothing else gets a hue.
+   ========================================================================= */
+
+:root {
+  /* ---- Layer 1: primitives — neutral ------------------------------------ */
+  --l-gray-1: oklch(0.994 0.001 200); /* highest surface (popovers on white) */
+  --l-gray-2: oklch(0.985 0.002 200); /* surface */
+  --l-gray-3: oklch(0.972 0.003 200); /* canvas */
+  --l-gray-4: oklch(0.955 0.004 200); /* sunken / inset */
+  --l-gray-5: oklch(0.935 0.005 200); /* hover fill */
+  --l-gray-6: oklch(0.910 0.006 200); /* subtle border */
+  --l-gray-7: oklch(0.880 0.007 200); /* default border */
+  --l-gray-8: oklch(0.820 0.009 200); /* strong border / hover border */
+  --l-gray-9: oklch(0.715 0.011 200); /* disabled text, placeholder */
+  --l-gray-10: oklch(0.585 0.013 202); /* tertiary text */
+  --l-gray-11: oklch(0.462 0.015 205); /* secondary text — AA on gray-2/3 */
+  --l-gray-12: oklch(0.245 0.017 208); /* primary text */
+
+  /* ---- Layer 1: primitives — accent (spruce) ----------------------------- */
+  --l-green-2: oklch(0.975 0.014 168);
+  --l-green-3: oklch(0.955 0.026 168);
+  --l-green-4: oklch(0.925 0.042 167);
+  --l-green-6: oklch(0.855 0.062 167);
+  --l-green-8: oklch(0.700 0.098 166);
+  --l-green-9: oklch(0.545 0.098 166); /* THE accent */
+  --l-green-10: oklch(0.492 0.096 166); /* hover */
+  --l-green-11: oklch(0.432 0.088 166); /* active / accent-as-text */
+  --l-green-12: oklch(0.290 0.055 168);
+
+  /* ---- Layer 1: primitives — amber (generated / attention) --------------- */
+  --l-amber-2: oklch(0.978 0.018 78);
+  --l-amber-3: oklch(0.958 0.038 76);
+  --l-amber-6: oklch(0.865 0.078 72);
+  --l-amber-9: oklch(0.700 0.132 66);
+  --l-amber-11: oklch(0.505 0.105 60);
+
+  /* ---- Layer 1: primitives — red (destructive) --------------------------- */
+  --l-red-2: oklch(0.975 0.012 25);
+  --l-red-3: oklch(0.955 0.028 25);
+  --l-red-6: oklch(0.855 0.075 26);
+  --l-red-9: oklch(0.585 0.196 27);
+  --l-red-11: oklch(0.495 0.176 27);
+
+  /* ---- Layer 2: semantic — surfaces -------------------------------------- */
+  /* Canvas is a step *darker* than surface so panels lift off it with a
+     hairline instead of a shadow. Shadows are reserved for things that
+     genuinely float above the page (overlays), which is what makes those
+     read as overlays without a scrim doing all the work. */
+  --canvas: var(--l-gray-3);
+  --surface: var(--l-gray-2);
+  --surface-raised: var(--l-gray-1);
+  --surface-sunken: var(--l-gray-4);
+  --surface-hover: var(--l-gray-5);
+
+  /* ---- Layer 2: semantic — text ------------------------------------------ */
+  --text: var(--l-gray-12);
+  --text-secondary: var(--l-gray-11);
+  --text-muted: var(--l-gray-10);
+  --text-disabled: var(--l-gray-9);
+  --text-inverse: oklch(0.99 0.002 200);
+
+  /* ---- Layer 2: semantic — borders --------------------------------------- */
+  --border-subtle: var(--l-gray-6);
+  --border: var(--l-gray-7);
+  --border-strong: var(--l-gray-8);
+
+  /* ---- Layer 2: semantic — accent ---------------------------------------- */
+  --brand: var(--l-green-9);
+  --brand-hover: var(--l-green-10);
+  --brand-active: var(--l-green-11);
+  --brand-text: var(--l-green-11); /* accent used as text on light surfaces */
+  --brand-on: oklch(0.99 0.002 200); /* text on an accent fill */
+  --brand-subtle: var(--l-green-3);
+  --brand-subtle-hover: var(--l-green-4);
+  --brand-border: var(--l-green-6);
+  --brand-ring: oklch(0.545 0.098 166 / 0.35);
+
+  /* ---- Layer 2: semantic — status ---------------------------------------- */
+  --generated: var(--l-amber-9);
+  --generated-text: var(--l-amber-11);
+  --generated-subtle: var(--l-amber-3);
+  --generated-border: var(--l-amber-6);
+
+  --danger: var(--l-red-9);
+  --danger-text: var(--l-red-11);
+  --danger-subtle: var(--l-red-3);
+  --danger-border: var(--l-red-6);
+  --danger-on: oklch(0.99 0.002 200);
+
+  /* ---- Layer 2: semantic — the rail -------------------------------------- */
+  /* The signature element: a ruled margin rail borrowed from a lesson
+     planner's page. Its own tokens because it appears on canvas, on
+     surfaces, and inside overlays, and has to hold at each. */
+  --rule: var(--l-gray-7);
+  --rule-active: var(--brand);
+  --rail-num: var(--l-gray-9);
+  --rail-num-active: var(--brand-text);
+
+  /* ---- Radii -------------------------------------------------------------
+     Small and disciplined. The old system ran 12–40px, which is what made
+     every panel read as a consumer card. Controls 6, panels 10, and pills
+     only for genuine status chips. */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-xl: 14px;
+  --r-pill: 999px;
+
+  /* ---- Elevation ---------------------------------------------------------
+     Only two real shadows, both cool-tinted to match the neutral ramp. If a
+     thing is not an overlay it gets a border, not a shadow. */
+  --shadow-pop: 0 1px 2px oklch(0.245 0.017 208 / 0.05),
+    0 4px 12px oklch(0.245 0.017 208 / 0.07), 0 12px 32px oklch(0.245 0.017 208 / 0.06);
+  --shadow-overlay: 0 2px 6px oklch(0.245 0.017 208 / 0.08),
+    0 12px 32px oklch(0.245 0.017 208 / 0.12), 0 32px 64px oklch(0.245 0.017 208 / 0.10);
+
+  /* ---- Motion ------------------------------------------------------------
+     One easing curve, three durations. Motion communicates state change or
+     spatial origin; nothing here is long enough to wait on. */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast: 110ms;
+  --t: 160ms;
+  --t-slow: 240ms;
+
+  /* ---- Layout ------------------------------------------------------------ */
+  --rail-w: 232px;
+  --rail-w-collapsed: 56px;
+  --topbar-h: 52px;
+  /* Reading measure for generated artifact content. ~68ch at the serif's
+     metrics, which is the range a teacher can scan without losing the line. */
+  --measure: 68ch;
+}
+
+/* ===========================================================================
+   Dark mode
+   ---------------------------------------------------------------------------
+   Only the semantic layer flips. Step *meanings* are preserved: --border is
+   still "the default border", it just resolves to a lighter step because the
+   surfaces below it are dark. That's what keeps components from needing any
+   `dark:` variants of their own.
+
+   The dark canvas is a cool ink (hue 210) rather than black — pure black
+   makes the hairlines this system depends on either invisible or harsh, and
+   makes serif artifact text glare at night, which is exactly when teachers
+   use this.
+   ========================================================================= */
+.dark {
+  --l-gray-1: oklch(0.288 0.010 210); /* raised */
+  --l-gray-2: oklch(0.252 0.009 210); /* surface */
+  --l-gray-3: oklch(0.198 0.009 210); /* canvas */
+  --l-gray-4: oklch(0.222 0.008 210); /* sunken */
+  --l-gray-5: oklch(0.300 0.011 210); /* hover fill */
+  --l-gray-6: oklch(0.345 0.011 210); /* subtle border */
+  --l-gray-7: oklch(0.392 0.012 210); /* default border */
+  --l-gray-8: oklch(0.435 0.014 210); /* strong border */
+  --l-gray-9: oklch(0.545 0.015 208); /* disabled / placeholder */
+  --l-gray-10: oklch(0.660 0.014 205); /* tertiary text */
+  --l-gray-11: oklch(0.775 0.012 202); /* secondary text */
+  --l-gray-12: oklch(0.965 0.004 200); /* primary text */
+
+  /* The accent has to get lighter in the dark, or it reads as a hole. */
+  --l-green-2: oklch(0.255 0.028 168);
+  --l-green-3: oklch(0.288 0.042 168);
+  --l-green-4: oklch(0.330 0.056 167);
+  --l-green-6: oklch(0.410 0.072 167);
+  --l-green-8: oklch(0.620 0.108 167);
+  --l-green-9: oklch(0.700 0.118 167);
+  --l-green-10: oklch(0.750 0.112 167);
+  --l-green-11: oklch(0.800 0.098 167);
+
+  --l-amber-2: oklch(0.265 0.030 70);
+  --l-amber-3: oklch(0.305 0.048 70);
+  --l-amber-6: oklch(0.430 0.076 68);
+  --l-amber-9: oklch(0.775 0.128 72);
+  --l-amber-11: oklch(0.845 0.098 76);
+
+  --l-red-2: oklch(0.262 0.032 27);
+  --l-red-3: oklch(0.300 0.052 27);
+  --l-red-6: oklch(0.420 0.098 27);
+  --l-red-9: oklch(0.660 0.182 27);
+  --l-red-11: oklch(0.775 0.132 27);
+
+  --text-inverse: oklch(0.212 0.009 210);
+  --brand-on: oklch(0.175 0.012 200);
+  --brand-text: var(--l-green-10);
+  --brand-ring: oklch(0.700 0.118 167 / 0.40);
+  --danger-on: oklch(0.175 0.012 200);
+
+  --shadow-pop: 0 1px 2px oklch(0 0 0 / 0.30), 0 4px 12px oklch(0 0 0 / 0.34),
+    0 12px 32px oklch(0 0 0 / 0.30);
+  --shadow-overlay: 0 2px 6px oklch(0 0 0 / 0.36), 0 12px 32px oklch(0 0 0 / 0.44),
+    0 32px 64px oklch(0 0 0 / 0.40);
+}

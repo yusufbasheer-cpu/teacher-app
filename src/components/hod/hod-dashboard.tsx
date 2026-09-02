@@ -2,9 +2,7 @@
 
 import type { HodDashboardData } from "@/lib/hod-server";
 import { resolveLessonTitle, resolveLessonTopicNote } from "@/lib/lesson-plan";
-
-const TEAL = "#0E9484";
-const NAVY = "#241A12";
+import { NAVY, TEAL } from "@/lib/design-tokens";
 
 function formatDate(iso: string): string {
   try {
@@ -31,8 +29,8 @@ type StatCardProps = {
 function StatCard({ label, value, sub }: StatCardProps) {
   return (
     <div
-      className="rounded-2xl bg-[#FAF6EF] p-5 shadow-sm"
-      style={{ border: "1px solid rgba(14, 148, 132,0.2)" }}
+      className="rounded-2xl bg-surface p-5 shadow-sm"
+      style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
     >
       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: TEAL }}>
         {label}
@@ -41,7 +39,7 @@ function StatCard({ label, value, sub }: StatCardProps) {
         {value}
       </p>
       {sub ? (
-        <p className="mt-1 text-xs" style={{ color: "#6B7280" }}>
+        <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>
           {sub}
         </p>
       ) : null}
@@ -68,7 +66,7 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
               {hod.department}
             </span>
           </div>
-          <p className="mt-1 text-sm" style={{ color: "#6B7280" }}>
+          <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
             Monitor and manage your department&apos;s teaching activity
           </p>
         </div>
@@ -107,39 +105,39 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
 
         {departmentTeachers.length === 0 ? (
           <div
-            className="rounded-2xl bg-[#FAF6EF] px-6 py-10 text-center shadow-sm"
-            style={{ border: "1px solid rgba(14, 148, 132,0.2)" }}
+            className="rounded-2xl bg-surface px-6 py-10 text-center shadow-sm"
+            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
-            <p className="text-sm" style={{ color: "#6B7280" }}>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
               No teachers have been assigned to this department yet.
             </p>
-            <p className="mt-1 text-xs" style={{ color: "#9CA3AF" }}>
+            <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
               The school admin can assign teachers to departments from the School Admin dashboard.
             </p>
           </div>
         ) : (
           <div
-            className="overflow-hidden rounded-2xl bg-[#FAF6EF] shadow-sm"
-            style={{ border: "1px solid rgba(14, 148, 132,0.2)" }}
+            className="overflow-hidden rounded-2xl bg-surface shadow-sm"
+            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid #F3F4F6" }}>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                   <th
                     className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "#9CA3AF" }}
+                    style={{ color: "var(--text-muted)" }}
                   >
                     Teacher
                   </th>
                   <th
                     className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "#9CA3AF" }}
+                    style={{ color: "var(--text-muted)" }}
                   >
                     Joined
                   </th>
                   <th
                     className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "#9CA3AF" }}
+                    style={{ color: "var(--text-muted)" }}
                   >
                     Lessons This Month
                   </th>
@@ -151,7 +149,7 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
                     key={teacher.userId}
                     style={{
                       borderBottom:
-                        i < departmentTeachers.length - 1 ? "1px solid #F9FAFB" : undefined,
+                        i < departmentTeachers.length - 1 ? "1px solid var(--border-subtle)" : undefined,
                     }}
                   >
                     <td className="px-5 py-3.5">
@@ -159,7 +157,7 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
                         {teacher.email}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-sm" style={{ color: "#6B7280" }}>
+                    <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>
                       {teacher.joinedAt ? formatDate(teacher.joinedAt) : "—"}
                     </td>
                     <td className="px-5 py-3.5 text-right">
@@ -168,10 +166,10 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
                         style={{
                           background:
                             teacher.generationsUsedThisMonth > 0
-                              ? "rgba(14, 148, 132,0.12)"
-                              : "#F3F4F6",
+                              ? "color-mix(in oklch, var(--brand) 12%, transparent)"
+                              : "var(--surface-sunken)",
                           color:
-                            teacher.generationsUsedThisMonth > 0 ? TEAL : "#9CA3AF",
+                            teacher.generationsUsedThisMonth > 0 ? TEAL : "var(--text-muted)",
                         }}
                       >
                         {teacher.generationsUsedThisMonth}
@@ -193,42 +191,42 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
 
         {recentLessons.length === 0 ? (
           <div
-            className="rounded-2xl bg-[#FAF6EF] px-6 py-10 text-center shadow-sm"
-            style={{ border: "1px solid rgba(14, 148, 132,0.2)" }}
+            className="rounded-2xl bg-surface px-6 py-10 text-center shadow-sm"
+            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
-            <p className="text-sm" style={{ color: "#6B7280" }}>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
               No lesson plans generated yet in this department.
             </p>
           </div>
         ) : (
           <div
-            className="overflow-hidden rounded-2xl bg-[#FAF6EF] shadow-sm"
-            style={{ border: "1px solid rgba(14, 148, 132,0.2)" }}
+            className="overflow-hidden rounded-2xl bg-surface shadow-sm"
+            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
           >
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid #F3F4F6" }}>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                   <th
                     className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "#9CA3AF" }}
+                    style={{ color: "var(--text-muted)" }}
                   >
                     Topic
                   </th>
                   <th
                     className="hidden px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide sm:table-cell"
-                    style={{ color: "#9CA3AF" }}
+                    style={{ color: "var(--text-muted)" }}
                   >
                     Subject / Grade
                   </th>
                   <th
                     className="hidden px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide md:table-cell"
-                    style={{ color: "#9CA3AF" }}
+                    style={{ color: "var(--text-muted)" }}
                   >
                     Teacher
                   </th>
                   <th
                     className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "#9CA3AF" }}
+                    style={{ color: "var(--text-muted)" }}
                   >
                     Date
                   </th>
@@ -240,7 +238,7 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
                     key={lesson.id}
                     style={{
                       borderBottom:
-                        i < recentLessons.length - 1 ? "1px solid #F9FAFB" : undefined,
+                        i < recentLessons.length - 1 ? "1px solid var(--border-subtle)" : undefined,
                     }}
                   >
                     <td className="px-5 py-3.5">
@@ -248,27 +246,27 @@ export function HodDashboard({ data }: { data: HodDashboardData }) {
                         {resolveLessonTitle(lesson.topic, lesson.chapter, lesson.subject)}
                       </span>
                       {resolveLessonTopicNote(lesson.topic, lesson.chapter) ? (
-                        <span className="block text-xs" style={{ color: "#9CA3AF" }}>
+                        <span className="block text-xs" style={{ color: "var(--text-muted)" }}>
                           Topic: {resolveLessonTopicNote(lesson.topic, lesson.chapter)}
                         </span>
                       ) : null}
                     </td>
                     <td
                       className="hidden px-5 py-3.5 text-sm sm:table-cell"
-                      style={{ color: "#6B7280" }}
+                      style={{ color: "var(--text-secondary)" }}
                     >
                       {lesson.subject}
                       {lesson.grade ? ` · ${lesson.grade}` : ""}
                     </td>
                     <td
                       className="hidden px-5 py-3.5 text-sm md:table-cell"
-                      style={{ color: "#6B7280" }}
+                      style={{ color: "var(--text-secondary)" }}
                     >
                       {lesson.teacherEmail}
                     </td>
                     <td
                       className="px-5 py-3.5 text-right text-sm"
-                      style={{ color: "#6B7280" }}
+                      style={{ color: "var(--text-secondary)" }}
                     >
                       {formatDate(lesson.createdAt)}
                     </td>

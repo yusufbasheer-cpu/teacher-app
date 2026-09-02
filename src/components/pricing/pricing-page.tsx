@@ -10,12 +10,12 @@ import {
   type PaidPlanKey,
   type PricingRegion,
 } from "@/lib/pricing-regions";
-import { NAVY, TEAL, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
+import { NAVY, TEAL, TEAL_DARK, TEXT_INVERSE, TEXT_MUTED, withAlpha } from "@/lib/design-tokens";
 import { PLANS } from "@/lib/plans";
 import { BorderTrail } from "@/components/motion-primitives/border-trail";
 
 const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E9484] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAF6EF]";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]";
 
 type Billing = "monthly" | "annual";
 
@@ -163,7 +163,7 @@ function PlanPrice({
     return (
       <p
         className="text-3xl font-extrabold tracking-tight"
-        style={{ color: lightText ? "#fff" : NAVY }}
+        style={{ color: lightText ? TEXT_INVERSE : NAVY }}
       >
         {plan.variant === "school" ? "Custom Pricing" : "Free Forever"}
       </p>
@@ -180,21 +180,21 @@ function PlanPrice({
       {showStrike ? (
         <p
           className="text-sm line-through"
-          style={{ color: lightText ? "rgba(255,255,255,0.5)" : "#a79a87" }}
+          style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.5) : "var(--text-disabled)" }}
         >
           {formatRegionalPrice(region, prices.monthly * 12, "year")}
         </p>
       ) : null}
       <p
         className="text-3xl font-extrabold tracking-tight"
-        style={{ color: lightText ? "#fff" : NAVY }}
+        style={{ color: lightText ? TEXT_INVERSE : NAVY }}
       >
         {formatRegionalPrice(region, amount, period)}
       </p>
       {billing === "annual" ? (
         <span
           className="mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide"
-          style={{ background: "rgba(14, 148, 132,0.2)", color: TEAL }}
+          style={{ background: withAlpha(TEAL, 0.2), color: TEAL }}
         >
           Save 2 months
         </span>
@@ -202,7 +202,7 @@ function PlanPrice({
       {billing === "monthly" ? (
         <p
           className="mt-2 text-sm"
-          style={{ color: lightText ? "rgba(255,255,255,0.65)" : "#6B5D4F" }}
+          style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.65) : TEXT_MUTED }}
         >
           Or {formatRegionalPrice(region, prices.annual, "year")}
         </p>
@@ -230,8 +230,8 @@ function PricingCard({
   const ctaStyle = isFeatured
     ? { background: TEAL, color: NAVY }
     : plan.id === "schools-institutes"
-      ? { background: NAVY, color: "#fff", border: `2px solid ${TEAL}` }
-      : { background: NAVY, color: "#fff" };
+      ? { background: NAVY, color: TEXT_INVERSE, border: `2px solid ${TEAL}` }
+      : { background: NAVY, color: TEXT_INVERSE };
 
   return (
     <article
@@ -241,13 +241,13 @@ function PricingCard({
       style={
         isFeatured
           ? {
-              background: `linear-gradient(160deg, ${NAVY} 0%, #3a2a1e 55%, ${NAVY} 100%)`,
+              background: `linear-gradient(160deg, ${NAVY} 0%, var(--l-gray-11) 55%, ${NAVY} 100%)`,
               border: `2px solid ${TEAL}`,
-              boxShadow: `0 24px 60px -12px rgba(14, 148, 132,0.35), 0 0 0 1px rgba(14,148,132,0.15)`,
+              boxShadow: `0 24px 60px -12px ${withAlpha(TEAL, 0.35)}, 0 0 0 1px ${withAlpha(TEAL, 0.15)}`,
             }
           : isSchool
-            ? { background: "#FFFCF7", border: `2px solid ${NAVY}` }
-            : { background: "#FFFCF7", border: `1px solid rgba(36, 26, 18,0.12)` }
+            ? { background: "var(--surface-raised)", border: `2px solid ${NAVY}` }
+            : { background: "var(--surface-raised)", border: `1px solid ${withAlpha(NAVY, 0.12)}` }
       }
     >
       {plan.badge ? (
@@ -255,14 +255,14 @@ function PricingCard({
           className="absolute right-5 top-5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide"
           style={{
             background: plan.badge === "Best Value" ? NAVY : TEAL,
-            color: plan.badge === "Best Value" ? "#fff" : NAVY,
+            color: plan.badge === "Best Value" ? TEXT_INVERSE : NAVY,
           }}
         >
           {plan.badge}
         </span>
       ) : null}
 
-      <h3 className="text-xl font-bold" style={{ color: lightText ? "#fff" : NAVY }}>
+      <h3 className="text-xl font-bold" style={{ color: lightText ? TEXT_INVERSE : NAVY }}>
         {plan.name}
       </h3>
 
@@ -270,11 +270,11 @@ function PricingCard({
         <PlanPrice plan={plan} region={region} billing={billing} lightText={lightText} />
       </div>
 
-      <p className="mt-4 text-sm font-semibold" style={{ color: lightText ? TEAL : "#0B6B5F" }}>
+      <p className="mt-4 text-sm font-semibold" style={{ color: lightText ? TEAL : TEAL_DARK }}>
         {plan.generations}
       </p>
       {plan.teachers ? (
-        <p className="mt-1 text-sm" style={{ color: lightText ? "rgba(255,255,255,0.75)" : "#6B5D4F" }}>
+        <p className="mt-1 text-sm" style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.75) : TEXT_MUTED }}>
           {plan.teachers}
         </p>
       ) : null}
@@ -284,14 +284,14 @@ function PricingCard({
           <li
             key={item}
             className="flex items-start gap-2.5 text-sm leading-snug"
-            style={{ color: lightText ? "rgba(255,255,255,0.9)" : "#2b2118" }}
+            style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.9) : NAVY }}
           >
             <span
               className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full"
-              style={{ background: lightText ? "rgba(14,148,132,0.22)" : "rgba(14,148,132,0.12)" }}
+              style={{ background: lightText ? withAlpha(TEAL, 0.22) : withAlpha(TEAL, 0.12) }}
             >
               <CheckIcon
-                className={`!size-3 ${lightText ? "text-[#0E9484]" : "text-[#0B6B5F]"}`}
+                className={`!size-3 ${lightText ? "text-[var(--brand)]" : "text-[var(--brand-active)]"}`}
               />
             </span>
             <span>{item}</span>
@@ -308,9 +308,9 @@ function PricingCard({
         >
           {isFeatured ? (
             <BorderTrail
-              className="bg-[#241A12]"
+              className="bg-[var(--text)]"
               size={40}
-              style={{ boxShadow: "0 0 8px 2px rgba(36,26,18,0.5), 0 0 16px 4px rgba(36,26,18,0.25)" }}
+              style={{ boxShadow: `0 0 8px 2px ${withAlpha(NAVY, 0.5)}, 0 0 16px 4px ${withAlpha(NAVY, 0.25)}` }}
             />
           ) : null}
           {plan.cta.label}
@@ -338,14 +338,14 @@ export function PricingPage() {
   const openPayment = (planKey: UpgradePlanKey) => { setPaymentPlan(planKey); setPaymentOpen(true); };
 
   return (
-    <main className="min-h-screen bg-[#FAF6EF] pb-24">
+    <main className="min-h-screen bg-canvas pb-24">
       <Container>
         {/* Standard secondary-page hero: badge + headline + subtext, matching
             the landing page's hero pattern. */}
         <section className="mx-auto max-w-[820px] px-4 pb-4 pt-14 text-center sm:px-6">
           <span
             className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-            style={{ background: "rgba(14, 148, 132,0.1)", color: TEAL_DARK }}
+            style={{ background: withAlpha(TEAL, 0.1), color: TEAL_DARK }}
           >
             Pricing
           </span>
@@ -363,7 +363,7 @@ export function PricingPage() {
         <div className="mx-auto mt-6 flex justify-center">
           <p
             className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm"
-            style={{ background: "#FFFCF7", border: `1px solid rgba(14, 148, 132,0.3)`, color: NAVY }}
+            style={{ background: "var(--surface-raised)", border: `1px solid ${withAlpha(TEAL, 0.3)}`, color: NAVY }}
           >
             <span className="text-lg leading-none" aria-hidden>{region.flag}</span>
             <span>
@@ -375,7 +375,7 @@ export function PricingPage() {
         <div className="mx-auto mt-10 flex flex-col items-center gap-3">
           <div
             className="inline-flex rounded-full p-1 shadow-sm"
-            style={{ background: "#FFFCF7", border: `1px solid rgba(36, 26, 18,0.12)` }}
+            style={{ background: "var(--surface-raised)", border: `1px solid ${withAlpha(NAVY, 0.12)}` }}
             role="group"
             aria-label="Billing period"
           >
@@ -385,7 +385,7 @@ export function PricingPage() {
               className={`rounded-full px-6 py-3 text-sm font-semibold transition ${FOCUS_RING}`}
               style={{
                 background: !isAnnual ? NAVY : "transparent",
-                color: !isAnnual ? "#fff" : "#6B5D4F",
+                color: !isAnnual ? TEXT_INVERSE : TEXT_MUTED,
               }}
             >
               Monthly
@@ -396,7 +396,7 @@ export function PricingPage() {
               className={`rounded-full px-6 py-3 text-sm font-semibold transition ${FOCUS_RING}`}
               style={{
                 background: isAnnual ? NAVY : "transparent",
-                color: isAnnual ? "#fff" : "#6B5D4F",
+                color: isAnnual ? TEXT_INVERSE : TEXT_MUTED,
               }}
             >
               Annual
@@ -405,7 +405,7 @@ export function PricingPage() {
           {isAnnual ? (
             <p
               className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold"
-              style={{ background: "rgba(14, 148, 132,0.12)", color: "#0B6B5F" }}
+              style={{ background: withAlpha(TEAL, 0.12), color: TEAL_DARK }}
             >
               <span className="inline-block h-2 w-2 rounded-full" style={{ background: TEAL }} aria-hidden />
               Save 2 months on all annual plans
@@ -430,17 +430,17 @@ export function PricingPage() {
         <section
           className="mt-20 rounded-3xl p-6 sm:p-10"
           style={{
-            background: `linear-gradient(135deg, ${NAVY} 0%, #3a2a1e 100%)`,
-            border: `1px solid rgba(14, 148, 132,0.25)`,
+            background: `linear-gradient(135deg, ${NAVY} 0%, var(--l-gray-11) 100%)`,
+            border: `1px solid ${withAlpha(TEAL, 0.25)}`,
           }}
         >
-          <h2 className="text-center text-sm font-bold uppercase tracking-widest text-[#0E9484]">
+          <h2 className="text-center text-sm font-bold uppercase tracking-widest text-[var(--brand)]">
             For schools
           </h2>
-          <p className="mt-2 text-center text-lg font-semibold text-white sm:text-xl">
+          <p className="mt-2 text-center text-lg font-semibold text-inverse sm:text-xl">
             School &amp; district plans
           </p>
-          <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-white/65">
+          <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-inverse/65">
             Unlimited generations for every teacher on your plan. Enterprise includes custom branding and API access.
           </p>
           <div className="mx-auto mt-10 max-w-md">
@@ -449,10 +449,10 @@ export function PricingPage() {
             ))}
           </div>
           <div className="mt-10 text-center">
-            <p className="text-sm text-white/50">Prefer to self-serve?</p>
+            <p className="text-sm text-inverse/50">Prefer to self-serve?</p>
             <Link
               href="/school-register"
-              className={`mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E9484] focus-visible:ring-offset-2 focus-visible:ring-offset-[#241A12]`}
+              className={`mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--text)]`}
               style={{ background: TEAL, color: NAVY }}
             >
               <svg
@@ -469,7 +469,7 @@ export function PricingPage() {
               </svg>
               Register Your School
             </Link>
-            <p className="mt-3 text-sm text-white/50">
+            <p className="mt-3 text-sm text-inverse/50">
               Set up your own plan and our team will onboard you within 24 hours
             </p>
           </div>
@@ -483,8 +483,8 @@ export function PricingPage() {
             {FAQ.map((item) => (
               <details
                 key={item.q}
-                className="group rounded-2xl border bg-[#FAF6EF] p-5 shadow-sm transition hover:shadow-md open:shadow-md"
-                style={{ borderColor: "rgba(14, 148, 132,0.25)" }}
+                className="group rounded-2xl border bg-canvas p-5 shadow-sm transition hover:shadow-md open:shadow-md"
+                style={{ borderColor: withAlpha(TEAL, 0.25) }}
               >
                 <summary
                   className={`cursor-pointer list-none rounded-lg text-base font-semibold marker:content-none ${FOCUS_RING}`}
@@ -501,7 +501,7 @@ export function PricingPage() {
                     </span>
                   </span>
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed" style={{ color: "#6B5D4F" }}>
+                <p className="mt-3 text-sm leading-relaxed" style={{ color: TEXT_MUTED }}>
                   {item.a}
                 </p>
               </details>
