@@ -51,10 +51,10 @@ export function ComposerSkeleton() {
 export function WorkspaceSkeleton() {
   return (
     <Shell maxW={1080}>
-      <Skeleton className="mb-5 h-6 w-52" />
-      <Skeleton className="h-[188px] w-full rounded-lg" />
-      <Skeleton className="mt-6 h-4 w-32" />
-      <Skeleton className="mt-2 h-[140px] w-full rounded-lg" />
+      <Skeleton className="mb-6 h-7 w-56" />
+      <Skeleton className="h-[234px] w-full rounded-lg" />
+      <Skeleton className="mt-8 h-4 w-32" />
+      <Skeleton className="mt-2.5 h-[189px] w-full rounded-lg" />
     </Shell>
   );
 }

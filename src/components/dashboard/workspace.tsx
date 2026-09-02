@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import { ArrowRight, ClipboardList, Layers3, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, ClipboardList, Layers3, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   CURRICULUM_TYPE_GROUPS,
@@ -17,6 +17,13 @@ import { useUserUsage } from "@/hooks/use-user-usage";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { toUserFacingError } from "@/lib/user-facing-errors";
 import { isFreePlan } from "@/lib/plans";
+import {
+  buildLessonParams,
+  firstName,
+  greeting,
+  relativeDay,
+  type SavedLesson,
+} from "@/lib/workspace-helpers";
 import { Button } from "@/components/ui/button";
 import { Select, TextInput } from "@/components/ui/field";
 import {
@@ -45,38 +52,6 @@ import { cn } from "@/lib/utils";
  * click from generating. Quota lives in the top bar and only reappears here
  * when it is actually about to block them.
  */
-
-type SavedLesson = {
-  id: string;
-  subject: string;
-  grade: string;
-  topic: string;
-  chapter?: string | null;
-  curriculum: string;
-  created_at: string;
-};
-
-function greeting(d: Date): string {
-  const h = d.getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-}
-
-function firstName(user: User): string | null {
-  const full = (user.user_metadata?.full_name as string | undefined)?.trim();
-  if (full) return full.split(/\s+/)[0]!;
-  return null;
-}
-
-function relativeDay(iso: string): string {
-  const then = new Date(iso);
-  const days = Math.floor((Date.now() - then.getTime()) / 86_400_000);
-  if (days <= 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
-  return then.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
 
 export function Workspace({ user }: { user: User }) {
   const router = useRouter();
@@ -127,16 +102,8 @@ export function Workspace({ user }: { user: User }) {
   }, [lessons, seeded]);
 
   const params = React.useCallback(
-    (extra?: Record<string, string>) => {
-      const p = new URLSearchParams({
-        curriculumType: curriculum,
-        grade,
-        subject,
-        ...(chapter.trim() ? { chapter: chapter.trim() } : {}),
-        ...extra,
-      });
-      return p.toString();
-    },
+    (extra?: Record<string, string>) =>
+      buildLessonParams({ curriculum, grade, subject, chapter }, extra),
     [curriculum, grade, subject, chapter],
   );
 
@@ -154,10 +121,10 @@ export function Workspace({ user }: { user: User }) {
   const name = firstName(user);
 
   return (
-    <div className="mx-auto w-full max-w-[1080px] px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto w-full max-w-[1080px] px-4 py-8 sm:px-6 sm:py-10">
       {/* ---- Greeting ---- */}
-      <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-[19px] font-semibold leading-tight tracking-[-0.015em] text-ink">
+      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
+        <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.015em] text-ink">
           {greeting(new Date())}
           {name ? `, ${name}` : ""}
         </h1>
@@ -195,11 +162,11 @@ export function Workspace({ user }: { user: User }) {
       ) : null}
 
       {/* ---- Start a lesson — the page's reason to exist ---- */}
-      <Panel className="overflow-visible">
-        <form onSubmit={start} className="p-4 sm:p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <Sparkles className="size-4 text-brand-text" aria-hidden />
-            <h2 className="text-[13px] font-semibold text-ink">Start a lesson</h2>
+      <Panel className="overflow-visible shadow-pop">
+        <form onSubmit={start} className="p-5 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <Sparkles className="size-5 text-brand-text" aria-hidden />
+            <h2 className="text-[15px] font-semibold text-ink">Start a lesson</h2>
             {seeded ? (
               <Badge tone="neutral" className="ml-auto">
                 Continuing from your last lesson
@@ -215,7 +182,7 @@ export function Workspace({ user }: { user: User }) {
               value={curriculum}
               onChange={(e) => setCurriculum(e.target.value)}
               aria-label="Curriculum"
-              className="h-9"
+              className="h-10"
             >
               {CURRICULUM_TYPE_GROUPS.map((g) => (
                 <optgroup key={g.label} label={g.label}>
@@ -231,7 +198,7 @@ export function Workspace({ user }: { user: User }) {
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
               aria-label="Grade"
-              className="h-9"
+              className="h-10"
             >
               {GRADE_YEAR_OPTIONS.map((o) => (
                 <option key={o} value={o}>
@@ -243,7 +210,7 @@ export function Workspace({ user }: { user: User }) {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               aria-label="Subject"
-              className="h-9"
+              className="h-10"
             >
               {SUBJECT_OPTIONS.map((o) => (
                 <option key={o} value={o}>
@@ -253,15 +220,15 @@ export function Workspace({ user }: { user: User }) {
             </Select>
           </div>
 
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-2.5 flex flex-col gap-2.5 sm:flex-row">
             <TextInput
               value={chapter}
               onChange={(e) => setChapter(e.target.value)}
               placeholder="Chapter or topic — e.g. Photosynthesis"
               aria-label="Chapter or topic"
-              className="h-9 flex-1"
+              className="h-10 flex-1"
             />
-            <Button type="submit" size="lg" className="h-9 shrink-0">
+            <Button type="submit" size="xl" className="w-full shrink-0 sm:w-auto">
               Generate lesson plan
               <ArrowRight />
             </Button>
@@ -269,7 +236,7 @@ export function Workspace({ user }: { user: User }) {
 
           {/* The other two generators, carrying the same context so switching
               tool doesn't mean re-picking the class. */}
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line-subtle pt-3">
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line-subtle pt-4">
             <span className="text-[12px] text-faint">Or make</span>
             <Link
               href={`/question-paper?${params()}`}
@@ -292,9 +259,9 @@ export function Workspace({ user }: { user: User }) {
       </Panel>
 
       {/* ---- Recent ---- */}
-      <section className="mt-6">
-        <div className="mb-2 flex items-baseline justify-between gap-3">
-          <h2 className="text-[13px] font-semibold text-ink">Recent lessons</h2>
+      <section className="mt-8">
+        <div className="mb-2.5 flex items-baseline justify-between gap-3">
+          <h2 className="text-[15px] font-semibold text-ink">Recent lessons</h2>
           {lessons && lessons.length > 0 ? (
             <Link
               href="/my-lesson-plans"
@@ -309,9 +276,9 @@ export function Workspace({ user }: { user: User }) {
           {lessons === null ? (
             <div className="divide-y divide-line-subtle" aria-hidden>
               {[0, 1, 2].map((i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                <div key={i} className="flex items-center gap-3 px-4 py-3">
+                  <Skeleton className="size-8 shrink-0 rounded-md" />
                   <Skeleton className="h-3.5 flex-1" />
-                  <Skeleton className="h-3.5 w-24" />
                   <Skeleton className="h-3.5 w-16" />
                 </div>
               ))}
@@ -337,30 +304,40 @@ export function Workspace({ user }: { user: User }) {
                     <Link
                       href={`/my-lesson-plans/${lesson.id}`}
                       className={cn(
-                        "group flex items-center gap-3 px-4 py-2.5",
+                        "group flex items-start gap-3 px-4 py-3",
                         "transition-colors duration-[110ms] hover:bg-hover",
                       )}
                     >
+                      <span
+                        className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-line-subtle bg-sunken text-faint"
+                        aria-hidden
+                      >
+                        <BookOpen className="size-3.5" />
+                      </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium text-ink">
-                          {resolveLessonTitle(lesson.topic, lesson.chapter, lesson.subject)}
+                        <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <span className="truncate text-[13px] font-medium text-ink">
+                            {resolveLessonTitle(lesson.topic, lesson.chapter, lesson.subject)}
+                          </span>
+                          <span className="flex shrink-0 flex-wrap items-center gap-1.5">
+                            <Badge tone="neutral">{lesson.subject}</Badge>
+                            <Badge tone="neutral">{lesson.grade}</Badge>
+                          </span>
                         </span>
                         {note ? (
-                          <span className="block truncate text-[11px] text-faint">{note}</span>
+                          <span className="mt-0.5 block truncate text-[11px] text-faint">
+                            {note}
+                          </span>
                         ) : null}
-                      </span>
-                      <span className="hidden shrink-0 items-center gap-1.5 sm:flex">
-                        <Badge tone="neutral">{lesson.subject}</Badge>
-                        <Badge tone="neutral">{lesson.grade}</Badge>
                       </span>
                       <time
                         dateTime={lesson.created_at}
-                        className="w-20 shrink-0 text-right font-mono text-[11px] tabular-nums text-disabled"
+                        className="mt-0.5 shrink-0 text-right font-mono text-[11px] tabular-nums text-disabled"
                       >
                         {relativeDay(lesson.created_at)}
                       </time>
                       <ArrowRight
-                        className="size-3.5 shrink-0 text-disabled opacity-0 transition-opacity group-hover:opacity-100"
+                        className="mt-0.5 hidden shrink-0 size-3.5 text-disabled opacity-0 transition-opacity group-hover:opacity-100 sm:block"
                         aria-hidden
                       />
                     </Link>
