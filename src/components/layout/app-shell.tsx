@@ -140,7 +140,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (!user) {
+  if (!user || !isProtectedClientRoute(pathname)) {
     return (
       <>
         <Navbar />

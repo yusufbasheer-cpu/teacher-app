@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Menu, X } from "lucide-react";
 import { isNavLinkActive } from "@/lib/app-nav-links";
 import { BORDER, NAVY, TEAL, TEXT_MUTED } from "@/lib/design-tokens";
 
-// Rendered only for signed-out visitors — AppShell swaps to AppSidebar once a
-// user session is present, so this never needs to know about auth or admin
-// roles. Same header markup as `/` (the homepage, which renders this
-// component too), so there is exactly one public-facing nav bar in the app.
+// Rendered for signed-out visitors and for signed-in visitors on public
+// pages — AppShell swaps to AppFrame (the dashboard rail) only on actual
+// dashboard routes. Same header markup as `/` (the homepage, which renders
+// this component too), so there is exactly one public-facing nav bar in the app.
 const NAV_LINKS = [
   { href: "/lesson-plan", label: "Lesson Plans" },
   { href: "/differentiated-worksheets", label: "Worksheets" },
@@ -100,9 +101,7 @@ export function Navbar() {
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg lg:hidden ${FOCUS_RING}`}
           style={{ border: `1px solid ${BORDER}`, color: "var(--text)" }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
+          {menuOpen ? <X size={18} aria-hidden /> : <Menu size={18} aria-hidden />}
         </button>
 
         {menuOpen ? (
