@@ -65,12 +65,12 @@ abstraction — every additional authenticated endpoint should read as
 
 Every Supabase target must be classified as exactly one of
 `LOCAL_DISPOSABLE`, `TEST`, `STAGING`, `PRODUCTION`, or `UNKNOWN`. Only
-the first three may ever be mutated. As of Checkpoint 23:
+the first three may ever be mutated. As of Checkpoint 24:
 
 | Target | Classification | Evidence |
 | --- | --- | --- |
 | `.env.local` project (ref `jbwevzvtloahjoamwnjt`) | `UNKNOWN` | No repo doc or environment marker identifies it as local/test/staging. Same finding as Checkpoints 9–13; re-checked this checkpoint, unchanged. |
-| Local Supabase (`supabase start`) | Unavailable | No Supabase CLI, no Docker, on this machine — re-checked this checkpoint, unchanged from Checkpoints 11–12. Installing Docker is a heavyweight system-level install, out of scope to do autonomously. |
+| Local Supabase (`supabase start`) | `LOCAL_DISPOSABLE` intended, runtime unavailable | Supabase CLI and `supabase/config.toml` are now present, but Docker/Podman is not installed/on PATH. `npx supabase start` fails before local services can start. |
 | Any dedicated test/staging project | Not found | No project reference, credentials, or documentation exists in this repository for one. |
 
 **No target this session can be safely mutated.** This is why no live
@@ -146,6 +146,28 @@ Ordinary `python -m pytest backend-python/tests` does not run this file's
 test — it is `pytestmark = pytest.mark.integration` and lives under
 `tests/integration/`, excluded from the default collection path used by
 CI and local development.
+
+## Checkpoint 24 Re-Check
+
+Date: 2026-09-03
+
+Starting branch was not the migration branch; the working tree was moved
+back to `phase-1-boundary-stabilization` after preserving the untracked
+`backend-python/` tree from `main` outside the repository.
+
+Supabase CLI is now pinned as a project dev dependency and verified with
+`npx supabase --version` = `2.116.0`.
+
+Docker remains the active external blocker. `docker --version` and
+`docker info` fail because `docker` is not installed/on PATH. `npx
+supabase start` fails with `docker: command not found (podman also not
+found)`, before any local database can start or mutate.
+
+No hosted Supabase project was contacted. No RLS integration mutation
+was run. The authenticated DB foundation remains architecturally ready
+but not live-proven.
+
+Updated classification: `AUTHENTICATED_DB_FOUNDATION_EXTERNALLY_BLOCKED`.
 
 ## What Remains Before Wave 2 Can Actually Migrate Authenticated Endpoints
 

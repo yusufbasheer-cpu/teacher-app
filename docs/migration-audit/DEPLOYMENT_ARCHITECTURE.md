@@ -116,3 +116,14 @@ Preview-to-Preview validation.
 - No Terraform, Pulumi, Kubernetes manifests, Dockerfile, docker-compose, nginx config, serverless config, Netlify config, or Fly config were found.
 - Production/staging/preview URLs in the request were placeholders, so environment comparison was not possible.
 - Secrets management is platform/environment-variable based but not fully documented in repo.
+
+## Checkpoint 24 Local Supabase Runtime
+
+Docker is being introduced only as the local runtime dependency for `LOCAL_DISPOSABLE` Supabase. It is not an application deployment target, and this checkpoint does not containerize Next.js, FastAPI, PPT/export, or production services.
+
+Current local runtime status:
+
+- Windows 11 Home x64 detected.
+- Docker is not installed/on PATH; `docker --version`, `docker info`, and `npx supabase start` fail before local Supabase can start.
+- Supabase CLI is project-pinned and verified through `npx supabase`.
+- `npx supabase db reset` cannot run until Docker Desktop is installed, opened, and reporting a running engine.

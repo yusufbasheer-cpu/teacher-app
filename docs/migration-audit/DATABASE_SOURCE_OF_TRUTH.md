@@ -98,6 +98,21 @@ No executable migration SQL was created in Checkpoint 13 because existing catalo
 - The deployed canonical migration path for `school_templates`, including whether the embedded SQL was manually applied.
 - Whether future migrations should reconcile existing deployed environments with `IF NOT EXISTS` / `DROP POLICY IF EXISTS` patterns or require a one-time audited baseline.
 
+## Checkpoint 24 Re-Check
+
+Date: 2026-09-03
+
+`supabase db reset` was attempted only against local CLI state. It did
+not reach Postgres because Docker/Podman is unavailable. Therefore the
+source-of-truth classification does not advance.
+
+- `lesson_plans`: `RECONCILIATION_SQL_WRITTEN_UNTESTED`
+- `saved_lessons`: `PARTIAL`
+- `school_templates`: `PARTIAL`
+- overall: `HYBRID_TRANSITION_REQUIRED`
+
+No hosted database was contacted or mutated.
+
 ## Checkpoint 23: `lesson_plans` Reconciliation Written (Not Yet Applied/Tested)
 
 `supabase/migrations/20260101000000_lesson_plans_baseline_reconciliation.sql`

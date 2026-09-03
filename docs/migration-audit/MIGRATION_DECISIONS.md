@@ -385,3 +385,15 @@ Alternatives considered: `VERIFIED` (rejected — would be a fabricated claim; n
 Impact: `docs/migration-audit/AUTHENTICATED_BACKEND_PATTERN.md` created as the canonical reference for the next authenticated migration wave. Wave 2 readiness: `PARTIALLY` unblocked — the pattern, the reusable code, and (for `lesson_plans` specifically) the schema are ready; a safe execution target and an Authorization-forwarding routing design remain the two concrete external/design prerequisites.
 
 Status: Implemented.
+
+## 2026-09-03 (Checkpoint 24)
+
+Decision: Pin the Supabase CLI as a project dev dependency and classify the authenticated database foundation as externally blocked until Docker Desktop is installed and running.
+
+Reason: The migration branch already contains the authenticated FastAPI pattern, guarded RLS harness, and `lesson_plans` reconciliation migration. `npx supabase --version` now verifies the official CLI path at `2.116.0`, but `docker` is not installed/on PATH and `npx supabase start` fails before any local database can start. On Windows 11 Home x64, the supported Docker path is Docker Desktop, which requires user/GUI/elevation handling and should not be silently installed by the agent.
+
+Alternatives considered: silently running the Docker Desktop installer through winget (rejected because it is a system GUI/admin install for a beginner user); contacting the unknown `.env.local` hosted Supabase project (rejected, still not classified as test/staging); creating a second RLS harness (rejected, existing harness remains the right one).
+
+Impact: `supabase` is available through `npx`, `npm run test:rls` names the existing guarded integration harness, and local workflow docs now tell a beginner to install/open Docker Desktop first. No hosted Supabase project, production route, schema migration, auth logic, billing, AI, or frontend behavior changed.
+
+Status: Implemented repository-side; live RLS verification externally blocked.

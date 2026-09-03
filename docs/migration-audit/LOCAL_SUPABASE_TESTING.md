@@ -29,11 +29,47 @@ Install or provide, outside this checkpoint:
 
 Do not install global tooling silently as part of a migration checkpoint.
 
+## Checkpoint 24 Tooling Status
+
+Date: 2026-09-03
+
+Operating system: Windows 11 Home Single Language, 64-bit, AMD64.
+
+`supabase/config.toml` now exists and was created with the official
+project CLI (`npx supabase init --yes`). Seed loading is disabled because
+this repository does not currently have a required local seed file.
+
+Supabase CLI is now available as a project dev dependency:
+
+```powershell
+npx supabase --version
+```
+
+Verified version: `2.116.0`.
+
+Docker is still externally blocked:
+
+- `docker` is not on PATH.
+- `npx supabase start` fails before local database mutation with `docker: command not found (podman also not found)`.
+- `npx supabase db reset` cannot inspect a local database service.
+- `winget show --id Docker.DockerDesktop --source winget` identifies Docker Desktop `4.89.0` from Docker Inc., but installing/running Docker Desktop requires a GUI/elevation/user step and was not performed silently.
+
+Beginner instruction:
+
+1. Install Docker Desktop from Docker's official Windows installer or the official `Docker.DockerDesktop` winget package.
+2. Open Docker Desktop and wait until it reports that the engine is running.
+3. Return to this repo and run the commands below.
+
+This Docker requirement is only for local disposable Supabase. The Layah app itself was not containerized.
+
 ## Schema Source
 
 Current faithful source for `lesson_plans` shape and RLS policy text: `supabase/schema.sql`.
 
-Current migration-chain status: incomplete for fresh local reset because the initial `lesson_plans` creation migration is missing. Checkpoint 12 also found representative broader drift around `saved_lessons` and `school_templates`.
+Current migration-chain status: `lesson_plans` has a reconciliation
+migration, but fresh local reset has not been live-tested. Checkpoint 12
+also found representative broader drift around `saved_lessons` and
+`school_templates`.
 
 Before running local RLS tests, reconcile the migration chain and schema snapshot according to `DATABASE_SOURCE_OF_TRUTH.md`. Do not create a reduced one-table schema just to make tests pass.
 
@@ -44,7 +80,7 @@ Separate prerequisites:
 | Area | Required |
 | --- | --- |
 | Tooling | Docker-compatible runtime and Supabase CLI. |
-| Schema | Canonical baseline/reconciliation for `lesson_plans`, `saved_lessons`, and `school_templates`; see `DATABASE_BASELINE_SPEC.md` and `SCHEMA_RECONCILIATION_PLAN.md`. |
+| Schema | Live reset proof for `lesson_plans`; canonical baseline/reconciliation for `saved_lessons` and `school_templates`; see `DATABASE_BASELINE_SPEC.md` and `SCHEMA_RECONCILIATION_PLAN.md`. |
 | Test | Existing guarded RLS harness with explicit local/test/staging mutation approval flags. |
 
 The schema blocker is distinct from the tooling blocker. Installing CLI/Docker alone does not make a local reset trustworthy until missing baseline objects are reconciled.
@@ -101,7 +137,38 @@ supabase stop
 
 Do not run the integration command until the schema drift is resolved.
 
-## Checkpoint 23 Re-Check
+Current simplified local workflow after Docker Desktop is running:
+
+```powershell
+npx supabase start
+npx supabase db reset
+$env:RUN_SUPABASE_INTEGRATION_TESTS = "1"
+$env:ALLOW_SUPABASE_INTEGRATION_MUTATIONS = "1"
+$env:SUPABASE_INTEGRATION_ENVIRONMENT = "local"
+$env:SUPABASE_INTEGRATION_URL = "http://127.0.0.1:54321"
+$env:SUPABASE_INTEGRATION_ANON_KEY = "<local-anon-key>"
+$env:SUPABASE_INTEGRATION_SERVICE_ROLE_KEY = "<local-service-role-key>"
+npm run test:rls
+npx supabase stop
+```
+
+If Docker is not running, open Docker Desktop first. Do not manage containers, networks, volumes, or compose files manually for this workflow.
+
+## Checkpoint 24 Re-Check
+
+Checkpoint 24 removes the prior "no Supabase CLI / no config" local
+tooling gap:
+
+- `supabase` is pinned as a project dev dependency.
+- `supabase/config.toml` is tracked for local disposable Supabase.
+- `npm run test:rls` is the single project command for the existing
+  guarded RLS harness.
+
+The remaining live-test blocker is Docker Desktop. Until Docker is
+installed, opened, and running, `npx supabase start` and `npx supabase db
+reset` cannot reach a local database.
+
+## Checkpoint 23 Historical Re-Check
 
 Re-verified this checkpoint: still no Supabase CLI, still no Docker, no
 `supabase/config.toml`. Unchanged from Checkpoints 11–12. The schema

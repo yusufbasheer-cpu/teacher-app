@@ -67,3 +67,14 @@ Prefer explicit contracts:
 - Versioned event schemas for async generation/billing if queues are introduced.
 - Generated TypeScript API client in frontend.
 - Avoid sharing runtime TypeScript/Python code across repos.
+
+## Checkpoint 24 Split Readiness
+
+See `REPO_SPLIT_READINESS.md` for the current physical split manifest,
+subsystem readiness matrix, and future frontend/backend/AI network
+contract.
+
+Current conclusion: repo split preparation can continue, but the
+backend-python repository should not be treated as fully proven for
+authenticated Supabase-backed endpoints until local disposable Supabase
+passes `npm run test:rls`.

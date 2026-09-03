@@ -61,3 +61,9 @@ For geo routing verification, additionally test:
 Production and unknown hosted Supabase configuration must remain separate from local RLS test configuration.
 
 Use `backend-python/.env.integration.example` only with a local Supabase URL such as `http://127.0.0.1:54321` after `SUPABASE_SCHEMA_DRIFT.md` is resolved. Do not copy `.env.local` hosted project credentials into the integration variables unless that project has been explicitly classified as dedicated test or controlled staging.
+
+## Checkpoint 24 Local RLS Status
+
+Local Supabase comparison still has not run. The Supabase CLI is now available as a project dev dependency, but Docker is not installed/running, so `npx supabase start` and `npx supabase db reset` cannot reach a local database. No hosted Supabase project was contacted or mutated; `UNKNOWN` and production targets remain untouched.
+
+Checkpoint 24 adds the preferred single command for the existing guarded harness: `npm run test:rls`. Run it only after Docker Desktop is running, `npx supabase start` succeeds, and the `SUPABASE_INTEGRATION_*` variables point at the local disposable Supabase instance.

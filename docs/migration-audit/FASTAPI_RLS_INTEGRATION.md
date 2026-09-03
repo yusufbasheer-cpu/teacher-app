@@ -14,17 +14,22 @@ Checkpoint 11 attempted to establish local Supabase reproducibility, but stopped
 
 Checkpoint 12 resolved the source-of-truth question as `HYBRID_TRANSITION_REQUIRED`: `schema.sql` is currently the only SQL source for the `lesson_plans` base contract, while ordered migrations are incomplete for fresh reset. No live RLS test was run.
 
+Checkpoint 24 added the official Supabase CLI as a project dev
+dependency, initialized `supabase/config.toml`, and added `npm run
+test:rls` as the single command for the existing guarded RLS harness. No
+live RLS test was run because Docker/Podman is still unavailable.
+
 ## Environment Inspection
 
 Repository evidence:
 
 - `supabase/schema.sql` exists.
 - `supabase/migrations/` exists.
-- No `supabase/config.toml` exists.
-- Supabase CLI was not available on PATH during this checkpoint.
-- Docker was not available on PATH during this checkpoint.
-- `supabase/config.toml` was not created because schema-source drift must be resolved first.
-- The migration chain has no initial `lesson_plans` or `saved_lessons` creation migration.
+- `supabase/config.toml` now exists for local disposable Supabase.
+- Supabase CLI is available through the project dev dependency (`npx supabase`).
+- Docker was not available on PATH during Checkpoint 24.
+- `supabase/config.toml` was created only after the `lesson_plans` schema-source drift had a reconciliation migration; remaining drift is still documented separately.
+- The migration chain now has a `lesson_plans` reconciliation migration; `saved_lessons` still lacks a verified baseline migration.
 - `.github/workflows/ci.yml` uses placeholder Supabase values for fast checks only.
 - `.env.local` contains Supabase URL, anon key, and service-role key, but no `SUPABASE_ENVIRONMENT`, staging marker, test marker, or mutation approval marker.
 
@@ -34,7 +39,7 @@ Environment classification:
 | --- | --- | --- | --- | --- | --- |
 | `.env.local` Supabase project | `.env.local` | `jbwevzvtloahjoamwnjt` | `UNKNOWN` | No | URL, anon key, and service-role key are present, but no repo doc or env marker identifies it as local/test/staging. |
 | CI placeholder Supabase | `.github/workflows/ci.yml` | `placeholder` | `UNKNOWN` | No | Placeholder values are for fast checks only and are not a real Supabase target. |
-| Local Supabase | `supabase/` directory | none | `LOCAL` unavailable | No | `supabase/schema.sql` and migrations exist, but no `supabase/config.toml`, Supabase CLI, Docker runtime, or complete fresh-reset migration chain is available. |
+| Local Supabase | `supabase/` directory | `teacher-app` local config | `LOCAL_DISPOSABLE` intended, runtime unavailable | No | `supabase/config.toml`, migrations, and `npx supabase` are present, but Docker/Podman is unavailable so local services cannot start. |
 | Dedicated test Supabase | repository docs/config | none | `DEDICATED_TEST` unavailable | No | No dedicated test project reference or credentials found. |
 | Controlled staging Supabase | repository docs/config | none | `CONTROLLED_STAGING` unavailable | No | Staging URLs in docs are placeholders; no staging Supabase project reference found. |
 | Production Supabase | repository docs/config | unknown | `UNKNOWN` | No | Production identity is not documented in repo; unknown is treated as unsafe. |
@@ -216,12 +221,12 @@ Required hosted strategy:
 Required local strategy:
 
 - Add the minimal Supabase CLI configuration needed to run Auth, PostgREST, and Postgres locally.
-- Resolve `SUPABASE_SCHEMA_DRIFT.md` before adding or using that configuration.
+- Resolve remaining `SUPABASE_SCHEMA_DRIFT.md` items before treating local reset as complete evidence.
 - Apply the same lesson-plan schema and RLS policies from the reconciled source.
 - Run with `SUPABASE_INTEGRATION_ENVIRONMENT=local`.
 - Do not reduce policies just to make integration tests pass.
 
-## Checkpoint 23 Re-Check
+## Checkpoint 23 Historical Re-Check
 
 Environment classification re-run: unchanged. `.env.local` project
 (`jbwevzvtloahjoamwnjt`) remains `UNKNOWN`; no dedicated test/staging
@@ -250,3 +255,11 @@ PostgREST call bypassing the app (proving RLS itself). No changes made —
 ## Limitation
 
 `POST /api/lesson-plan/save` remains `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`, not `PYTHON_CUTOVER_CANDIDATE`, until the guarded integration suite is run successfully against a proven non-production Supabase environment. That remains true after Checkpoint 23 — reproducibility improved, but live verification is still blocked externally (Docker/CLI/dedicated test project availability), not by anything this repository controls.
+
+## Checkpoint 24 Re-Check
+
+The local configuration prerequisite is now repository-side ready: `supabase/config.toml` exists, `supabase` is pinned in `package.json`, and `npm run test:rls` runs the existing guarded integration harness.
+
+The live RLS result is still not run. `npx supabase start` fails before service startup because Docker/Podman is unavailable, and `npx supabase db reset` cannot inspect a local database service. No hosted Supabase project was contacted or mutated.
+
+Current classification: `AUTHENTICATED_DB_FOUNDATION_EXTERNALLY_BLOCKED`.
