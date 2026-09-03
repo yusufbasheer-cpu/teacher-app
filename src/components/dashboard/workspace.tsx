@@ -3,8 +3,24 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion, useReducedMotion } from "motion/react";
 import type { User } from "@supabase/supabase-js";
-import { ArrowRight, BookOpen, ClipboardList, Layers3, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Atom,
+  BookOpen,
+  BookText,
+  Calculator,
+  ClipboardList,
+  Dumbbell,
+  Globe2,
+  Languages,
+  Layers3,
+  MoonStar,
+  Palette,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   CURRICULUM_TYPE_GROUPS,
@@ -53,12 +69,49 @@ import { cn } from "@/lib/utils";
  * when it is actually about to block them.
  */
 
+/** Subject → icon, for quick visual scanning of the recent-lessons list. Only
+ *  the handful of core subjects get a specific mark; the long tail (mostly
+ *  languages) shares one icon rather than forcing a guess per language. */
+const SUBJECT_ICONS: Record<string, LucideIcon> = {
+  Math: Calculator,
+  Science: Atom,
+  English: BookText,
+  "Islamic Studies": MoonStar,
+  "Social Science": Globe2,
+  ICT: Layers3,
+  "Computer Science": Layers3,
+  Robotics: Layers3,
+  STEM: Atom,
+  Art: Palette,
+  PE: Dumbbell,
+};
+
+function iconForSubject(subject: string): LucideIcon {
+  return SUBJECT_ICONS[subject] ?? (subject && subject !== "Other" ? Languages : BookOpen);
+}
+
+const FADE_UP = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+} as const;
+
 export function Workspace({ user }: { user: User }) {
   const router = useRouter();
   const { usage } = useUserUsage(true);
   const [lessons, setLessons] = React.useState<SavedLesson[] | null>(null);
+  const [totalCount, setTotalCount] = React.useState<number | null>(null);
   const [failed, setFailed] = React.useState(false);
   const [, setError] = useErrorToast();
+  const reduceMotion = useReducedMotion();
+  const motionProps = (delay: number) =>
+    reduceMotion
+      ? {}
+      : {
+          initial: "hidden" as const,
+          animate: "visible" as const,
+          variants: FADE_UP,
+          transition: { duration: 0.35, delay, ease: "easeOut" as const },
+        };
 
   /* Composer state, seeded from the most recent lesson. */
   const [curriculum, setCurriculum] = React.useState("CBSE/NCERT");
@@ -69,12 +122,18 @@ export function Workspace({ user }: { user: User }) {
 
   const load = React.useCallback(async () => {
     setFailed(false);
-    const { data, error } = await supabase
-      .from("saved_lessons")
-      .select("id, subject, grade, topic, chapter, curriculum, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(6);
+    const [{ data, error }, countResult] = await Promise.all([
+      supabase
+        .from("saved_lessons")
+        .select("id, subject, grade, topic, chapter, curriculum, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(6),
+      supabase
+        .from("saved_lessons")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id),
+    ]);
 
     if (error) {
       setError(toUserFacingError(error, "dashboard"));
@@ -83,6 +142,8 @@ export function Workspace({ user }: { user: User }) {
       return;
     }
     setLessons((data ?? []) as SavedLesson[]);
+    // Non-critical — the ambient "N lessons" line just disappears if this fails.
+    if (!countResult.error) setTotalCount(countResult.count ?? null);
   }, [user.id, setError]);
 
   React.useEffect(() => {
@@ -123,11 +184,20 @@ export function Workspace({ user }: { user: User }) {
   return (
     <div className="mx-auto w-full max-w-[1080px] px-4 py-8 sm:px-6 sm:py-10">
       {/* ---- Greeting ---- */}
-      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.015em] text-ink">
-          {greeting(new Date())}
-          {name ? `, ${name}` : ""}
-        </h1>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.015em] text-ink">
+            {greeting(new Date())}
+            {name ? `, ${name}` : ""}
+          </h1>
+          {/* Real count, not a vanity metric — omitted entirely rather than
+              shown as "0" while it's still loading or genuinely empty. */}
+          {totalCount ? (
+            <p className="mt-1 text-[12px] text-faint">
+              {totalCount} lesson{totalCount === 1 ? "" : "s"} created so far
+            </p>
+          ) : null}
+        </div>
         <time
           className="font-mono text-[11px] uppercase tracking-wider text-disabled"
           dateTime={new Date().toISOString()}
@@ -162,6 +232,7 @@ export function Workspace({ user }: { user: User }) {
       ) : null}
 
       {/* ---- Start a lesson — the page's reason to exist ---- */}
+      <motion.div {...motionProps(0)}>
       <Panel className="overflow-visible shadow-pop">
         <form onSubmit={start} className="p-5 sm:p-6">
           <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -235,31 +306,40 @@ export function Workspace({ user }: { user: User }) {
           </div>
 
           {/* The other two generators, carrying the same context so switching
-              tool doesn't mean re-picking the class. */}
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line-subtle pt-4">
-            <span className="text-[12px] text-faint">Or make</span>
+              tool doesn't mean re-picking the class. Chips rather than plain
+              links — still secondary to the composer above, but substantial
+              enough to read as "the other things you can do here". */}
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line-subtle pt-4">
+            <span className="mr-1 text-[12px] text-faint">Or make</span>
             <Link
               href={`/question-paper?${params()}`}
-              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-muted transition-colors hover:text-brand-text"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border border-line-subtle px-2.5 py-1.5",
+                "text-[12px] font-medium text-muted transition-colors hover:border-line hover:bg-hover hover:text-ink",
+              )}
             >
-              <ClipboardList className="size-3.5" aria-hidden />
+              <ClipboardList className="size-3.5 text-faint" aria-hidden />
               Question paper
               {isFree ? <Badge tone="generated">Pro</Badge> : null}
             </Link>
             <Link
               href={`/differentiated-worksheets?${params()}`}
-              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-muted transition-colors hover:text-brand-text"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border border-line-subtle px-2.5 py-1.5",
+                "text-[12px] font-medium text-muted transition-colors hover:border-line hover:bg-hover hover:text-ink",
+              )}
             >
-              <Layers3 className="size-3.5" aria-hidden />
+              <Layers3 className="size-3.5 text-faint" aria-hidden />
               Worksheet pack
               {isFree ? <Badge tone="generated">Pro</Badge> : null}
             </Link>
           </div>
         </form>
       </Panel>
+      </motion.div>
 
       {/* ---- Recent ---- */}
-      <section className="mt-8">
+      <motion.section className="mt-8" {...motionProps(0.08)}>
         <div className="mb-2.5 flex items-baseline justify-between gap-3">
           <h2 className="text-[15px] font-semibold text-ink">Recent lessons</h2>
           {lessons && lessons.length > 0 ? (
@@ -290,10 +370,15 @@ export function Workspace({ user }: { user: User }) {
             />
           ) : lessons.length === 0 ? (
             <EmptyState
-              compact
               icon={Sparkles}
-              title="No lessons yet"
-              description="Pick a class above and generate your first one — it saves here automatically."
+              title="Your first lesson starts above"
+              description="Pick a curriculum, grade and subject in the composer and generate — every lesson you make saves here automatically, ready to reopen or re-export."
+              action={
+                <Button size="sm" onClick={() => router.push(`/lesson-plan?${params()}`)}>
+                  Generate lesson plan
+                  <ArrowRight />
+                </Button>
+              }
             />
           ) : (
             <ul className="divide-y divide-line-subtle">
@@ -312,7 +397,7 @@ export function Workspace({ user }: { user: User }) {
                         className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-line-subtle bg-sunken text-faint"
                         aria-hidden
                       >
-                        <BookOpen className="size-3.5" />
+                        {React.createElement(iconForSubject(lesson.subject), { className: "size-3.5" })}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -347,7 +432,7 @@ export function Workspace({ user }: { user: User }) {
             </ul>
           )}
         </Panel>
-      </section>
+      </motion.section>
     </div>
   );
 }
