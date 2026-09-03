@@ -9,7 +9,9 @@ Current source of truth: `HYBRID_TRANSITION_REQUIRED`.
 The repository does not currently have one fully reliable database authority for a fresh Supabase environment.
 
 - `supabase/schema.sql` is the only tracked SQL source that creates `public.lesson_plans` with its intended owner RLS policies.
-- `supabase/migrations/` is the forward-change history for many later objects, but it does not include the initial `lesson_plans` or `saved_lessons` base-table creation.
+- `supabase/migrations/` now includes fresh-baseline reconciliation for
+  `lesson_plans` and `saved_lessons`, plus the forward-change history for
+  many later objects.
 - Some schema instructions still live in application comments or route fallback code, notably `school_templates`.
 
 ## What Should Become Canonical
@@ -20,15 +22,18 @@ Ordered migrations should become canonical for fresh environment creation.
 
 ## Fresh DB Creation
 
-Not reproducible yet from migrations alone.
+Fresh local reset is now reproducible from migrations alone for the
+current tracked chain.
 
-Before a fresh local Supabase database can be trusted for authenticated RLS verification, the repo needs one of these reconciliations:
+Checkpoint 25 proved:
 
-1. a reviewed baseline migration that creates pre-existing tables such as `lesson_plans` and `saved_lessons`, followed by existing migrations
-2. a documented bootstrap workflow that loads `supabase/schema.sql` first, then applies compatible later migrations
-3. a regenerated ordered migration history from an authoritative non-production clone of the deployed schema
+1. local Supabase can start from tracked config
+2. `npx supabase db reset` can replay the migration chain
+3. the authenticated `lesson_plans` RLS harness can run against the fresh
+   local schema
 
-Do not choose a reduced one-table bootstrap for security evidence.
+This does not mean every historical production object has been fully
+catalog-reconciled; `school_templates` remains documented migration debt.
 
 ## schema.sql Maintenance
 
@@ -137,3 +142,24 @@ Updated classification: source of truth remains `HYBRID_TRANSITION_REQUIRED`
 in practice (nothing was proven live), but `lesson_plans`
 reproducibility specifically has moved from `PLANNED_BUT_NOT_EXECUTABLE`
 to `RECONCILIATION_SQL_WRITTEN_UNTESTED`.
+
+## Checkpoint 25: Local Reset Proven
+
+Docker Desktop is now available locally and the Supabase CLI can start
+the disposable local stack. The first live reset attempt failed at
+`20260610120000_saved_lessons_learning_objectives.sql` because
+`public.saved_lessons` had no baseline table migration. Checkpoint 25
+adds `20260101001000_saved_lessons_baseline_reconciliation.sql`, a
+fresh-bootstrap-only, existence-guarded baseline for the app-required
+`saved_lessons` fields and owner RLS.
+
+After that reconciliation, `npx supabase db reset` completed
+successfully against `LOCAL_DISPOSABLE` Supabase.
+
+- `lesson_plans`: `LOCAL_RESET_VERIFIED`
+- `saved_lessons`: `LOCAL_RESET_VERIFIED_BASELINE_RECONCILED`
+- `school_templates`: `PARTIAL` (not required by the current reset path;
+  still represented by embedded app SQL rather than a canonical
+  migration)
+- overall: `HYBRID_TRANSITION_REQUIRED`, with authenticated
+  `lesson_plans` local proof now complete

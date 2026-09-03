@@ -13,7 +13,7 @@ Checkpoint 12 found that `lesson_plans` drift is real, but not isolated. The rep
 | Source | Classification | Evidence |
 | --- | --- | --- |
 | `supabase/schema.sql` | `MANUAL_BOOTSTRAP / PARTIAL_SCHEMA_SNAPSHOT` | Present from first commit; creates `lesson_plans`, `active_sessions`, and `user_usage`; lacks many later tables represented by migrations; no generation command found. |
-| `supabase/migrations/*.sql` | `CANONICAL_MIGRATION` for later changes, incomplete for baseline | Timestamped forward migration convention; many `create table if not exists` files exist, but no base `lesson_plans` or `saved_lessons` creation migration was found. |
+| `supabase/migrations/*.sql` | `CANONICAL_MIGRATION` for later changes plus Checkpoint 23/25 fresh baselines | Timestamped forward migration convention; `lesson_plans` and `saved_lessons` now have baseline reconciliation migrations for local reset. |
 | `src/lib/pptx-template.ts` embedded SQL comment | `LEGACY / MANUAL_BOOTSTRAP` | Contains `school_templates` setup SQL in a code comment rather than a normal migration. |
 | `src/app/api/school-template/upload/route.ts` fallback ALTERs | `LEGACY / RUNTIME_COMPATIBILITY_FALLBACK` | Route-side schema repair for selected `school_templates` columns; not a full schema authority. |
 | `.github/workflows/ci.yml` Supabase placeholders | `UNKNOWN / TEST_PLACEHOLDER` | Uses placeholder Supabase env values for CI checks; not a database source. |

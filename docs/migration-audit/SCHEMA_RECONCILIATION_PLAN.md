@@ -2,9 +2,10 @@
 
 Date: 2026-09-01
 
-Status: `SQL_DEFERRED_PENDING_CATALOG_INSPECTION`.
+Status: `LOCAL_RESET_RECONCILED_FOR_AUTHENTICATED_LESSON_SAVE`.
 
-This plan is precise enough for a later checkpoint to produce migrations, but Checkpoint 13 intentionally creates no executable migration SQL.
+Checkpoint 25 implements the minimal reconciliation needed for fresh
+local reset and authenticated lesson-save RLS verification.
 
 ## Chosen History Model
 
@@ -86,6 +87,12 @@ Unknown items:
 
 - Base create-table SQL, policy names, indexes, and exact defaults.
 - Whether moderation routes expect soft-delete filtering beyond existing code.
+
+Checkpoint 25 update: a fresh-baseline reconciliation migration now
+creates the app-required base table and owner RLS before the existing
+`saved_lessons` alter migrations run. This is verified for local reset,
+but production/staging catalog policy names and extra indexes remain
+uninspected.
 
 ## school_templates
 

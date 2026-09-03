@@ -127,6 +127,38 @@ def test_saved_lessons_later_migrations_preserve_verified_columns() -> None:
     )
 
 
+def test_saved_lessons_baseline_reconciliation_supports_later_migrations() -> None:
+    migration_name = "20260101001000_saved_lessons_baseline_reconciliation.sql"
+    migration = _normalized_file(MIGRATIONS_DIR / migration_name)
+
+    assert migration_name < "20260610120000_saved_lessons_learning_objectives.sql"
+    assert "if not exists (" in migration
+    assert (
+        "select 1 from information_schema.tables where table_schema = 'public' "
+        "and table_name = 'saved_lessons'"
+        in migration
+    )
+
+    for fragment in (
+        "create table public.saved_lessons",
+        "id uuid primary key default gen_random_uuid()",
+        "user_id uuid not null references auth.users(id) on delete cascade",
+        "subject text not null",
+        "grade text not null",
+        "topic text not null",
+        "curriculum text not null",
+        "lesson_content text not null",
+        "ppt_content text not null",
+        "created_at timestamptz not null default now()",
+        "alter table public.saved_lessons enable row level security",
+        "for insert with check (auth.uid() = user_id)",
+        "for select using (auth.uid() = user_id)",
+        "for update using (auth.uid() = user_id) with check (auth.uid() = user_id)",
+        "for delete using (auth.uid() = user_id)",
+    ):
+        assert fragment in migration
+
+
 def test_saved_lessons_browser_autosave_contract_remains_visible() -> None:
     source = _normalized_file(LESSON_GENERATOR)
 

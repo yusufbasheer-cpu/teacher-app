@@ -188,3 +188,26 @@ Updated classification: `AUTHENTICATED_DB_FOUNDATION_EXTERNALLY_BLOCKED`.
    baseline reconciliation — `saved_lessons` and `school_templates`
    remain `PARTIAL` confidence, unresolved, deliberately out of scope
    this checkpoint.
+
+## Checkpoint 25 Verified Pattern
+
+Date: 2026-09-03
+
+The authenticated `POST /api/lesson-plan/save` pattern is now live-proven
+against `LOCAL_DISPOSABLE` Supabase:
+
+- Docker Desktop installed and daemon reachable.
+- `npx supabase start` succeeded.
+- `npx supabase db reset` succeeded after adding the missing
+  `saved_lessons` fresh-baseline reconciliation required by the full
+  migration chain.
+- `npm run test:rls` passed with synthetic User A and User B.
+
+The passing harness proves User A bearer-token authentication through
+FastAPI, server-derived identity, caller-context PostgREST access with
+the anon key plus the same caller bearer, owner RLS for User A, cross-user
+RLS isolation from User B's row, spoofed body `user_id` rejection by
+server-side identity derivation, missing/invalid auth denial, and direct
+PostgREST cross-user denial.
+
+Updated classification: `AUTHENTICATED_DB_FOUNDATION_VERIFIED`.

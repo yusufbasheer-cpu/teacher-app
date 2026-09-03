@@ -4,14 +4,15 @@ Date: 2026-09-03
 
 Checkpoint: 24
 
-Status: `PREPARED_BUT_AUTHENTICATED_DB_FOUNDATION_EXTERNALLY_BLOCKED`.
+Status: `AUTHENTICATED_BACKEND_FOUNDATION_READY_TO_SPLIT`.
 
 ## Current Readiness Matrix
 
 | Subsystem | Classification | Reason |
 | --- | --- | --- |
 | Frontend | `NEEDS_BOUNDARY_WORK` | UI can stay in Next, but browser components still depend on Next route handlers and some direct Supabase browser data paths. |
-| Backend | `NEEDS_BOUNDARY_WORK` | FastAPI exists with geo, verify-captcha, and lesson-plan/save parity, but live caller-context Supabase/RLS integration is still blocked by missing Docker. |
+| Backend foundation | `READY_TO_SPLIT` | FastAPI authenticated lesson-plan/save has live local proof through Supabase Auth, caller-context PostgREST, anon key, and RLS. |
+| Backend product surface | `NEEDS_BOUNDARY_WORK` | Geo, verify-captcha, and lesson-plan/save have evidence, but most remaining routes still need endpoint-specific migration contracts. |
 | AI | `NEEDS_BOUNDARY_WORK` | AI facade/provider seams exist, but generation routes still own orchestration, quota, streaming, and persistence. |
 | PPT/export | `NEEDS_BOUNDARY_WORK` | Mostly document/export infrastructure, not pure AI. Keep with backend/export ownership until AI-provider-specific image work is separated. |
 | Billing | `BLOCKED` | Razorpay/webhook/payment state is high-risk and remains Next-owned until replay/idempotency tests and backend auth boundaries exist. |
@@ -102,6 +103,13 @@ Error envelope philosophy:
 - make backend-to-AI errors typed enough for retries/fallbacks
 - do not expose provider secrets, raw prompts, or internal topology to the browser
 
-## Remaining Blocker To Physical Split
+## Checkpoint 25 Update
 
-The code and docs are close enough to prepare the physical repositories, but authenticated DB access is not proven end-to-end locally because Docker Desktop is not installed/running. Until `npx supabase start`, `npx supabase db reset`, and `npm run test:rls` pass against `LOCAL_DISPOSABLE`, the backend split should not be treated as fully proven for Supabase-backed endpoints.
+Docker Desktop is installed and the local Docker daemon is reachable
+through the WSL2 backend. `npx supabase start`, `npx supabase db reset`,
+and `npm run test:rls` pass against `LOCAL_DISPOSABLE` Supabase.
+
+The authenticated backend foundation is now live-proven enough to create
+the physical `backend-python` repository next. This does not promote
+billing, admin, cron, or AI-service ownership to ready; those remain
+separate subsystem migrations.

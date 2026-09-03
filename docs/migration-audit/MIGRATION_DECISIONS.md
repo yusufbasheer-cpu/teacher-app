@@ -397,3 +397,34 @@ Alternatives considered: silently running the Docker Desktop installer through w
 Impact: `supabase` is available through `npx`, `npm run test:rls` names the existing guarded integration harness, and local workflow docs now tell a beginner to install/open Docker Desktop first. No hosted Supabase project, production route, schema migration, auth logic, billing, AI, or frontend behavior changed.
 
 Status: Implemented repository-side; live RLS verification externally blocked.
+
+## 2026-09-03 (Checkpoint 25)
+
+Decision: Add the missing `saved_lessons` fresh-baseline reconciliation
+needed by local reset and classify the authenticated DB foundation as
+verified after the existing RLS harness passed against local disposable
+Supabase.
+
+Reason: Docker Desktop is now installed and reachable through its WSL2
+backend, allowing `npx supabase start` and `npx supabase db reset` to run
+locally. The first reset exposed a concrete historical migration gap:
+`20260610120000_saved_lessons_learning_objectives.sql` altered
+`saved_lessons`, but no earlier migration created the base table.
+Creating the minimal existence-guarded baseline lets a fresh local clone
+replay the migration chain without touching any hosted database.
+
+Alternatives considered: bypassing unrelated later migrations (rejected
+because fresh reset must prove the tracked chain); using the hosted
+`.env.local` project (rejected because it remains `UNKNOWN`); broad
+database redesign or perfect historical reconstruction (rejected because
+the checkpoint only needed the minimal forward reconciliation required
+for local reset and authenticated lesson-save proof).
+
+Impact: `npx supabase db reset` and `npm run test:rls` pass locally.
+Synthetic User A/B proved Supabase Auth, bearer-token validation,
+server-derived identity, anon-key caller-context PostgREST, RLS
+isolation, body `user_id` distrust, and missing/invalid auth denial. No
+production routes, hosted Supabase data, frontend design, billing, admin,
+cron, PPT, or AI behavior changed.
+
+Status: Implemented and verified locally.

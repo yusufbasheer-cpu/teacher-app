@@ -263,3 +263,35 @@ The local configuration prerequisite is now repository-side ready: `supabase/con
 The live RLS result is still not run. `npx supabase start` fails before service startup because Docker/Podman is unavailable, and `npx supabase db reset` cannot inspect a local database service. No hosted Supabase project was contacted or mutated.
 
 Current classification: `AUTHENTICATED_DB_FOUNDATION_EXTERNALLY_BLOCKED`.
+
+## Checkpoint 25 Live Result
+
+Docker Desktop is now installed and reachable. `npx supabase start`
+succeeded against local project `teacher-app`, and `npx supabase db
+reset` completed successfully after the missing `saved_lessons` baseline
+was added.
+
+`npm run test:rls` passed against `LOCAL_DISPOSABLE` Supabase.
+
+Verified live:
+
+- synthetic User A and User B were created locally
+- User A and User B bearer tokens were obtained through local Supabase Auth
+- FastAPI validated User A through Supabase Auth
+- FastAPI derived `user_id` from the verified bearer, not the body
+- PostgREST calls used the anon key plus the same caller bearer token
+- service-role was confined to test fixture setup/teardown/admin
+  assertions, not the normal app mutation path
+- User A inserted and updated their own `lesson_plans` row
+- User A could not modify User B's row through FastAPI or direct
+  PostgREST
+- spoofing User B's `user_id` in User A's request body did not impersonate
+  User B
+- missing and invalid bearer tokens returned 401
+
+The documented zero-row update behavior remains parity-preserved:
+cross-user update attempts return the existing success-shaped update
+response while the underlying row remains unchanged, so the API does not
+reveal whether another user's protected row exists.
+
+Updated classification: `AUTHENTICATED_DB_FOUNDATION_VERIFIED`.

@@ -11,7 +11,7 @@ Current conclusion: `DOCUMENTATION_ONLY_FOR_CHECKPOINT_13`. No executable migrat
 | Object | Current definition source | Base migration exists? | Fresh migration sequence creates it? | Existing DB risk | Confidence |
 | --- | --- | --- | --- | --- | --- |
 | `public.lesson_plans` | `supabase/schema.sql`; later alter/policy migrations; app/API tests | No | No | Medium: security policy replacement could change RLS behavior | Verified for intended shape; unknown for deployed extras |
-| `public.saved_lessons` | app readers/writers; later alter migrations | No | No | High: user library data, moderation columns, and live `chapter` fallback | Partial |
+| `public.saved_lessons` | app readers/writers; later alter migrations | Yes, Checkpoint 25 fresh baseline | Yes, local reset | High: user library data, moderation columns, and live `chapter` fallback | Local reset verified; hosted catalog still uninspected |
 | `public.school_templates` | `src/lib/pptx-template.ts` embedded SQL; school-template API routes; upload fallback message | No | No | High: table is user-owned, stores uploaded file data, and schema is not in migrations | Partial |
 
 ## lesson_plans
@@ -111,5 +111,5 @@ Current conclusion: `DOCUMENTATION_ONLY_FOR_CHECKPOINT_13`. No executable migrat
 | Object | Can current fresh migration sequence create it? | Status |
 | --- | --- | --- |
 | `lesson_plans` | Yes, as of Checkpoint 23 | `RECONCILIATION_SQL_WRITTEN_UNTESTED` — `20260101000000_lesson_plans_baseline_reconciliation.sql` added; not applied/tested against any live database (no safe target available) |
-| `saved_lessons` | No | `PLANNED_BUT_NOT_EXECUTABLE` — still `PARTIAL` confidence, deliberately deferred (not needed by the one endpoint this checkpoint's foundation targets) |
+| `saved_lessons` | Yes, Checkpoint 25 | `LOCAL_RESET_VERIFIED_BASELINE_RECONCILED` — sufficient for fresh local reset; hosted catalog still needs inspection before production reconciliation |
 | `school_templates` | No | `PLANNED_BUT_NOT_EXECUTABLE` — still `PARTIAL` confidence, deliberately deferred |

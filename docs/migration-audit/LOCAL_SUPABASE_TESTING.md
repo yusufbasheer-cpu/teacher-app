@@ -191,3 +191,27 @@ Move to `MANUAL_CI` or `AUTOMATED_CI` only after:
 - all credentials are stored as CI secrets
 - mutation opt-in flags are set only for the integration job
 - cleanup is proven reliable
+
+## Checkpoint 25 Verified Workflow
+
+Docker Desktop is installed and running locally with the WSL2 backend.
+The beginner workflow now works:
+
+```powershell
+npx supabase start
+npx supabase db reset
+npm run test:rls
+npx supabase stop
+```
+
+For `npm run test:rls`, set the guarded integration variables from the
+local Supabase output first. Do not commit those local keys.
+
+Checkpoint 25 result:
+
+- `npx supabase start`: passed
+- `npx supabase db reset`: passed after adding the missing
+  `saved_lessons` baseline reconciliation
+- local Auth health: HTTP 200
+- local PostgREST lesson_plans check: HTTP 200
+- `npm run test:rls`: passed

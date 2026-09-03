@@ -60,3 +60,14 @@ Live authenticated database proof is still externally blocked because Docker/Pod
 Current classification: `AUTHENTICATED_DB_FOUNDATION_EXTERNALLY_BLOCKED`.
 
 `POST /api/lesson-plan/save` remains `PYTHON_PARITY_WITH_DOCUMENTED_BLOCKER`: Python/Next parity and the caller-context architecture are repository-proven, but frontend -> Python backend -> Supabase Auth -> PostgREST -> RLS -> persistence is not live-proven until Docker Desktop is installed/running and `npm run test:rls` passes against `LOCAL_DISPOSABLE` Supabase.
+
+## Checkpoint 25 Authenticated DB Foundation Verified
+
+Docker Desktop is installed and running through the WSL2 backend. Local
+Supabase starts, fresh `db reset` succeeds, and `npm run test:rls`
+passes against `LOCAL_DISPOSABLE`.
+
+`POST /api/lesson-plan/save` can now be treated as authenticated
+caller-context persistence proof for the physical backend split:
+`PYTHON_PARITY_WITH_LIVE_RLS_VERIFICATION`. It is still not cut over to
+production traffic.
