@@ -78,3 +78,19 @@ Current conclusion: repo split preparation can continue, but the
 backend-python repository should not be treated as fully proven for
 authenticated Supabase-backed endpoints until local disposable Supabase
 passes `npm run test:rls`.
+
+## Checkpoint 26 Physical Backend Extraction
+
+The backend-python target repository now exists locally:
+
+`C:\Liyaah\layah-backend-python`
+
+Initial standalone commit:
+
+`735453de6adf2a00b0f90625ff28892f7a28f14f`
+
+This is a local extraction only. The GitHub remote still needs to be
+created or connected before it can become the shared canonical repo.
+The monorepo copy remains in place as a temporary fallback, and no
+frontend, AI-services, production routing, billing, admin, cron, or PPT
+split was performed.

@@ -428,3 +428,32 @@ production routes, hosted Supabase data, frontend design, billing, admin,
 cron, PPT, or AI behavior changed.
 
 Status: Implemented and verified locally.
+
+## 2026-09-03 (Checkpoint 26)
+
+Decision: Create a sanitized standalone local `layah-backend-python`
+repository with one initial commit, rather than copying full monorepo
+history without a safe history-filtering tool.
+
+Reason: `git-filter-repo` is not installed and no equivalent safe
+history-preserving extraction tool is available in this environment.
+Secret safety is mandatory for a physical split, so the extracted repo
+starts with a clean standalone commit containing only the backend,
+contract fixtures, Supabase local/migration files, and standalone repo
+metadata required to validate independently.
+
+Alternatives considered: preserving full history manually (rejected
+because it risks copying unrelated history/secrets); deleting the
+monorepo backend copy immediately (rejected because fallback is required
+until remote and cutover decisions are complete); creating the AI service
+repo too (rejected because this checkpoint is backend-only).
+
+Impact: Local repo `C:\Liyaah\layah-backend-python` exists at commit
+`735453de6adf2a00b0f90625ff28892f7a28f14f` and passes standalone tests,
+Ruff, FastAPI smoke, local Supabase reset, and authenticated RLS
+verification from both the repo and a fresh local clone. No production
+routing, hosted database, frontend, billing, admin, cron, PPT, Razorpay,
+or AI configuration changed. A GitHub remote still needs to be created
+or connected.
+
+Status: Implemented locally; remote provisioning required.

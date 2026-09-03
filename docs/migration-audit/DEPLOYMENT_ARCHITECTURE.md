@@ -117,6 +117,22 @@ Preview-to-Preview validation.
 - Production/staging/preview URLs in the request were placeholders, so environment comparison was not possible.
 - Secrets management is platform/environment-variable based but not fully documented in repo.
 
+## Checkpoint 26 Backend Repository Deployment State
+
+The FastAPI backend has been physically extracted to a standalone local
+git repository at `C:\Liyaah\layah-backend-python`, commit
+`735453de6adf2a00b0f90625ff28892f7a28f14f`.
+
+The extracted repo includes standalone deployment config files and a
+GitHub Actions workflow for Python tests, Ruff, and local Supabase/RLS
+validation. It has no configured remote yet, and no deployment platform
+was modified during this checkpoint.
+
+Production frontend traffic still goes through the existing Next app.
+No `PYTHON_BACKEND_URL`, backend route flag, DNS, Vercel Production
+deployment, Razorpay, billing, admin, cron, PPT, or AI configuration was
+changed.
+
 ## Checkpoint 24 Local Supabase Runtime
 
 Docker is being introduced only as the local runtime dependency for `LOCAL_DISPOSABLE` Supabase. It is not an application deployment target, and this checkpoint does not containerize Next.js, FastAPI, PPT/export, or production services.

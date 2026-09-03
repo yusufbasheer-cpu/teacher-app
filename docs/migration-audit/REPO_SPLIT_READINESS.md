@@ -113,3 +113,27 @@ The authenticated backend foundation is now live-proven enough to create
 the physical `backend-python` repository next. This does not promote
 billing, admin, cron, or AI-service ownership to ready; those remain
 separate subsystem migrations.
+
+## Checkpoint 26 Update
+
+The physical backend repository now exists locally at:
+
+`C:\Liyaah\layah-backend-python`
+
+Initial standalone commit:
+
+`735453de6adf2a00b0f90625ff28892f7a28f14f`
+
+Classification: `BACKEND_REPOSITORY_EXTRACTED_LOCAL_ONLY`.
+
+The extracted repository was validated both in place and from a fresh
+local clone. Python tests, Ruff, FastAPI health/readiness/OpenAPI smoke,
+local Supabase reset, and the authenticated RLS integration test all
+passed when run with explicit local-only mutation guards.
+
+No remote repository was created because `gh` is not installed and the
+intended GitHub remote was not reachable as an authenticated/public repo
+from this session. No production routing changed, and the monorepo copy
+of `backend-python/` remains as the fallback during transition.
+
+See `BACKEND_REPOSITORY_EXTRACTION.md` for the full extraction record.

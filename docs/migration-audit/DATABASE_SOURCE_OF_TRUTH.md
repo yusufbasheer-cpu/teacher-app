@@ -163,3 +163,20 @@ successfully against `LOCAL_DISPOSABLE` Supabase.
   migration)
 - overall: `HYBRID_TRANSITION_REQUIRED`, with authenticated
   `lesson_plans` local proof now complete
+
+## Checkpoint 26: Backend Repo Local Canonical Copy
+
+The extracted backend repository at `C:\Liyaah\layah-backend-python`
+contains its own copy of `supabase/` and can run local Supabase reset
+and authenticated RLS verification independently.
+
+Until a remote repository is created and branch/source-of-truth rules are
+formally adopted, database ownership is:
+
+- extracted backend repo: local canonical candidate for backend-owned
+  migrations
+- monorepo copy: retained fallback/source compatibility copy
+- production Supabase: not contacted or changed in this checkpoint
+
+Overall classification remains `HYBRID_TRANSITION_REQUIRED`, with the
+physical backend repository extraction complete locally.
