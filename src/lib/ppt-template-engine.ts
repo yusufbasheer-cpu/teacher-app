@@ -44,6 +44,7 @@ export {
 
 // Import for use within this file.
 import { getTemplateConfig, type TemplateConfig, type TemplateId } from "@/lib/ppt-template-config";
+import { fetchExternalImageSafely, sniffFileSignature } from "@/lib/upload-security";
 
 // ─── Slide icons (0-based deck index) ────────────────────────────────────────
 
@@ -215,12 +216,25 @@ export function chunkLinesByHeight(lines: string[], cpl: number, maxHeight: numb
 
 type ImageAsset = { dataUri: string; width: number | undefined; height: number | undefined };
 
+const SNIFFED_KIND_TO_MIME: Record<string, string> = {
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+};
+
 async function fetchImageAsset(url: string): Promise<ImageAsset> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const mime = (res.headers.get("content-type")?.split(";")[0]?.trim() ?? "image/png")
-    .replace(/^(?!image\/).*/, "image/png");
-  const buf = Buffer.from(await res.arrayBuffer());
+  // SSRF-guarded: only fetches https URLs on an allowlisted image-CDN host
+  // whose resolved IP is public (see upload-security.ts). Every slide image
+  // URL reaching this function today comes from Pexels'/fal.ai's own API
+  // response, never from user input, but this is the one place in the app
+  // that fetches a URL server-side, so it gets the hardening regardless.
+  const buf = await fetchExternalImageSafely(url);
+  // Trust the actual bytes, not whatever content-type the remote server
+  // claims — a spoofed header is exactly what "validate by magic bytes" is
+  // for.
+  const sniffed = sniffFileSignature(buf);
+  const mime = (sniffed && SNIFFED_KIND_TO_MIME[sniffed]) || "image/png";
   const size = getImageNaturalSize(buf);
   return {
     dataUri: `data:${mime};base64,${buf.toString("base64")}`,

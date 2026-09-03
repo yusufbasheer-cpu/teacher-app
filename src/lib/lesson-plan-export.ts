@@ -23,6 +23,7 @@ import {
   getPptRenderTheme,
 } from "@/lib/ppt-themes";
 import { buildPptxFromTemplateEngine } from "@/lib/ppt-template-engine";
+import { fetchExternalImageSafely, sniffFileSignature } from "@/lib/upload-security";
 
 const IN_SLIDE_W = 13.333333;
 const IN_SLIDE_H = 7.5;
@@ -406,14 +407,17 @@ async function loadLayahLogoDataUri(): Promise<string | null> {
   return null;
 }
 
+/** Currently unused (kept for a future call site) — routed through the same
+ *  SSRF-guarded fetch as the live image path in ppt-template-engine.ts so it
+ *  can't become an unguarded external-fetch footgun if it's wired up later. */
 async function fetchImageUrlAsDataUri(url: string): Promise<string> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} fetching image`);
-  }
-  const mimeRaw = res.headers.get("content-type")?.split(";")[0]?.trim() || "image/png";
-  const mime = mimeRaw.startsWith("image/") ? mimeRaw : "image/png";
-  const buf = Buffer.from(await res.arrayBuffer());
+  const buf = await fetchExternalImageSafely(url);
+  const sniffed = sniffFileSignature(buf);
+  const mime =
+    sniffed === "jpeg" ? "image/jpeg" :
+    sniffed === "webp" ? "image/webp" :
+    sniffed === "gif" ? "image/gif" :
+    "image/png";
   return `data:${mime};base64,${buf.toString("base64")}`;
 }
 
