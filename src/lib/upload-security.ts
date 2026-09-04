@@ -1,0 +1,477 @@
+/**
+ * Shared, pure(ish) security primitives for every upload/import path in the
+ * app (PDF/image OCR uploads, PPTX school-template uploads, DOCX extraction,
+ * server-side image fetches for PPT generation).
+ *
+ * Nothing here does I/O side effects other than the explicit "fetch a
+ * validated external image" helper and the malware-scan hook — everything
+ * else is a synchronous, unit-testable check over an in-memory buffer.
+ *
+ * Design notes:
+ * - This app never writes uploaded bytes to the filesystem and never stores
+ *   them in object storage — extracted text/derived data goes to Postgres
+ *   (Supabase) and the original .pptx template bytes are stored as base64 in
+ *   a row scoped to `user_id`. There is therefore no "object storage
+ *   destination" or "serve via signed URL" concern for this codebase; the
+ *   real attack surface is (1) forged file types, (2) zip/image
+ *   decompression bombs during parsing, and (3) SSRF via server-side image
+ *   fetches. This module covers exactly those.
+ */
+
+import { lookup as dnsLookup } from "node:dns/promises";
+import { isIP } from "node:net";
+import type JSZip from "jszip";
+import { getImageNaturalSize } from "@/lib/ppt-render-primitives";
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Magic-byte sniffing — never trust a client-supplied extension or MIME.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export type SniffedKind = "pdf" | "jpeg" | "png" | "webp" | "gif" | "zip";
+
+/**
+ * Detects the real file type from its leading bytes. Returns "zip" for any
+ * PK-signed archive — callers that need a *specific* Office format (pptx,
+ * docx) must additionally confirm the expected internal parts exist (done in
+ * the callers below via `inspectZipSafety` + a required-entry check) rather
+ * than trusting the zip signature alone, since a bare zip can be renamed to
+ * .pptx/.docx just as easily as any other file type.
+ */
+export function sniffFileSignature(buf: Buffer): SniffedKind | null {
+  if (buf.length >= 4 && buf.subarray(0, 4).toString("latin1") === "%PDF") return "pdf";
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpeg";
+  if (
+    buf.length >= 8 &&
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47 &&
+    buf[4] === 0x0d &&
+    buf[5] === 0x0a &&
+    buf[6] === 0x1a &&
+    buf[7] === 0x0a
+  ) {
+    return "png";
+  }
+  if (
+    buf.length >= 12 &&
+    buf.subarray(0, 4).toString("latin1") === "RIFF" &&
+    buf.subarray(8, 12).toString("latin1") === "WEBP"
+  ) {
+    return "webp";
+  }
+  if (buf.length >= 6 && buf.subarray(0, 6).toString("latin1") === "GIF87a") return "gif";
+  if (buf.length >= 6 && buf.subarray(0, 6).toString("latin1") === "GIF89a") return "gif";
+  // ZIP local file header (PK\x03\x04), empty archive (PK\x05\x06), or a
+  // spanned archive's first-segment marker (PK\x07\x08) — pptx/docx/xlsx are
+  // all just zip containers, so this is intentionally the generic case.
+  if (
+    buf.length >= 4 &&
+    buf[0] === 0x50 &&
+    buf[1] === 0x4b &&
+    ((buf[2] === 0x03 && buf[3] === 0x04) ||
+      (buf[2] === 0x05 && buf[3] === 0x06) ||
+      (buf[2] === 0x07 && buf[3] === 0x08))
+  ) {
+    return "zip";
+  }
+  return null;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Zip safety — entry-count / decompression-bomb / traversal guard.
+ *
+ * JSZip.loadAsync() only parses the central directory (cheap, no inflate),
+ * so every check below runs BEFORE any entry is actually decompressed via
+ * `.async(...)`. A file is only decompressed once it has already passed
+ * every one of these checks.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export type ZipSafetyLimits = {
+  maxEntries: number;
+  /** Per-entry cap, in bytes, on the DECLARED uncompressed size. */
+  maxEntryUncompressedBytes: number;
+  /** Cap, in bytes, on the sum of every entry's declared uncompressed size. */
+  maxTotalUncompressedBytes: number;
+};
+
+export const DEFAULT_ZIP_LIMITS: ZipSafetyLimits = {
+  maxEntries: 2000,
+  maxEntryUncompressedBytes: 60 * 1024 * 1024, // 60 MB — generous for a single media asset
+  maxTotalUncompressedBytes: 200 * 1024 * 1024, // 200 MB — generous for a whole .pptx/.docx
+};
+
+export type ZipSafetyResult = { ok: true } | { ok: false; reason: string };
+
+/** True for any entry name that could not stay confined to a relative,
+ *  forward-slash subtree — absolute paths, parent-traversal, drive letters,
+ *  backslashes, and NUL/control characters are all rejected. JSZip never
+ *  extracts to a real filesystem path itself, but every consumer of these
+ *  entries (`injectTemplateDesign` re-keys them into a new zip) must not
+ *  trust the name for anything path-like, so this is enforced at the same
+ *  choke point as the size checks. */
+export function isUnsafeZipEntryName(name: string): boolean {
+  if (!name || name.length > 512) return true;
+  if (/[\u0000-\u001f]/.test(name)) return true; // control characters, including NUL
+  if (name.includes("\\")) return true;
+  if (name.startsWith("/") || name.startsWith("\0")) return true;
+  if (/^[a-zA-Z]:/.test(name)) return true; // Windows drive letter
+  const parts = name.split("/");
+  if (parts.some((p) => p === "..")) return true;
+  return false;
+}
+
+/**
+ * Reads each entry's DECLARED (pre-decompression) size from JSZip's parsed
+ * central-directory metadata. This field is undocumented API but has been
+ * stable across JSZip's supported versions; if it is ever missing we fail
+ * closed (reject) rather than silently skip the check.
+ */
+function declaredUncompressedSize(zip: JSZip, path: string): number | null {
+  const file = zip.files[path] as unknown as { _data?: { uncompressedSize?: unknown } } | undefined;
+  const size = file?._data?.uncompressedSize;
+  return typeof size === "number" && Number.isFinite(size) && size >= 0 ? size : null;
+}
+
+/**
+ * Validates entry count, per-entry and total declared uncompressed size, and
+ * entry-name safety for an already-loaded JSZip archive. Call this
+ * immediately after `JSZip.loadAsync()` and before reading ANY entry's
+ * content with `.async(...)`.
+ */
+export function inspectZipSafety(
+  zip: JSZip,
+  limits: ZipSafetyLimits = DEFAULT_ZIP_LIMITS,
+): ZipSafetyResult {
+  const paths = Object.keys(zip.files);
+  if (paths.length > limits.maxEntries) {
+    return { ok: false, reason: `Archive has too many entries (${paths.length}, max ${limits.maxEntries}).` };
+  }
+
+  let total = 0;
+  for (const path of paths) {
+    const entry = zip.files[path]!;
+    if (entry.dir) continue;
+
+    if (isUnsafeZipEntryName(entry.name)) {
+      return { ok: false, reason: `Archive contains an unsafe entry path: "${entry.name}".` };
+    }
+
+    const size = declaredUncompressedSize(zip, path);
+    if (size === null) {
+      return { ok: false, reason: `Could not verify the declared size of "${entry.name}".` };
+    }
+    if (size > limits.maxEntryUncompressedBytes) {
+      return {
+        ok: false,
+        reason: `"${entry.name}" would expand to ${size} bytes, exceeding the ${limits.maxEntryUncompressedBytes}-byte per-file limit.`,
+      };
+    }
+    total += size;
+    if (total > limits.maxTotalUncompressedBytes) {
+      return {
+        ok: false,
+        reason: `Archive would expand past the ${limits.maxTotalUncompressedBytes}-byte total limit.`,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Image decompression-bomb guard — reject huge declared pixel dimensions
+ * BEFORE handing the buffer to a real decoder (Tesseract, etc). Uses the
+ * existing header-only size reader, which never decodes pixel data itself.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export type PixelBudget = { maxWidth: number; maxHeight: number; maxMegapixels: number };
+
+export const DEFAULT_PIXEL_BUDGET: PixelBudget = {
+  maxWidth: 12_000,
+  maxHeight: 12_000,
+  maxMegapixels: 40, // ~40MP — comfortably above any real phone photo of a page
+};
+
+export type PixelBudgetResult = { ok: true } | { ok: false; reason: string };
+
+export function assertPixelBudget(
+  buf: Buffer,
+  budget: PixelBudget = DEFAULT_PIXEL_BUDGET,
+): PixelBudgetResult {
+  const size = getImageNaturalSize(buf);
+  // Formats we can't header-sniff dimensions for (e.g. some GIFs) are let
+  // through here — they're still bounded by the byte-size cap the caller
+  // already enforces before this runs.
+  if (!size) return { ok: true };
+  if (size.width > budget.maxWidth || size.height > budget.maxHeight) {
+    return {
+      ok: false,
+      reason: `Image is ${size.width}x${size.height}px, exceeding the ${budget.maxWidth}x${budget.maxHeight}px limit.`,
+    };
+  }
+  const megapixels = (size.width * size.height) / 1_000_000;
+  if (megapixels > budget.maxMegapixels) {
+    return { ok: false, reason: `Image is ${megapixels.toFixed(1)} MP, exceeding the ${budget.maxMegapixels} MP limit.` };
+  }
+  return { ok: true };
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * SSRF guard for server-side image fetches (Pexels / fal.ai CDN URLs today).
+ *
+ * Two independent layers, both required:
+ *  1. Hostname must end with a known, trusted media-provider suffix.
+ *  2. Every resolved IP for that hostname must be a public, routable address
+ *     — this defeats DNS rebinding even for an allowlisted hostname, and is
+ *     the layer that actually matters if the allowlist is ever widened.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/** Media CDNs this app's own code is ever wired to fetch from. Extend this
+ *  list deliberately when adding a new image provider — never widen it to
+ *  satisfy a single call site without checking every other caller. */
+export const ALLOWED_IMAGE_HOST_SUFFIXES = [
+  "pexels.com",
+  "fal.ai",
+  "fal.media",
+  "fal.run",
+] as const;
+
+function hostMatchesAllowedSuffix(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  return ALLOWED_IMAGE_HOST_SUFFIXES.some((suffix) => h === suffix || h.endsWith(`.${suffix}`));
+}
+
+/** IPv4 ranges that must never be reachable from a server-side "fetch this
+ *  external URL" code path: loopback, link-local (incl. the cloud metadata
+ *  address), private RFC1918, and CGNAT. */
+function isPrivateOrReservedIPv4(ip: string): boolean {
+  const parts = ip.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((p) => Number.isNaN(p))) return true; // malformed → treat as unsafe
+  const [a, b] = parts as [number, number, number, number];
+  if (a === 0) return true;
+  if (a === 10) return true;
+  if (a === 127) return true;
+  if (a === 169 && b === 254) return true; // link-local + cloud metadata (169.254.169.254)
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+  if (a >= 224) return true; // multicast/reserved
+  return false;
+}
+
+/** IPv6 ranges that must never be reachable: loopback (::1), unique-local
+ *  (fc00::/7), link-local (fe80::/10), and IPv4-mapped addresses (checked by
+ *  unwrapping to the embedded IPv4 form). */
+function isPrivateOrReservedIPv6(ip: string): boolean {
+  const lower = ip.toLowerCase();
+  if (lower === "::1" || lower === "::") return true;
+  if (lower.startsWith("fe80:") || lower.startsWith("fec0:")) return true;
+  if (lower.startsWith("fc") || lower.startsWith("fd")) return true; // fc00::/7
+  const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return isPrivateOrReservedIPv4(mapped[1]!);
+  return false;
+}
+
+export function isPrivateOrReservedIp(ip: string): boolean {
+  const version = isIP(ip);
+  if (version === 4) return isPrivateOrReservedIPv4(ip);
+  if (version === 6) return isPrivateOrReservedIPv6(ip);
+  return true; // not a valid IP at all → unsafe
+}
+
+export type SafeUrlCheck = { ok: true } | { ok: false; reason: string };
+
+/** Synchronous, network-free part of the check — hostname allowlist and
+ *  protocol only. Split out from DNS resolution so it stays unit-testable
+ *  without a network stack or DNS mocking. */
+export function checkImageUrlAllowed(rawUrl: string): SafeUrlCheck {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return { ok: false, reason: "Not a valid URL." };
+  }
+  if (url.protocol !== "https:") {
+    return { ok: false, reason: `Protocol "${url.protocol}" is not allowed; only https is.` };
+  }
+  if (!hostMatchesAllowedSuffix(url.hostname)) {
+    return { ok: false, reason: `Host "${url.hostname}" is not an allowed image provider.` };
+  }
+  return { ok: true };
+}
+
+/** Resolves every A/AAAA record for the URL's hostname and rejects if any of
+ *  them is a private/loopback/link-local/metadata address — closes the DNS
+ *  rebinding gap that a hostname-only allowlist can't. */
+export async function assertResolvesToPublicAddress(hostname: string): Promise<SafeUrlCheck> {
+  // An IP-literal hostname skips DNS but still goes through the same range check.
+  if (isIP(hostname)) {
+    return isPrivateOrReservedIp(hostname)
+      ? { ok: false, reason: `"${hostname}" is a private/reserved address.` }
+      : { ok: true };
+  }
+  let records: { address: string }[];
+  try {
+    const result = await dnsLookup(hostname, { all: true, verbatim: true });
+    records = Array.isArray(result) ? result : [result];
+  } catch {
+    return { ok: false, reason: `Could not resolve "${hostname}".` };
+  }
+  if (records.length === 0) return { ok: false, reason: `No addresses resolved for "${hostname}".` };
+  for (const rec of records) {
+    if (isPrivateOrReservedIp(rec.address)) {
+      return { ok: false, reason: `"${hostname}" resolves to a private/reserved address.` };
+    }
+  }
+  return { ok: true };
+}
+
+export type SafeFetchOptions = {
+  timeoutMs?: number;
+  maxBytes?: number;
+};
+
+const DEFAULT_FETCH_TIMEOUT_MS = 8_000;
+const DEFAULT_FETCH_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+
+/**
+ * The only sanctioned way to fetch an "external" image URL server-side in
+ * this codebase. Validates protocol + host allowlist, re-validates the
+ * resolved IP (defeats DNS rebinding), follows redirects manually so every
+ * hop is re-validated (fetch's automatic redirect following would bypass
+ * all of the above on hop 2+), and enforces a timeout and a streamed byte
+ * cap so a slow-loris or oversized response can't hang or exhaust memory.
+ */
+export async function fetchExternalImageSafely(
+  rawUrl: string,
+  options: SafeFetchOptions = {},
+): Promise<Buffer> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
+  const maxBytes = options.maxBytes ?? DEFAULT_FETCH_MAX_BYTES;
+
+  let currentUrl = rawUrl;
+  for (let redirects = 0; redirects <= 5; redirects++) {
+    const hostCheck = checkImageUrlAllowed(currentUrl);
+    if (!hostCheck.ok) throw new Error(`Blocked external image fetch: ${hostCheck.reason}`);
+
+    const url = new URL(currentUrl);
+    const ipCheck = await assertResolvesToPublicAddress(url.hostname);
+    if (!ipCheck.ok) throw new Error(`Blocked external image fetch: ${ipCheck.reason}`);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let res: Response;
+    try {
+      res = await fetch(currentUrl, { signal: controller.signal, redirect: "manual" });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (!location) throw new Error("Blocked external image fetch: redirect with no Location header.");
+      currentUrl = new URL(location, currentUrl).toString();
+      continue;
+    }
+
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching image`);
+
+    const declaredLength = Number(res.headers.get("content-length") ?? "0");
+    if (declaredLength > maxBytes) {
+      throw new Error(`Image declares ${declaredLength} bytes, exceeding the ${maxBytes}-byte limit.`);
+    }
+
+    if (!res.body) {
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (buf.byteLength > maxBytes) throw new Error(`Image exceeds the ${maxBytes}-byte limit.`);
+      return buf;
+    }
+
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          total += value.byteLength;
+          if (total > maxBytes) {
+            throw new Error(`Image exceeds the ${maxBytes}-byte limit.`);
+          }
+          chunks.push(value);
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return Buffer.concat(chunks.map((c) => Buffer.from(c)));
+  }
+  throw new Error("Blocked external image fetch: too many redirects.");
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Malware scanning hook.
+ *
+ * No scanning vendor is provisioned for this project. This is a real,
+ * wired integration point — not a placeholder UI — that fails to a
+ * documented, explicit "not scanned" state rather than silently pretending
+ * everything is clean. Every upload route logs the verdict either way.
+ *
+ * Configure by setting MALWARE_SCAN_API_URL (and optionally
+ * MALWARE_SCAN_API_KEY) to a service that accepts a raw body POST and
+ * returns { clean: boolean }. Until that's set, callers must treat
+ * `scanned: false` as "unverified" in their own risk decision — for this
+ * app that's acceptable ONLY because no uploaded byte is ever executed:
+ * PDFs/images are parsed for text, .pptx templates are parsed for
+ * theme/media metadata and stored as inert bytes, never executed.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export type MalwareScanResult =
+  | { scanned: true; clean: true }
+  | { scanned: true; clean: false; signature?: string }
+  | { scanned: false; reason: string };
+
+const SCAN_TIMEOUT_MS = 10_000;
+
+export async function scanBufferForMalware(
+  buf: Buffer,
+  label: string,
+): Promise<MalwareScanResult> {
+  const endpoint = process.env.MALWARE_SCAN_API_URL?.trim();
+  if (!endpoint) {
+    console.warn(`[malware-scan] SKIPPED for "${label}" — MALWARE_SCAN_API_URL not configured.`);
+    return { scanned: false, reason: "Scanner not configured." };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SCAN_TIMEOUT_MS);
+  try {
+    const apiKey = process.env.MALWARE_SCAN_API_KEY?.trim();
+    const res = await fetch(endpoint, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/octet-stream",
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      },
+      body: new Uint8Array(buf),
+    });
+    if (!res.ok) {
+      console.error(`[malware-scan] scanner HTTP ${res.status} for "${label}" — treating as unscanned.`);
+      return { scanned: false, reason: `Scanner returned HTTP ${res.status}.` };
+    }
+    const data = (await res.json()) as { clean?: boolean; signature?: string };
+    if (data.clean === false) {
+      return { scanned: true, clean: false, signature: data.signature };
+    }
+    return { scanned: true, clean: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error(`[malware-scan] scan failed for "${label}": ${message} — treating as unscanned.`);
+    return { scanned: false, reason: `Scan failed: ${message}` };
+  } finally {
+    clearTimeout(timer);
+  }
+}

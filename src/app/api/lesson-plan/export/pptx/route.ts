@@ -8,6 +8,7 @@ import {
   DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
   isValidTemplateId as isValidPptThemeId,
 } from "@/lib/ppt-template-config";
+import { resolvePresentationLanguage } from "@/lib/ppt-language";
 import { authenticateRequest } from "@/lib/user-usage-server";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
@@ -36,6 +37,11 @@ type Body = {
   aflSelections?: unknown;
   /** Pre-generated slide images from lesson creation (parallel to deck indices). */
   pptSlideImageUrls?: unknown;
+  /** Deck language; falls back to subject inference when absent (older clients). */
+  language?: unknown;
+  /** Chapter was never forwarded here, which disabled the slide-2 chapter dedupe. */
+  chapter?: string;
+  teachingStrategy?: string;
 };
 
 export async function POST(req: Request) {
@@ -65,6 +71,8 @@ export async function POST(req: Request) {
   const pptThemeRaw       = typeof body.pptTheme          === "string" ? body.pptTheme.trim()           : "";
   const pptTheme          = isValidPptThemeId(pptThemeRaw) ? pptThemeRaw : DEFAULT_PPT_THEME_ID;
   const aflSelections     = sanitizeAflSelections(body.aflSelections);
+  const chapter           = typeof body.chapter === "string" ? body.chapter.trim() : "";
+  const language          = resolvePresentationLanguage({ language: body.language, subject });
 
   if (!subject || !grade) {
     return NextResponse.json({ error: "subject and grade are required." }, { status: 400 });
@@ -91,6 +99,8 @@ export async function POST(req: Request) {
       pptContent: pptContent || undefined,
       homeworkTask: homeworkTask || undefined,
       curriculumFramework: curriculumFramework || undefined,
+      ...(chapter ? { chapter } : {}),
+      language,
       ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
 
@@ -122,6 +132,7 @@ export async function POST(req: Request) {
       slideImageUrls,
       themeId: pptTheme,
       curriculumFramework: curriculumFramework || undefined,
+      language,
       ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
 

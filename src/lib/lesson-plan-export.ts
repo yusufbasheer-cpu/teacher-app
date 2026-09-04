@@ -23,6 +23,8 @@ import {
   getPptRenderTheme,
 } from "@/lib/ppt-themes";
 import { buildPptxFromTemplateEngine } from "@/lib/ppt-template-engine";
+import { resolvePresentationLanguage, type PresentationLanguage } from "@/lib/ppt-language";
+import { fetchExternalImageSafely, sniffFileSignature } from "@/lib/upload-security";
 
 const IN_SLIDE_W = 13.333333;
 const IN_SLIDE_H = 7.5;
@@ -406,14 +408,17 @@ async function loadLayahLogoDataUri(): Promise<string | null> {
   return null;
 }
 
+/** Currently unused (kept for a future call site) — routed through the same
+ *  SSRF-guarded fetch as the live image path in ppt-template-engine.ts so it
+ *  can't become an unguarded external-fetch footgun if it's wired up later. */
 async function fetchImageUrlAsDataUri(url: string): Promise<string> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} fetching image`);
-  }
-  const mimeRaw = res.headers.get("content-type")?.split(";")[0]?.trim() || "image/png";
-  const mime = mimeRaw.startsWith("image/") ? mimeRaw : "image/png";
-  const buf = Buffer.from(await res.arrayBuffer());
+  const buf = await fetchExternalImageSafely(url);
+  const sniffed = sniffFileSignature(buf);
+  const mime =
+    sniffed === "jpeg" ? "image/jpeg" :
+    sniffed === "webp" ? "image/webp" :
+    sniffed === "gif" ? "image/gif" :
+    "image/png";
   return `data:${mime};base64,${buf.toString("base64")}`;
 }
 
@@ -893,8 +898,14 @@ export async function buildPptxFromPptContent(params: {
   customRenderTheme?: PptRenderTheme;
   /** Base64 data URI of the school logo extracted from the .pptx template. */
   schoolLogo?: string | null;
+  /** Deck language; omitted callers keep the previous subject-derived behaviour. */
+  language?: PresentationLanguage;
 }): Promise<Buffer> {
   const afl = sanitizeAflSelections(params.aflSelections ?? {});
+  const language = resolvePresentationLanguage({
+    language: params.language,
+    subject: params.subject,
+  });
   if (Object.keys(afl).length > 0) {
     console.log("[lesson-plan-export] buildPptxFromPptContent received AFL selections:", afl);
   }
@@ -911,6 +922,7 @@ export async function buildPptxFromPptContent(params: {
       ? { curriculumFramework: params.curriculumFramework.trim() }
       : {}),
     ...(Object.keys(afl).length > 0 ? { aflSelections: afl } : {}),
+    language,
   };
   const deck = params.structuredSlides ?? buildStructuredLessonSlides(ctx);
 
@@ -924,6 +936,7 @@ export async function buildPptxFromPptContent(params: {
     teacherName: params.teacherName,
     slideImageUrls: params.slideImageUrls,
     schoolLogo: params.schoolLogo,
+    language,
   });
 }
 

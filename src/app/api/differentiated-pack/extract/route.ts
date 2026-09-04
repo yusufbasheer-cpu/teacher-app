@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { createRequire } from "node:module";
 import mammoth from "mammoth";
+import JSZip from "jszip";
 import { authenticateRequest } from "@/lib/user-usage-server";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
+import { inspectZipSafety, scanBufferForMalware } from "@/lib/upload-security";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -61,6 +63,33 @@ export async function POST(req: Request) {
       { error: "Unsupported file type. Upload a PDF (.pdf) or Word document (.docx)." },
       { status: 400 },
     );
+  }
+
+  const scan = await scanBufferForMalware(buf, `differentiated-pack-extract:${auth.userId}:${file.name}`);
+  if (scan.scanned && !scan.clean) {
+    return NextResponse.json({ error: "This file failed a security scan and was rejected." }, { status: 422 });
+  }
+
+  if (kind === "docx") {
+    // .docx is a zip container — mammoth has no built-in decompression-bomb
+    // guard, so open it with JSZip first (parses the central directory only,
+    // no inflate) purely to check entry count / declared sizes before
+    // mammoth ever unzips it for real.
+    try {
+      const zip = await JSZip.loadAsync(buf);
+      const safety = inspectZipSafety(zip);
+      if (!safety.ok) {
+        return NextResponse.json(
+          { error: `This .docx file was rejected: ${safety.reason}` },
+          { status: 400 },
+        );
+      }
+    } catch {
+      return NextResponse.json(
+        { error: "This doesn't look like a valid .docx file (could not read it as a ZIP)." },
+        { status: 400 },
+      );
+    }
   }
 
   try {

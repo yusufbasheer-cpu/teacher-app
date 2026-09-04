@@ -28,6 +28,7 @@
  * ─────────────────────────────────────────────────────────────────────
  */
 import JSZip from "jszip";
+import { inspectZipSafety, isUnsafeZipEntryName } from "@/lib/upload-security";
 
 export type PptxExtractedTheme = {
   primaryColor: string;    // hex without #  (dark brand color → header bar, title text)
@@ -229,19 +230,37 @@ async function extractMasterLogo(zip: JSZip): Promise<string | null> {
   return await readImageAsDataUri(imgFile, mediaPath);
 }
 
+/** Raster formats only — SVG is deliberately excluded even though PowerPoint
+ *  can embed it. An SVG can carry a `<script>`/`<foreignObject>` payload, and
+ *  this data URI is stored and returned to the browser as "the school's
+ *  logo"; nothing here guarantees every future consumer renders it only
+ *  inside an `<img>` (which most browsers already refuse to script) rather
+ *  than an `<object>`/inline markup. Since a template logo is never
+ *  functionally required to be SVG, the whole class of risk is removed by
+ *  just not extracting it. WMF/EMF (Office's own vector formats) are inert
+ *  and unaffected. */
+const RASTER_EXT_TO_MIME: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".bmp": "image/bmp",
+};
+
 async function readImageAsDataUri(
   file: JSZip.JSZipObject,
   path: string,
 ): Promise<string | null> {
+  const name = path.toLowerCase();
+  const ext = Object.keys(RASTER_EXT_TO_MIME).find((e) => name.endsWith(e));
+  if (!ext) {
+    console.warn("[pptx-template] Skipping non-raster/unsupported logo asset:", path);
+    return null;
+  }
   try {
     const bytes = await file.async("uint8array");
     const b64 = Buffer.from(bytes).toString("base64");
-    const name = path.toLowerCase();
-    let mime = "image/png";
-    if (name.endsWith(".jpg") || name.endsWith(".jpeg")) mime = "image/jpeg";
-    else if (name.endsWith(".gif")) mime = "image/gif";
-    else if (name.endsWith(".bmp")) mime = "image/bmp";
-    else if (name.endsWith(".svg")) mime = "image/svg+xml";
+    const mime = RASTER_EXT_TO_MIME[ext]!;
     const dataUri = `data:${mime};base64,${b64}`;
     console.log(
       `[pptx-template] Logo image extracted: ${path} (${bytes.length} bytes, mime=${mime})`,
@@ -272,6 +291,12 @@ export async function extractPptxTemplate(buffer: ArrayBuffer): Promise<{
   } catch (e) {
     console.error("[pptx-template] Failed to unzip the .pptx file:", e);
     throw new Error("The uploaded file could not be read as a valid .pptx (ZIP) file.");
+  }
+
+  const safety = inspectZipSafety(zip);
+  if (!safety.ok) {
+    console.error("[pptx-template] Rejected unsafe .pptx archive:", safety.reason);
+    throw new Error(`The uploaded file was rejected: ${safety.reason}`);
   }
 
   // List all files in the ZIP for debugging
@@ -390,6 +415,22 @@ export async function injectTemplateDesign(
     return generatedBuffer;
   }
 
+  // The template buffer is whatever a teacher uploaded, potentially a long
+  // time ago and re-used on every export since — re-validate it every time,
+  // not just at upload. Fail safe: fall back to the unmodified generated
+  // deck rather than surfacing a "your export is broken" error over a
+  // problem with someone's stored template.
+  const templateSafety = inspectZipSafety(templateZip);
+  if (!templateSafety.ok) {
+    console.error("[pptx-template] Stored template failed re-validation, skipping injection:", templateSafety.reason);
+    return generatedBuffer;
+  }
+  const generatedSafety = inspectZipSafety(generatedZip);
+  if (!generatedSafety.ok) {
+    console.error("[pptx-template] Generated deck failed zip-safety check (unexpected):", generatedSafety.reason);
+    return generatedBuffer;
+  }
+
   const genFileList  = Object.keys(generatedZip.files);
   const tmplFileList = Object.keys(templateZip.files);
   console.log("[pptx-template] Generated PPTX files:", genFileList.length);
@@ -434,10 +475,18 @@ export async function injectTemplateDesign(
   console.log(`[pptx-template] Copied ${copied.length} design files from template.`);
   console.log("[pptx-template] Media files referenced by template masters:", [...mediaRefs]);
 
-  // Step 3 — copy media files that the template masters depend on
+  // Step 3 — copy media files that the template masters depend on.
+  // `mediaFile` came out of a regex over untrusted XML content, not out of
+  // the zip's own (already-validated) entry list — so it gets its own
+  // traversal + extension check before we let it name anything.
+  const ALLOWED_MEDIA_EXT = /\.(png|jpe?g|gif|bmp|tiff?|emf|wmf)$/i;
   let mediaCopied = 0;
   for (const mediaFile of mediaRefs) {
     const srcPath = `ppt/media/${mediaFile}`;
+    if (isUnsafeZipEntryName(srcPath) || !ALLOWED_MEDIA_EXT.test(mediaFile)) {
+      console.warn("[pptx-template] Rejected unsafe/unsupported media reference:", mediaFile);
+      continue;
+    }
     const srcFile = templateZip.files[srcPath];
     if (!srcFile) {
       console.warn("[pptx-template] Media reference not found in template ZIP:", srcPath);

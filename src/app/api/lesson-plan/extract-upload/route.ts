@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { createWorker, PSM, type Worker } from "tesseract.js";
 import { authenticateRequest } from "@/lib/user-usage-server";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
+import { assertPixelBudget, scanBufferForMalware } from "@/lib/upload-security";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -220,6 +221,25 @@ export async function POST(req: Request) {
         });
         continue;
       }
+
+      // Decompression-bomb guard: reject a tiny file that declares an
+      // enormous pixel count BEFORE handing it to Tesseract's real decoder.
+      if (sniffed === "jpeg" || sniffed === "png") {
+        const pixelCheck = assertPixelBudget(buffer);
+        if (!pixelCheck.ok) {
+          log("file: rejected (pixel budget)", { label, reason: pixelCheck.reason });
+          partialErrors.push({ sourceLabel: label, message: `Image rejected: ${pixelCheck.reason}` });
+          continue;
+        }
+      }
+
+      const scan = await scanBufferForMalware(buffer, `extract-upload:${auth.userId}:${label}`);
+      if (scan.scanned && !scan.clean) {
+        log("file: rejected (malware scan)", { label });
+        partialErrors.push({ sourceLabel: label, message: "This file failed a security scan and was rejected." });
+        continue;
+      }
+
       workItems.push({ label, buffer, sniffed });
     }
 

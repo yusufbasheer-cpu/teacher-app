@@ -3,6 +3,11 @@ import { usesArabicPptSlideTitles } from "@/lib/lesson-plan";
 import { buildSourceMaterialPromptBlock, SOURCE_MATERIAL_MAX_CHARS } from "@/lib/lesson-plan";
 import { stripOuterMarkdownFences } from "@/lib/parse-teacher-package-response";
 import {
+  DEFAULT_PRESENTATION_LANGUAGE,
+  pptString,
+  type PresentationLanguage,
+} from "@/lib/ppt-language";
+import {
   STRUCTURED_LESSON_DECK_SLIDE_COUNT,
   STRUCTURED_LESSON_SLIDE_TITLES_AR,
   STRUCTURED_LESSON_SLIDE_TITLES_EN,
@@ -438,6 +443,17 @@ const SLIDE7_MIDDLE_HEADING_RE =
 const SLIDE7_LOWER_HEADING_RE =
   /^#*\s*(lower\s*(achiev|attain|ability|level|tier)s?(\s+task)?|support(\s+task)?|must\s*\/\s*should|less\s+support|foundation|أدنى)\b/i;
 
+/**
+ * Arabic tier headings, matched on word roots rather than the definite-article form: a real
+ * heading reads "mahamma li-l-mutafawwiqin", so anchoring on "al-mutafawwiq" matched nothing
+ * and every Arabic tier came back empty - which the formatter then filled with English defaults.
+ */
+const SLIDE7_HIGHER_HEADING_AR_RE = /(\u0645\u062a\u0641\u0648\u0642|\u0623\u0639\u0644\u0649|\u0625\u062b\u0631\u0627\u0626|\u0645\u062a\u0642\u062f\u0645)/;
+const SLIDE7_MIDDLE_HEADING_AR_RE = /(\u0645\u062a\u0648\u0633\u0637|\u0623\u0648\u0633\u0637)/;
+const SLIDE7_LOWER_HEADING_AR_RE = /(\u0623\u0633\u0627\u0633\u064a|\u0623\u062f\u0646\u0649|\u062f\u0639\u0645|\u0645\u0633\u0627\u0646\u062f)/;
+/** Arabic heading for the mini-plenary section. */
+const SLIDE7_MINI_PLENARY_AR_RE = /\u062a\u0644\u062e\u064a\u0635\s*\u0645\u0635\u063a\u0631/;
+
 const SLIDE7_INLINE_TIER_RE =
   /^(higher|middle|lower)\s*(achiev\w*|attain\w*|ability\w*|level\w*|tier\w*)\s*(?:task\s*)?[:.\-]\s*(.+)$/i;
 
@@ -445,20 +461,41 @@ function classifySlide7TierLine(line: string): Slide7Tier | null {
   const t = line.trim();
   if (!t || SLIDE7_DISCARD_LINE_RE.test(t) || SLIDE7_TITLE_ECHO_RE.test(t)) return null;
   if (SLIDE7_MINI_PLENARY_HEADING_RE.test(t) || SLIDE7_FULL_PLENARY_HEADING_RE.test(t)) return null;
+  if (SLIDE7_MINI_PLENARY_AR_RE.test(t)) return null;
   if (SLIDE7_QUICK_CHECK_RE.test(t)) return null;
   if (SLIDE7_HIGHER_HEADING_RE.test(t) || /^higher\s+achievers?\s+task\s*$/i.test(t)) return "higher";
   if (SLIDE7_MIDDLE_HEADING_RE.test(t) || /^middle\s+achievers?\s+task\s*$/i.test(t)) return "middle";
   if (SLIDE7_LOWER_HEADING_RE.test(t) || /^lower\s+achievers?\s+task\s*$/i.test(t)) return "lower";
+  // Arabic headings are short and unanchored, so only treat a line as a tier heading when it is
+  // heading-length - a long sentence that happens to contain the word is body text, not a label.
+  if (t.length <= 40) {
+    if (SLIDE7_HIGHER_HEADING_AR_RE.test(t)) return "higher";
+    if (SLIDE7_MIDDLE_HEADING_AR_RE.test(t)) return "middle";
+    if (SLIDE7_LOWER_HEADING_AR_RE.test(t)) return "lower";
+  }
   return null;
 }
 
-function defaultSlide7MiniPlenary(topic: string): string {
-  const t = topic.trim() || "the lesson topic";
+function defaultSlide7MiniPlenary(topic: string, language: PresentationLanguage): string {
+  const t = topic.trim() || (language === "ar" ? "موضوع الدرس" : "the lesson topic");
+  if (language === "ar") {
+    return `تحقق سريع: اشرح في جملة واحدة أهم ما تعلمته عن "${t}" اليوم.`;
+  }
   return `Quick check: In one sentence, explain the most important thing you learned about "${t}" today.`;
 }
 
-function defaultSlide7TierTask(tier: Slide7Tier, topic: string): string {
-  const t = topic.trim() || "the lesson topic";
+function defaultSlide7TierTask(tier: Slide7Tier, topic: string, language: PresentationLanguage): string {
+  const t = topic.trim() || (language === "ar" ? "موضوع الدرس" : "the lesson topic");
+  if (language === "ar") {
+    switch (tier) {
+      case "higher":
+        return `مهمة إثرائية: حلل أو قيّم أو صمّم عملاً يوظف "${t}" بعمق أكبر.`;
+      case "middle":
+        return `أكمل النشاط الأساسي حول "${t}" بخطوات واضحة ودليل على الفهم.`;
+      case "lower":
+        return `اعمل على نسخة مدعومة من "${t}" مع بدايات جمل وأمثلة محلولة.`;
+    }
+  }
   switch (tier) {
     case "higher":
       return `Analyse, evaluate, or design an extension challenge applying "${t}" with greater depth.`;
@@ -478,7 +515,11 @@ function parseSlide7TierBlocks(body: string): { tiers: Record<Slide7Tier, string
     const t = raw.trim();
     if (!t) continue;
 
-    if (SLIDE7_MINI_PLENARY_HEADING_RE.test(t)) {
+    // The Arabic heading has to switch the mode here too. Without it the heading and the
+    // mini-plenary content were swallowed into whichever tier was open, and the formatter then
+    // appended its own heading plus a default - so an Arabic slide 7 showed the label twice and
+    // lost the real mini-plenary text.
+    if (SLIDE7_MINI_PLENARY_HEADING_RE.test(t) || SLIDE7_MINI_PLENARY_AR_RE.test(t)) {
       current = "miniPlenary";
       continue;
     }
@@ -545,27 +586,36 @@ function formatSlide7CanonicalBody(
   tiers: Record<Slide7Tier, string[]>,
   topic: string,
   miniPlenary: string[],
+  language: PresentationLanguage,
 ): string {
   const labels: Record<Slide7Tier, string> = {
-    higher: SLIDE7_HIGHER_LABEL,
-    middle: SLIDE7_MIDDLE_LABEL,
-    lower: SLIDE7_LOWER_LABEL,
+    higher: language === "ar" ? pptString(language, "slide7Higher") : SLIDE7_HIGHER_LABEL,
+    middle: language === "ar" ? pptString(language, "slide7Middle") : SLIDE7_MIDDLE_LABEL,
+    lower: language === "ar" ? pptString(language, "slide7Lower") : SLIDE7_LOWER_LABEL,
   };
   const order: Slide7Tier[] = ["higher", "middle", "lower"];
   const tierBody = order
     .map((tier) => {
-      const content = tiers[tier].join("\n").trim() || defaultSlide7TierTask(tier, topic);
+      const content =
+        tiers[tier].join("\n").trim() || defaultSlide7TierTask(tier, topic, language);
       return `${labels[tier]}\n${content}`;
     })
     .join("\n\n");
-  const plenaryContent = miniPlenary.join("\n").trim() || defaultSlide7MiniPlenary(topic);
-  return `${tierBody}\n\nMini Plenary\n${plenaryContent}`.trim();
+  const plenaryContent =
+    miniPlenary.join("\n").trim() || defaultSlide7MiniPlenary(topic, language);
+  const plenaryLabel =
+    language === "ar" ? pptString(language, "slide7MiniPlenary") : "Mini Plenary";
+  return `${tierBody}\n\n${plenaryLabel}\n${plenaryContent}`.trim();
 }
 
 /** Keep three tier sections with canonical labels and append a Mini Plenary checkpoint at the bottom. */
-export function sanitizeSlide7DifferentiatedBody(body: string, topic = ""): string {
+export function sanitizeSlide7DifferentiatedBody(
+  body: string,
+  topic = "",
+  language: PresentationLanguage = DEFAULT_PRESENTATION_LANGUAGE,
+): string {
   const { tiers, miniPlenary } = parseSlide7TierBlocks(body);
-  return formatSlide7CanonicalBody(tiers, topic, miniPlenary);
+  return formatSlide7CanonicalBody(tiers, topic, miniPlenary, language);
 }
 
 export function validateSlide7DifferentiatedBody(body: string): { ok: boolean; reasons: string[] } {

@@ -48,20 +48,36 @@ function buildFluxPrompt(
   return body.length > 1900 ? `${body.slice(0, 1900)}…` : body;
 }
 
-/** Supports `FAL_API_KEY` (app convention) or fal’s documented `FAL_KEY`. */
+/**
+ * fal keys are `<uuid>:<hex>`. Validating the shape mirrors what `image-api-env.ts` already does
+ * for Pexels, and matters because an unvalidated key made "revoked/malformed key" look exactly
+ * like "fal is fine" right up until every image silently failed.
+ */
+const FAL_KEY_SHAPE = /^[0-9a-f-]{20,}:[0-9a-f]{16,}$/i;
+
+export function isPlausibleFalApiKey(value: string): boolean {
+  return FAL_KEY_SHAPE.test(value.trim());
+}
+
+/**
+ * Supports `FAL_API_KEY` (app convention) or fal's documented `FAL_KEY`.
+ *
+ * Deliberately logs nothing derived from the key itself - not even a masked preview, which
+ * still leaks length and the leading/trailing characters into server logs.
+ */
 export function getFalCredentials(): string | undefined {
   const fromApi = process.env.FAL_API_KEY?.trim();
   const fromFal = process.env.FAL_KEY?.trim();
   const key = fromApi || fromFal;
   if (!key) {
-    console.warn(
-      "[fal] no credentials: set FAL_API_KEY or FAL_KEY in .env.local (server-side).",
+    console.error("[fal] no credentials: set FAL_API_KEY or FAL_KEY in the server environment.");
+    return undefined;
+  }
+  if (!isPlausibleFalApiKey(key)) {
+    console.error(
+      `[fal] credentials from ${fromApi ? "FAL_API_KEY" : "FAL_KEY"} are not in fal's expected ` +
+        "<id>:<secret> format - image generation will fail until this is corrected.",
     );
-  } else {
-    const preview =
-      key.length > 12 ? `${key.slice(0, 4)}…${key.slice(-4)} (len=${key.length})` : "(set)";
-    const source = fromApi ? "FAL_API_KEY" : "FAL_KEY";
-    console.log(`[fal] credentials loaded from ${source}: ${preview}`);
   }
   return key;
 }

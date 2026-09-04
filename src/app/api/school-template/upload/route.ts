@@ -1,9 +1,24 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { extractPptxTemplate } from "@/lib/pptx-template";
+import { sniffFileSignature, scanBufferForMalware } from "@/lib/upload-security";
+import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
+
+/** Strips control characters and caps length before a client-supplied
+ *  filename is stored/echoed back — it's never used as a path, but it is
+ *  persisted and returned in JSON, so it should still never carry raw
+ *  control characters (including CR/LF). */
+function sanitizeDisplayFilename(name: string): string {
+  let out = "";
+  for (let i = 0; i < name.length && out.length < 200; i++) {
+    const code = name.charCodeAt(i);
+    if (code >= 0x20 && code !== 0x7f) out += name[i];
+  }
+  return out.trim() || "template.pptx";
+}
 
 function getSupabaseForUser(accessToken: string) {
   return createClient(
@@ -14,6 +29,9 @@ function getSupabaseForUser(accessToken: string) {
 }
 
 export async function POST(req: Request) {
+  const ipLimit = checkRateLimit(`school-template-upload:ip:${getClientIp(req)}`, 10, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
   const authHeader = req.headers.get("Authorization");
   const token = authHeader?.replace("Bearer ", "").trim();
   if (!token) {
@@ -53,6 +71,31 @@ export async function POST(req: Request) {
   console.log(`[school-template/upload] Processing: "${file.name}" (${(file.size / 1024).toFixed(1)} KB) for user ${user.id}`);
 
   const buffer = await file.arrayBuffer();
+  const bytes = Buffer.from(buffer);
+
+  // Never trust the extension or client-supplied MIME type — a .pptx is a
+  // zip container, so confirm the actual leading bytes are a zip signature
+  // before we ever hand it to JSZip.
+  if (sniffFileSignature(bytes) !== "zip") {
+    return NextResponse.json(
+      { error: "This doesn't look like a valid .pptx file (unexpected file signature)." },
+      { status: 400 },
+    );
+  }
+
+  const scan = await scanBufferForMalware(bytes, `school-template:${user.id}:${file.name}`);
+  if (scan.scanned && !scan.clean) {
+    console.error(`[school-template/upload] BLOCKED — malware scan flagged upload for user ${user.id}`);
+    return NextResponse.json({ error: "This file failed a security scan and was rejected." }, { status: 422 });
+  }
+  if (!scan.scanned) {
+    // No scanner is provisioned for this project (see scanBufferForMalware).
+    // Safe to proceed unscanned because this buffer is only ever parsed as
+    // theme/media metadata (JSZip + regex over XML) and stored as inert
+    // bytes — never executed, never served to another user, never unzipped
+    // to a real filesystem path.
+    console.warn(`[school-template/upload] proceeding WITHOUT malware scan for user ${user.id}: ${scan.reason}`);
+  }
 
   // ── Extract theme colours, fonts, logo, thumbnail ─────────────────────────
   let theme;
@@ -84,7 +127,7 @@ export async function POST(req: Request) {
     .upsert(
       {
         user_id:          user.id,
-        original_filename: file.name,
+        original_filename: sanitizeDisplayFilename(file.name),
         thumbnail_base64:  thumbnailBase64,
         primary_color:     theme.primaryColor,
         accent_color:      theme.accentColor,
@@ -128,7 +171,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     success: true,
-    originalFilename: file.name,
+    originalFilename: sanitizeDisplayFilename(file.name),
     thumbnailBase64,
     logoBase64,
     theme,

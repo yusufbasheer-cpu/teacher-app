@@ -1,4 +1,5 @@
 import type { AflSelectionsPayload } from "@/lib/afl-tools";
+import type { PresentationLanguage } from "@/lib/ppt-language";
 
 /**
  * Both chapter and topic are optional at generation time, so nothing that
@@ -293,6 +294,12 @@ export type LessonPlanInput = {
   learningObjectives: string;
   /** Optional pedagogy selector; empty string = no strategy applied. */
   teachingStrategy?: string;
+  /**
+   * Language the generated presentation must be written in. Optional so lessons saved before
+   * this field existed still parse; `resolvePresentationLanguage` then falls back to inferring
+   * from `subject`, which is exactly the pre-existing behaviour.
+   */
+  language?: PresentationLanguage;
 };
 
 export function isValidCurriculumType(value: string): value is CurriculumTypeOption {

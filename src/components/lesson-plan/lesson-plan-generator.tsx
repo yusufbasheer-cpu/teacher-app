@@ -12,6 +12,13 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, X } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+import {
+  DEFAULT_PRESENTATION_LANGUAGE,
+  PRESENTATION_LANGUAGES,
+  PRESENTATION_LANGUAGE_LABELS,
+  defaultLanguageForSubject,
+  isPresentationLanguage,
+} from "@/lib/ppt-language";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
 import type {
@@ -118,6 +125,7 @@ const initialForm: LessonPlanInput = {
   chapter: "",
   topic: "",
   learningObjectives: "",
+  language: DEFAULT_PRESENTATION_LANGUAGE,
 };
 
 function initialSectionSelection(): Record<TeacherPackageSectionKey, boolean> {
@@ -195,6 +203,8 @@ export function LessonPlanGenerator() {
   const [parseNotice, setParseNotice] = useState<string | null>(null);
   const [pptThemeId, setPptThemeId] = useState<PptThemeId>(DEFAULT_PPT_THEME_ID);
   const [teachingStrategy, setTeachingStrategy] = useState<string>("");
+  /** Once the teacher picks a language, changing the subject must not silently re-default it. */
+  const [languageTouched, setLanguageTouched] = useState(false);
   const [aflSelected, setAflSelected] = useState<Record<AflPhaseId, string[]>>(() => emptyAflSelected());
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
@@ -955,7 +965,16 @@ export function LessonPlanGenerator() {
                     <Field label="Subject">
                       <Select
                         value={form.subject}
-                        onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
+                        onChange={(e) => {
+                          const subject = e.target.value;
+                          setForm((prev) => ({
+                            ...prev,
+                            subject,
+                            ...(languageTouched
+                              ? {}
+                              : { language: defaultLanguageForSubject(subject) }),
+                          }));
+                        }}
                         required
                       >
                         <optgroup label="Subjects">
@@ -981,6 +1000,28 @@ export function LessonPlanGenerator() {
                             </option>
                           ))}
                         </optgroup>
+                      </Select>
+                    </Field>
+
+                    <Field
+                      label="Presentation language"
+                      hint="The whole presentation is written in this language."
+                    >
+                      <Select
+                        value={form.language ?? DEFAULT_PRESENTATION_LANGUAGE}
+                        onChange={(e) => {
+                          const language = e.target.value;
+                          setLanguageTouched(true);
+                          if (isPresentationLanguage(language)) {
+                            setForm((prev) => ({ ...prev, language }));
+                          }
+                        }}
+                      >
+                        {PRESENTATION_LANGUAGES.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {PRESENTATION_LANGUAGE_LABELS[opt]}
+                          </option>
+                        ))}
                       </Select>
                     </Field>
 
@@ -1455,6 +1496,8 @@ export function LessonPlanGenerator() {
             pptThemeId={pptThemeId}
             onPptThemeChange={setPptThemeId}
             learningObjectives={form.learningObjectives}
+            chapter={form.chapter}
+            language={form.language ?? DEFAULT_PRESENTATION_LANGUAGE}
             aflSelections={hasAflForExport ? aflSelectionsPayload : undefined}
             pptSlideImageUrls={pptSlideImageUrls ?? undefined}
             teacherName={

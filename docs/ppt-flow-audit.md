@@ -163,6 +163,29 @@ Found and **fixed** on `feature/gamma-style-ppt-generation`:
 
 ---
 
+## 3b. Correction (superseded by `fix/ppt-activity-fal-arabic-generation`)
+
+Two claims in section 3 above were wrong, and one detail in section 1 is stale. Recording them
+here rather than editing the original text, so the reasoning that led to them stays visible.
+
+- **"fal.ai reliability: every call timed out at the library's 90s cap, 100% failure rate."**
+  This was an artifact of a bug, not a measurement. `withTimeout` in `fal-ppt-slide-images.ts`
+  wrapped the `subscribe` call in `try { ... } catch { return null }`, so *every* rejection —
+  401, 402, 403, 422, DNS — was converted to the same `null` the timeout produced, and the
+  caller then logged "timed out after 90000ms" regardless. The real HTTP status had never been
+  observed. Failures are now classified (`FalImageOutcome`), so the actual cause is visible in
+  the logs and in Sentry. Whether fal is *also* genuinely slow or unfunded is a separate
+  question that this can now answer.
+
+- **"Pexels covers 5 of the 10 slots as a fallback."** True at the time, and the reason the
+  product looked like it "uses Pexels instead of Fal": three of the four slides that are
+  supposed to carry generated illustrations quietly served a stock photo whenever fal failed.
+  Provider policy is now explicit and typed (`SlideImageProviderPolicy`), and deck indices
+  1, 6, 7 and 9 are `fal-required` — they render without an image rather than with a substitute.
+
+- **pptxgenjs is 4.0.1, not `^3.x`.** It supports `rtlMode` at both presentation and text level
+  plus run-level `lang`, which is what the Arabic RTL work uses.
+
 ## 4. Components that are strictly locked (do not touch without explicit sign-off)
 
 - `src/lib/ppt-structured-lesson.ts` — all extraction/sanitization/AFL-injection logic, slide

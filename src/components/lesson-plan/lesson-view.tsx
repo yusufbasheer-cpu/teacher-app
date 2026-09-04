@@ -283,6 +283,7 @@ export function LessonView({ id }: { id: string }) {
         grade={lesson.grade}
         topic={displayTitle}
         learningObjectives={lesson.learning_objectives ?? ""}
+        chapter={lesson.chapter ?? undefined}
         pptThemeId={pptThemeId}
         onPptThemeChange={setPptThemeId}
         teacherName={user.email?.split("@")[0]}

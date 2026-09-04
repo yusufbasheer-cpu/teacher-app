@@ -101,7 +101,25 @@ export function estimateBlockHeight(lines: string[], cpl: number, scale = 1, var
 
 // ─── Lead-in label detection ("Higher Achievers: a challenging task…") ──────────────────────
 
-const LEAD_IN_RE = /^([A-Z][A-Za-z0-9 /&'()]{1,42})\s*[:—–-]\s+(.+)$/;
+/** Arabic, Arabic Supplement/Extended-A, and the Arabic Presentation Forms blocks. */
+const AR = "\\u0600-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF\\uFB50-\\uFDFF\\uFE70-\\uFEFF";
+
+/**
+ * Arabic has no letter case, so the Latin-capital-anchored pattern matched nothing on an Arabic
+ * deck and every Arabic "Label: text" line lost its accent styling. The Arabic block is added as
+ * an alternative opening character rather than loosening the Latin rule.
+ */
+
+const LEAD_IN_RE = new RegExp(
+  `^((?:[A-Z]|[${AR}])[A-Za-z0-9 /&'()${AR}]{1,42})\\s*[:—–-]\\s+(.+)$`,
+);
+
+/** Any Arabic-script character. */
+export const ARABIC_CHAR_RE = new RegExp(`[${AR}]`);
+
+export function containsArabic(text: string): boolean {
+  return ARABIC_CHAR_RE.test(text);
+}
 
 export function splitLeadIn(line: string): { label: string | null; rest: string } {
   const m = LEAD_IN_RE.exec(line.trim());
@@ -130,9 +148,29 @@ export function isGroupHeaderLine(line: string): boolean {
   if (!t || t.length > 46) return false;
   if (/[.!?:;,]$/.test(t)) return false; // real instructions end with sentence punctuation
   if (splitLeadIn(t).label !== null) return false; // an inline "Label: text" line, not a header
-  if (!/^[A-Z]/.test(t)) return false; // headers start capitalised
+  // Latin headers start capitalised; Arabic is caseless, so an Arabic opening character is
+  // accepted on the same footing rather than being excluded from header styling entirely.
+  if (!/^[A-Z]/.test(t) && !ARABIC_CHAR_RE.test(t.charAt(0))) return false;
   const words = t.split(/\s+/).filter(Boolean);
   return words.length >= 1 && words.length <= 6;
+}
+
+/**
+ * Text options that make a run render right-to-left.
+ *
+ * `rtlMode` is what actually emits the OOXML paragraph `rtl="1"` attribute, which is what makes
+ * PowerPoint order bullets, list numbers and punctuation correctly - right alignment alone only
+ * moves the text box contents and leaves the paragraph direction (and therefore bullet/number
+ * placement and trailing punctuation) wrong.
+ */
+export type TextDirectionOptions = {
+  rtlMode?: boolean;
+  align?: "left" | "right";
+  lang?: string;
+};
+
+export function directionOptions(rtl: boolean): TextDirectionOptions {
+  return rtl ? { rtlMode: true, align: "right", lang: "ar-AE" } : {};
 }
 
 // ─── Icon badge ───────────────────────────────────────────────────────────────────────────────
@@ -161,9 +199,10 @@ export function drawIconBadge(
 export function drawSectionChip(
   pptx: PptxGenJS,
   slide: PptxGenJS.Slide,
-  opts: { text: string; x: number; y: number; tpl: TemplateConfig },
+  opts: { text: string; x: number; y: number; tpl: TemplateConfig; fontFace?: string },
 ): { w: number; h: number } {
   const { text, x, y, tpl } = opts;
+  const chipFace = opts.fontFace ?? tpl.fonts.face;
   const d = tpl.design;
   const h = 0.28;
   // Bold uppercase glyphs at this size run wider than the old 0.078"/char
@@ -182,7 +221,7 @@ export function drawSectionChip(
   slide.addText(text.toUpperCase(), {
     x, y, w, h,
     fontSize: d.typography.sectionLabel, bold: true, color: d.chipText,
-    fontFace: tpl.fonts.face, align: "center", valign: "middle", charSpacing: 1,
+    fontFace: chipFace, align: "center", valign: "middle", charSpacing: 1,
     // A pill is a single-line label by definition. `fit: "shrink"` alone
     // isn't enough — pptxgenjs wraps by default *before* it considers
     // shrinking, which is what caused the two-line overflow above.
@@ -267,17 +306,20 @@ export type BulletVariant = "bullet" | "checklist" | "activity";
 export function drawBulletBlock(
   pptx: PptxGenJS,
   slide: PptxGenJS.Slide,
-  opts: { x: number; y: number; w: number; lines: string[]; tpl: TemplateConfig; variant: BulletVariant; cpl: number; scale?: number },
+  opts: { x: number; y: number; w: number; lines: string[]; tpl: TemplateConfig; variant: BulletVariant; cpl: number; scale?: number; rtl?: boolean; fontFace?: string },
 ): number {
-  const { x, y, w, lines, tpl, variant, cpl, scale = 1 } = opts;
+  const { x, y, w, lines, tpl, variant, cpl, scale = 1, rtl = false } = opts;
   const d = tpl.design;
   const c = tpl.colors;
-  const f = tpl.fonts;
+  const f = { ...tpl.fonts, face: opts.fontFace ?? tpl.fonts.face };
+  const dir = directionOptions(rtl);
   const markerSize = 0.2 * scale;
   const rowPad = variant === "checklist" ? 0.12 : 0;
-  const markerX = x + rowPad;
-  const textX = markerX + markerSize + 0.16;
-  const textW = x + w - rowPad - (textX - x);
+  // Mirror the marker/text columns for RTL: the bullet marker belongs on the right, with the
+  // text column running leftward from it.
+  const markerX = rtl ? x + w - rowPad - markerSize : x + rowPad;
+  const textX = rtl ? x + rowPad : markerX + markerSize + 0.16;
+  const textW = w - rowPad - markerSize - 0.16;
   const bodyFontSize = f.contentSize * scale;
 
   let curY = y;
@@ -302,7 +344,7 @@ export function drawBulletBlock(
       slide.addText(raw, {
         x: textX, y: headerY, w: textW, h: rowH - gap,
         fontSize: bodyFontSize + 1, bold: true, color: c.accent, fontFace: f.face,
-        valign: "top", lineSpacingMultiple: 1.1, fit: "shrink",
+        valign: "top", lineSpacingMultiple: 1.1, fit: "shrink", ...dir,
       });
       curY += rowH;
       continue;
@@ -364,13 +406,13 @@ export function drawBulletBlock(
         // already budgets each row's height from estimateRowHeight, but an unusually long single
         // word/URL/number can still overflow the wrap estimate; shrink-to-fit catches that case
         // instead of clipping.
-        { x: textX, y: curY, w: textW, h: rowH, valign: "top", lineSpacingMultiple: 1.18, fit: "shrink" },
+        { x: textX, y: curY, w: textW, h: rowH, valign: "top", lineSpacingMultiple: 1.18, fit: "shrink", ...dir },
       );
     } else {
       slide.addText(raw, {
         x: textX, y: curY, w: textW, h: rowH,
         fontSize: bodyFontSize, color: c.contentText, fontFace: f.face,
-        valign: "top", lineSpacingMultiple: 1.18, fit: "shrink",
+        valign: "top", lineSpacingMultiple: 1.18, fit: "shrink", ...dir,
       });
     }
 
