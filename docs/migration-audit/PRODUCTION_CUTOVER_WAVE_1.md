@@ -185,3 +185,149 @@ checkpoint. In order:
 A useful intermediate option for step 3 is a Production deployment carrying
 the seam with every flag unset. That is a genuine no-op for users and makes
 the later cutover a pure configuration change with immediate rollback.
+
+## Checkpoint 30A: Routing Seam Delivered To Production, Flags Off
+
+Date: 2026-09-04
+
+Status: `PRODUCTION_ROUTING_SEAM_DELIVERED_NOOP_VERIFIED`
+
+The blocker recorded above is resolved. Production now understands the routing
+flags, and nothing routes to Python.
+
+### Delivery Strategy
+
+Chosen: transplant the seam onto a fresh branch cut from current `main`.
+Rejected: merging the migration branch.
+
+The measurements made the choice. The seam files differ from current `main` by
+733 inserted lines and **zero deletions**, and `main` has not touched any of
+them since the merge base. Merging the branch instead would have pulled 50
+commits of unrelated migration and UI work through 8 conflicts, next to a
+security hardening pass that must survive. The transplant carries none of that
+risk, and every line of it was already Preview-verified.
+
+Delivery branch: `chore/backend-wave1-routing-seam-delivery`, cut from
+`b05f730`, delivered as `acd4ab1`, fast-forwarded onto `main`.
+
+### What Landed
+
+Six files, all additions or additive edits:
+
+- `src/lib/backend-routing.ts` and its test
+- `src/app/api/user-usage/route.ts` and its test
+- `src/app/api/account/export/route.ts` and its test
+
+Each handler keeps its existing Next implementation untouched. The seam is a
+guarded early return that only fires when the endpoint's flag is explicitly
+`python` and a valid server-side `PYTHON_BACKEND_URL` resolves. Only
+`Authorization` is forwarded upstream. Cookies and arbitrary headers are not,
+the destination is server-controlled, and no generic proxy exists.
+
+### What Deliberately Did Not Land
+
+`POST /api/lesson-plan/save`, both the route and its test. Production persists
+lesson plans directly from the browser, so shipping a dormant write endpoint
+would add authenticated attack surface with no consumer. Production now returns
+`404` for that path, exactly as before.
+
+The future delta for that route is: the server route and its test, plus the
+one-line change in `lesson-plan-generator.tsx` that swaps the direct
+`supabase.from("lesson_plans")` insert and update for a call to
+`/api/lesson-plan/save`. Those must ship together, because a flag rollback does
+not restore the old client.
+
+### Security Preservation
+
+The structural guarantee is stronger than a checklist: the diff against `main`
+contains zero deletions, and none of the six files is one the hardening pass
+touched. Verified file by file that these remain byte-identical to `main`:
+
+| File | State |
+| --- | --- |
+| `src/lib/upload-security.ts` | identical to main |
+| `src/lib/upload-security.test.ts` | identical to main |
+| `src/lib/pptx-template.ts` | identical to main |
+| `src/app/api/lesson-plan/extract-upload/route.ts` | identical to main |
+| `src/app/api/differentiated-pack/extract/route.ts` | identical to main |
+| `src/app/api/school-template/upload/route.ts` | identical to main |
+
+No conflict resolution was required, because no conflict arose.
+
+### Validation
+
+Run after a clean `npm ci` against `main`'s lockfile.
+
+| Check | Result |
+| --- | --- |
+| Focused routing tests | 25 passed |
+| Full suite | 21 files, 255 passed |
+| Typecheck | clean |
+| Lint | 0 errors, 88 pre-existing warnings, none from delivered files |
+| Build | compiled successfully, both routes present, lesson-save absent |
+
+The first typecheck run reported two errors from stale generated Next type
+validators referencing the branch's lesson-save route. Clearing `.next`
+resolved them. They were build-cache artifacts, not source.
+
+### Production Deployment
+
+| Item | Value |
+| --- | --- |
+| Deployment | `dpl_5AsQTavzhyDR8m6kZQW7KQjGNkTn` |
+| Source | `main` at `acd4ab1` |
+| Serving | `https://www.layah.in` |
+| Route flags | none set |
+| `PYTHON_BACKEND_URL` | not set |
+
+### No-Op Proof
+
+| Check | Result |
+| --- | --- |
+| `https://www.layah.in` | 200 |
+| Unauthenticated user-usage | 401, frozen Next contract |
+| Unauthenticated account-export | 401, frozen Next contract |
+| `POST /api/lesson-plan/save` | 404, route absent as intended |
+| Authenticated user-usage | 200, full expected contract shape |
+| Authenticated account-export | 200, `application/json`, attachment header preserved, caller's own account only |
+| Python Production Wave 1 requests during the smoke | **0** |
+
+The authenticated smoke used the owner's own existing account. No account was
+created, no lesson was written, and no other user's data was accessed.
+
+Streamed backend Production logs captured zero requests on any Wave 1 path
+throughout. That is the proof that flags off means Next.
+
+### Wave 1 Is Now Two Different Migrations
+
+Continuing to call all three routes equivalent flag flips would be wrong.
+
+**Wave 1A, configuration cutover.** `GET /api/user-usage` and
+`GET /api/account/export`. Both handlers are live in Production with the seam
+in place. Each can be enabled independently by setting its flag plus
+`PYTHON_BACKEND_URL`, and disabled again by removing the flag. Rollback is
+immediate and requires no code change.
+
+**Wave 1B, client behaviour cutover.** `POST /api/lesson-plan/save`. This
+changes where the browser writes, needs the route and the client change
+shipped together, and cannot be rolled back by removing a flag. It needs its
+own checkpoint with its own rollback plan.
+
+### Database Drift, Recorded Not Fixed
+
+Classification: `KNOWN_NON_BLOCKING_SCHEMA_DRIFT`.
+
+The two `user_usage_lockdown` migrations are applied on staging
+(`esqnyktumxscyvznftlc`) but not on Production (`jbwevzvtloahjoamwnjt`). An anon
+caller is denied at the grant level on staging and receives an empty set under
+row level security on Production. Authenticated caller-scoped behaviour, which
+is what Wave 1 depends on, is equivalent in both. No `db push` was run and no
+migration was applied.
+
+### Safety
+
+No Production schema mutation, no migration, no staging configuration in
+Production, no Python route flag enabled, no service-role key introduced
+anywhere, no security behaviour lost, no force push. Next handlers are intact,
+the transitional monorepo backend copy is untouched on this branch, and the
+standalone backend was not modified.
