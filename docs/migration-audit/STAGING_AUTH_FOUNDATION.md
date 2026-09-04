@@ -265,3 +265,120 @@ step could then be resolved directly.
 
 No route status changed. All three Wave 1 operations remain
 `REMOTE_AUTH_BLOCKED_NO_STAGING_DB`, and production remains untouched.
+
+## Checkpoint 29D Result
+
+Date: 2026-09-04
+
+Status: `STAGING_AUTH_FOUNDATION_PARTIAL`
+
+Supabase CLI access now works, so the blocker recorded in 29B and 29C is gone.
+
+### Staging Established
+
+| Item | Value |
+| --- | --- |
+| Staging reference | `esqnyktumxscyvznftlc` |
+| Staging name | `layah-staging` |
+| Region | `ap-northeast-2` |
+| Created | 2026-09-04 |
+| Production reference | `jbwevzvtloahjoamwnjt`, region `ap-northeast-1`, created 2026-05-09 |
+| Organization | shared, but separate projects |
+
+Classification `STAGING` rests on evidence, not the name: a distinct project
+reference, creation dated to this migration, no production domain binding, a
+schema built solely from the backend repository's migrations, and synthetic
+data only. Production was never linked, pushed to, read for cloning, or
+mutated.
+
+`supabase db push` applied all 43 migrations to the empty project with no
+failures, so no reconciliation migration was needed. Wave 1 schema and RLS were
+then verified directly: `lesson_plans` and `saved_lessons` return an empty set
+to an anon caller, `user_usage` is denied at the grant level per its lockdown
+migration, and `ensure_user_usage` exists and refuses unauthenticated callers.
+
+### Hosted And Deployed Backend Proof
+
+The guarded integration suite ran twice against hosted staging: once with the
+app in process, then again with `INTEGRATION_APP_BASE_URL` pointed at the
+deployed backend Preview. Both passed. Backend Preview logs show the
+deployment itself handling the requests, with a 201 insert, a 200 update, and
+401s for missing and invalid bearers.
+
+| Item | Value |
+| --- | --- |
+| Backend SHA deployed | `0d33543` |
+| Deployment | `dpl_CFtmy6R1uS9btNAVc7nxfAN9SGCq` |
+| Preview URL | `https://layah-backend-python-4k1nxg06c-teacher-app.vercel.app` |
+| `/health`, `/ready`, `/openapi.json` | all 200, all three routes present |
+| Preview-scoped Supabase variables | `SUPABASE_URL`, `SUPABASE_ANON_KEY` |
+
+Application requests use the anon key plus the caller's own bearer. The
+service-role key is confined to test fixture setup and assertions, is not set
+on the deployed backend at all, and never reaches the frontend.
+
+### Routed Proof, With A Deviation
+
+The frontend Preview deployment could not be created: this session's
+permission policy refused every `vercel deploy` of `project-scquo`. That is a
+local policy limit, not an infrastructure or configuration problem.
+
+The routing seam was therefore proven the way Checkpoint 20 did it, by running
+Next locally against the same staging Supabase project with
+`PYTHON_BACKEND_URL` pointed at the deployed backend Preview. One route flag
+was enabled at a time.
+
+| Run | Flag | Result |
+| --- | --- | --- |
+| 1 | `BACKEND_ROUTE_USER_USAGE=python` | routed, 200, caller's own free-tier snapshot, query `user_id` ignored, 401 on missing and invalid bearer |
+| 2 | `BACKEND_ROUTE_ACCOUNT_EXPORT=python` | routed, 200, attachment header preserved, caller's own account only |
+| 3 | `BACKEND_ROUTE_LESSON_PLAN_SAVE=python` | routed, 201 insert, 200 own update, spoofed `user_id` stored as User A, User B could not modify User A's row |
+| 4 | none | zero Python routing decisions, all three served by Next |
+
+Run 3 was 13 checks out of 13, including the cross-user denial through the
+deployed chain: User B's overwrite attempt returned the existing zero-row
+semantics and the stored row was unchanged in owner and content.
+
+Because these runs used a local Next process rather than a deployed frontend,
+the routes are **not** classified `REMOTE_AUTH_PREVIEW_VERIFIED`. What is now
+proven is every layer below that: hosted staging Auth and RLS, a real deployed
+FastAPI Preview, and the routing seam with one flag at a time and a clean
+rollback.
+
+### Finding: Next Lesson Save Requires A Cookie Session
+
+With lesson save on the Next handler, a bearer-only client receives
+`500` and the server logs `Auth session missing!`. The Next implementation
+reads the Supabase session from cookies, while the Python implementation
+derives identity from the bearer. This is pre-existing behaviour, it was not
+changed, and it does not affect browser clients, which always send cookies. It
+does mean a bearer-only caller can drive that route only when it is routed to
+Python.
+
+### Cleanup
+
+- No frontend route flag persists anywhere. All three were deployment-scoped
+  to local runs that have ended, and `project-scquo` has no `BACKEND_ROUTE_*`
+  or `PYTHON_BACKEND_URL` variable at project level.
+- The automation bypass secret created on the backend project by the Preview
+  deploy was removed. The project is back to zero bypass entries with SSO
+  protection intact.
+- `project-scquo` environment variables are unchanged, the newest being 102
+  days old.
+- Backend Preview Supabase variables were kept deliberately, since they are
+  Preview-scoped staging configuration and the next checkpoint needs them.
+
+### Per-Route Status
+
+| Operation | Python parity | Local auth/RLS | Hosted staging auth/RLS | Deployed backend | Routed seam | Production |
+| --- | --- | --- | --- | --- | --- | --- |
+| `GET /api/user-usage` | `PYTHON_PARITY_COMPLETE` | `LOCAL_AUTH_VERIFIED` | `STAGING_AUTH_VERIFIED` | `DEPLOYED_BACKEND_AUTH_VERIFIED` | `ROUTED_LOCAL_NEXT_VERIFIED` | `PRODUCTION_NOT_CUT_OVER` |
+| `GET /api/account/export` | `PYTHON_PARITY_COMPLETE` | `LOCAL_AUTH_VERIFIED` | `STAGING_AUTH_VERIFIED` | `DEPLOYED_BACKEND_AUTH_VERIFIED` | `ROUTED_LOCAL_NEXT_VERIFIED` | `PRODUCTION_NOT_CUT_OVER` |
+| `POST /api/lesson-plan/save` | `PYTHON_PARITY_COMPLETE` | `LOCAL_AUTH_VERIFIED` | `STAGING_AUTH_VERIFIED` | `DEPLOYED_BACKEND_AUTH_VERIFIED` | `ROUTED_LOCAL_NEXT_VERIFIED` | `PRODUCTION_NOT_CUT_OVER` |
+
+### Remaining Blocker
+
+One deployed frontend Preview of `project-scquo`, carrying deployment-scoped
+staging Supabase variables, `PYTHON_BACKEND_URL`, a backend automation bypass
+secret, and one route flag at a time. Everything needed for it is already
+written and proven; only the deploy itself was refused here.
