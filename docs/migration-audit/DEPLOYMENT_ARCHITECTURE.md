@@ -194,3 +194,22 @@ network transport and intentional bearer forwarding only; local disposable
 Supabase and CI own Auth/RLS behavior until a hosted TEST/STAGING project is
 available. No persistent Preview routing flags or bypass entries remain, and
 the Production frontend URL remains `https://www.layah.in`.
+
+## Checkpoint 29 Supabase Environment Classification
+
+The Vercel environment listing for `project-scquo` resolves the
+long-standing `UNKNOWN` Supabase classification. `NEXT_PUBLIC_SUPABASE_URL`
+and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are bound to both **Production** and
+**Preview**, and the Production binding belongs to the project serving
+`https://www.layah.in`. The project referenced there is therefore
+`PRODUCTION`.
+
+Operationally this means an ordinary frontend Preview authenticates its users
+against the production Supabase project. Any future staging validation Preview
+must override those two variables at deployment scope so that the frontend and
+the backend validate tokens against the same staging issuer.
+
+`teacher-app/layah-backend-python` still has no environment variables at all,
+so its Supabase target remains unconfigured. No environment variable was added,
+changed, or removed on either project during Checkpoint 29, and no deployment
+was created.

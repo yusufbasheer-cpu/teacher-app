@@ -215,3 +215,30 @@ Checkpoint 25 result:
 - local Auth health: HTTP 200
 - local PostgREST lesson_plans check: HTTP 200
 - `npm run test:rls`: passed
+
+## Checkpoint 29 Harness Modes
+
+The harness now runs in two explicit modes, and hosted runs are opt-in twice
+over.
+
+`LOCAL_DISPOSABLE` is unchanged and remains the default:
+
+```powershell
+npx supabase start
+npx supabase db reset
+npm run test:rls
+npx supabase stop
+```
+
+Checkpoint 29 re-ran that flow after refactoring the guard: `db reset` passed
+and the authenticated integration suite passed with `2 passed`.
+
+`STAGING`/`TEST` additionally requires `RUN_STAGING_INTEGRATION=1`, a
+`SUPABASE_INTEGRATION_PROJECT_REF` matching the URL, and a
+`SUPABASE_INTEGRATION_CLASSIFICATION` of `STAGING` or `TEST` matching the
+environment label. The Layah production project reference is denied outright.
+Variable names are in `layah-backend-python/.env.staging.example`; the full
+contract is in `layah-backend-python/docs/STAGING_SUPABASE.md`.
+
+No hosted staging project exists yet, so no staging-mode run has been
+performed.

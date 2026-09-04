@@ -239,3 +239,29 @@ possible. Production was not contacted or changed.
 
 Checkpoint 28 classification:
 `BACKEND_WAVE_1_LOCAL_VERIFIED_REMOTE_AUTH_BLOCKED`.
+
+## Checkpoint 29 Classification Update
+
+The Checkpoint 24 table above is superseded on one row. The `.env.local`
+project (ref `jbwevzvtloahjoamwnjt`) is no longer `UNKNOWN`. It is
+positively classified `PRODUCTION`.
+
+Evidence: `NEXT_PUBLIC_SUPABASE_URL` is bound to the **Production**
+environment of Vercel project `project-scquo`, whose production URL is
+`https://www.layah.in`, and the `.env.local` value matches that project
+reference. The classification comes from deployment binding, not from the
+project name.
+
+Two consequences:
+
+- the project is denied by default in the backend integration guard, so a
+  mislabelled `staging` run can no longer mutate it;
+- `project-scquo` binds the same Supabase URL and anon key to **Preview**
+  as well as Production, so an ordinary frontend Preview authenticates
+  against production Supabase. A staging proof therefore requires
+  deployment-scoped frontend Supabase overrides on a dedicated Preview.
+
+Local Supabase is now genuinely `LOCAL_DISPOSABLE` and running: Docker is
+installed, and `supabase start`, `db reset`, and the authenticated RLS suite
+all pass. No dedicated hosted test or staging project exists yet. See
+`STAGING_AUTH_FOUNDATION.md`.

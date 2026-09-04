@@ -519,3 +519,38 @@ admin, cron, PPT, or AI change remains.
 
 Status: Implemented; safe hosted auth foundation required before Production
 cutover consideration.
+
+## Checkpoint 29 — Staging Auth Foundation
+
+Decision: classify the single discovered hosted Supabase project as
+`PRODUCTION` on deployment evidence, refuse to use it, and make the
+integration harness enforce classification explicitly instead of inferring it.
+
+Reasoning: the hosted project could not stay `UNKNOWN` once the Vercel
+environment listing showed its URL bound to the Production environment of the
+project serving `https://www.layah.in`. That evidence closes the
+classification and permanently forbids the target. Separately, the previous
+harness guard was found to be unsound: it rejected URLs containing `prod`,
+`production`, or `live`, but a Supabase project reference contains none of
+those, so labelling a run `staging` and pasting the production URL would have
+created synthetic users and rows in the live database.
+
+Alternatives considered: creating a Supabase project through the CLI
+(rejected, no access token and `supabase login` is a browser OAuth flow);
+provisioning Supabase through the Vercel Marketplace (rejected, `integration
+accept-terms` requires an interactive terminal and human confirmation, and it
+creates a billed resource on the owning team, which is an owner decision);
+reusing the production project with careful test hygiene (rejected outright);
+treating a project as staging because of its name (rejected, that is the
+failure mode this checkpoint exists to prevent).
+
+Impact: standalone backend SHA `e95bb0ab4365680f02053b3d03eab87e5ca57eb2`
+adds the shared classification guard, a hosted staging mode gated behind
+`RUN_STAGING_INTEGRATION=1`, fourteen guard unit tests, `.env.staging.example`,
+and `docs/STAGING_SUPABASE.md`. Local disposable behaviour is unchanged and
+still passes. No hosted Supabase project was created, contacted, or mutated,
+and no Vercel environment variable, deployment, or route flag was changed.
+
+Status: Blocked on one manual action. A person with Supabase organization
+access must create `layah-staging` and apply the backend migrations to it.
+Every subsequent step is scripted.

@@ -213,3 +213,17 @@ positively classified hosted TEST/STAGING Supabase target with synthetic users
 and deployment-scoped Preview credentials. Recommended next checkpoint:
 `SAFE STAGING AUTH FOUNDATION`, then repeat the real authenticated Preview
 matrix before any Production cutover decision.
+
+## Checkpoint 29 Addendum
+
+The hosted safety gate above is partially resolved. The one hosted Supabase
+project is no longer `UNKNOWN`; it is positively classified `PRODUCTION` and
+is now denied by default in the backend integration guard.
+
+No route status changed. All three operations remain
+`PYTHON_PARITY_COMPLETE` and `LOCAL_AUTH_VERIFIED`, with remote authenticated
+proof still blocked, now recorded as `REMOTE_AUTH_BLOCKED_NO_STAGING_DB`
+rather than blocked by an unclassified target.
+
+The remaining blocker is a single manual provisioning action, recorded with
+its exact steps in `STAGING_AUTH_FOUNDATION.md`.
