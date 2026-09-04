@@ -206,3 +206,62 @@ flags and paste the production URL. It should be closed by deleting the
 transitional backend copy once Wave 1 cuts over, which is the existing plan
 in `BACKEND_REPOSITORY_EXTRACTION.md`. Until then, run the RLS harness from
 the standalone repository only.
+
+## Checkpoint 29B Attempt
+
+Date: 2026-09-04
+
+Status: `STAGING_AUTH_FOUNDATION_BLOCKED`
+
+Checkpoint 29B resumed on the understanding that the manual provisioning action
+was complete and a project named `layah-staging` now exists.
+
+The project may well exist in the Supabase dashboard, but nothing identifying
+it reached the working environment. Every channel was checked:
+
+| Channel | Result |
+| --- | --- |
+| `SUPABASE_ACCESS_TOKEN` in environment | absent |
+| Supabase CLI login state | not logged in; `projects list` refused |
+| `supabase/.temp/project-ref` link state | absent, not linked |
+| Local env files in either repository | only `.example` templates |
+| `teacher-app/layah-backend-python` Vercel env | still zero variables |
+| `teacher-app/project-scquo` Vercel env | unchanged; newest entry 26 days old |
+| Untracked files, scratchpad, memory | nothing |
+
+A search for any `*.supabase.co` host reachable from this machine returns
+exactly one: the production project.
+
+Without the project reference, the URL, and the keys, none of Steps 2 through
+20 can execute. Step 2 requires verifying the actual reference and proving it
+differs from `jbwevzvtloahjoamwnjt` before any hosted mutation. Guessing or
+inferring a reference is precisely the failure mode these safety rules exist to
+prevent, so nothing hosted was attempted: no link, no migration push, no
+synthetic user, no hosted request.
+
+### What Was Completed Instead
+
+The one tooling gap that would have blocked Step 13 even with credentials in
+hand is now closed. The integration suite could only ever drive the FastAPI app
+in process, so it had no way to exercise a deployed Preview over HTTP.
+
+Setting `INTEGRATION_APP_BASE_URL` now points the identical assertions at a
+deployed target: a standalone backend Preview for the direct proof, or a
+frontend Preview for the routed proof. The URL must be https, and production
+application hosts are refused outright, because these tests drive routes that
+write. The Supabase guard still applies, so the tokens involved can only be
+staging tokens.
+
+Backend verification after the change: `58 passed, 2 skipped`, ruff clean, and
+the local disposable authenticated RLS suite still passes against a freshly
+reset database.
+
+### Exact Remaining Blocker
+
+Supply, through a secure channel, the staging project reference, URL, anon key,
+and service-role key. A `SUPABASE_ACCESS_TOKEN` or a completed
+`npx supabase login` would work equally well, since the reference and the link
+step could then be resolved directly.
+
+No route status changed. All three Wave 1 operations remain
+`REMOTE_AUTH_BLOCKED_NO_STAGING_DB`, and production remains untouched.
