@@ -174,6 +174,19 @@ describe("slide 7 keeps Arabic content instead of replacing it with English defa
     expect(body).not.toContain("Mini Plenary");
   });
 
+  it("keeps the real Arabic mini-plenary content and emits its heading once", () => {
+    const withPlenary = `${arabicTiers}\nتلخيص مصغر\nاذكر مرحلة واحدة من دورة الماء وفسّر أهميتها.`;
+    const body = sanitizeSlide7DifferentiatedBody(withPlenary, "دورة الماء", "ar");
+
+    // The Arabic heading did not switch the parser's mode, so it and its content were absorbed
+    // into the last tier and the formatter appended its own heading plus a default — the label
+    // appeared twice and the teacher's mini-plenary text was lost.
+    expect(body).toContain("اذكر مرحلة واحدة من دورة الماء");
+    expect(body.split(PPT_STRINGS.ar.slide7MiniPlenary).length - 1).toBe(1);
+    // The generic default must not have been substituted over real content.
+    expect(body).not.toContain("اشرح في جملة واحدة أهم ما تعلمته");
+  });
+
   it("leaves the English deck's labels exactly as they were", () => {
     const body = sanitizeSlide7DifferentiatedBody(
       "Higher Achievers task\nDesign a model.\nMiddle Achievers task\nComplete the diagram.\nLower Achievers task\nSort the picture cards.",

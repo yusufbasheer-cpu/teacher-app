@@ -515,7 +515,11 @@ function parseSlide7TierBlocks(body: string): { tiers: Record<Slide7Tier, string
     const t = raw.trim();
     if (!t) continue;
 
-    if (SLIDE7_MINI_PLENARY_HEADING_RE.test(t)) {
+    // The Arabic heading has to switch the mode here too. Without it the heading and the
+    // mini-plenary content were swallowed into whichever tier was open, and the formatter then
+    // appended its own heading plus a default - so an Arabic slide 7 showed the label twice and
+    // lost the real mini-plenary text.
+    if (SLIDE7_MINI_PLENARY_HEADING_RE.test(t) || SLIDE7_MINI_PLENARY_AR_RE.test(t)) {
       current = "miniPlenary";
       continue;
     }
