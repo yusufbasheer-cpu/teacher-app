@@ -1,13 +1,68 @@
 import { NextResponse } from "next/server";
+import { applyDeploymentProtectionBypass, resolveBackendRoute } from "@/lib/backend-routing";
 import { authenticateRequest, getSupabaseForUser } from "@/lib/user-usage-server";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
+export const ACCOUNT_EXPORT_PYTHON_PROXY_TIMEOUT_MS = 10000;
+
+function buildAccountExportProxyHeaders(incoming: Headers): Headers {
+  const headers = new Headers({ Accept: "application/json" });
+  const authorization = incoming.get("authorization");
+  if (authorization) headers.set("Authorization", authorization);
+  applyDeploymentProtectionBypass(headers);
+  return headers;
+}
+
+async function proxyAccountExportToPython(url: URL, headers: Headers): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ACCOUNT_EXPORT_PYTHON_PROXY_TIMEOUT_MS);
+
+  try {
+    const upstream = await fetch(url, {
+      method: "GET",
+      headers: buildAccountExportProxyHeaders(headers),
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    const responseHeaders = new Headers();
+    for (const name of ["content-type", "content-disposition"]) {
+      const value = upstream.headers.get(name);
+      if (value) responseHeaders.set(name, value);
+    }
+    return new Response(await upstream.arrayBuffer(), {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: responseHeaders,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 export async function GET(req: Request) {
   const ip = getClientIp(req);
   const ipLimit = checkRateLimit(`export:ip:${ip}`, 5, HOUR_MS);
   if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+
+  const decision = resolveBackendRoute("account-export");
+  if (decision.target === "python" && decision.pythonUrl) {
+    try {
+      console.log("[backend-routing] Routing endpoint", {
+        endpoint: "account-export",
+        backend: "python",
+        fallback: false,
+      });
+      return await proxyAccountExportToPython(decision.pythonUrl, req.headers);
+    } catch (err) {
+      console.warn("[backend-routing] Python account-export transport failed; falling back to Next", {
+        endpoint: "account-export",
+        backend: "next",
+        fallback: true,
+        failure: err instanceof Error ? err.name : "unknown",
+      });
+    }
+  }
 
   const auth = await authenticateRequest(req);
   if (!auth.ok) {
