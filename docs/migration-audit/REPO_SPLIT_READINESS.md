@@ -137,3 +137,24 @@ from this session. No production routing changed, and the monorepo copy
 of `backend-python/` remains as the fallback during transition.
 
 See `BACKEND_REPOSITORY_EXTRACTION.md` for the full extraction record.
+
+## Checkpoint 27 Update
+
+Classification: `BACKEND_REPOSITORY_REMOTE_VERIFIED`.
+
+The standalone backend remote exists at:
+
+`https://github.com/yusufbasheer-cpu/layah-backend-python`
+
+Final backend SHA:
+
+`b7f2c5b0ee1b08e75f49380f700468d6adf2f466`
+
+Remote CI passed on `main`, including Python tests, Ruff, local Supabase
+reset, and authenticated RLS integration.
+
+Frontend Preview successfully routed `GET /api/geo` to the standalone
+backend Preview using deployment-scoped env, and rollback was verified by
+a second frontend Preview with no Python routing env. The monorepo
+backend copy remains a transitional fallback, but new backend
+development should now start in the standalone backend repo.

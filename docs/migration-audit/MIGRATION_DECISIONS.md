@@ -457,3 +457,32 @@ or AI configuration changed. A GitHub remote still needs to be created
 or connected.
 
 Status: Implemented locally; remote provisioning required.
+
+## 2026-09-04 (Checkpoint 27)
+
+Decision: Treat `yusufbasheer-cpu/layah-backend-python` as the
+standalone backend remote and canonical starting point for new backend
+development, while keeping the monorepo backend copy as a transitional
+fallback.
+
+Reason: The remote repository now exists, the standalone backend pushed
+cleanly without force, remote CI passed on `main`, and a Preview-only
+frontend route test proved `project-scquo` can call a backend Preview
+deployed from the standalone backend checkout. Rollback was proven with a
+second frontend Preview deployed without Python routing env.
+
+Alternatives considered: permanently connecting the existing Vercel
+backend project to GitHub in this checkpoint (deferred because it may
+alter future Production deployment behavior); cutting Production geo
+traffic now (rejected because this checkpoint is Preview-only);
+continuing to treat the monorepo backend copy as primary (rejected
+because the remote-backed standalone repo is now validated).
+
+Impact: New backend work should happen in
+`https://github.com/yusufbasheer-cpu/layah-backend-python`. Production
+routing, DNS, hosted Supabase, Razorpay, billing, admin, cron, PPT, and
+AI-service ownership remain unchanged. Branch protection still requires
+owner/admin action because the authenticated collaborator received
+GitHub API `404` when attempting to protect `main`.
+
+Status: Implemented and Preview-verified.

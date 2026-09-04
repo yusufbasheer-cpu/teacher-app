@@ -133,6 +133,37 @@ No `PYTHON_BACKEND_URL`, backend route flag, DNS, Vercel Production
 deployment, Razorpay, billing, admin, cron, PPT, or AI configuration was
 changed.
 
+## Checkpoint 27 Standalone Backend Preview
+
+The standalone backend remote now exists:
+
+`https://github.com/yusufbasheer-cpu/layah-backend-python`
+
+Final backend SHA:
+
+`b7f2c5b0ee1b08e75f49380f700468d6adf2f466`
+
+Vercel project `teacher-app/layah-backend-python`
+(`prj_qWhDyiC6WidWmsuACuaowxOuk5xb`) was linked locally from the
+standalone backend checkout and deployed as a Preview:
+
+`https://layah-backend-python-6l0t8ckh9-teacher-app.vercel.app`
+
+Direct Preview checks passed for `/health`, `/ready`, and
+`/openapi.json`.
+
+Frontend Preview routing was validated through `project-scquo` using
+deployment-scoped env only. `GET /api/geo` reached the standalone
+backend Preview, and backend logs proved the request was handled there.
+A second frontend Preview without those routing variables proved
+rollback to the Next implementation. Production was not promoted,
+rerouted, or modified.
+
+The backend Vercel project was not permanently connected to the GitHub
+repo via Vercel Git integration in this checkpoint, because that changes
+future deployment behavior and should be an explicit owner/admin
+decision.
+
 ## Checkpoint 24 Local Supabase Runtime
 
 Docker is being introduced only as the local runtime dependency for `LOCAL_DISPOSABLE` Supabase. It is not an application deployment target, and this checkpoint does not containerize Next.js, FastAPI, PPT/export, or production services.

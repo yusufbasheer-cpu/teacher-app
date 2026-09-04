@@ -71,3 +71,18 @@ passes against `LOCAL_DISPOSABLE`.
 caller-context persistence proof for the physical backend split:
 `PYTHON_PARITY_WITH_LIVE_RLS_VERIFICATION`. It is still not cut over to
 production traffic.
+
+## Checkpoint 27 Standalone Backend Remote Verified
+
+The standalone backend repo now exists at
+`https://github.com/yusufbasheer-cpu/layah-backend-python`, with
+`main` at `b7f2c5b0ee1b08e75f49380f700468d6adf2f466`.
+
+Remote CI passed, including `python` and `local-supabase-rls`. A
+Preview-only frontend route test proved `project-scquo` can route
+`GET /api/geo` to the standalone backend Preview, and rollback was
+verified by deploying a second frontend Preview without routing env.
+
+No production traffic was cut over. `GET /api/geo`,
+`POST /api/auth/verify-captcha`, and `POST /api/lesson-plan/save` remain
+not cut over in Production.

@@ -94,3 +94,22 @@ created or connected before it can become the shared canonical repo.
 The monorepo copy remains in place as a temporary fallback, and no
 frontend, AI-services, production routing, billing, admin, cron, or PPT
 split was performed.
+
+## Checkpoint 27 Remote Validation
+
+`repo-backend-python` now exists as:
+
+`https://github.com/yusufbasheer-cpu/layah-backend-python`
+
+Final validated backend SHA:
+
+`b7f2c5b0ee1b08e75f49380f700468d6adf2f466`
+
+Remote CI passed, and frontend Preview routing to a standalone backend
+Preview was verified for `GET /api/geo`. From this point, new backend
+development should target the standalone repo. The monorepo backend copy
+remains a transitional fallback until an explicit cleanup checkpoint.
+
+`repo-frontend` also exists as
+`https://github.com/yusufbasheer-cpu/layah-frontend`, but this checkpoint
+did not move or push frontend source into it.

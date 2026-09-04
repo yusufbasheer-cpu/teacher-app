@@ -180,3 +180,17 @@ formally adopted, database ownership is:
 
 Overall classification remains `HYBRID_TRANSITION_REQUIRED`, with the
 physical backend repository extraction complete locally.
+
+## Checkpoint 27: Backend Repo Remote Canonical Candidate
+
+The backend repository now has a remote:
+
+`https://github.com/yusufbasheer-cpu/layah-backend-python`
+
+Remote CI proved the standalone copy can run Python tests, Ruff, local
+Supabase reset, and authenticated RLS integration from GitHub Actions.
+
+The standalone backend repo is now the canonical candidate for
+backend-owned `supabase/migrations/`, `supabase/config.toml`, and RLS
+test infrastructure. The monorepo copy remains a transitional fallback
+until an explicit cleanup checkpoint removes or freezes it.
