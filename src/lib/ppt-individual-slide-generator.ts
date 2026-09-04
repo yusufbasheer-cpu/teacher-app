@@ -10,6 +10,14 @@ import {
   stripSlideTitleEchoFromBody,
 } from "@/lib/ppt-slide-by-slide";
 import { resolveGenerationTopic } from "@/lib/lesson-plan";
+import { PPT_AFL_DRIVEN_SYSTEM_RULES, type MainActivityStructure } from "@/lib/afl-tools";
+import { buildPptSlideBodyLanguageHint } from "@/lib/deepseek-lesson-system-prompt";
+import {
+  DEFAULT_PRESENTATION_LANGUAGE,
+  localeTagFor,
+  pptString,
+  type PresentationLanguage,
+} from "@/lib/ppt-language";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const MAX_ATTEMPTS = 3;
@@ -28,9 +36,26 @@ export type SlideGenParams = {
   mainAflBlock?: string;
   /** Formatted AFL description for the Plenary slide (slide 9). */
   plenaryAflBlock?: string;
+  /** Formatted AFL description for the Differentiated Activity slide (slide 7). */
+  differentiationAflBlock?: string;
+  /** Formatted AFL description for the Exit Ticket slide (slide 11). */
+  exitTicketAflBlock?: string;
+  /** Formatted AFL description for the Success Criteria slide (slide 12). */
+  successCriteriaAflBlock?: string;
+  /**
+   * The teacher-selected main-phase activity, resolved to a concrete structure. When present it
+   * — not a hardcoded scaffold — determines how slide 6 is organised.
+   */
+  mainActivity?: MainActivityStructure;
+  /** Optional pedagogy selector (see `TEACHING_STRATEGIES`). */
+  teachingStrategy?: string;
+  /** Language every generated field on the slide must be written in. */
+  language?: PresentationLanguage;
   uaeFrameworkEnabled: boolean;
   dateStr?: string;
 };
+
+export type { MainActivityStructure };
 
 export type SlideGenResult = { body: string; notices: string[] };
 
@@ -38,9 +63,36 @@ type DSMessage = { role: "system" | "user"; content: string };
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+/**
+ * Arabic decks must come back Arabic in *every* returned field, not just the main body — the
+ * previous behaviour produced Arabic slide titles stapled onto English content. The carve-out
+ * matters as much as the rule: a teacher's own proper nouns, acronyms and technical terms must
+ * survive verbatim rather than being transliterated into Arabic script or translated away.
+ */
+function buildLanguageDirective(language: PresentationLanguage): string {
+  if (language !== "ar") {
+    return `OUTPUT LANGUAGE:
+- Write every part of this slide in clear English appropriate for the grade.`;
+  }
+  return `OUTPUT LANGUAGE (ABSOLUTE REQUIREMENT):
+- Write **EVERY** textual field you return in Modern Standard Arabic (فصحى) suitable for the classroom. This is not a stylistic preference — an English word anywhere outside the exceptions below is a defect.
+- This covers, without exception: headings and sub-headings, instructions, activity names and steps, explanations, questions, examples, teacher instructions, student instructions, assessment and success-criteria text, labels, captions, and any supporting or connecting text.
+- Do NOT write an English draft and append an Arabic translation. Do NOT mirror content in both languages. Return Arabic only.
+- Do NOT transliterate Arabic into Latin letters under any circumstance.
+- ${buildPptSlideBodyLanguageHint("Arabic")}
+
+PERMITTED EXCEPTIONS (keep these in their original script — do not translate or transliterate):
+- Proper nouns, personal names, place names and organisation names the teacher supplied.
+- Established technical terms, scientific notation, units, acronyms, and programming or mathematical symbols where the Arabic classroom convention is to keep the Latin form.
+- Direct quotations the teacher provided in another language.
+- Numerals may use either Arabic-Indic (٠١٢) or Western (012) digits — be consistent within the slide.`;
+}
+
 function buildIsolatedSystemPrompt(slideName: string, params: SlideGenParams): string {
   const { topic, subject, grade, chapter } = params;
   const focus = resolveGenerationTopic(topic, chapter) || subject;
+  const language = params.language ?? DEFAULT_PRESENTATION_LANGUAGE;
+  const strategy = params.teachingStrategy?.trim();
   return `You are a professional teacher creating a PowerPoint presentation slide. You are generating content for ONE specific slide ONLY.
 
 SLIDE: ${slideName}
@@ -62,7 +114,13 @@ STRICT ISOLATION RULES:
 TOPIC LOCK (critical):
 - The locked lesson context above is the ONLY subject matter this slide may teach. Treat it as authoritative regardless of what other subjects, chapters, or example topics you may associate with this grade or subject area.
 - Do NOT substitute, drift to, or blend in a different or "example" topic (e.g. a common textbook example for this subject) even if it feels like a natural or well-known illustration — every sentence must stay grounded in "${focus}".
-- If you are uncertain about a specific fact, stay generically correct and on-topic rather than switching to a different, better-known topic.`;
+- If you are uncertain about a specific fact, stay generically correct and on-topic rather than switching to a different, better-known topic.
+
+${buildLanguageDirective(language)}
+${strategy ? `
+TEACHING STRATEGY (teacher-selected — shape the delivery around it):
+- ${strategy}` : ""}
+${PPT_AFL_DRIVEN_SYSTEM_RULES}`;
 }
 
 function cleanBody(body: string, slideName: string): string {
@@ -157,7 +215,7 @@ async function generateWithRetries(
 export function generateSlide1Body(params: SlideGenParams): SlideGenResult {
   const dateStr =
     params.dateStr ??
-    new Date().toLocaleDateString("en-GB", {
+    new Date().toLocaleDateString(localeTagFor(params.language ?? DEFAULT_PRESENTATION_LANGUAGE), {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -213,11 +271,13 @@ Rules:
 
 /** Slide 4: programmatic — teacher's exact objectives, verbatim. */
 export function generateSlide4Body(params: SlideGenParams): SlideGenResult {
+  const language = params.language ?? DEFAULT_PRESENTATION_LANGUAGE;
   const raw = (params.learningObjectives ?? "").trim();
-  const body = stripSlideTitleEchoFromBody(
-    raw || "(Learning objectives not provided)",
-    "Learning Objectives",
-  );
+  // The teacher's objectives are the source of truth here. The placeholder is reached only when
+  // the field is genuinely empty, never as a fallback for text we failed to carry through.
+  const body = raw
+    ? stripSlideTitleEchoFromBody(raw, "Learning Objectives")
+    : pptString(language, "objectivesNotProvided");
   return { body, notices: [] };
 }
 
@@ -248,9 +308,61 @@ Requirements:
   return result;
 }
 
-/** Slide 6: Main Phase Core Teaching — I Do / We Do / You Do with AFL main tool. */
+/**
+ * The activity structure block for slide 6.
+ *
+ * This used to hardcode "I Do / We Do / You Do" regardless of what the teacher selected, which
+ * is why choosing Jigsaw or Learning Stations still produced a gradual-release deck. The
+ * structure now comes from the resolved activity: gradual release is emitted only when the
+ * teacher actually chose it (or when it is the deterministic recommendation for an unselected
+ * main phase), and every other activity supplies its own steps from the AFL catalogue.
+ */
+function buildMainPhaseStructureBlock(
+  activity: MainActivityStructure | undefined,
+  topic: string,
+  grade: string,
+): string {
+  const teaching = `Core Teaching (always first):
+Full teaching content including key vocabulary, concepts, clear explanation, and worked examples specific to ${topic} at ${grade} level.`;
+
+  if (!activity) {
+    // No selection and no recommendation resolved. Ask for a coherent structure rather than
+    // silently imposing one — the documented behaviour for genuinely missing input.
+    return `${teaching}
+
+Learning Activity:
+Choose one coherent, age-appropriate activity structure for this topic and implement it fully with step-by-step classroom instructions. State the activity's name before its steps.`;
+  }
+
+  if (activity.isGradualRelease) {
+    return `${teaching}
+
+Structure (I Do / We Do / You Do) — this is the teacher's selected activity${activity.systemRecommended ? " (system-recommended, not explicitly chosen)" : ""}:
+
+I Do — Teacher Explanation:
+Model the concept explicitly, using the core teaching content above.
+
+We Do — Guided Practice:
+Teacher and students work through examples together, with step-by-step classroom instructions.
+
+You Do — Independent Practice:
+Students practise independently. Clear task instructions specific to ${topic}.`;
+  }
+
+  return `${teaching}
+
+Learning Activity — "${activity.label}"${activity.systemRecommended ? " (system-recommended, not explicitly chosen)" : " (TEACHER-SELECTED — you MUST use exactly this activity)"}:
+How this activity runs: ${activity.howTo}
+
+Implement "${activity.label}" fully for ${topic} at ${grade} level:
+- Write the concrete classroom steps for this activity, in order, with timings.
+- Use this activity's own structure and vocabulary. Do NOT reorganise it into "I Do / We Do / You Do" and do NOT emit those headings — they belong to a different activity that the teacher did not select.
+- Every step must be specific to ${topic}, not a generic description of the activity.`;
+}
+
+/** Slide 6: Main Phase Core Teaching — structure driven by the teacher's selected activity. */
 export async function generateSlide6(params: SlideGenParams): Promise<SlideGenResult> {
-  const { topic, subject, grade, curriculumType, mainAflBlock } = params;
+  const { topic, subject, grade, curriculumType, mainAflBlock, mainActivity } = params;
   const slideName = "Main Phase Core Teaching";
   const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate the Main Phase Core Teaching content for a ${grade} ${subject} lesson.
@@ -258,16 +370,7 @@ Topic: ${topic}
 ${curriculumType ? `Curriculum: ${curriculumType}` : ""}
 ${mainAflBlock ? `AFL Main Phase Tool: ${mainAflBlock}` : ""}
 
-Structure (I Do / We Do / You Do):
-
-I Do — Teacher Explanation:
-Full teaching content including key vocabulary, concepts, clear explanation, and worked examples specific to ${topic} at ${grade} level.
-
-We Do — Guided Practice:
-Teacher and students work through examples together. Fully implement the AFL tool above with step-by-step classroom instructions.
-
-You Do — Independent Practice:
-Students practise independently. Clear task instructions specific to ${topic}.
+${buildMainPhaseStructureBlock(mainActivity, topic, grade)}
 
 Requirements:
 - Rich, detailed, classroom-ready content throughout
@@ -284,10 +387,11 @@ Requirements:
 
 /** Slide 7: Differentiated Activity and Mini Plenary — three tiers + quick check. */
 export async function generateSlide7(params: SlideGenParams): Promise<SlideGenResult> {
-  const { topic, subject, grade } = params;
+  const { topic, subject, grade, differentiationAflBlock } = params;
   const slideName = "Differentiated Activity and Mini Plenary";
   const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate differentiated activities for a ${grade} ${subject} lesson on: ${topic}
+${differentiationAflBlock ? `AFL Differentiation Tool (teacher-selected - implement it): ${differentiationAflBlock}` : ""}
 
 Write EXACTLY FOUR sections in this precise order:
 
@@ -416,10 +520,11 @@ Requirements:
 
 /** Slide 11: Exit Ticket — 2–3 focused comprehension questions. */
 export async function generateSlide11(params: SlideGenParams): Promise<SlideGenResult> {
-  const { topic, subject, grade } = params;
+  const { topic, subject, grade, exitTicketAflBlock } = params;
   const slideName = "Exit Ticket";
   const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate 2-3 Exit Ticket questions for a ${grade} ${subject} lesson on: ${topic}
+${exitTicketAflBlock ? `AFL Exit Ticket Tool (teacher-selected - implement it): ${exitTicketAflBlock}` : ""}
 
 Requirements:
 - EXACTLY 2 to 3 questions — no more, no fewer
@@ -437,10 +542,11 @@ Requirements:
 
 /** Slide 12: Success Criteria and Self Evaluation — I can statements + reflection. */
 export async function generateSlide12(params: SlideGenParams): Promise<SlideGenResult> {
-  const { topic, subject, grade } = params;
+  const { topic, subject, grade, successCriteriaAflBlock } = params;
   const slideName = "Success Criteria and Self Evaluation";
   const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate Success Criteria and Self Evaluation for a ${grade} ${subject} lesson on: ${topic}
+${successCriteriaAflBlock ? `AFL Success Criteria Tool (teacher-selected - implement it): ${successCriteriaAflBlock}` : ""}
 
 Section 1 — Success Criteria:
 Write 4-6 "I can..." statements that describe what a successful student can do after today's lesson on ${topic}. Each statement must be specific to ${topic} and measurable.
@@ -460,7 +566,17 @@ Requirements:
 }
 
 /** Slide 13: Thank You — brief positive closing, no other content. */
-export function generateSlide13Body(_params: SlideGenParams): SlideGenResult {
+export function generateSlide13Body(params: SlideGenParams): SlideGenResult {
+  const language = params.language ?? DEFAULT_PRESENTATION_LANGUAGE;
+  if (language === "ar") {
+    return {
+      body: [
+        "شكراً لتركيزكم وجهدكم وحماسكم طوال حصة اليوم.",
+        "لقد عملتم بجد — واصلوا البناء على ما تعلمتموه اليوم.",
+      ].join("\n"),
+      notices: [],
+    };
+  }
   return {
     body: "Thank you for your focus, effort, and enthusiasm throughout today's lesson.\nYou have worked hard — keep building on what you have learned today.",
     notices: [],

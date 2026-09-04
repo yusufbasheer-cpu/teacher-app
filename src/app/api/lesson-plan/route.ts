@@ -23,10 +23,12 @@ import {
   isUaeCurriculumFramework,
   isValidCurriculumFramework,
 } from "@/lib/curriculum-framework";
+import { buildDeepseekLessonSystemPrompt } from "@/lib/deepseek-lesson-system-prompt";
 import {
-  buildDeepseekLessonSystemPrompt,
-  buildSinglePptSlideDeepseekSystemPrompt,
-} from "@/lib/deepseek-lesson-system-prompt";
+  resolvePresentationLanguage,
+  localeTagFor,
+  type PresentationLanguage,
+} from "@/lib/ppt-language";
 import { generateFluxSectionImages, formatFalError } from "@/lib/fal-flux-section-images";
 import { apiErrorResponse } from "@/lib/api-client-error";
 import { filterUserFacingNotices } from "@/lib/image-notices";
@@ -41,7 +43,6 @@ import {
   isLanguageTeachingSubject,
   mergePptSlideImageUrlsIntoPlan,
   resolveGenerationTopic,
-  usesArabicPptSlideTitles,
   type LessonPlanGenerateBody,
   type LessonPlanInput,
   type LessonPlanResult,
@@ -54,6 +55,7 @@ import {
 import {
   formatAflForAiPrompt,
   formatAflForSinglePptSlidePrompt,
+  resolveMainPhaseActivity,
   sanitizeAflSelections,
   buildAflActivitySheetsUserMessage,
   buildAutoAflSelections,
@@ -260,19 +262,6 @@ Subject is **Arabic language teaching**. Write the **Full Lesson Plan**, **PPT S
 Subject is **${subject} language teaching**. Write every requested section **substantially in ${subject}**, appropriate for the grade. Keep START/END marker lines exactly as specified (Latin, uppercase). Do not leave sections empty.`;
 }
 
-function arabicSlideExtraBlock(input: LessonPlanInput): string {
-  if (!usesArabicPptSlideTitles(input.subject.trim())) {
-    if (isLanguageTeachingSubject(input.subject.trim())) {
-      const subj = input.subject.trim();
-      return `### Output language (mandatory)
-Subject is **${subj} language teaching**. Write **this slide body** substantially in **${subj}** for learners.`;
-    }
-    return "";
-  }
-  return `### Output language (mandatory)
-Subject is **Arabic language teaching**. Write **this slide body** in **Modern Standard Arabic** for learners.`;
-}
-
 /**
  * Generates all 13 PPT slides in parallel using completely isolated generator functions.
  * Each slide has its own focused DeepSeek call — no shared lesson-plan context is passed,
@@ -289,14 +278,18 @@ async function generatePptSlideContentSlideBySlide(params: {
 }): Promise<{ text: string; notices: string[] }> {
   const { input, aflSelections, onProgress } = params;
   const notices: string[] = [];
-  const isAr = usesArabicPptSlideTitles(input.subject.trim());
+  const language: PresentationLanguage = resolvePresentationLanguage({
+    language: input.language,
+    subject: input.subject,
+  });
+  const isAr = language === "ar";
   const uaeFrameworkEnabled = isUaeCurriculumFramework(input.curriculumFramework);
 
   console.log(
     `[ppt-deck] slide-8 mode: ${uaeFrameworkEnabled ? "UAE Framework" : "global connection (no UAE)"}`,
   );
 
-  const locale = isAr ? "ar-AE" : "en-GB";
+  const locale = localeTagFor(language);
   const dateStr = new Date().toLocaleDateString(locale, {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -320,6 +313,19 @@ async function generatePptSlideContentSlideBySlide(params: {
     starterAflBlock: makeAflBlock(2),
     mainAflBlock: makeAflBlock(6),
     plenaryAflBlock: makeAflBlock(9),
+    // Previously unwired, though PPT_SLIDE_AFL_BINDINGS has always declared them: the teacher's
+    // differentiation / exit-ticket / success-criteria picks never reached any prompt.
+    differentiationAflBlock: makeAflBlock(7),
+    exitTicketAflBlock: makeAflBlock(11),
+    successCriteriaAflBlock: makeAflBlock(12),
+    mainActivity: resolveMainPhaseActivity(aflSelections, {
+      subject: input.subject.trim(),
+      grade: input.grade.trim(),
+      topic: resolveGenerationTopic(input.topic, input.chapter),
+      learningObjectives: input.learningObjectives.trim(),
+    }),
+    ...(input.teachingStrategy?.trim() ? { teachingStrategy: input.teachingStrategy.trim() } : {}),
+    language,
     uaeFrameworkEnabled,
     dateStr,
   };
@@ -584,30 +590,37 @@ async function runFluxAndBuildResponsePayload(
 
   if (sections.includes("PPT Slide Content")) {
     try {
-      const { urls, notices: imgNotices } = await generatePptDeckSlideImages({
+      // Feed each slide's own generated text into its image prompt so the four Fal-required
+      // slides get contextually specific artwork rather than generic subject-level imagery.
+      const deckLanguage = resolvePresentationLanguage({
+        language: input.language,
+        subject: input.subject,
+      });
+      const slideContentByIndex = parseDeckBodiesFromPptOutline(
+        workingPlan["PPT Slide Content"] ?? "",
+        deckLanguage === "ar",
+        isUaeCurriculumFramework(input.curriculumFramework),
+      );
+      const { urls, notices: imgNotices, diagnostics } = await generatePptDeckSlideImages({
         topic: input.topic.trim(),
         subject: input.subject.trim(),
         grade: input.grade.trim(),
         curriculumFramework: input.curriculumFramework.trim() || undefined,
+        ...(slideContentByIndex ? { slideContentByIndex } : {}),
       });
       workingPlan = mergePptSlideImageUrlsIntoPlan(workingPlan, urls);
       pptSlideImageUrls = urls;
       imageNotices.push(...imgNotices);
-      const pexelsFilled = [0, 1, 7, 8, 9].filter((i) => Boolean(urls[i])).length;
-      console.log(
-        "[lesson-plan] PPT deck images attached:",
-        urls.filter(Boolean).length,
-        "total URLs;",
-        "Pexels slides 1,2,8,9,10:",
-        pexelsFilled,
-        "/5",
-      );
-      console.log(
-        "[lesson-plan] pptSlideImageUrls passed to client:",
+      // console.error so provider selection stays observable in production, where
+      // `removeConsole` strips console.log.
+      console.error(
+        "[lesson-plan] PPT deck image providers:",
         JSON.stringify(
-          [0, 1, 7, 8, 9].map((i) => ({
-            slide: i + 1,
-            hasUrl: Boolean(urls[i]),
+          diagnostics.map((d) => ({
+            slide: d.slideNumber1Based,
+            policy: d.policy,
+            provider: d.resolvedProvider,
+            ...(d.falFailureKind ? { falFailure: d.falFailureKind } : {}),
           })),
         ),
       );
@@ -681,6 +694,12 @@ export async function POST(req: Request) {
     chapter: typeof body.chapter === "string" ? body.chapter : "",
     topic: body.topic ?? "",
     learningObjectives: body.learningObjectives ?? "",
+    // Resolved once here so every downstream consumer sees the same answer. An explicit
+    // selection wins; otherwise this reproduces the old subject-derived behaviour.
+    language: resolvePresentationLanguage({ language: body.language, subject: body.subject }),
+    ...(typeof body.teachingStrategy === "string" && body.teachingStrategy.trim()
+      ? { teachingStrategy: body.teachingStrategy.trim() }
+      : {}),
   };
 
   const rawSource =

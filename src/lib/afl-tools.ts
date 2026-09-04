@@ -706,6 +706,50 @@ export function getAflToolById(id: string): AflToolDefinition | undefined {
   return ALL_BY_ID.get(id);
 }
 
+/** The gradual-release model. Named because slide 6 must only use it when it is actually chosen. */
+export const GRADUAL_RELEASE_AFL_TOOL_ID = "mn-i-do-we-do-you-do" as const;
+
+/**
+ * The main-phase activity a deck should actually be built around.
+ *
+ * `systemRecommended` is the important part of the contract: it distinguishes "the teacher chose
+ * this" from "nothing was chosen, so we picked deterministically". Slide 6 words its prompt
+ * differently for each, and tests assert that an explicit non-gradual-release pick is never
+ * silently replaced by the default.
+ */
+export type MainActivityStructure = {
+  id: string;
+  label: string;
+  howTo: string;
+  isGradualRelease: boolean;
+  systemRecommended: boolean;
+};
+
+/**
+ * Resolves the main-phase activity from the teacher's AFL selections.
+ *
+ * Invalid or unknown ids never reach here as selections — `sanitizeAflSelections` drops them —
+ * so an unrecognised value is treated as "no selection", which then follows the documented
+ * fallback: the deterministic recommendation, explicitly labelled as system-recommended.
+ */
+export function resolveMainPhaseActivity(
+  selections: AflSelectionsPayload | undefined,
+  ctx: PptSlideAflContext,
+): MainActivityStructure | undefined {
+  const explicitId = selections?.main?.find((id) => Boolean(getAflToolById(id)));
+  const id = explicitId ?? suggestRecommendedToolId("main", ctx);
+  if (!id) return undefined;
+  const tool = getAflToolById(id);
+  if (!tool) return undefined;
+  return {
+    id: tool.id,
+    label: tool.label,
+    howTo: `${tool.howItWorks} ${tool.classroomUse}`.replace(/\s+/g, " ").trim(),
+    isGradualRelease: tool.id === GRADUAL_RELEASE_AFL_TOOL_ID,
+    systemRecommended: explicitId === undefined,
+  };
+}
+
 export function isValidAflPhaseId(v: string): v is AflPhaseId {
   return (AFL_PHASE_IDS as readonly string[]).includes(v);
 }

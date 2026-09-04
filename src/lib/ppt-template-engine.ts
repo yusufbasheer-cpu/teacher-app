@@ -613,7 +613,17 @@ export async function buildPptxFromTemplateEngine(params: {
     deck.map(async (_, i) => {
       const url = params.slideImageUrls?.[i] ?? null;
       if (!url) return null;
-      try { return await fetchImageAsset(url); } catch { return null; }
+      try {
+        return await fetchImageAsset(url);
+      } catch (err) {
+        // An expired or unreachable image URL used to vanish silently here, which made a
+        // successfully generated image indistinguishable from one that never arrived.
+        console.error(
+          `[pptx render] slide ${i + 1}: could not download its image - ` +
+            `${err instanceof Error ? err.message : String(err)}`,
+        );
+        return null;
+      }
     }),
   );
 

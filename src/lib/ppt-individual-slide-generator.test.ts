@@ -144,16 +144,70 @@ describe("PPT isolated slide generators — topic propagation (regression for cr
     }
   });
 
-  describe("Slide 6 (Main Phase) — I Do/We Do/You Do is structural, AFL selection is separate", () => {
-    it("keeps the gradual-release structure whether or not an AFL tool block is supplied", async () => {
-      const { calls: withBlock } = mockDeepSeekFetch();
-      await generateSlide6({ ...FRICTION_PARAMS, mainAflBlock: "AFL Main Phase Tool: Jigsaw Activity details here" });
-      expect(withBlock[0]!.user).toMatch(/I Do[\s\S]*We Do[\s\S]*You Do/);
+  describe("Slide 6 (Main Phase) - the teacher's selected activity drives the structure", () => {
+    it("uses I Do / We Do / You Do only when the teacher actually selected gradual release", async () => {
+      const { calls } = mockDeepSeekFetch();
+      await generateSlide6({
+        ...FRICTION_PARAMS,
+        mainActivity: {
+          id: "mn-i-do-we-do-you-do",
+          label: "I Do We Do You Do",
+          howTo: "I Do: teacher demonstrates. We Do: together. You Do: independently.",
+          isGradualRelease: true,
+          systemRecommended: false,
+        },
+      });
+      expect(calls[0]!.user).toMatch(/I Do[\s\S]*We Do[\s\S]*You Do/);
+    });
 
-      vi.unstubAllGlobals();
-      const { calls: withoutBlock } = mockDeepSeekFetch();
-      await generateSlide6({ ...FRICTION_PARAMS, mainAflBlock: undefined });
-      expect(withoutBlock[0]!.user).toMatch(/I Do[\s\S]*We Do[\s\S]*You Do/);
+    it("uses the selected alternative activity and does NOT fall back to gradual release", async () => {
+      const { calls } = mockDeepSeekFetch();
+      await generateSlide6({
+        ...FRICTION_PARAMS,
+        mainAflBlock: "AFL Main Phase Tool: Jigsaw Activity details here",
+        mainActivity: {
+          id: "mn-jigsaw",
+          label: "Jigsaw Activity",
+          howTo: "Group A learns part A, Group B learns part B; students teach each other.",
+          isGradualRelease: false,
+          systemRecommended: false,
+        },
+      });
+      const user = calls[0]!.user;
+      expect(user).toContain("Jigsaw Activity");
+      expect(user).toContain("TEACHER-SELECTED");
+      // The regression this whole change exists to fix: the deck used to render gradual-release
+      // headings no matter what the teacher picked. These are the exact heading strings the old
+      // prompt emitted (em dash, as in the source), so a vacuous match can't hide a regression.
+      expect(user).not.toContain("I Do — Teacher Explanation");
+      expect(user).not.toContain("We Do — Guided Practice");
+      expect(user).not.toContain("You Do — Independent Practice");
+    });
+
+    it("labels an unselected main phase as system-recommended rather than teacher-selected", async () => {
+      const { calls } = mockDeepSeekFetch();
+      await generateSlide6({
+        ...FRICTION_PARAMS,
+        mainActivity: {
+          id: "mn-concept-mapping",
+          label: "Concept Mapping",
+          howTo: "Create diagrams linking concepts.",
+          isGradualRelease: false,
+          systemRecommended: true,
+        },
+      });
+      const user = calls[0]!.user;
+      expect(user).toContain("Concept Mapping");
+      expect(user).toContain("system-recommended");
+      expect(user).not.toContain("TEACHER-SELECTED");
+    });
+
+    it("asks for a coherent structure instead of imposing one when no activity resolves", async () => {
+      const { calls } = mockDeepSeekFetch();
+      await generateSlide6({ ...FRICTION_PARAMS, mainActivity: undefined });
+      const user = calls[0]!.user;
+      expect(user).not.toContain("I Do — Teacher Explanation");
+      expect(user).toContain("Choose one coherent, age-appropriate activity structure");
     });
 
     it("embeds exactly the supplied AFL block text — no separate hardcoded activity substituted", async () => {
