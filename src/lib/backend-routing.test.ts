@@ -129,6 +129,32 @@ describe("backend routing", () => {
     });
   });
 
+  it.each([
+    ["user-usage", "BACKEND_ROUTE_USER_USAGE", "/api/user-usage"],
+    ["account-export", "BACKEND_ROUTE_ACCOUNT_EXPORT", "/api/account/export"],
+    ["lesson-plan-save", "BACKEND_ROUTE_LESSON_PLAN_SAVE", "/api/lesson-plan/save"],
+  ] as const)("routes %s only through its explicit flag", async (endpoint, envName, path) => {
+    vi.stubEnv(envName, "python");
+    vi.stubEnv("PYTHON_BACKEND_URL", "https://python.internal");
+
+    const { resolveBackendRoute } = await import("./backend-routing");
+
+    const decision = resolveBackendRoute(endpoint);
+    expect(decision.target).toBe("python");
+    expect(decision.pythonUrl?.toString()).toBe(`https://python.internal${path}`);
+  });
+
+  it("keeps every Wave 1 route flag independent", async () => {
+    vi.stubEnv("BACKEND_ROUTE_USER_USAGE", "python");
+    vi.stubEnv("PYTHON_BACKEND_URL", "https://python.internal");
+
+    const { resolveBackendRoute } = await import("./backend-routing");
+
+    expect(resolveBackendRoute("user-usage").target).toBe("python");
+    expect(resolveBackendRoute("account-export").target).toBe("next");
+    expect(resolveBackendRoute("lesson-plan-save").target).toBe("next");
+  });
+
   it("does not attach a protection bypass header when unconfigured", async () => {
     const { applyDeploymentProtectionBypass } = await import("./backend-routing");
 

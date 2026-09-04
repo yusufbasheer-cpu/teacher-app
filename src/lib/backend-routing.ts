@@ -1,8 +1,18 @@
 import "server-only";
 
-export type BackendRouteEndpoint = "geo" | "verify-captcha";
+export type BackendRouteEndpoint =
+  | "geo"
+  | "verify-captcha"
+  | "user-usage"
+  | "account-export"
+  | "lesson-plan-save";
 export type BackendRouteTarget = "next" | "python";
-type BackendRouteUpstreamPath = "/api/geo" | "/api/auth/verify-captcha";
+type BackendRouteUpstreamPath =
+  | "/api/geo"
+  | "/api/auth/verify-captcha"
+  | "/api/user-usage"
+  | "/api/account/export"
+  | "/api/lesson-plan/save";
 
 export type BackendRouteDecision = {
   endpoint: BackendRouteEndpoint;
@@ -26,11 +36,17 @@ const NEXT_ROUTE_VALUE = "next";
 const ENDPOINT_ROUTE_ENV_VAR: Record<BackendRouteEndpoint, string> = {
   geo: "BACKEND_ROUTE_GEO",
   "verify-captcha": "BACKEND_ROUTE_VERIFY_CAPTCHA",
+  "user-usage": "BACKEND_ROUTE_USER_USAGE",
+  "account-export": "BACKEND_ROUTE_ACCOUNT_EXPORT",
+  "lesson-plan-save": "BACKEND_ROUTE_LESSON_PLAN_SAVE",
 };
 
 const ENDPOINT_UPSTREAM_PATH: Record<BackendRouteEndpoint, BackendRouteUpstreamPath> = {
   geo: "/api/geo",
   "verify-captcha": "/api/auth/verify-captcha",
+  "user-usage": "/api/user-usage",
+  "account-export": "/api/account/export",
+  "lesson-plan-save": "/api/lesson-plan/save",
 };
 
 function getEndpointRouteValue(endpoint: BackendRouteEndpoint): string {

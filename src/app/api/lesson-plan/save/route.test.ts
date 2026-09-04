@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const saveLessonPlanRecord = vi.hoisted(() => vi.fn());
 const createServerSupabaseClient = vi.hoisted(() => vi.fn());
 
+vi.mock("server-only", () => ({}));
+
 vi.mock("@/lib/lesson-plan-save", async () => {
   const actual = await vi.importActual<typeof import("@/lib/lesson-plan-save")>("@/lib/lesson-plan-save");
   return {
@@ -18,6 +20,8 @@ vi.mock("@/lib/supabase-ssr", () => ({
 describe("lesson-plan save route", () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
     saveLessonPlanRecord.mockReset();
     createServerSupabaseClient.mockReset();
   });
@@ -132,5 +136,67 @@ describe("lesson-plan save route", () => {
       form: { curriculumType: "CBSE/NCERT" },
       lessonPlan: { x: "y" },
     });
+  });
+
+  it("proxies the raw body and Authorization only when Python is selected", async () => {
+    vi.stubEnv("BACKEND_ROUTE_LESSON_PLAN_SAVE", "python");
+    vi.stubEnv("PYTHON_BACKEND_URL", "https://python.internal");
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ action: "inserted", id: "plan-python" }), {
+        status: 201,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const rawBody = JSON.stringify(validBody);
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/lesson-plan/save", {
+        method: "POST",
+        body: rawBody,
+        headers: {
+          Authorization: "Bearer synthetic-token",
+          Cookie: "session=must-not-forward",
+          "x-client-data": "must-not-forward",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ action: "inserted", id: "plan-python" });
+    const [url, init] = fetchMock.mock.calls[0]! as unknown as [URL, RequestInit];
+    expect(url.toString()).toBe("https://python.internal/api/lesson-plan/save");
+    expect(init.body).toBe(rawBody);
+    const headers = init.headers as Headers;
+    expect(headers.get("authorization")).toBe("Bearer synthetic-token");
+    expect(headers.get("content-type")).toBe("application/json");
+    expect(headers.has("cookie")).toBe(false);
+    expect(headers.has("x-client-data")).toBe(false);
+    expect(createServerSupabaseClient).not.toHaveBeenCalled();
+  });
+
+  it("does not retry through Next after a Python transport failure", async () => {
+    vi.stubEnv("BACKEND_ROUTE_LESSON_PLAN_SAVE", "python");
+    vi.stubEnv("PYTHON_BACKEND_URL", "https://python.internal");
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError("connection refused");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { POST } = await import("./route");
+    const response = await POST(
+      new Request("http://localhost/api/lesson-plan/save", {
+        method: "POST",
+        body: JSON.stringify(validBody),
+      }),
+    );
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({
+      error: "Lesson plan saving is temporarily unavailable. Please try again.",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(createServerSupabaseClient).not.toHaveBeenCalled();
   });
 });
