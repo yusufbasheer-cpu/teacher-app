@@ -199,9 +199,10 @@ export function drawIconBadge(
 export function drawSectionChip(
   pptx: PptxGenJS,
   slide: PptxGenJS.Slide,
-  opts: { text: string; x: number; y: number; tpl: TemplateConfig },
+  opts: { text: string; x: number; y: number; tpl: TemplateConfig; fontFace?: string },
 ): { w: number; h: number } {
   const { text, x, y, tpl } = opts;
+  const chipFace = opts.fontFace ?? tpl.fonts.face;
   const d = tpl.design;
   const h = 0.28;
   // Bold uppercase glyphs at this size run wider than the old 0.078"/char
@@ -220,7 +221,7 @@ export function drawSectionChip(
   slide.addText(text.toUpperCase(), {
     x, y, w, h,
     fontSize: d.typography.sectionLabel, bold: true, color: d.chipText,
-    fontFace: tpl.fonts.face, align: "center", valign: "middle", charSpacing: 1,
+    fontFace: chipFace, align: "center", valign: "middle", charSpacing: 1,
     // A pill is a single-line label by definition. `fit: "shrink"` alone
     // isn't enough — pptxgenjs wraps by default *before* it considers
     // shrinking, which is what caused the two-line overflow above.

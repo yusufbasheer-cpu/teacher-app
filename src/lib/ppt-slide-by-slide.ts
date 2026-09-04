@@ -443,11 +443,16 @@ const SLIDE7_MIDDLE_HEADING_RE =
 const SLIDE7_LOWER_HEADING_RE =
   /^#*\s*(lower\s*(achiev|attain|ability|level|tier)s?(\s+task)?|support(\s+task)?|must\s*\/\s*should|less\s+support|foundation|أدنى)\b/i;
 
-const SLIDE7_HIGHER_HEADING_AR_RE = /(المتفوق|أعلى|إثرائ)/;
-const SLIDE7_MIDDLE_HEADING_AR_RE = /(المتوسط|أوسط|الأساسية)/;
-const SLIDE7_LOWER_HEADING_AR_RE = /(الدعم|أدنى|المساند)/;
+/**
+ * Arabic tier headings, matched on word roots rather than the definite-article form: a real
+ * heading reads "mahamma li-l-mutafawwiqin", so anchoring on "al-mutafawwiq" matched nothing
+ * and every Arabic tier came back empty - which the formatter then filled with English defaults.
+ */
+const SLIDE7_HIGHER_HEADING_AR_RE = /(\u0645\u062a\u0641\u0648\u0642|\u0623\u0639\u0644\u0649|\u0625\u062b\u0631\u0627\u0626|\u0645\u062a\u0642\u062f\u0645)/;
+const SLIDE7_MIDDLE_HEADING_AR_RE = /(\u0645\u062a\u0648\u0633\u0637|\u0623\u0648\u0633\u0637)/;
+const SLIDE7_LOWER_HEADING_AR_RE = /(\u0623\u0633\u0627\u0633\u064a|\u0623\u062f\u0646\u0649|\u062f\u0639\u0645|\u0645\u0633\u0627\u0646\u062f)/;
 /** Arabic heading for the mini-plenary section. */
-const SLIDE7_MINI_PLENARY_AR_RE = /تلخيص\s*مصغر/;
+const SLIDE7_MINI_PLENARY_AR_RE = /\u062a\u0644\u062e\u064a\u0635\s*\u0645\u0635\u063a\u0631/;
 
 const SLIDE7_INLINE_TIER_RE =
   /^(higher|middle|lower)\s*(achiev\w*|attain\w*|ability\w*|level\w*|tier\w*)\s*(?:task\s*)?[:.\-]\s*(.+)$/i;

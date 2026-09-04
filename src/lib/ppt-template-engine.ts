@@ -296,13 +296,14 @@ function addFooter(
   pptx: PptxGenJS,
   slide: PptxGenJS.Slide,
   tpl: TemplateConfig,
+  fontFace: string,
   subject: string,
   slideNum: number,
   total: number,
   layahLogo: string | null,
 ): void {
   const c = tpl.colors;
-  const f = tpl.fonts;
+  const f = { ...tpl.fonts, face: fontFace };
   const progY = FOOTER_Y + (FOOTER_H - PROGRESS_H) / 2 - 0.02;
 
   // footer background
@@ -387,7 +388,9 @@ function doHeroOpenSlide(
   });
 
   // subject · grade eyebrow chip (sits in the gap between the icon badge and the title)
-  drawSectionChip(pptx, slide, { text: `${subject} · ${grade}`, x: L.iconX, y: L.iconY + 0.92, tpl });
+  drawSectionChip(pptx, slide, {
+    text: `${subject} · ${grade}`, x: L.iconX, y: L.iconY + 0.92, tpl, fontFace: ctx.fontFace,
+  });
 
   // main title
   slide.addText(subject, {
@@ -419,7 +422,7 @@ function doHeroOpenSlide(
     });
   }
 
-  addFooter(pptx, slide, tpl, subject, slideNum, total, layahLogo);
+  addFooter(pptx, slide, tpl, ctx.fontFace, subject, slideNum, total, layahLogo);
   if (schoolLogo) addSchoolLogo(pptx, slide, schoolLogo);
   slide.addNotes(model.speakerNotes ?? "");
 }
@@ -466,7 +469,7 @@ function doHeroCloseSlide(
     ...dirCentered,
   });
 
-  addFooter(pptx, slide, tpl, subject, slideNum, total, layahLogo);
+  addFooter(pptx, slide, tpl, ctx.fontFace, subject, slideNum, total, layahLogo);
   if (schoolLogo) addSchoolLogo(pptx, slide, schoolLogo);
   slide.addNotes(model.speakerNotes ?? "");
 }
@@ -557,7 +560,9 @@ function doContentSlide(
   if (!isCont) {
     const chipKey = chipKeyFor(kind, deckIdx);
     if (chipKey) {
-      drawSectionChip(pptx, slide, { text: ctx.s(chipKey), x: contentX, y: bodyY, tpl });
+      drawSectionChip(pptx, slide, {
+        text: ctx.s(chipKey), x: contentX, y: bodyY, tpl, fontFace: ctx.fontFace,
+      });
       bodyY += CHIP_RESERVE_H;
     }
   }
@@ -592,7 +597,7 @@ function doContentSlide(
     });
   }
 
-  addFooter(pptx, slide, tpl, subject, slideNum, total, layahLogo);
+  addFooter(pptx, slide, tpl, ctx.fontFace, subject, slideNum, total, layahLogo);
   if (schoolLogo) addSchoolLogo(pptx, slide, schoolLogo);
 
   const notes = isCont
