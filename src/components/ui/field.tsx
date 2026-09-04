@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -180,19 +180,30 @@ export function CheckField({
         className,
       )}
     >
-      <input
-        type="checkbox"
-        id={id}
-        className={cn(
-          "mt-0.5 size-4 shrink-0 cursor-pointer appearance-none rounded-xs border border-line-strong bg-surface",
-          "transition-[background-color,border-color] duration-[110ms]",
-          "checked:border-brand checked:bg-brand",
-          "checked:bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 12 12%22><path d=%22M2.5 6.2l2.2 2.2 4.8-4.8%22 fill=%22none%22 stroke=%22white%22 stroke-width=%221.8%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>')] checked:bg-center checked:bg-no-repeat",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
-          "disabled:cursor-not-allowed",
-        )}
-        {...props}
-      />
+      <span className="relative mt-0.5 inline-flex size-4 shrink-0">
+        <input
+          type="checkbox"
+          id={id}
+          className={cn(
+            "peer absolute inset-0 z-10 size-4 cursor-pointer opacity-0",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+            "disabled:cursor-not-allowed",
+          )}
+          {...props}
+        />
+        <span
+          className={cn(
+            "pointer-events-none flex size-4 items-center justify-center rounded-xs border transition-[background-color,border-color] duration-[110ms]",
+            props.checked
+              ? "border-brand bg-brand"
+              : "border-line-strong bg-surface",
+            "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand",
+          )}
+          aria-hidden
+        >
+          {props.checked ? <Check className="size-3 text-brand-on" strokeWidth={3} /> : null}
+        </span>
+      </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[13px] leading-tight text-ink">{label}</span>
         {description ? (
