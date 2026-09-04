@@ -95,11 +95,11 @@ type ExportKey =
 const TOTAL_IMAGES = 10;
 
 const IMAGE_MILESTONES_FULL: { at: number; count: number; label: string }[] = [
-  { at: 4, count: 1, label: "Title slide image (Pexels)" },
-  { at: 8, count: 2, label: "Starter image (Pexels)" },
-  { at: 12, count: 3, label: "UAE link image (Pexels)" },
-  { at: 16, count: 4, label: "Plenary image (Pexels)" },
-  { at: 20, count: 5, label: "Extended task image (Pexels)" },
+  { at: 4, count: 1, label: "Title slide image" },
+  { at: 8, count: 2, label: "Starter activity image" },
+  { at: 12, count: 3, label: "UAE link image" },
+  { at: 16, count: 4, label: "Plenary image" },
+  { at: 20, count: 5, label: "Extended task image" },
   { at: 35, count: 6, label: "SDG / chapter illustration" },
   { at: 50, count: 7, label: "Main phase diagram" },
   { at: 65, count: 8, label: "Differentiated activity art" },
