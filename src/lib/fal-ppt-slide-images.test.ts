@@ -30,8 +30,59 @@ vi.mock("@fal-ai/client", () => ({
   ValidationError: FakeValidationError,
 }));
 
-const { generateFalPptImageFromPrompt, resetFalPptCircuitForTests, getFalPptCircuitOpenReason } =
+const {
+  buildLessonPptFluxPrompt,
+  generateFalPptImageFromPrompt,
+  resetFalPptCircuitForTests,
+  getFalPptCircuitOpenReason,
+} =
   await import("./fal-ppt-slide-images");
+
+describe("slide-aware prompts", () => {
+  const algebra = {
+    subject: "Math",
+    grade: "Grade 7",
+    topic: "Understanding Algebraic Expressions",
+    lessonContentSnippet:
+      "Plan a snack stand with cookies and juice boxes. Group like terms and identify coefficients.",
+  };
+
+  it("grounds generated scenes in the slide content and protects the full frame", () => {
+    const prompt = buildLessonPptFluxPrompt(algebra, "fallback_pexels_uae");
+
+    expect(prompt).toContain("snack stand with cookies and juice boxes");
+    expect(prompt).toContain("7 percent safe margin");
+    expect(prompt).toContain("every object complete");
+    expect(prompt).toContain("no people");
+  });
+
+  it("does not ask the image model to draw the forbidden glyphs seen in the broken deck", () => {
+    for (const slot of [
+      "fallback_pexels_starter",
+      "main_teaching",
+      "differentiated_activity",
+      "exit_ticket",
+      "success_criteria",
+    ] as const) {
+      const prompt = buildLessonPptFluxPrompt(algebra, slot);
+      expect(prompt).not.toMatch(
+        /quiz assessment illustration with question marks|educational diagram explaining|vector educational poster/i,
+      );
+      expect(prompt).toContain("text-free image");
+    }
+  });
+
+  it("does not force UAE landmarks into a global-curriculum real-life slide", () => {
+    const globalPrompt = buildLessonPptFluxPrompt(algebra, "fallback_pexels_uae");
+    const uaePrompt = buildLessonPptFluxPrompt(
+      { ...algebra, curriculumFramework: "UAE MOE Curriculum" },
+      "fallback_pexels_uae",
+    );
+
+    expect(globalPrompt).not.toMatch(/UAE architectural/i);
+    expect(uaePrompt).toMatch(/UAE architectural/i);
+  });
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -53,6 +104,15 @@ describe("successful generation", () => {
     const outcome = await generateFalPptImageFromPrompt("a prompt");
 
     expect(outcome).toEqual({ ok: true, url: "https://v3.fal.media/x.png" });
+    expect(subscribe).toHaveBeenCalledWith(
+      "fal-ai/flux-general",
+      expect.objectContaining({
+        input: expect.objectContaining({
+          negative_prompt: expect.stringContaining("people"),
+          nag_scale: 4,
+        }),
+      }),
+    );
   });
 
   it("reports an empty response distinctly from an error", async () => {
