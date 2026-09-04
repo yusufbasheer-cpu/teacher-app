@@ -1,8 +1,8 @@
 # Backend Routing And Rollback
 
-Date: 2026-09-01 (Checkpoint 14), updated 2026-09-01 (Checkpoint 15)
+Date: 2026-09-01 (Checkpoint 14), updated 2026-09-04 (Checkpoint 28)
 
-Status: `ROUTING_INFRASTRUCTURE_READY_FOR_GEO_AND_VERIFY_CAPTCHA` (Checkpoint 18).
+Status: `BACKEND_WAVE_1_LOCAL_VERIFIED_REMOTE_AUTH_BLOCKED` (Checkpoint 28).
 
 ## Checkpoint 15 Live Verification
 
@@ -47,6 +47,16 @@ transport-fallback to Next.** See "Transport Fallback" below.
 
 ## Architecture
 
+Checkpoint 28 extends the fixed allowlist to `GET /api/user-usage`,
+`GET /api/account/export`, and `POST /api/lesson-plan/save`. These routes
+forward only the incoming `Authorization` header needed for caller-context
+authentication; browser cookies and arbitrary headers remain blocked. Local
+disposable Supabase tests prove authentication, owner RLS, cross-user
+isolation, suspended-user denial, and server-derived identity. Preview proved
+routing and per-route rollback, but the backend Preview has no hosted Supabase
+configuration, so real remote authentication and database behavior remain
+blocked. Full evidence: `BACKEND_ROUTE_MIGRATION_WAVE_1.md`.
+
 Checkpoint 14 adds a small strangler routing seam at the existing Next route boundary:
 
 ```text
@@ -78,7 +88,8 @@ Unknown/unapproved endpoints fail closed to Next. The client cannot choose a bac
 
 ## Per-Endpoint Opt-In
 
-Current allowlist: `geo`, `verify-captcha` (Checkpoint 18).
+Current allowlist: `geo`, `verify-captcha`, `user-usage`, `account-export`,
+and `lesson-plan-save` (Checkpoint 28).
 
 Server-side configuration:
 
@@ -87,6 +98,9 @@ Server-side configuration:
 | `PYTHON_BACKEND_URL` | Operator-controlled FastAPI base URL, shared by all allowlisted endpoints | unset |
 | `BACKEND_ROUTE_GEO` | Route `GET /api/geo`; only `python` opts in | Next |
 | `BACKEND_ROUTE_VERIFY_CAPTCHA` | Route `POST /api/auth/verify-captcha`; only `python` opts in | Next |
+| `BACKEND_ROUTE_USER_USAGE` | Route `GET /api/user-usage`; only `python` opts in | Next |
+| `BACKEND_ROUTE_ACCOUNT_EXPORT` | Route `GET /api/account/export`; only `python` opts in | Next |
+| `BACKEND_ROUTE_LESSON_PLAN_SAVE` | Route `POST /api/lesson-plan/save`; only `python` opts in | Next |
 
 No `NEXT_PUBLIC_` routing variables are used. The Python backend URL is server-only topology, not browser configuration.
 
@@ -96,7 +110,9 @@ One variable per migrated endpoint is intentionally simpler than a compact allow
 
 `PYTHON_BACKEND_URL` must parse as `http:` or `https:` and must not contain embedded credentials, query, or hash. HTTP remains allowed for local development; hosted production should use HTTPS.
 
-Each allowlisted endpoint's upstream path is fixed in code (`/api/geo`, `/api/auth/verify-captcha`) via a `Record<BackendRouteEndpoint, path>` map. Client query parameters, headers, or request body cannot select an arbitrary target or an unlisted path.
+Each allowlisted endpoint's upstream path is fixed in code via a
+`Record<BackendRouteEndpoint, path>` map. Client query parameters, headers,
+or request body cannot select an arbitrary target or an unlisted path.
 
 ## Timeout
 
@@ -119,7 +135,7 @@ For verify-captcha (`POST`, has a body), the proxy forwards:
 - `x-forwarded-for`, `x-real-ip`
 - the raw request body, unmodified (needed — it carries the CAPTCHA token)
 
-Neither forwards:
+The two public endpoints do not forward:
 
 - `Authorization`
 - `Cookie`
@@ -129,6 +145,13 @@ Neither forwards:
 Both endpoints are public and non-authenticated, so bearer/cookie forwarding is unnecessary and intentionally blocked — verified for both by dedicated tests asserting `forwardedHeaders.has("authorization") === false` / `.has("cookie") === false` even when the incoming request carries them.
 
 ## Response Behavior
+
+For `user-usage`, `account-export`, and `lesson-plan-save`, the proxy forwards
+the incoming `Authorization` header plus explicit `Accept` and, for the POST,
+`Content-Type`. `lesson-plan-save` forwards the raw request body. These routes
+never forward `Cookie` or arbitrary browser headers. A temporary Vercel
+automation-bypass header may be added by server-side deployment configuration;
+it is not sourced from the browser.
 
 If Python returns a valid HTTP response, Next forwards:
 
@@ -181,6 +204,13 @@ to a future mutating endpoint without the same case-by-case analysis.
 Retrying or falling back after a POST/write may duplicate side effects or
 corrupt quota/billing state.
 
+For authenticated Wave 1, `account-export` may fall back to the existing Next
+handler on Python transport failure because it is a caller-owned read.
+`user-usage` does not fall back because its RPC can create/reset usage state.
+`lesson-plan-save` does not fall back because retrying an uncertain write could
+duplicate or overwrite persistence. Valid Python HTTP responses, including 4xx
+and 5xx responses, never trigger fallback for any of these routes.
+
 ## Logging
 
 Logs include:
@@ -198,30 +228,36 @@ No diagnostic response header is added in Checkpoint 14, so the public HTTP cont
 
 Operational rollback, per endpoint:
 
-1. remove `BACKEND_ROUTE_GEO` / `BACKEND_ROUTE_VERIFY_CAPTCHA`, or
+1. remove the route-specific `BACKEND_ROUTE_*` variable, or
 2. set it to `next`
 
-No frontend code change is required once this routing mechanism is deployed. If `PYTHON_BACKEND_URL` is removed or malformed, both routes also safely fall back to Next by default (this is the *default-routing* fallback for missing/invalid config — distinct from the *transport-failure* fallback discussed above, which verify-captcha intentionally does not have once Python is actively selected).
+No frontend code change is required for operational rollback. If
+`PYTHON_BACKEND_URL` is removed or malformed, every allowlisted route selects
+its existing Next implementation by default. This default-routing behavior is
+distinct from transport fallback after Python has already been selected.
 
 ## Security Review
 
-Checkpoint 14 verifies (geo) and Checkpoint 18 re-verifies (both endpoints):
+Checkpoints 14, 18, and 28 verify:
 
 - Python URL is server-only
-- no bearer forwarding
+- bearer forwarding only for the three explicitly authenticated endpoints
 - no cookie forwarding
 - no arbitrary proxy destination from request input
-- endpoint path is fixed by code (now via an explicit two-entry map, still not client-influenceable)
+- endpoint path is fixed by code and is not client-influenceable
 - no open proxy behavior
-- no service-role dependency
-- no Supabase dependency
+- no service-role dependency in the Python application
+- caller-context Supabase access only for authenticated data routes
 - no new public secrets (verify-captcha reuses the existing `TURNSTILE_SECRET_KEY` name, server-only on both Next and Python)
 
 ## Future Authenticated Routing
 
-Authenticated endpoints require a separate design.
-
-They may need Authorization forwarding, cookie preservation, body forwarding, explicit idempotency keys, no automatic fallback after uncertain writes, and live RLS/auth verification. `POST /api/lesson-plan/save` remains blocked for cutover until the authenticated DB track is ready.
+The first authenticated routing design is implemented for three endpoints. It
+uses bearer forwarding without cookie forwarding, route-specific fallback
+policy, caller-context Supabase access, and fixed server-controlled targets.
+Local RLS behavior is verified. Hosted Preview cutover remains blocked until a
+positively classified TEST or STAGING Supabase target is configured and real
+authenticated Preview requests repeat the owner/cross-user checks.
 
 ## Future Streaming Routing
 

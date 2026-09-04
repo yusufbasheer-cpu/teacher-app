@@ -19,7 +19,9 @@ Status legend:
 | Area | Status | Routing infrastructure | Cutover | Notes |
 | --- | --- | --- | --- | --- |
 | `GET /api/geo` | `PILOT_VALIDATED_COMPLETE` (real Next Preview → real backend Preview) | ready for explicit opt-in via `BACKEND_ROUTE_GEO=python`; routing mechanism fully proven Preview-to-Preview | not cut over (Production activation is a separate, not-yet-made decision) | low-risk Track B pilot; Checkpoint 15 local, Checkpoint 19 direct-remote, Checkpoint 20 local-dev routing, Checkpoint 21 real Preview-to-Preview closure — see `REMOTE_ROUTING_VALIDATION.md`; `PYTHON_BACKEND_URL`/`BACKEND_ROUTE_GEO` still unset everywhere |
-| `POST /api/lesson-plan/save` | `PYTHON_PARITY_WITH_LIVE_RLS_VERIFICATION` | not enabled for routing | not cut over | authenticated unit-contract parity proved; Checkpoint 23 made `lesson_plans` reproducible from a fresh migration and documented+tested zero-row-update false-positive-success behavior; Checkpoint 25 proved local Supabase reset plus authenticated RLS; Checkpoint 26 verified the same from the extracted backend repo and a fresh local clone; see `AUTHENTICATED_BACKEND_PATTERN.md` and `BACKEND_REPOSITORY_EXTRACTION.md` |
+| `GET /api/user-usage` | `PYTHON_PARITY_COMPLETE`; `LOCAL_AUTH_VERIFIED`; `REMOTE_TRANSPORT_VERIFIED_AUTH_DB_BLOCKED` | disabled-by-default `BACKEND_ROUTE_USER_USAGE`; Authorization-only forwarding | not cut over; rolled back to Next | Checkpoint 28 local disposable Auth/RLS and remote Preview transport passed; no TEST/STAGING hosted Supabase exists, so real remote auth/data proof is blocked |
+| `GET /api/account/export` | `PYTHON_PARITY_COMPLETE`; `LOCAL_AUTH_VERIFIED`; `REMOTE_TRANSPORT_VERIFIED_AUTH_DB_BLOCKED` | disabled-by-default `BACKEND_ROUTE_ACCOUNT_EXPORT`; Authorization-only forwarding; read-only transport fallback | not cut over; rolled back to Next | Attachment headers, owner filters, partial-query behavior, and cross-user RLS verified; remote hosted auth blocked by unconfigured/UNKNOWN Supabase target |
+| `POST /api/lesson-plan/save` | `PYTHON_PARITY_WITH_LIVE_RLS_VERIFICATION`; `REMOTE_TRANSPORT_VERIFIED_MUTATION_BLOCKED` | disabled-by-default `BACKEND_ROUTE_LESSON_PLAN_SAVE`; Authorization-only forwarding; no transport fallback | not cut over; rolled back to Next | Local authenticated RLS proof remains complete; Checkpoint 28 proved frontend Preview transport but correctly refused hosted mutation without TEST/STAGING Supabase |
 | `POST /api/lesson-plan` | `FUTURE_AI_SERVICE` | none | not cut over | generation remains Next-owned for now |
 | `POST /api/question-paper` | `FUTURE_AI_SERVICE` | none | not cut over | AI and quota heavy |
 | `POST /api/question-paper/blueprint` | `FUTURE_AI_SERVICE` | none | not cut over | AI heavy |
@@ -86,3 +88,20 @@ verified by deploying a second frontend Preview without routing env.
 No production traffic was cut over. `GET /api/geo`,
 `POST /api/auth/verify-captcha`, and `POST /api/lesson-plan/save` remain
 not cut over in Production.
+
+## Checkpoint 28 Authenticated Wave 1
+
+Classification: `BACKEND_WAVE_1_LOCAL_VERIFIED_REMOTE_AUTH_BLOCKED`.
+
+`GET /api/user-usage` and `GET /api/account/export` now have canonical
+standalone FastAPI implementations. `POST /api/lesson-plan/save` gained its
+disabled-by-default authenticated routing seam. Local disposable Supabase and
+remote CI prove Auth, caller-context PostgREST, RLS, owner isolation, and the
+existing lesson mutation contract.
+
+Each route was enabled alone through a real frontend Preview and reached the
+backend Preview with its synthetic bearer. The backend Preview intentionally
+has no Supabase variables, so remote DB-backed checks stopped at the
+configuration gate. No hosted database was contacted or mutated. A final
+no-flag Preview proved rollback to Next, and no persistent routing variables or
+protection bypass entries remain. See `BACKEND_ROUTE_MIGRATION_WAVE_1.md`.

@@ -52,6 +52,35 @@ This document captures the browser-facing contracts that matter most for the Pha
 - Successful responses preserve `{ action, id }` with `201` for inserts and `200` for updates
 - Caller-context Supabase access remains part of the contract so RLS continues to enforce ownership
 
+### User usage
+
+- `GET /api/user-usage`
+- Requires `Authorization: Bearer <access_token>`; malformed, invalid, and
+  suspended-user behavior remains aligned with the existing Next route
+- Calls `ensure_user_usage`, which may create or reset usage state despite the
+  GET-shaped HTTP contract
+- Success preserves the normalized usage response and upgrade-pitch fields
+- Dependency failures preserve the existing fail-open/default response
+- Python transport failure must not fall back to Next because the RPC may have
+  completed a write before the transport failed
+
+### Account export
+
+- `GET /api/account/export`
+- Requires the same bearer authentication and active-user check as the existing
+  Next route
+- Reads only caller-owned profile, lesson-plan, saved-lesson, and usage data
+- Secondary collection failures remain non-fatal, matching the existing export
+- Success remains pretty-printed JSON with the existing download filename and
+  content-disposition behavior
+- Python transport failure may fall back to Next because the operation is a
+  read and does not create duplicate side effects
+
+Checkpoint 28 added disabled-by-default, route-specific Python routing for
+these two routes and `lesson-plan/save`. Local disposable Supabase behavior is
+verified; real authenticated Preview behavior is not yet verified because the
+backend Preview has no hosted Supabase configuration.
+
 ## Stability Notes
 
 - Route URLs are part of the public contract for the current frontend.

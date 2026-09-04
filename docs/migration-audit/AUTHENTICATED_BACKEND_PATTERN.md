@@ -211,3 +211,31 @@ server-side identity derivation, missing/invalid auth denial, and direct
 PostgREST cross-user denial.
 
 Updated classification: `AUTHENTICATED_DB_FOUNDATION_VERIFIED`.
+
+## Checkpoint 28 Wave 1 Application
+
+Date: 2026-09-04
+
+The standalone backend now applies this pattern to:
+
+- `POST /api/lesson-plan/save`
+- `GET /api/user-usage`
+- `GET /api/account/export`
+
+`authenticate_active_request` validates the bearer with Supabase Auth, rejects
+missing/malformed/invalid tokens and suspended users with the existing Next
+semantics, and derives the user ID from the verified principal. Route services
+then use the anon key plus that same caller bearer for explicit PostgREST/RPC
+operations. The backend application has no service-role dependency, and body or
+query input cannot select another user's rows.
+
+Local disposable Supabase integration tests passed for owner access,
+cross-user isolation, spoof resistance, and suspended/missing/invalid auth.
+The standalone backend and each frontend routing flag were also exercised in
+Vercel Preview. That remote exercise proved deployment, bearer transport,
+route selection, and rollback only: the backend Preview has no Supabase
+environment variables, so no real remote authenticated or database request was
+possible. Production was not contacted or changed.
+
+Checkpoint 28 classification:
+`BACKEND_WAVE_1_LOCAL_VERIFIED_REMOTE_AUTH_BLOCKED`.

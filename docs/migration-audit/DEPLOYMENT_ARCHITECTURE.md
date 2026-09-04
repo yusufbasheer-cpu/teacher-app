@@ -168,9 +168,29 @@ decision.
 
 Docker is being introduced only as the local runtime dependency for `LOCAL_DISPOSABLE` Supabase. It is not an application deployment target, and this checkpoint does not containerize Next.js, FastAPI, PPT/export, or production services.
 
-Current local runtime status:
+Checkpoint 24 runtime status (historical):
 
 - Windows 11 Home x64 detected.
 - Docker is not installed/on PATH; `docker --version`, `docker info`, and `npx supabase start` fail before local Supabase can start.
 - Supabase CLI is project-pinned and verified through `npx supabase`.
 - `npx supabase db reset` cannot run until Docker Desktop is installed, opened, and reporting a running engine.
+
+Checkpoint 25 removed this blocker: Docker Desktop and its engine are now
+available, and the local disposable Supabase start/reset plus authenticated RLS
+suite pass. Checkpoint 28 repeated that reset and integration proof before the
+route wave.
+
+## Checkpoint 28 Preview Wave
+
+Backend Preview `dpl_5t8LyeBhrxTQptKL9UcZEr5ZEv4N` deployed standalone
+backend SHA `68d7b70f1c660e5e101b999dd2a795bb15faaea4`. Three separate frontend
+Previews enabled exactly one authenticated route flag at a time for
+`user-usage`, `account-export`, and `lesson-plan/save`. A fourth frontend
+Preview (`dpl_73bju23gHLRuMopqahksDhbdDqii`) contained no Python routing
+configuration and proved rollback to the existing Next handlers.
+
+The backend Preview has no Supabase environment variables. Remote checks prove
+network transport and intentional bearer forwarding only; local disposable
+Supabase and CI own Auth/RLS behavior until a hosted TEST/STAGING project is
+available. No persistent Preview routing flags or bypass entries remain, and
+the Production frontend URL remains `https://www.layah.in`.

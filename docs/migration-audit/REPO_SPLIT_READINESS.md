@@ -158,3 +158,19 @@ backend Preview using deployment-scoped env, and rollback was verified by
 a second frontend Preview with no Python routing env. The monorepo
 backend copy remains a transitional fallback, but new backend
 development should now start in the standalone backend repo.
+
+## Checkpoint 28 Update
+
+Classification: `BACKEND_WAVE_1_LOCAL_VERIFIED_REMOTE_AUTH_BLOCKED`.
+
+The standalone backend now canonically owns Python implementations for
+`GET /api/user-usage`, `GET /api/account/export`, and the existing
+`POST /api/lesson-plan/save`. Local disposable Supabase and remote CI prove the
+authenticated caller-context/RLS path. Real frontend Preview routing reached
+the backend Preview for each operation independently, and rollback to Next was
+verified.
+
+The backend Preview has no Supabase environment configuration and no dedicated
+hosted TEST/STAGING project exists. Real remote authenticated data behavior is
+therefore correctly blocked. The next readiness step is a safe staging auth
+foundation, not Production cutover or AI extraction.

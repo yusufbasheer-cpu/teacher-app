@@ -486,3 +486,36 @@ owner/admin action because the authenticated collaborator received
 GitHub API `404` when attempting to protect `main`.
 
 Status: Implemented and Preview-verified.
+
+## 2026-09-04 (Checkpoint 28)
+
+Decision: Migrate `GET /api/user-usage` and `GET /api/account/export` into
+the standalone backend, add guarded routing for those routes and the existing
+`POST /api/lesson-plan/save`, and classify the wave
+`BACKEND_WAVE_1_LOCAL_VERIFIED_REMOTE_AUTH_BLOCKED`.
+
+Reason: These are the smallest current operations that use caller-context
+Supabase access without service-role application authority. Local disposable
+Supabase and CI can prove genuine Auth/RLS behavior. The hosted backend Preview
+has no Supabase configuration, and no TEST/STAGING project is documented, so a
+real remote authenticated DB test would require unsafe assumptions.
+
+Alternatives considered: moving `hod/me` or school-admin identity reads
+(rejected because current handlers use service-role access); school templates
+(rejected because the table is not migration-reproducible); school enrollment
+(rejected because it is a multi-table privileged mutation); configuring the
+UNKNOWN hosted Supabase project on the backend Preview (rejected because its
+environment classification is not safe); cutting Production traffic (outside
+this checkpoint and not authorized).
+
+Impact: standalone backend SHA
+`68d7b70f1c660e5e101b999dd2a795bb15faaea4` passed local and remote CI.
+Monorepo routing commit `905d6bc8c96953150b463f3fcdf98b7fddc23c5b`
+adds three independent, disabled-by-default flags. Each route reached FastAPI
+through a real frontend Preview using intentional bearer forwarding and no
+cookie forwarding; final rollback returned all routes to Next. No persistent
+routing env, bypass secret, Production route, hosted DB mutation, billing,
+admin, cron, PPT, or AI change remains.
+
+Status: Implemented; safe hosted auth foundation required before Production
+cutover consideration.
