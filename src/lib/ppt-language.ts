@@ -65,7 +65,7 @@ export function localeTagFor(language: PresentationLanguage): string {
  * generated or the teacher typed). Keeping them in one table is what makes "no English leakage
  * on an Arabic deck" a property we can actually test, rather than a promise.
  */
-type PptStringKey =
+export type PptStringKey =
   | "chipWarmUp"
   | "chipDifferentiatedTasks"
   | "chipReflectShare"

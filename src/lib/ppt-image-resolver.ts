@@ -14,7 +14,6 @@
 
 import * as Sentry from "@sentry/nextjs";
 import { getFalCredentials } from "@/lib/fal-flux-section-images";
-import { isUaeCurriculumFramework } from "@/lib/curriculum-framework";
 import { logPexelsEnvStatus, resolvePexelsApiKey } from "@/lib/image-api-env";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { fetchPexelsUniqueLandscapeUrl } from "@/lib/pexels-images";

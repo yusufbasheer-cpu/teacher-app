@@ -37,6 +37,7 @@ import {
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { getAuthHeaders } from "@/lib/auth-headers";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
+import type { PresentationLanguage } from "@/lib/ppt-language";
 import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 
 function hasAflSelections(s: AflSelectionsPayload | undefined): boolean {
@@ -61,6 +62,10 @@ type TeacherPackageViewerProps = {
   teacherName?: string;
   /** Learning objectives line from the generator form (enriches PPT objectives slide). */
   learningObjectives?: string;
+  /** Chapter from the generator form; needed by the deck builder's slide-2 dedupe. */
+  chapter?: string;
+  /** Deck language, so the export renders in the language the teacher selected. */
+  language?: PresentationLanguage;
   /** Teacher-selected AFL tools from the generator (PPT + lesson plan exports). */
   aflSelections?: AflSelectionsPayload;
   /** Pre-generated PPT slide URLs from lesson generation (embedded at download time). */
@@ -267,6 +272,8 @@ export function TeacherPackageViewer({
   onPptThemeChange,
   teacherName,
   learningObjectives,
+  chapter,
+  language,
   aflSelections,
   pptSlideImageUrls,
   parseNotice,
@@ -360,7 +367,13 @@ export function TeacherPackageViewer({
     }
   };
 
-  const baseMeta = { subject, grade, topic };
+  const baseMeta = {
+    subject,
+    grade,
+    topic,
+    ...(chapter?.trim() ? { chapter: chapter.trim() } : {}),
+    ...(language ? { language } : {}),
+  };
 
   const onDownloadPpt = () => {
     const fullLessonPlan = getPptSourceLessonText(lessonPlan);

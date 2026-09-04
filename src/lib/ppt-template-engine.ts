@@ -29,6 +29,7 @@ import {
   getImageNaturalSize,
   isGroupHeaderLine,
   type BulletVariant,
+  directionOptions,
 } from "@/lib/ppt-render-primitives";
 
 // Re-export everything client components need from the client-safe config module.
@@ -45,6 +46,15 @@ export {
 // Import for use within this file.
 import { getTemplateConfig, type TemplateConfig, type TemplateId } from "@/lib/ppt-template-config";
 import { fetchExternalImageSafely, sniffFileSignature } from "@/lib/upload-security";
+import {
+  DEFAULT_PRESENTATION_LANGUAGE,
+  PPT_STRINGS,
+  fontFaceFor,
+  isRtlLanguage,
+  pptString,
+  type PptStringKey,
+  type PresentationLanguage,
+} from "@/lib/ppt-language";
 
 // ─── Slide icons (0-based deck index) ────────────────────────────────────────
 
@@ -84,25 +94,44 @@ const SLIDE_KIND_BY_INDEX: readonly SlideKind[] = [
   "hero-close", // 12 Thank You
 ];
 
-const ACTIVITY_CHIP_LABEL: Record<number, string> = {
-  1: "Warm-Up",
-  6: "Differentiated Tasks",
-  8: "Reflect & Share",
-  9: "Take It Further",
+/**
+ * Everything the renderer needs to know about the deck's language in one place, so a new text
+ * object cannot quietly ship an English label or a left-aligned Arabic paragraph.
+ */
+export type RenderContext = {
+  language: PresentationLanguage;
+  rtl: boolean;
+  fontFace: string;
+  /** Localised static-string lookup. */
+  s: (key: PptStringKey) => string;
 };
 
-/** Eyebrow chip for "concept" slides — currently just Main Phase (index 5). */
-const CONCEPT_CHIP_LABEL: Record<number, string> = {
-  5: "Key Concepts",
+function buildRenderContext(language: PresentationLanguage, tpl: TemplateConfig): RenderContext {
+  return {
+    language,
+    rtl: isRtlLanguage(language),
+    fontFace: fontFaceFor(language, tpl.fonts.face),
+    s: (key) => pptString(language, key),
+  };
+}
+
+const ACTIVITY_CHIP_KEYS: Record<number, PptStringKey> = {
+  1: "chipWarmUp",
+  6: "chipDifferentiatedTasks",
+  8: "chipReflectShare",
+  9: "chipTakeItFurther",
 };
+
+/** Eyebrow chip for "concept" slides - currently just Main Phase (index 5). */
+const CONCEPT_CHIP_KEYS: Record<number, PptStringKey> = { 5: "chipKeyConcepts" };
 
 function bulletVariantFor(kind: SlideKind): BulletVariant {
   return kind === "checklist" ? "checklist" : kind === "activity" ? "activity" : "bullet";
 }
 
-function chipLabelFor(kind: SlideKind, deckIdx: number): string | undefined {
-  if (kind === "activity") return ACTIVITY_CHIP_LABEL[deckIdx];
-  if (kind === "concept") return CONCEPT_CHIP_LABEL[deckIdx];
+function chipKeyFor(kind: SlideKind, deckIdx: number): PptStringKey | undefined {
+  if (kind === "activity") return ACTIVITY_CHIP_KEYS[deckIdx];
+  if (kind === "concept") return CONCEPT_CHIP_KEYS[deckIdx];
   return undefined;
 }
 
@@ -182,7 +211,14 @@ function normalizeToLines(body: string): string[] {
  * height it's actually drawn with, rather than the chunker under-reserving for it.
  */
 /** Exported for testing only — see computeDeckLayoutStats above for the same rationale. */
-export function chunkLinesByHeight(lines: string[], cpl: number, maxHeight: number, variant?: BulletVariant): string[][] {
+export function chunkLinesByHeight(
+  lines: string[],
+  cpl: number,
+  maxHeight: number,
+  variant?: BulletVariant,
+  /** Shown when a slide body has no renderable lines; localised by the caller. */
+  emptyPlaceholder: string = PPT_STRINGS.en.noContentProvided,
+): string[][] {
   const chunks: string[][] = [];
   let cur: string[] = [];
   let used = 0;
@@ -209,7 +245,7 @@ export function chunkLinesByHeight(lines: string[], cpl: number, maxHeight: numb
     used += h;
   }
   if (cur.length > 0) chunks.push(cur);
-  return chunks.length > 0 ? chunks : [["(No content provided)"]];
+  return chunks.length > 0 ? chunks : [[emptyPlaceholder]];
 }
 
 // ─── Asset helpers ────────────────────────────────────────────────────────────
@@ -324,11 +360,13 @@ function doHeroOpenSlide(
   total: number,
   layahLogo: string | null,
   schoolLogo: string | null,
+  ctx: RenderContext,
 ): void {
   const slide = pptx.addSlide();
   const c = tpl.colors;
-  const f = tpl.fonts;
+  const f = { ...tpl.fonts, face: ctx.fontFace };
   const L = tpl.layout.titleSlide;
+  const dir = directionOptions(ctx.rtl);
 
   slide.background = { color: c.titleSlideBackground };
 
@@ -355,7 +393,7 @@ function doHeroOpenSlide(
   slide.addText(subject, {
     x: L.titleX, y: L.titleY, w: L.titleW, h: L.titleH,
     fontSize: L.titleFontSize, bold: true,
-    color: c.titleSlideTitle, fontFace: f.face, valign: "middle", fit: "shrink",
+    color: c.titleSlideTitle, fontFace: f.face, valign: "middle", fit: "shrink", ...dir,
   });
 
   // accent line
@@ -369,7 +407,7 @@ function doHeroOpenSlide(
   slide.addText(bodyLines.slice(0, 3).join("   ·   "), {
     x: L.subtitleX, y: L.subtitleY, w: L.subtitleW, h: L.subtitleH,
     fontSize: L.subtitleFontSize, color: c.titleSlideSubtitle, fontFace: f.face,
-    valign: "top", fit: "shrink",
+    valign: "top", fit: "shrink", ...dir,
   });
 
   // image
@@ -377,7 +415,7 @@ function doHeroOpenSlide(
     drawRoundedImageFrame(pptx, slide, {
       x: L.imageX, y: L.imageY, w: L.imageW, h: L.imageH,
       imageDataUri: image.dataUri, naturalWidth: image.width, naturalHeight: image.height,
-      tpl, altText: "Title slide illustration",
+      tpl, altText: ctx.s("altTitleIllustration"),
     });
   }
 
@@ -395,10 +433,14 @@ function doHeroCloseSlide(
   total: number,
   layahLogo: string | null,
   schoolLogo: string | null,
+  ctx: RenderContext,
 ): void {
   const slide = pptx.addSlide();
   const c = tpl.colors;
-  const f = tpl.fonts;
+  const f = { ...tpl.fonts, face: ctx.fontFace };
+  // Centred text stays centred in both directions - only paragraph direction and language need
+  // to change, so alignment is deliberately not overridden here.
+  const dirCentered = ctx.rtl ? { rtlMode: true, lang: "ar-AE" } : {};
 
   slide.background = { color: c.titleSlideBackground };
 
@@ -414,13 +456,14 @@ function doHeroCloseSlide(
   slide.addText(model.slideTitle, {
     x: 1.0, y: 3.1, w: SLIDE_W - 2.0, h: 1.0,
     fontSize: 40, bold: true, align: "center", valign: "middle",
-    color: c.titleSlideTitle, fontFace: f.face, fit: "shrink",
+    color: c.titleSlideTitle, fontFace: f.face, fit: "shrink", ...dirCentered,
   });
 
   slide.addText(model.body, {
     x: 1.6, y: 4.15, w: SLIDE_W - 3.2, h: 1.4,
     fontSize: 18, align: "center", valign: "top",
     color: c.titleSlideSubtitle, fontFace: f.face, lineSpacingMultiple: 1.3, fit: "shrink",
+    ...dirCentered,
   });
 
   addFooter(pptx, slide, tpl, subject, slideNum, total, layahLogo);
@@ -441,11 +484,13 @@ function doContentSlide(
   total: number,
   layahLogo: string | null,
   schoolLogo: string | null,
+  ctx: RenderContext,
 ): void {
   const slide = pptx.addSlide();
   const c = tpl.colors;
-  const f = tpl.fonts;
+  const f = { ...tpl.fonts, face: ctx.fontFace };
   const L = tpl.layout;
+  const dir = directionOptions(ctx.rtl);
   const isCont = chunkIdx > 0;
   const hasImg = image !== null && !isCont;
   const kind = SLIDE_KIND_BY_INDEX[deckIdx] ?? "standard";
@@ -485,30 +530,34 @@ function doContentSlide(
     // against the header bar isn't guaranteed — three of the five bundled
     // templates fail WCAG AA there (2:1–3.7:1) because accent is tuned to
     // read on the body background, not on the header fill.
-    slide.addText("CONTINUED", {
+    slide.addText(ctx.s("continued"), {
       x: titleX, y: 0.14, w: titleW, h: 0.24,
-      fontSize: 10.5, bold: true, color: c.headerText, fontFace: f.face, charSpacing: 1.5,
+      fontSize: 10.5, bold: true, color: c.headerText, fontFace: f.face, charSpacing: 1.5, ...dir,
     });
   }
   slide.addText(rawTitle, {
     x: titleX, y: isCont ? 0.36 : HDR_TITLE_Y, w: titleW, h: isCont ? 0.72 : HDR_TITLE_H,
     fontSize: f.titleSize, bold: true,
-    color: c.headerText, fontFace: f.face, valign: "middle", fit: "shrink",
+    color: c.headerText, fontFace: f.face, valign: "middle", fit: "shrink", ...dir,
   });
 
   // ── Body content ──
   // "concept" slides (currently just Main Phase) mirror the standard layout — image on the left,
   // key-concept text on the right — instead of text-left/image-right. Same column widths either
   // way, just swapped, so the margin/gap math stays consistent with every other slide.
-  const isConceptMirrored = kind === "concept" && hasImg;
+  // Column order. "concept" slides (currently Main Phase) already mirrored the standard
+  // text-left/image-right layout; on an RTL deck the reading order flips, so the text column
+  // belongs on the right for ordinary slides and on the left for concept slides. XOR expresses
+  // exactly that, and collapses to the previous behaviour for English.
+  const imageOnLeft = hasImg && (kind === "concept") !== ctx.rtl;
   const contentW = hasImg ? CONTENT_W_WITH_IMAGE : CONTENT_W_FULL;
-  const contentX = isConceptMirrored ? CONCEPT_CONTENT_X : CONTENT_X;
+  const contentX = imageOnLeft ? CONCEPT_CONTENT_X : CONTENT_X;
   let bodyY = CONTENT_Y;
 
   if (!isCont) {
-    const chipLabel = chipLabelFor(kind, deckIdx);
-    if (chipLabel) {
-      drawSectionChip(pptx, slide, { text: chipLabel, x: contentX, y: bodyY, tpl });
+    const chipKey = chipKeyFor(kind, deckIdx);
+    if (chipKey) {
+      drawSectionChip(pptx, slide, { text: ctx.s(chipKey), x: contentX, y: bodyY, tpl });
       bodyY += CHIP_RESERVE_H;
     }
   }
@@ -529,14 +578,17 @@ function doContentSlide(
   const slack = Math.max(0, availableBottom - bodyY - usedH);
   bodyY += slack / 2;
 
-  drawBulletBlock(pptx, slide, { x: contentX, y: bodyY, w: contentW, lines: chunk, tpl, variant, cpl, scale: fontScale });
+  drawBulletBlock(pptx, slide, {
+    x: contentX, y: bodyY, w: contentW, lines: chunk, tpl, variant, cpl,
+    scale: fontScale, rtl: ctx.rtl, fontFace: ctx.fontFace,
+  });
 
   // ── Image panel ──
   if (hasImg && image) {
     drawRoundedImageFrame(pptx, slide, {
-      x: isConceptMirrored ? CONTENT_X : IMAGE_X, y: CONTENT_Y, w: IMAGE_W, h: CONTENT_H,
+      x: imageOnLeft ? CONTENT_X : IMAGE_X, y: CONTENT_Y, w: IMAGE_W, h: CONTENT_H,
       imageDataUri: image.dataUri, naturalWidth: image.width, naturalHeight: image.height,
-      tpl, altText: "AI-generated illustration",
+      tpl, altText: ctx.s("altSlideIllustration"),
     });
   }
 
@@ -544,7 +596,7 @@ function doContentSlide(
   if (schoolLogo) addSchoolLogo(pptx, slide, schoolLogo);
 
   const notes = isCont
-    ? `${model.speakerNotes ?? ""}\n\n(Continuation slide — same section.)`
+    ? `${model.speakerNotes ?? ""}\n\n${ctx.s("continuationNote")}`
     : (model.speakerNotes ?? "");
   slide.addNotes(notes);
 }
@@ -579,7 +631,7 @@ export function computeDeckLayoutStats(
     const hasImg = Boolean(slideImageUrls?.[i]);
     const cpl = hasImg ? CPL_IMAGE : CPL_FULL;
     const variant = bulletVariantFor(kind);
-    const chipReserve = chipLabelFor(kind, i) ? CHIP_RESERVE_H : 0;
+    const chipReserve = chipKeyFor(kind, i) ? CHIP_RESERVE_H : 0;
     const budget = CONTENT_H - chipReserve;
     const lines = normalizeToLines(slides[i]!.body);
     const chunks = chunkLinesByHeight(lines, cpl, budget, variant);
@@ -604,9 +656,13 @@ export async function buildPptxFromTemplateEngine(params: {
   teacherName?: string;
   slideImageUrls?: (string | null)[] | null;
   schoolLogo?: string | null;
+  /** Deck language. Defaults to English so existing callers render exactly as before. */
+  language?: PresentationLanguage;
 }): Promise<Buffer> {
   const tpl = getTemplateConfig(params.templateId);
   const deck = params.slides;
+  const language = params.language ?? DEFAULT_PRESENTATION_LANGUAGE;
+  const ctx = buildRenderContext(language, tpl);
 
   // Resolve image URLs to data URIs (+ natural dimensions, for undistorted placement) in parallel
   const images: (ImageAsset | null)[] = await Promise.all(
@@ -632,10 +688,13 @@ export async function buildPptxFromTemplateEngine(params: {
 
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
+  // Presentation-level RTL: PowerPoint uses this for the deck's default paragraph direction,
+  // complementing the per-text-object rtlMode set on every run below.
+  pptx.rtlMode = ctx.rtl;
   pptx.author = "Layah.ai";
   pptx.company = "Layah.ai";
   pptx.subject = `${params.subject} — ${params.topic}`;
-  pptx.title   = `Slides — ${params.topic}`;
+  pptx.title   = `${ctx.s("deckTitlePrefix")} — ${params.topic}`;
 
   // Pre-compute chunks (and physical slide count) per deck slide, reserving space for the
   // eyebrow chip (activity or concept kind) on the first physical chunk where one is shown.
@@ -646,9 +705,11 @@ export async function buildPptxFromTemplateEngine(params: {
     const hasImg = Boolean(images[i]);
     const cpl = hasImg ? CPL_IMAGE : CPL_FULL;
     const kind = SLIDE_KIND_BY_INDEX[i] ?? "standard";
-    const budget = chipLabelFor(kind, i) ? CONTENT_H - CHIP_RESERVE_H : CONTENT_H;
+    const budget = chipKeyFor(kind, i) ? CONTENT_H - CHIP_RESERVE_H : CONTENT_H;
     const lines = normalizeToLines(deck[i]!.body);
-    const chunks = chunkLinesByHeight(lines, cpl, budget, bulletVariantFor(kind));
+    const chunks = chunkLinesByHeight(
+      lines, cpl, budget, bulletVariantFor(kind), ctx.s("noContentProvided"),
+    );
     chunksByDeckIdx[i] = chunks;
     totalPhysical += chunks.length;
   }
@@ -661,12 +722,12 @@ export async function buildPptxFromTemplateEngine(params: {
     const kind = SLIDE_KIND_BY_INDEX[di] ?? "standard";
 
     if (kind === "hero-open") {
-      doHeroOpenSlide(pptx, model, tpl, params.subject, params.grade, image, slideNum, totalPhysical, layahLogo, schoolLogo);
+      doHeroOpenSlide(pptx, model, tpl, params.subject, params.grade, image, slideNum, totalPhysical, layahLogo, schoolLogo, ctx);
       slideNum++;
       continue;
     }
     if (kind === "hero-close") {
-      doHeroCloseSlide(pptx, model, tpl, params.subject, slideNum, totalPhysical, layahLogo, schoolLogo);
+      doHeroCloseSlide(pptx, model, tpl, params.subject, slideNum, totalPhysical, layahLogo, schoolLogo, ctx);
       slideNum++;
       continue;
     }
@@ -678,7 +739,7 @@ export async function buildPptxFromTemplateEngine(params: {
       doContentSlide(
         pptx, model, di, chunks[ci]!, ci, tpl,
         ci === 0 && hasImg ? image : null,
-        params.subject, slideNum, totalPhysical, layahLogo, schoolLogo,
+        params.subject, slideNum, totalPhysical, layahLogo, schoolLogo, ctx,
       );
       slideNum++;
     }

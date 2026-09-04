@@ -9,9 +9,15 @@ import {
   type EarlySlideSanitizeContext,
 } from "@/lib/ppt-slide-by-slide";
 import { isUaeCurriculumFramework } from "@/lib/curriculum-framework";
+import {
+  DEFAULT_PRESENTATION_LANGUAGE,
+  pptString,
+  resolvePresentationLanguage,
+  localeTagFor,
+  type PresentationLanguage,
+} from "@/lib/ppt-language";
 import { AFL_PHASE_IDS, formatToolsBlockForSlide, type AflPhaseId, type AflSelectionsPayload } from "@/lib/afl-tools";
 import {
-  usesArabicPptSlideTitles,
   type LessonPlanResult,
   getPptSourceLessonText,
   getPptSourceSlideOutline,
@@ -25,6 +31,9 @@ export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([0, 1, 2, 5, 6, 7, 8, 9
 
 /** Legacy note: FLUX images previously only on slides 2, 6, 9 — superseded by full deck pipeline in `ppt-image-resolver.ts`. */
 export const PPT_FLUX_PRIMARY_SLIDE_INDICES = [2, 5, 6, 10, 11] as const;
+
+/** Deck index of the Learning Objectives slide (slide 4), which is teacher-authored verbatim. */
+export const LEARNING_OBJECTIVES_SLIDE_INDEX = 3 as const;
 
 export type StructuredLessonSlideModel = {
   slideTitle: string;
@@ -763,26 +772,42 @@ function stripMisplacedSectionHeadingLines(slideIndex: number, body: string): st
 function applyPptIsolationValidationToDeck(
   slides: StructuredLessonSlideModel[],
   topic = "",
+  language: PresentationLanguage = DEFAULT_PRESENTATION_LANGUAGE,
 ): void {
   const prevBodies: string[] = [];
   for (let i = 0; i < slides.length; i++) {
     const slide = slides[i]!;
-    let b = slide.body;
+    const original = slide.body;
+    let b = original;
     b = stripSlideTitleEchoFromBody(b, slide.slideTitle);
     b = stripFutureSlideLeakageFromBody(b);
     b = dedupeRepeatedContentInSlideBody(b);
     b = stripMisplacedSectionHeadingLines(i, b);
-    b = stripLinesDuplicatedFromEarlierSlides(b, prevBodies);
-    if (i === 6) b = sanitizeSlide7DifferentiatedBody(b, topic);
+    // Slide 4 carries the teacher's objectives verbatim, so it is the *source* of that text -
+    // it cannot be leakage from an earlier slide. Running the cross-slide duplicate filter over
+    // it deleted the teacher's own words whenever the model had echoed them onto slide 3 or 5,
+    // which emptied the slide and rendered the generic "(No content provided)" placeholder.
+    // Arabic hit this constantly because its lines clear the 40-character bar far more easily.
+    if (i !== LEARNING_OBJECTIVES_SLIDE_INDEX) {
+      b = stripLinesDuplicatedFromEarlierSlides(b, prevBodies);
+    }
+    if (i === 6) b = sanitizeSlide7DifferentiatedBody(b, topic, language);
     if (i === 9) b = sanitizeSlide10ExtendedBody(b, slide.slideTitle);
-    slide.body = stripMarkdownSymbolsForStudents(b);
+    let cleaned = stripMarkdownSymbolsForStudents(b);
+    // Sanitisation must never be the reason a slide is blank. If every line was filtered out of
+    // a slide that had content, keep the original: showing unpolished real content beats
+    // shipping a placeholder over text the teacher or the model actually produced.
+    if (!cleaned.trim() && original.trim()) {
+      console.warn(
+        `[ppt-structured-lesson] slide ${i + 1} was emptied by sanitisation - keeping original body`,
+      );
+      cleaned = stripMarkdownSymbolsForStudents(original);
+    }
+    slide.body = cleaned;
     prevBodies.push(slide.body);
   }
 }
 
-function usesArabicPptDeck(subject: string): boolean {
-  return usesArabicPptSlideTitles(subject);
-}
 
 /** Timing plus one short teacher focus line only (no filler tips). */
 function buildTeacherSlideNotes(suggestedTiming: string, teacherFocusOneLine: string, isAr: boolean): string {
@@ -987,8 +1012,13 @@ function aflPayloadHasTools(afl: AflSelectionsPayload | undefined): boolean {
   return AFL_PHASE_IDS.some((p) => (afl[p]?.length ?? 0) > 0);
 }
 
-function appendAflToSlideBody(slide: StructuredLessonSlideModel, phase: AflPhaseId, ids?: string[]) {
-  const block = formatToolsBlockForSlide(phase, ids);
+function appendAflToSlideBody(
+  slide: StructuredLessonSlideModel,
+  phase: AflPhaseId,
+  language: PresentationLanguage,
+  ids?: string[],
+) {
+  const block = formatToolsBlockForSlide(phase, ids, pptString(language, "aflSelectedHeading"));
   if (!block) return;
   const merged = `${(slide.body ?? "").trim()}${block}`.trim();
   const polished = polishBody(merged, SECTION_MAX_CHARS + 500, BULLET_MAX_LINES_WITH_AFL);
@@ -998,12 +1028,16 @@ function appendAflToSlideBody(slide: StructuredLessonSlideModel, phase: AflPhase
 /**
  * AFL on deck: starter →2, main →6, differentiation →7, plenary →9, exitTicket →11, successCriteria →12.
  */
-function applyAflDeckInjections(slides: StructuredLessonSlideModel[], afl: AflSelectionsPayload | undefined) {
+function applyAflDeckInjections(
+  slides: StructuredLessonSlideModel[],
+  afl: AflSelectionsPayload | undefined,
+  language: PresentationLanguage,
+) {
   if (!aflPayloadHasTools(afl) || !afl) return;
   const go = (idx: number, phase: AflPhaseId, ids?: string[]) => {
     const slide = slides[idx];
     if (!slide || !ids?.length) return;
-    appendAflToSlideBody(slide, phase, ids);
+    appendAflToSlideBody(slide, phase, language, ids);
   };
   go(1, "starter", afl.starter);
   go(5, "main", afl.main);
@@ -1066,6 +1100,11 @@ export type StructuredLessonPptContext = {
   aflSelections?: AflSelectionsPayload;
   /** Curriculum framework id; drives slide 8 UAE vs global connection mode. */
   curriculumFramework?: string;
+  /**
+   * Deck language. Omitted for callers that predate the field, in which case it is inferred
+   * from the subject exactly as before.
+   */
+  language?: PresentationLanguage;
 };
 
 export const SLIDE_8_TITLE_UAE_EN = "UAE Real Life and Cross Curricular Connection" as const;
@@ -1145,10 +1184,11 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   const lo = (ctx.learningObjectivesText || "").trim();
   const hw = (ctx.homeworkTask || "").trim();
   const anchor = `Context: ${subj}, ${gr}, topic "${topic}".`;
-  const isAr = usesArabicPptDeck(subj);
+  const language = resolvePresentationLanguage({ language: ctx.language, subject: subj });
+  const isAr = language === "ar";
   const contextAnchor = isAr ? `السياق: مادة ${subj}، الصف ${gr}، الموضوع «${topic}».` : anchor;
 
-  const locale = isAr ? "ar-AE" : "en-GB";
+  const locale = localeTagFor(language);
   const dateStr = new Date().toLocaleDateString(locale, {
     weekday: "long",
     year: "numeric",
@@ -1291,7 +1331,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     contextAnchor,
     parsedDeckBodies?.[6],
   );
-  const s7Body = sanitizeSlide7DifferentiatedBody(s7.body, topic);
+  const s7Body = sanitizeSlide7DifferentiatedBody(s7.body, topic, language);
   slides.push({ slideTitle: T[6]!, body: s7Body, speakerNotes: s7.notes, includeImageSlot: true });
 
   const s8 = pickSlide8Connection(uaeFrameworkSelected, plan, ppt, topic, subj, gr, isAr, "4–6 minutes", parsedDeckBodies?.[7]);
@@ -1380,8 +1420,8 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     includeImageSlot: false,
   });
 
-  applyAflDeckInjections(slides, ctx.aflSelections);
-  applyPptIsolationValidationToDeck(slides, topic);
+  applyAflDeckInjections(slides, ctx.aflSelections, language);
+  applyPptIsolationValidationToDeck(slides, topic, language);
   clampSlideBodyToDeckRules(slides);
 
   if (slides.length < STRUCTURED_LESSON_DECK_SLIDE_COUNT) {

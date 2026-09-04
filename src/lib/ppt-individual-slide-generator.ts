@@ -415,7 +415,11 @@ STRICT RULES:
 
   const result = await generateWithRetries(slideName, system, user);
   const cleaned = cleanBody(result.body, slideName);
-  result.body = sanitizeSlide7DifferentiatedBody(cleaned, topic);
+  result.body = sanitizeSlide7DifferentiatedBody(
+    cleaned,
+    topic,
+    params.language ?? DEFAULT_PRESENTATION_LANGUAGE,
+  );
   return result;
 }
 

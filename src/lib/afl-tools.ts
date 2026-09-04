@@ -1080,9 +1080,14 @@ export function briefHowToUseForSlide(howToUse: string, maxLen = 160): string {
   return slice.length > maxLen ? `${slice.slice(0, maxLen - 1).trim()}…` : slice;
 }
 
-export function formatToolsBlockForSlide(phase: AflPhaseId, selectedIds: string[] | undefined): string {
+export function formatToolsBlockForSlide(
+  phase: AflPhaseId,
+  selectedIds: string[] | undefined,
+  /** Heading text; supplied localised by the deck builder so Arabic decks stay Arabic. */
+  heading = "Selected AFL for this part of the lesson",
+): string {
   if (!selectedIds?.length) return "";
-  const parts: string[] = ["\n\nSelected AFL for this part of the lesson\n"];
+  const parts: string[] = [`\n\n${heading}\n`];
   for (const id of selectedIds) {
     const t = getAflToolById(id);
     if (!t) continue;

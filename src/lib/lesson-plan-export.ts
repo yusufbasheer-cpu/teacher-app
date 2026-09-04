@@ -23,6 +23,7 @@ import {
   getPptRenderTheme,
 } from "@/lib/ppt-themes";
 import { buildPptxFromTemplateEngine } from "@/lib/ppt-template-engine";
+import { resolvePresentationLanguage, type PresentationLanguage } from "@/lib/ppt-language";
 import { fetchExternalImageSafely, sniffFileSignature } from "@/lib/upload-security";
 
 const IN_SLIDE_W = 13.333333;
@@ -897,8 +898,14 @@ export async function buildPptxFromPptContent(params: {
   customRenderTheme?: PptRenderTheme;
   /** Base64 data URI of the school logo extracted from the .pptx template. */
   schoolLogo?: string | null;
+  /** Deck language; omitted callers keep the previous subject-derived behaviour. */
+  language?: PresentationLanguage;
 }): Promise<Buffer> {
   const afl = sanitizeAflSelections(params.aflSelections ?? {});
+  const language = resolvePresentationLanguage({
+    language: params.language,
+    subject: params.subject,
+  });
   if (Object.keys(afl).length > 0) {
     console.log("[lesson-plan-export] buildPptxFromPptContent received AFL selections:", afl);
   }
@@ -915,6 +922,7 @@ export async function buildPptxFromPptContent(params: {
       ? { curriculumFramework: params.curriculumFramework.trim() }
       : {}),
     ...(Object.keys(afl).length > 0 ? { aflSelections: afl } : {}),
+    language,
   };
   const deck = params.structuredSlides ?? buildStructuredLessonSlides(ctx);
 
@@ -928,6 +936,7 @@ export async function buildPptxFromPptContent(params: {
     teacherName: params.teacherName,
     slideImageUrls: params.slideImageUrls,
     schoolLogo: params.schoolLogo,
+    language,
   });
 }
 
