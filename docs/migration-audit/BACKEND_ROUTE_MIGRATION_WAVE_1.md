@@ -250,3 +250,25 @@ Wave result: `VERIFIED`. Cohort classification:
 Full evidence, deployment identifiers, and the known cookie-versus-bearer
 transport difference for the Next lesson-save handler are recorded in
 `STAGING_AUTH_FOUNDATION.md`.
+
+
+## Checkpoint 30 Correction
+
+Two statements in this document describe the migration branch rather than
+Production, and the Production cutover attempt surfaced both.
+
+`POST /api/lesson-plan/save` is listed with a "current Next handler" at
+`src/app/api/lesson-plan/save/route.ts`. That handler exists only on
+`phase-1-boundary-stabilization`. It has never existed on `main`. Production
+persists lesson plans client side, with the generator calling
+`supabase.from("lesson_plans")` directly from the browser. Cutting this route
+over is therefore a client-behaviour migration, not a routing flip, and it
+needs its own plan and rollback story.
+
+The routing seam itself is likewise branch-only. `src/lib/backend-routing.ts`
+is not on `main`, so Production route flags would be inert until the seam
+ships.
+
+Neither point affects the Preview evidence already recorded here, which was
+gathered against branch code. Both change what Production cutover requires.
+See `PRODUCTION_CUTOVER_WAVE_1.md`.
