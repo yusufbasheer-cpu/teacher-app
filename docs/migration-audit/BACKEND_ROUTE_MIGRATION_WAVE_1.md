@@ -227,3 +227,26 @@ rather than blocked by an unclassified target.
 
 The remaining blocker is a single manual provisioning action, recorded with
 its exact steps in `STAGING_AUTH_FOUNDATION.md`.
+
+
+## Checkpoint 29E Final Status
+
+All three Wave 1 operations now hold genuine deployed proof through the chain
+frontend Preview, Next routing seam, standalone FastAPI Preview, hosted staging
+Supabase Auth, and caller-context PostgREST under RLS.
+
+| Operation | Remote auth | Rollback | Production |
+| --- | --- | --- | --- |
+| `GET /api/user-usage` | `REMOTE_AUTH_PREVIEW_VERIFIED` | `ROLLED_BACK_TO_NEXT` | `PRODUCTION_NOT_CUT_OVER` |
+| `GET /api/account/export` | `REMOTE_AUTH_PREVIEW_VERIFIED` | `ROLLED_BACK_TO_NEXT` | `PRODUCTION_NOT_CUT_OVER` |
+| `POST /api/lesson-plan/save` | `REMOTE_AUTH_PREVIEW_VERIFIED` | `ROLLED_BACK_TO_NEXT` | `PRODUCTION_NOT_CUT_OVER` |
+
+Remote cross-user denial was proven through the deployed chain: User B could
+not modify User A's lesson, and the stored owner and content were unchanged.
+
+Wave result: `VERIFIED`. Cohort classification:
+`READY_FOR_PRODUCTION_CUTOVER_CHECKPOINT`.
+
+Full evidence, deployment identifiers, and the known cookie-versus-bearer
+transport difference for the Next lesson-save handler are recorded in
+`STAGING_AUTH_FOUNDATION.md`.

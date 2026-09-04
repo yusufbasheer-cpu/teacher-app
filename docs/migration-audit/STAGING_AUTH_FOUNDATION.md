@@ -382,3 +382,104 @@ One deployed frontend Preview of `project-scquo`, carrying deployment-scoped
 staging Supabase variables, `PYTHON_BACKEND_URL`, a backend automation bypass
 secret, and one route flag at a time. Everything needed for it is already
 written and proven; only the deploy itself was refused here.
+
+## Checkpoint 29E Result
+
+Date: 2026-09-04
+
+Status: `STAGING_AUTH_FOUNDATION_VERIFIED`
+
+The deployment blocker from 29D is gone. Genuine frontend Preview deployments
+of `project-scquo` were created, and the missing evidence now exists.
+
+### Deployments
+
+All frontend variables were deployment-scoped. No project-level Preview or
+Production variable was created, changed, or removed.
+
+| Purpose | Preview URL | Deployment |
+| --- | --- | --- |
+| Baseline, no route flag | `https://project-scquo-f19ulm4aa-teacher-app.vercel.app` | `dpl_8wVA9KvCkETSqKor7zxeZX7K9Myf` |
+| `BACKEND_ROUTE_USER_USAGE=python` | `https://project-scquo-efka6e4v6-teacher-app.vercel.app` | `dpl_2k43bxKkf3xaC9a9ZjAT4oXu3zs8` |
+| `BACKEND_ROUTE_ACCOUNT_EXPORT=python` | `https://project-scquo-jg78zyzu9-teacher-app.vercel.app` | `dpl_6WXS4sGo4n8gMRuw5bYfHWSaY5EX` |
+| `BACKEND_ROUTE_LESSON_PLAN_SAVE=python` | `https://project-scquo-r6ovxrg7s-teacher-app.vercel.app` | `dpl_8EWs64MZhtPNjvAdLgt4sMWCLWUi` |
+
+Backend Preview reused unchanged: `dpl_CFtmy6R1uS9btNAVc7nxfAN9SGCq`, SHA
+`0d33543`, healthy on `/health` and `/ready` before use.
+
+### Auth Issuer Consistency
+
+The baseline Preview accepted a token issued by staging Supabase and returned
+the caller's own data. A Production-configured frontend could not validate a
+staging token, so this establishes that the frontend Preview, the backend
+Preview, and the database are all `esqnyktumxscyvznftlc`.
+
+### Route Proofs Through The Deployed Chain
+
+Each run used synthetic staging User A and User B, one route flag at a time.
+
+`GET /api/user-usage`: 200 with the caller's own free-tier snapshot, a query
+`user_id` naming User B ignored, 401 for missing and invalid bearers. Backend
+Preview logs show the deployment handling those requests.
+
+`GET /api/account/export`: 200, `Content-Disposition: attachment;
+filename="layah-my-data.json"` preserved, payload containing only User A's
+account. Backend Preview logs show a 200 and the two 401s.
+
+`POST /api/lesson-plan/save`: 13 checks of 13 passed. Insert returned 201 with
+the row owned by User A, the caller's own update returned 200, a spoofed body
+`user_id` naming User B still stored User A as owner, and User B's attempt to
+overwrite User A's row left the stored owner and content unchanged while
+preserving the existing zero-row response semantics.
+
+That last item is the remote cross-user proof, and it ran through the deployed
+frontend Preview, the deployed backend Preview, and staging RLS. Live streamed
+backend logs captured it as it happened, at 15:34:38 and 15:34:42, with fresh
+request identifiers and statuses 201 and 200.
+
+There is also an independent control for lesson-save routing. The Next handler
+cannot serve a bearer-only client at all, returning 500 with `Auth session
+missing!`, which is exactly what the baseline Preview did. The routed Preview
+returned 201 for the same request. Only the Python backend can produce that
+result.
+
+### Rollback
+
+The final no-flag Preview served all three routes from Next handlers, and
+streamed backend logs recorded zero requests on any Wave 1 path during that
+run. No Python route flag persists: every one was deployment-scoped to a
+Preview that is no longer the validation target, and `project-scquo` has no
+`BACKEND_ROUTE_*` or `PYTHON_BACKEND_URL` variable at project level.
+
+### Cleanup And Production Safety
+
+The temporary automation bypass secrets on the backend project were removed,
+leaving zero entries with SSO protection intact. `project-scquo` environment
+variables are unchanged, the newest being 102 days old, and its production URL
+remains `https://www.layah.in`. Production Supabase `jbwevzvtloahjoamwnjt` was
+never linked, pushed to, read for cloning, or mutated. No production user or
+data was involved, and no deployment was promoted.
+
+Staging Supabase variables were never persisted at project scope, so ordinary
+Previews continue to behave exactly as before. Only the four dedicated
+validation deployments carried staging configuration.
+
+### Known Transport Difference
+
+The Next lesson-save handler derives identity from the browser cookie session.
+The Python handler derives it from the `Authorization` bearer. Browser clients
+send cookies and are unaffected, so this is not a regression, but a bearer-only
+caller can drive that route only when it is routed to Python. Nothing was
+changed here.
+
+### Final Per-Route Status
+
+| Operation | Status |
+| --- | --- |
+| `GET /api/user-usage` | `PYTHON_PARITY_COMPLETE`, `LOCAL_AUTH_VERIFIED`, `HOSTED_STAGING_AUTH_VERIFIED`, `DEPLOYED_BACKEND_VERIFIED`, `REMOTE_AUTH_PREVIEW_VERIFIED`, `ROLLED_BACK_TO_NEXT`, `PRODUCTION_NOT_CUT_OVER` |
+| `GET /api/account/export` | `PYTHON_PARITY_COMPLETE`, `LOCAL_AUTH_VERIFIED`, `HOSTED_STAGING_AUTH_VERIFIED`, `DEPLOYED_BACKEND_VERIFIED`, `REMOTE_AUTH_PREVIEW_VERIFIED`, `ROLLED_BACK_TO_NEXT`, `PRODUCTION_NOT_CUT_OVER` |
+| `POST /api/lesson-plan/save` | `PYTHON_PARITY_COMPLETE`, `LOCAL_AUTH_VERIFIED`, `HOSTED_STAGING_AUTH_VERIFIED`, `DEPLOYED_BACKEND_VERIFIED`, `REMOTE_AUTH_PREVIEW_VERIFIED`, `ROLLED_BACK_TO_NEXT`, `PRODUCTION_NOT_CUT_OVER` |
+
+Wave 1 is `READY_FOR_PRODUCTION_CUTOVER_CHECKPOINT`. The cutover itself was not
+performed. Next handlers and the transitional monorepo backend copy remain in
+place.
