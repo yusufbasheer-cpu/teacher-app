@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { isValidCurriculumFramework } from "@/lib/curriculum-framework";
-import { fetchPptImagesWithFallback } from "@/lib/ppt-image-resolver";
+import {
+  FAL_REQUIRED_DECK_INDICES,
+  generatePptDeckSlideImages,
+} from "@/lib/ppt-image-resolver";
 import { sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildPptxFromPptContent, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import { buildStructuredLessonSlides } from "@/lib/ppt-structured-lesson";
@@ -13,7 +16,7 @@ import { authenticateRequest } from "@/lib/user-usage-server";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 function slideUrlsFromRequestBody(raw: unknown, deckLen: number): (string | null)[] | null {
   if (!Array.isArray(raw) || raw.length < deckLen) return null;
@@ -21,6 +24,14 @@ function slideUrlsFromRequestBody(raw: unknown, deckLen: number): (string | null
     const x = raw[i];
     return typeof x === "string" && x.trim().length > 0 ? x.trim() : null;
   });
+}
+
+function isPexelsUrl(url: string | null | undefined): boolean {
+  return typeof url === "string" && /\bpexels\.com\b/i.test(url);
+}
+
+function needsFalRequiredImageRepair(urls: readonly (string | null)[]): boolean {
+  return FAL_REQUIRED_DECK_INDICES.some((idx) => !urls[idx] || isPexelsUrl(urls[idx]));
 }
 
 type Body = {
@@ -110,11 +121,33 @@ export async function POST(req: Request) {
     if (fromClient !== null) {
       console.log("[pptx export] embedding pre-generated slide images (no new API image calls)");
       slideImageUrls = fromClient;
+      if (needsFalRequiredImageRepair(slideImageUrls)) {
+        console.error(
+          "[pptx export] pre-generated slide images are missing Fal-required slots; repairing before export",
+        );
+        const repaired = await generatePptDeckSlideImages({
+          topic,
+          subject,
+          grade,
+          curriculumFramework: curriculumFramework || undefined,
+        });
+        slideImageUrls = slideImageUrls.map((url, idx) =>
+          FAL_REQUIRED_DECK_INDICES.includes(idx as (typeof FAL_REQUIRED_DECK_INDICES)[number])
+            ? repaired.urls[idx] ?? url
+            : url ?? repaired.urls[idx] ?? null,
+        );
+      }
     } else {
       console.log("[pptx export] no pptSlideImageUrls on request — generating/fetching images (legacy path)");
       slideImageUrls = Array.from({ length: deck.length }, () => null);
       try {
-        slideImageUrls = await fetchPptImagesWithFallback(topic, subject, grade, deck.length);
+        const generated = await generatePptDeckSlideImages({
+          topic,
+          subject,
+          grade,
+          curriculumFramework: curriculumFramework || undefined,
+        });
+        slideImageUrls = Array.from({ length: deck.length }, (_, i) => generated.urls[i] ?? null);
       } catch (imgErr) {
         console.error("[pptx export] Image fetch failed; continuing without images:", imgErr);
       }
