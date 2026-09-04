@@ -134,6 +134,9 @@ function validateInput(input: LessonPlanInput): string | null {
   if (!isValidSubjectOption(input.subject.trim())) {
     return "Invalid subject.";
   }
+  if (input.topic.trim().length === 0) {
+    return "Please fill Topic.";
+  }
   if (input.learningObjectives.trim().length === 0) {
     return "Please fill Learning Objectives.";
   }

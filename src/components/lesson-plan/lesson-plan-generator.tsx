@@ -107,6 +107,8 @@ type ExtractPayload = {
   partialErrors?: { sourceLabel: string; message: string }[];
 };
 
+type ComposerStep = "details" | "outputs";
+
 function formatExtractUploadFailure(status: number, data: ExtractPayload, raw: string): string {
   console.error("[lesson-plan upload] extract failed", {
     status,
@@ -207,6 +209,7 @@ export function LessonPlanGenerator() {
   const [languageTouched, setLanguageTouched] = useState(false);
   const [aflSelected, setAflSelected] = useState<Record<AflPhaseId, string[]>>(() => emptyAflSelected());
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [composerStep, setComposerStep] = useState<ComposerStep>("details");
 
   /** Fail-closed to Free's entitlements while usage is still loading, so
    * nothing flashes unlocked before the real plan is known. */
@@ -526,6 +529,16 @@ export function LessonPlanGenerator() {
     setSectionImages(null);
     setPptSlideImageUrls(null);
     setActivePlanId(null);
+
+    if (!form.topic.trim() || !form.learningObjectives.trim()) {
+      setComposerStep("details");
+      setError(
+        !form.topic.trim()
+          ? "Please fill Topic."
+          : "Please fill Learning Objectives.",
+      );
+      return;
+    }
 
     const sections = TEACHER_PACKAGE_SECTIONS.filter((k) => sectionSelection[k]);
     if (sections.length === 0) {
@@ -891,9 +904,14 @@ export function LessonPlanGenerator() {
 
   const selectedGenerationCount = Object.values(sectionSelection).filter(Boolean).length;
 
-  const classComplete = Boolean(
-    (form.chapter.trim() || form.topic.trim()) && form.learningObjectives.trim(),
-  );
+  const detailsComplete = Boolean(form.topic.trim() && form.learningObjectives.trim());
+  const canGenerate =
+    detailsComplete &&
+    selectedGenerationCount > 0 &&
+    !loading &&
+    !uploadExtracting &&
+    !usageLoading;
+  const classComplete = detailsComplete;
   const hasSource = uploadedChunks.length > 0 || pastedContent.trim().length > 0;
   const aflCount = Object.values(aflSelected).reduce((n, list) => n + list.length, 0);
   const hasApproach = aflCount > 0 || Boolean(teachingStrategy);
@@ -918,8 +936,13 @@ export function LessonPlanGenerator() {
             onSubmit={onSubmit}
             aria-busy={loading}
             noValidate
-            className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]"
+            className={
+              composerStep === "details"
+                ? "mt-6 mx-auto max-w-[780px]"
+                : "mt-6 mx-auto max-w-[520px]"
+            }
           >
+            {composerStep === "details" ? (
             <RuleRail className="min-w-0 space-y-5">
               {/* ── 1. Class ─────────────────────────────────────────── */}
               <RuleItem num={1} state={classComplete ? "done" : "active"}>
@@ -1025,11 +1048,7 @@ export function LessonPlanGenerator() {
                       </Select>
                     </Field>
 
-                    <Field
-                      label="Chapter"
-                      hint="Becomes the lesson's title."
-                      className="sm:col-span-2"
-                    >
+                    <Field label="Chapter" optional className="sm:col-span-2">
                       <TextInput
                         value={form.chapter}
                         onChange={(e) => setForm((prev) => ({ ...prev, chapter: e.target.value }))}
@@ -1039,7 +1058,6 @@ export function LessonPlanGenerator() {
 
                     <Field
                       label="Topic"
-                      optional
                       hint="Narrow the lesson to one part of the chapter."
                       className="sm:col-span-2"
                     >
@@ -1047,6 +1065,7 @@ export function LessonPlanGenerator() {
                         value={form.topic}
                         onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
                         placeholder="Light-dependent reactions"
+                        required
                       />
                     </Field>
 
@@ -1354,10 +1373,43 @@ export function LessonPlanGenerator() {
                   )}
                 </div>
               </RuleItem>
+              <div className="flex justify-end">
+                {detailsComplete ? (
+                  <Button
+                    type="button"
+                    size="lg"
+                    onClick={() => {
+                      setError(null);
+                      setComposerStep("outputs");
+                    }}
+                  >
+                    Next
+                  </Button>
+                ) : null}
+              </div>
+
+              {error ? (
+                <Notice tone="danger" className="whitespace-pre-wrap break-words">
+                  {error.replace("info@layah.in", "").trimEnd()}
+                  {error.includes("info@layah.in") ? (
+                    <>
+                      {" "}
+                      <a
+                        href="mailto:info@layah.in"
+                        className="font-medium underline underline-offset-2"
+                      >
+                        info@layah.in
+                      </a>
+                    </>
+                  ) : null}
+                </Notice>
+              ) : null}
             </RuleRail>
+            ) : null}
 
             {/* ── Launch panel: what comes out, and the one button ──── */}
-            <aside className="min-w-0 lg:sticky lg:top-[68px]">
+            {composerStep === "outputs" ? (
+            <aside className="min-w-0">
               <Panel className="overflow-hidden">
                 <PanelHeader
                   title="What to generate"
@@ -1438,14 +1490,19 @@ export function LessonPlanGenerator() {
 
                 <div className="border-t border-line-subtle p-3">
                   <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mb-2"
+                    onClick={() => setComposerStep("details")}
+                  >
+                    Back
+                  </Button>
+                  <Button
                     type="submit"
                     size="xl"
                     block
-                    disabled={
-                      loading ||
-                      uploadExtracting ||
-                      TEACHER_PACKAGE_SECTIONS.every((k) => !sectionSelection[k])
-                    }
+                    disabled={!canGenerate}
                   >
                     {loading ? "Generating…" : "Generate lesson"}
                   </Button>
@@ -1482,6 +1539,7 @@ export function LessonPlanGenerator() {
                 </div>
               </Panel>
             </aside>
+            ) : null}
           </form>
         </div>
       ) : (
