@@ -116,6 +116,9 @@ export async function POST(req: Request) {
     });
 
     const fromClient = slideUrlsFromRequestBody(body.pptSlideImageUrls, deck.length);
+    const slideContentByIndex = deck.map((slide) =>
+      `${slide.slideTitle}. ${slide.body}`.replace(/\s+/g, " ").trim(),
+    );
 
     let slideImageUrls: (string | null)[];
     if (fromClient !== null) {
@@ -130,6 +133,7 @@ export async function POST(req: Request) {
           subject,
           grade,
           curriculumFramework: curriculumFramework || undefined,
+          slideContentByIndex,
         });
         slideImageUrls = slideImageUrls.map((url, idx) =>
           FAL_REQUIRED_DECK_INDICES.includes(idx as (typeof FAL_REQUIRED_DECK_INDICES)[number])
@@ -146,6 +150,7 @@ export async function POST(req: Request) {
           subject,
           grade,
           curriculumFramework: curriculumFramework || undefined,
+          slideContentByIndex,
         });
         slideImageUrls = Array.from({ length: deck.length }, (_, i) => generated.urls[i] ?? null);
       } catch (imgErr) {

@@ -1,19 +1,19 @@
 import { ApiError, createFalClient } from "@fal-ai/client";
 import {
   FAL_BALANCE_EXHAUSTED_USER_MESSAGE,
-  FAL_FLUX_MODEL_ID,
   formatFalError,
   getFalCredentials,
   isFalAccountLockedError,
 } from "@/lib/fal-flux-section-images";
 
-/** Same model as section FLUX images (reliable on fal.ai accounts with balance). */
-export const FAL_PPT_IMAGE_MODEL_ID = FAL_FLUX_MODEL_ID;
+/** FLUX dev endpoint with NAG negative-prompt support for reliable text/person exclusion. */
+export const FAL_PPT_IMAGE_MODEL_ID = "fal-ai/flux-general" as const;
 
 export type PptSlideImageMeta = {
   subject: string;
   grade: string;
   topic: string;
+  curriculumFramework?: string;
   /**
    * A short extract of the actual lesson content for this slide. Used to make the four
    * Fal-required slides contextually specific instead of generic stock-style artwork.
@@ -23,7 +23,7 @@ export type PptSlideImageMeta = {
 
 /** Mandatory wording for every fal PPT image (user requirement). */
 export const FAL_PPT_SAFETY_SUFFIX =
-  "no human figures, no faces, Islamic appropriate, school suitable";
+  "object-only scene, absolutely no people, no human figures, no faces, no silhouettes, no body parts, Islamic appropriate, school suitable";
 
 /**
  * Diffusion models render lettering as malformed pseudo-glyphs, and Arabic script - which is
@@ -31,10 +31,42 @@ export const FAL_PPT_SAFETY_SUFFIX =
  * meant to carry words, so every prompt says so explicitly.
  */
 export const FAL_PPT_NO_TEXT_SUFFIX =
-  "no written text, no letters, no words, no numbers, no captions, no labels, no signage, purely visual symbols and shapes only";
+  "text-free image using only unmarked objects, colors, and shapes";
 
 const LANDSCAPE_RECT =
-  "rectangular landscape 16:9 composition, full rectangular frame, no circular crop, no round frame, no vignette circle";
+  "full 16:9 landscape composition; main objects large and centered, occupying most of the frame; every object complete inside a 7 percent safe margin";
+
+const COMPLETE_SCENE =
+  "One coherent educational scene, not a template or unrelated icon collection";
+
+const FAL_PPT_NEGATIVE_PROMPT =
+  "people, person, child, student, teacher, man, woman, face, human figure, silhouette, hands, body parts, text, typography, letters, words, digits, numbers, equations, mathematical notation, question mark, checkmark, caption, label, logo, watermark, signage, gibberish, cropped object, cut-off object, partial object, object touching frame edge, unfinished object, blank board, blank poster, blank worksheet, empty placeholder panel, excessive empty space, circular crop, vignette";
+
+function subjectVisualObjects(subject: string, topic: string): string {
+  const haystack = `${subject} ${topic}`.toLowerCase();
+  if (/algebra|expression|equation|variable|coefficient|like term/.test(haystack)) {
+    return "color-coded algebra tiles, long rectangular variable tiles, small square unit tiles, matching tile groups, and a balance mat, all without printed symbols";
+  }
+  if (/fraction|decimal|percent|ratio|proportion/.test(haystack)) {
+    return "fraction circles, base-ten blocks, grouped counters, and measuring strips, all without printed symbols";
+  }
+  if (/math|mathematics|geometry|number/.test(haystack)) {
+    return "color-coded counting blocks, geometric manipulatives, grouped counters, and a balance scale, all without printed symbols";
+  }
+  if (/science|biology|chemistry|physics/.test(haystack)) {
+    return "complete laboratory apparatus, natural specimens, and a physical process model directly associated with the topic";
+  }
+  if (/english|language|literacy|reading|writing/.test(haystack)) {
+    return "closed books, story-sequence objects, picture cards with no markings, and concrete objects from the lesson theme";
+  }
+  if (/geography|history|social|humanities/.test(haystack)) {
+    return "a globe, map-shaped physical pieces without labels, timeline objects, and artifacts directly associated with the topic";
+  }
+  if (/computer|technology|computing|coding/.test(haystack)) {
+    return "complete electronic components, connected blocks, gears, and device parts with blank unmarked surfaces";
+  }
+  return "complete physical learning objects and concrete visual metaphors directly associated with the lesson topic";
+}
 
 /** Primary fal slots for the structured 13-slide deck. */
 export type LessonPptFluxSlot =
@@ -62,61 +94,78 @@ function sanitizePhrase(s: string): string {
   return s.replace(/\s+/g, " ").trim() || "lesson";
 }
 
+function sanitizeLessonContext(s: string): string {
+  return s
+    .replace(/["'`][^"'`]{1,180}["'`]/g, " ")
+    .replace(
+      /\b\d+(?:\.\d+)?[a-zA-Z]?(?:\s*[+\-=]\s*\d+(?:\.\d+)?[a-zA-Z]?)+\b/g,
+      " grouped lesson manipulatives ",
+    )
+    .replace(/\b(students?|teachers?|children?|people|partners?|friends?|class)\b/gi, "lesson")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+}
+
 export function buildLessonPptFluxPrompt(meta: PptSlideImageMeta, slot: LessonPptFluxSlot): string {
   const subject = sanitizePhrase(meta.subject);
   const grade = sanitizePhrase(meta.grade);
   const topic = sanitizePhrase(meta.topic);
+  const visualObjects = subjectVisualObjects(subject, topic);
 
   let core: string;
   switch (slot) {
     case "sdg_chapter":
-      core =
-        "SDG sustainable development goals colorful icons education flat design clean background no humans no faces";
+      core = `An open book, small globe, healthy plant, and ${visualObjects}, integrated to connect sustainable quality education with ${topic}`;
       break;
     case "main_teaching":
-      core = `Detailed educational diagram explaining the specific topic "${topic}" for ${grade} ${subject}. Flat design, colorful, clean white background`;
+      core = `A clear visual analogy for ${topic}: ${visualObjects}, arranged to demonstrate grouping, matching, and relationships`;
       break;
     case "differentiated_activity":
-      core = `Learning levels illustration with three distinct tiers for differentiated tasks about "${topic}" in ${subject}. Flat design, colorful, symbolic stepped layers`;
+      core = `Three side-by-side activity trays about ${topic}, each using ${visualObjects}: simple matching, standard sorting, and a richer challenge, distinguished by arrangement and quantity`;
       break;
     case "exit_ticket":
-      core =
-        "simple quiz assessment illustration with question marks checkboxes and pencil icons flat design teal color clean white background no humans no faces";
+      core = `An end-of-lesson assessment still life for ${topic}: one tray of correctly sorted ${visualObjects}, a closed pencil, and a plain completion token`;
       break;
     case "success_criteria":
-      core =
-        "achievement stars checkmarks trophy icons flat design colorful clean white background no humans no faces";
+      core = `A completed learning journey for ${topic}: three neatly finished groups of ${visualObjects} leading toward a small medal and star-shaped object`;
       break;
     case "title_slide_fal_fallback":
-      core = `colorful educational background related to ${subject} and ${topic}, flat design, no humans, no faces, Islamic appropriate`;
+      core = `A strong hero still life for ${topic} in ${subject}, centered on ${visualObjects}`;
       break;
     case "fallback_pexels_title":
-      core = `Abstract education hero background for "${topic}" in ${subject}: books, geometric shapes, soft gradient, classroom-ready banner, no text`;
+      core = `A strong hero still life for ${topic} in ${subject}, centered on ${visualObjects}`;
       break;
     case "fallback_pexels_starter":
-      core = `Curiosity and discovery learning illustration: lightbulbs, question marks, magnifying glass motifs for "${topic}". Flat vector educational poster`;
+      core = `A hands-on discovery starter for ${topic}: a magnifying glass, covered mystery object, and matching versus non-matching sets of ${visualObjects}`;
       break;
     case "fallback_pexels_uae":
-      core = `UAE and Dubai themed flat-design vector illustration symbolic of real-world links to "${topic}", geometric landmarks silhouette icons, modern Gulf aesthetic`;
+      core = /uae|united arab emirates|moe/i.test(meta.curriculumFramework ?? "")
+        ? `A practical UAE real-life application of ${topic}, using the concrete objects from the slide scenario plus ${visualObjects}, with one subtle UAE architectural motif in the background`
+        : `A practical everyday-life application of ${topic}, using the concrete objects from the slide scenario plus ${visualObjects}, organized into meaningful groups`;
       break;
     case "fallback_pexels_plenary":
-      core = `Reflection and classroom summary flat-design vector illustration for "${topic}" in ${subject}: journal icons, recap arrows, calm classroom palette`;
+      core = `A visual recap of ${topic}: ${visualObjects} neatly sorted into completed groups, with a small reflection mirror and closed notebook`;
       break;
     case "fallback_pexels_extended":
-      core = `Research homework and independent study flat-design vector illustration for "${topic}" in ${subject}: notebook, laptop, and study-desk icons`;
+      core = `An independent real-world investigation kit for ${topic}: a magnifying glass surrounded by concrete objects from the slide task and ${visualObjects}, arranged to compare and classify`;
       break;
     default:
-      core = `Professional educational illustration for "${topic}", flat design`;
+      core = `A professional educational illustration directly representing ${topic} in ${subject}`;
   }
 
-  const context = meta.lessonContentSnippet?.replace(/\s+/g, " ").trim().slice(0, 240);
-  const contextClause = context ? ` Visual ideas may draw on this lesson content: "${context}".` : "";
-  return `${core}.${contextClause} Age-appropriate for ${grade} students. ${FAL_PPT_SAFETY_SUFFIX}, ${FAL_PPT_NO_TEXT_SUFFIX}, ${LANDSCAPE_RECT}`;
+  const context = meta.lessonContentSnippet
+    ? sanitizeLessonContext(meta.lessonContentSnippet)
+    : "";
+  const contextClause = context
+    ? ` The scene must first and foremost depict this slide context: ${context}.`
+    : "";
+  return `${COMPLETE_SCENE}.${contextClause} Visual approach: ${core}. Modern flat editorial illustration, crisp shapes, cohesive palette, clean light background, age-appropriate for ${grade}. ${LANDSCAPE_RECT}. ${FAL_PPT_SAFETY_SUFFIX}. ${FAL_PPT_NO_TEXT_SUFFIX}.`;
 }
 
 const PPT_IMAGE_SIZE = "landscape_16_9" as const;
 const PPT_NUM_INFERENCE_STEPS = 28;
-const PPT_GUIDANCE_SCALE = 7.5;
+const PPT_GUIDANCE_SCALE = 3.5;
 
 const FAL_IMAGE_TIMEOUT_MS = 90_000;
 
@@ -238,6 +287,8 @@ export async function generateFalPptImageFromPrompt(
       num_images: 1,
       num_inference_steps: PPT_NUM_INFERENCE_STEPS,
       guidance_scale: PPT_GUIDANCE_SCALE,
+      negative_prompt: FAL_PPT_NEGATIVE_PROMPT,
+      nag_scale: 4,
       enable_safety_checker: true,
       output_format: "png" as const,
     };
