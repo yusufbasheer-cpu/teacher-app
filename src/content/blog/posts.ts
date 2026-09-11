@@ -749,6 +749,163 @@ export const posts: BlogPost[] = [
       },
     ],
   },
+  {
+    slug: "layah-pedagogy-first-ai-teaching-assistant",
+    title: "Layah Is Not an AI Content Generator — It's a Pedagogy-First Teaching Assistant",
+    excerpt:
+      "Most AI tools for teachers generate generic text. Layah generates classroom-ready lesson plans built on real pedagogical frameworks — teaching strategies, AFL tools, differentiation, and curriculum alignment. Here's the difference, and why it matters.",
+    author: "Mohammed Yusuf",
+    publishedAt: "2026-09-10",
+    readTime: 7,
+    coverGradient: "linear-gradient(135deg, var(--text) 0%, #c026d3 100%)",
+    content: [
+      {
+        type: "p",
+        text: "Type \"AI lesson plan generator\" into any search engine and you'll find dozens of tools that do the same basic thing: take a topic, run it through a language model, and hand back a wall of generic text formatted to look like a lesson plan.",
+      },
+      {
+        type: "p",
+        text: "That is not what Layah does. And the difference is not cosmetic — it's structural.",
+      },
+      {
+        type: "p",
+        text: "Layah is an AI-powered teaching assistant built around pedagogy, not just text generation. Every lesson plan, presentation, worksheet, and assessment Layah produces is shaped by established teaching frameworks — not by an AI simply guessing what a lesson plan \"looks like.\"",
+      },
+      {
+        type: "h2",
+        text: "The Problem With Generic AI Content Generators for Teachers",
+      },
+      {
+        type: "p",
+        text: "Most AI writing tools, including many marketed specifically to educators, share the same weakness: they treat a lesson plan like any other piece of content — a blog post, an email, a product description. Feed in a topic, get back paragraphs.",
+      },
+      {
+        type: "p",
+        text: "The result often reads well but teaches badly. It:",
+      },
+      {
+        type: "ul",
+        items: [
+          "Ignores the difference between a learning objective and a learning outcome",
+          "Offers no real differentiation for higher, middle, and lower achievers",
+          "Has no formative assessment strategy baked into the lesson flow",
+          "Isn't aligned to any specific curriculum framework or inspection standard",
+          "Applies no actual teaching methodology — it's just information, not instruction",
+        ],
+      },
+      {
+        type: "p",
+        text: "For a working teacher, this isn't a minor inconvenience. A lesson plan without pedagogical structure is not a lesson plan — it's a document that resembles one.",
+      },
+      {
+        type: "h2",
+        text: "What \"Pedagogy-First\" Actually Means",
+      },
+      {
+        type: "p",
+        text: "Pedagogy is the method and practice of teaching — not just what is taught, but how students learn it, engage with it, and are assessed on it. A pedagogy-first AI tool doesn't just generate content about a topic. It structures that content the way an experienced teacher would structure a lesson.",
+      },
+      {
+        type: "p",
+        text: "Layah is built on this principle from the ground up. Here is what that looks like in practice.",
+      },
+      {
+        type: "h2",
+        text: "1. Ten Real Teaching Strategies, Not Just One Template",
+      },
+      {
+        type: "p",
+        text: "Layah lets teachers choose from ten established teaching methodologies, and applies them consistently across the entire lesson — not just as a label at the top of the page:",
+      },
+      {
+        type: "ul",
+        items: [
+          "Project-Based Learning — students produce a real output over the course of the lesson",
+          "Problem-Based Learning — the lesson is anchored to solving an authentic problem",
+          "Inquiry-Based Learning — the lesson is driven by student questioning and investigation",
+          "Design Thinking — empathize, define, ideate, prototype, test",
+          "Case Study-Based Learning — real scenarios anchor the content",
+          "Experiential Learning — hands-on doing and reflection",
+          "Cooperative and Collaborative Learning — structured group learning toward shared goals",
+          "Flipped Classroom — content delivery and application are separated intentionally",
+          "Challenge-Based Learning — meaningful, open-ended challenges drive engagement",
+          "Discovery Learning — guided exploration leads students to their own understanding",
+        ],
+      },
+      {
+        type: "p",
+        text: "When a teacher selects Inquiry-Based Learning, the starter activity poses a genuine question, the main phase is structured around investigation, and the plenary asks students to reflect on what they discovered — not just what they were told. This is pedagogy applied consistently through an entire lesson, not a single AI-generated paragraph with a strategy name pasted on top.",
+      },
+      {
+        type: "h2",
+        text: "2. Assessment for Learning (AFL) Built Into Every Lesson",
+      },
+      {
+        type: "p",
+        text: "Formative assessment — checking for understanding during a lesson, not just at the end — is one of the most well-evidenced practices in effective teaching. Layah includes 87 distinct AFL tools, spanning starter activities, mid-lesson checks, differentiated tasks, and plenary reflection: hinge questions, exit tickets, KWL charts, Think-Pair-Share, Two Stars and a Wish, and dozens more.",
+      },
+      {
+        type: "p",
+        text: "These aren't offered as a separate menu disconnected from the lesson. They are woven directly into the starter, main phase, differentiation, and plenary sections of every generated lesson — because assessment that happens throughout a lesson is more effective than assessment that happens only at the end of it.",
+      },
+      {
+        type: "h2",
+        text: "3. Differentiation as a Structural Requirement, Not an Afterthought",
+      },
+      {
+        type: "p",
+        text: "Every Layah-generated lesson automatically includes three tiers of differentiated activity — for higher, middle, and lower achievers — built around the same learning objective but scaffolded appropriately for each group. This reflects a core principle of pedagogy: equity in education is not giving every student the same task, it's giving every student what they need to reach the same goal.",
+      },
+      {
+        type: "h2",
+        text: "4. Curriculum and Inspection Alignment",
+      },
+      {
+        type: "p",
+        text: "A pedagogically sound lesson also has to exist inside a real institutional context. Layah generates lesson plans aligned to specific curriculum frameworks — including UAE MOE, British, CBSE, and American systems — and structures output to be ready for formal school inspection processes such as KHDA and SPEA in the UAE.",
+      },
+      {
+        type: "h2",
+        text: "5. A Complete, Connected Output — Not a Single Document",
+      },
+      {
+        type: "p",
+        text: "Because Layah treats a lesson as a pedagogical unit rather than a single piece of text, one input generates a fully connected set of resources: a structured lesson plan, a presentation with matching slide structure, differentiated worksheets, and a question paper with a full mark scheme — all built from the same learning objectives, so nothing is inconsistent between what's taught and what's assessed.",
+      },
+      {
+        type: "h2",
+        text: "Why This Distinction Matters for Teachers Evaluating AI Tools",
+      },
+      {
+        type: "p",
+        text: "If you are a teacher, Head of Department, or school leader evaluating AI tools for lesson planning, the question worth asking is not \"does it generate text quickly?\" Nearly every AI tool can do that.",
+      },
+      {
+        type: "p",
+        text: "The real question is: does it understand how people learn?",
+      },
+      {
+        type: "p",
+        text: "A tool that generates fast, generic content will still leave a teacher doing the real pedagogical work — deciding how to differentiate, how to assess, how to structure the lesson for actual learning. A pedagogy-first tool does that thinking as part of the generation process, because the structure itself is built from teaching methodology, not just language prediction.",
+      },
+      {
+        type: "h2",
+        text: "Built by a Teacher, for Teachers",
+      },
+      {
+        type: "p",
+        text: "Layah was created by a working teacher who experienced this gap directly — watching colleagues spend hours each week on planning, often using AI tools that produced content quickly but pedagogically shallow. Layah was built specifically to close that gap: to give teachers back their time without asking them to sacrifice the instructional quality of what they teach.",
+      },
+      {
+        type: "quote",
+        text: "Does it understand how people learn? That's the real question worth asking when evaluating an AI lesson planning tool.",
+      },
+      {
+        type: "p",
+        text: "Layah generates complete, pedagogically structured lessons — lesson plan, presentation, differentiated worksheets, and assessment — from a single topic, in under five minutes. It's free to start, with no credit card required.",
+      },
+    ],
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
