@@ -4,6 +4,7 @@ import posthog from "posthog-js";
 import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, Suspense } from "react";
+import { shouldSendTelemetry } from "@/lib/telemetry-env";
 
 function PostHogPageView() {
   const pathname = usePathname();
@@ -23,7 +24,11 @@ function PostHogPageView() {
   return null;
 }
 
-if (typeof window !== "undefined") {
+// Production only. NEXT_PUBLIC_POSTHOG_KEY is bound to Preview as well as
+// Production, so staging used to report into the same project: every click
+// while testing a deploy counted as a teacher's pageview. Nothing distinguished
+// them afterwards, because the events were identical in shape.
+if (typeof window !== "undefined" && shouldSendTelemetry()) {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
     // Must stay the relative /ingest path (see the rewrite in next.config.ts),
     // not NEXT_PUBLIC_POSTHOG_HOST - pointing at us.i.posthog.com directly is
@@ -33,7 +38,6 @@ if (typeof window !== "undefined") {
     capture_pageview: false,
     capture_pageleave: true,
   });
-  console.log("PostHog initialized");
 }
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
