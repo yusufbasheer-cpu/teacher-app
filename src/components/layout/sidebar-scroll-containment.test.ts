@@ -42,6 +42,17 @@ function outerShellClassName(source: string): string {
   return last[1]!;
 }
 
+/** Every element (not just `<div>`, and whatever the attribute order) whose class list
+ * opts into vertical scrolling. Matching only `<div className="..."` missed the real
+ * scroll column in AppFrame, which carries `ref={scrollRef}` before its className. */
+function scrollingElementClassNames(source: string): string[] {
+  const out: string[] = [];
+  for (const [, cls] of source.matchAll(/<[a-z]+\b[^>]*?className="([^"]*overflow-y-auto[^"]*)"/g)) {
+    out.push(cls!);
+  }
+  return out;
+}
+
 describe.each([
   ["AppFrame (app rail, used by every authenticated route except /super-admin)", "../app/app-frame.tsx"],
   ["AdminShell (super-admin console)", "../admin/ui/admin-shell.tsx"],
@@ -50,22 +61,27 @@ describe.each([
 
   it("caps the outer row to the viewport instead of growing with content", () => {
     const outer = outerShellClassName(source);
-    expect(outer).toContain("h-screen");
+    // `h-dvh` or the older `h-screen` — either caps the row at one viewport. (dvh is the
+    // better unit on mobile, where `screen`/100vh ignores the browser's collapsing chrome.)
+    expect(outer).toMatch(/\bh-(dvh|screen)\b/);
     expect(outer).toContain("overflow-hidden");
-    // The specific old bug: `min-h-screen` lets the row grow past 100vh, which is exactly what
-    // let the whole page — sidebar included — scroll at the document level.
-    expect(outer).not.toContain("min-h-screen");
+    // The specific old bug: a `min-h-*` cap lets the row grow past one viewport, which is
+    // exactly what let the whole page — sidebar included — scroll at the document level.
+    expect(outer).not.toMatch(/\bmin-h-(dvh|screen)\b/);
   });
 
   it("gives the main column its own scroll region, separate from the sidebar", () => {
-    const scrollDivs = [...source.matchAll(/<div className="([^"]*overflow-y-auto[^"]*)"/g)];
-    expect(scrollDivs.length).toBeGreaterThanOrEqual(1);
-    // None of the scrolling divs should also be the sidebar itself — the sidebar's own overflow
-    // (its internal nav list, when the item list is taller than the viewport) is deliberately
-    // separate and lives on a <nav>, not the <aside>.
-    for (const [, cls] of scrollDivs) {
+    const scrollers = scrollingElementClassNames(source);
+    expect(scrollers.length).toBeGreaterThanOrEqual(1);
+    // No scrolling element is the sidebar itself — the sidebar's own overflow (its internal
+    // nav list, when the item list is taller than the viewport) is deliberately separate and
+    // lives on a <nav>, not the <aside>.
+    for (const cls of scrollers) {
       expect(cls).not.toContain("shrink-0"); // the sidebar's own root carries shrink-0; the main column does not
     }
+    // Belt and braces, stated directly: the <aside> element itself is never the scroller.
+    const asideTag = /<aside\b[^>]*>/.exec(source)?.[0] ?? "";
+    expect(asideTag).not.toContain("overflow-y-auto");
   });
 
   it("keeps the sidebar from shrinking or growing with the row's content", () => {

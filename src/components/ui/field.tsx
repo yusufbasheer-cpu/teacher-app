@@ -23,8 +23,8 @@ import { cn } from "@/lib/utils";
 
 const CONTROL = [
   "w-full min-w-0 rounded-md border border-line bg-surface text-ink",
-  "px-2.5 text-[13px] leading-none",
-  "transition-[border-color,box-shadow] duration-[110ms] ease-[cubic-bezier(0.2,0,0,1)]",
+  "px-3 text-base sm:text-sm leading-normal",
+  "transition-[border-color,box-shadow] duration-[140ms] ease-[var(--ease)]",
   "placeholder:text-disabled",
   "hover:border-line-strong",
   "focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/25",
@@ -75,7 +75,7 @@ export function Field({
     <FieldCtx.Provider value={{ id: fieldId, describedBy, invalid: Boolean(error) }}>
       <div className={cn("min-w-0", className)}>
         <div className="mb-1.5 flex items-baseline justify-between gap-2">
-          <label htmlFor={fieldId} className="text-[12px] font-medium text-ink">
+          <label htmlFor={fieldId} className="text-sm font-medium text-ink">
             {label}
             {optional ? <span className="ml-1.5 font-normal text-faint">Optional</span> : null}
           </label>
@@ -106,7 +106,7 @@ export function TextInput({
       id={props.id ?? f?.id}
       aria-describedby={props["aria-describedby"] ?? f?.describedBy}
       aria-invalid={props["aria-invalid"] ?? f?.invalid}
-      className={cn(CONTROL, "h-8", className)}
+      className={cn(CONTROL, "h-11", className)}
       {...props}
     />
   );
@@ -124,7 +124,7 @@ export function TextArea({
       rows={rows}
       aria-describedby={props["aria-describedby"] ?? f?.describedBy}
       aria-invalid={props["aria-invalid"] ?? f?.invalid}
-      className={cn(CONTROL, "resize-y py-2 leading-relaxed", className)}
+      className={cn(CONTROL, "resize-y py-3 leading-relaxed", className)}
       {...props}
     />
   );
@@ -148,7 +148,7 @@ export function Select({
         id={props.id ?? f?.id}
         aria-describedby={props["aria-describedby"] ?? f?.describedBy}
         aria-invalid={props["aria-invalid"] ?? f?.invalid}
-        className={cn(CONTROL, "h-8 cursor-pointer appearance-none pr-8", className)}
+        className={cn(CONTROL, "h-11 cursor-pointer appearance-none pr-8", className)}
         {...props}
       >
         {children}
@@ -174,8 +174,8 @@ export function CheckField({
     <label
       htmlFor={id}
       className={cn(
-        "flex cursor-pointer items-start gap-2.5 rounded-md px-2 py-1.5 -mx-2",
-        "transition-colors duration-[110ms] hover:bg-hover",
+        "flex cursor-pointer items-start gap-3 rounded-md px-2 py-2.5 -mx-2",
+        "transition-colors duration-[140ms] hover:bg-hover",
         props.disabled && "cursor-not-allowed opacity-50 hover:bg-transparent",
         className,
       )}
@@ -193,7 +193,7 @@ export function CheckField({
         />
         <span
           className={cn(
-            "pointer-events-none flex size-4 items-center justify-center rounded-xs border transition-[background-color,border-color] duration-[110ms]",
+            "pointer-events-none flex size-4 items-center justify-center rounded-xs border transition-[background-color,border-color] duration-[140ms]",
             props.checked
               ? "border-brand bg-brand"
               : "border-line-strong bg-surface",
@@ -205,7 +205,7 @@ export function CheckField({
         </span>
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[13px] leading-tight text-ink">{label}</span>
+        <span className="block text-sm leading-tight text-ink">{label}</span>
         {description ? (
           <span className="mt-0.5 block text-[12px] leading-snug text-faint">{description}</span>
         ) : null}
@@ -235,8 +235,8 @@ export function ChoiceCard({
       type="button"
       aria-pressed={selected}
       className={cn(
-        "group flex flex-col rounded-md border p-2.5 text-left",
-        "transition-[border-color,background-color] duration-[110ms]",
+        "group flex flex-col rounded-lg border p-4 text-left disabled:cursor-not-allowed disabled:opacity-50",
+        "transition-[border-color,background-color] duration-[140ms]",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
         selected
           ? "border-brand bg-brand-subtle"
@@ -247,14 +247,14 @@ export function ChoiceCard({
     >
       <span
         className={cn(
-          "text-[13px] font-medium leading-tight",
+          "text-sm font-medium leading-tight",
           selected ? "text-brand-text" : "text-ink",
         )}
       >
         {title}
       </span>
       {description ? (
-        <span className="mt-1 text-[12px] leading-snug text-faint">{description}</span>
+        <span className="mt-1.5 text-[13px] leading-snug text-faint">{description}</span>
       ) : null}
     </button>
   );

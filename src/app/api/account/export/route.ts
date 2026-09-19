@@ -71,16 +71,26 @@ export async function GET(req: Request) {
 
   const client = getSupabaseForUser(auth.accessToken);
 
-  const [authUser, usageResult, lessonPlansResult] = await Promise.all([
+  const [authUser, usageResult, lessonPlansResult, savedLessonsResult] = await Promise.all([
     client.auth.getUser(),
     client
       .from("user_usage")
       .select("plan_type, generations_used, generations_limit, reset_date, created_at")
       .eq("user_id", auth.userId)
       .maybeSingle(),
+    // `lesson_plans` holds only legacy rows: generated lessons have been written to
+    // `saved_lessons` since the auto-save change, and that is the table My Lessons
+    // reads. Exporting just this one returned an empty file for every current user,
+    // so both are exported. `select("*")` because `saved_lessons.chapter` does not
+    // exist on every deployment (the generator has the same fallback on insert).
     client
       .from("lesson_plans")
       .select("id, subject, grade, curriculum_type, curriculum_framework, topic, learning_objectives, lesson_plan, created_at")
+      .eq("user_id", auth.userId)
+      .order("created_at", { ascending: false }),
+    client
+      .from("saved_lessons")
+      .select("*")
       .eq("user_id", auth.userId)
       .order("created_at", { ascending: false }),
   ]);
@@ -88,6 +98,7 @@ export async function GET(req: Request) {
   const user = authUser.data.user;
   const usage = usageResult.data;
   const lessonPlans = lessonPlansResult.data ?? [];
+  const savedLessons = (savedLessonsResult.data ?? []) as Record<string, unknown>[];
 
   const exportData = {
     exported_at: new Date().toISOString(),
@@ -106,19 +117,35 @@ export async function GET(req: Request) {
           member_since: usage.created_at,
         }
       : null,
-    lesson_plans: lessonPlans.map((lp) => ({
-      id: lp.id,
-      subject: lp.subject,
-      grade: lp.grade,
-      curriculum_type: lp.curriculum_type,
-      curriculum_framework: lp.curriculum_framework,
-      topic: lp.topic,
-      learning_objectives: lp.learning_objectives,
-      content: lp.lesson_plan,
-      created_at: lp.created_at,
-    })),
+    // One combined list under the existing key, so anything already reading this
+    // file keeps working and the user gets every lesson they can see in the app.
+    lesson_plans: [
+      ...lessonPlans.map((lp) => ({
+        id: lp.id,
+        subject: lp.subject,
+        grade: lp.grade,
+        curriculum_type: lp.curriculum_type,
+        curriculum_framework: lp.curriculum_framework,
+        topic: lp.topic,
+        learning_objectives: lp.learning_objectives,
+        content: lp.lesson_plan,
+        created_at: lp.created_at,
+      })),
+      ...savedLessons.map((sl) => ({
+        id: sl.id,
+        subject: sl.subject,
+        grade: sl.grade,
+        curriculum_type: sl.curriculum ?? null,
+        curriculum_framework: null,
+        chapter: sl.chapter ?? null,
+        topic: sl.topic,
+        learning_objectives: sl.learning_objectives,
+        content: sl.lesson_content,
+        created_at: sl.created_at,
+      })),
+    ],
     summary: {
-      total_lesson_plans: lessonPlans.length,
+      total_lesson_plans: lessonPlans.length + savedLessons.length,
     },
   };
 

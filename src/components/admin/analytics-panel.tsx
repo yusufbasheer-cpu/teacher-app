@@ -54,7 +54,7 @@ function BarChart({ data, color }: { data: Record<string, number>; color: string
           );
         })}
       </svg>
-      <div className={`mt-1 flex justify-between text-[10px] ${FONT_MONO}`} style={{ color: INK_FAINT }}>
+      <div className={`mt-1 flex justify-between text-xs ${FONT_MONO}`} style={{ color: INK_FAINT }}>
         <span>{entries[0][0]}</span>
         <span>{entries[entries.length - 1][0]}</span>
       </div>
@@ -115,7 +115,7 @@ export function AnalyticsPanel() {
         <p className="mb-3 text-sm font-semibold" style={{ color: INK }}>Feature Usage — last 90 days ({data.totalGenerations90d} total)</p>
         <div className="grid gap-3 sm:grid-cols-3">
           {Object.entries(data.featureBreakdown90d).map(([type, count]) => (
-            <div key={type} className="rounded-lg px-3 py-2.5" style={{ background: "#FAFAF8" }}>
+            <div key={type} className="rounded-lg px-3 py-2.5" style={{ background: "var(--surface-sunken)" }}>
               <p className="text-xs" style={{ color: INK_MUTED }}>{type.replace(/_/g, " ")}</p>
               <p className={`text-xl font-semibold ${FONT_MONO}`} style={{ color: ACCENT }}>{count}</p>
             </div>
@@ -130,7 +130,7 @@ export function AnalyticsPanel() {
         ) : (
           <div className="max-h-52 space-y-1.5 overflow-y-auto">
             {data.recentErrors.map((e) => (
-              <div key={e.id} className="flex flex-wrap gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: "#FAFAF8" }}>
+              <div key={e.id} className="flex flex-wrap gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: "var(--surface-sunken)" }}>
                 <span className="font-medium" style={{ color: INK }}>{e.type}</span>
                 <span style={{ color: DANGER }}>{e.error ?? "—"}</span>
                 <span className="ml-auto" style={{ color: INK_FAINT }}>{formatAdminDateTime(e.createdAt)}</span>

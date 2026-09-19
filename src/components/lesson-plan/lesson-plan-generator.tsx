@@ -156,8 +156,8 @@ function toAflPayload(map: Record<AflPhaseId, string[]>) {
 /* Native file inputs can't be restyled wholesale, so the button half is
    styled to match the Button primitive and the rest kept quiet. */
 const FILE_INPUT_CLASS =
-  "block w-full text-[12px] text-muted file:mr-2.5 file:h-7 file:cursor-pointer file:rounded-md " +
-  "file:border file:border-line file:bg-surface file:px-2.5 file:text-[12px] file:font-medium " +
+  "block w-full text-sm text-muted file:mr-2.5 file:h-7 file:cursor-pointer file:rounded-md " +
+  "file:border file:border-line file:bg-surface file:px-2.5 file:text-sm file:font-medium " +
   "file:text-ink hover:file:bg-hover disabled:opacity-60";
 
 export function LessonPlanGenerator() {
@@ -179,10 +179,10 @@ export function LessonPlanGenerator() {
   const [sectionImages, setSectionImages] = useState<SectionImageMap | null>(null);
   /** Pre-built PPT slide images (13 URLs); generated with lesson when PPT section is selected. */
   const [pptSlideImageUrls, setPptSlideImageUrls] = useState<(string | null)[] | null>(null);
-  const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savedLessonId, setSavedLessonId] = useState<string | null>(null);
   const [error, setError] = useErrorToast();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -288,7 +288,6 @@ export function LessonPlanGenerator() {
     setPptSlideImageUrls(
       loadedPpt && loadedPpt.length >= STRUCTURED_LESSON_DECK_SLIDE_COUNT ? loadedPpt : null,
     );
-    setActivePlanId(plan.id);
     setUploadedChunks([]);
     setUploadInfo(null);
     setUploadWarnings([]);
@@ -354,7 +353,6 @@ export function LessonPlanGenerator() {
       const nextUser = session?.user ?? null;
       setUser(nextUser);
       if (!nextUser) {
-        setActivePlanId(null);
         setLessonPlan(null);
         setSectionImages(null);
         setPptSlideImageUrls(null);
@@ -521,6 +519,12 @@ export function LessonPlanGenerator() {
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (composerStep === "details") {
+      if (form.topic.trim() && form.learningObjectives.trim()) setComposerStep("outputs");
+      else setError("Add a topic and learning objectives to continue.");
+      return;
+    }
+    setSavedLessonId(null);
     setError(null);
     setSuccessMessage(null);
     setParseNotice(null);
@@ -528,7 +532,6 @@ export function LessonPlanGenerator() {
     setLessonPlan(null);
     setSectionImages(null);
     setPptSlideImageUrls(null);
-    setActivePlanId(null);
 
     if (!form.topic.trim() || !form.learningObjectives.trim()) {
       setComposerStep("details");
@@ -638,47 +641,31 @@ export function LessonPlanGenerator() {
         setPptSlideImageUrls(ppt);
         await syncUsageAfterGeneration(data.usage);
 
-        // ── Auto-save to saved_lessons ──────────────────────────────────────
-        console.log("Generation complete - attempting to save lesson plan");
-        const saveLessonPlan = async () => {
-          const { data: { user: currentUser } } = await supabase.auth.getUser();
-          if (!currentUser) {
-            console.warn("[auto-save] Skipped — no authenticated user");
-            return;
-          }
+        // The component renders the auth gate when there is no user, so this is
+        // only a type narrow for the auto-save payload below.
+        if (!user) return;
+
+        setSaving(true);
+        const savedPlan = mergePptSlideImageUrlsIntoPlan(mergeSectionImagesMeta(stripped.planTextOnly, stripped.sectionImages), ppt);
+        try {
           const basePayload = {
-            user_id: currentUser.id,
-            subject: form.subject,
-            grade: form.grade,
-            topic: form.topic.trim(),
-            curriculum: form.curriculumType,
-            learning_objectives: form.learningObjectives,
-            lesson_content: JSON.stringify(stripped.planTextOnly),
-            ppt_content: stripped.planTextOnly["PPT Slide Content"] ?? "",
-            created_at: new Date().toISOString(),
+            user_id: user.id, subject: form.subject, grade: form.grade, topic: form.topic.trim(),
+            curriculum: form.curriculumType, learning_objectives: form.learningObjectives,
+            lesson_content: JSON.stringify(savedPlan), ppt_content: stripped.planTextOnly["PPT Slide Content"] ?? "",
           };
-
-          let { error: saveError } = await supabase
-            .from("saved_lessons")
-            .insert({ ...basePayload, chapter: form.chapter.trim() });
-
-          // saved_lessons.chapter is a newly added column (migration
-          // 20260825140000) — until it's run on the live DB, fall back to
-          // saving without it rather than losing the auto-save entirely.
-          if (saveError && /column .*chapter.* does not exist|could not find.*chapter/i.test(saveError.message)) {
-            console.warn("[auto-save] 'chapter' column not found yet — saving without it. Run migration 20260825140000_saved_lessons_chapter.sql.");
-            ({ error: saveError } = await supabase.from("saved_lessons").insert(basePayload));
+          let saved = await supabase.from("saved_lessons").insert({ ...basePayload, chapter: form.chapter.trim() }).select("id").single();
+          if (saved.error && /column .*chapter.* does not exist|could not find.*chapter/i.test(saved.error.message)) {
+            saved = await supabase.from("saved_lessons").insert(basePayload).select("id").single();
           }
-
-          if (saveError) {
-            console.error("Save failed:", saveError.message, saveError);
-          } else {
-            console.log("Lesson saved successfully");
-            setSuccessMessage("Lesson plan saved to My Lessons");
-            setTimeout(() => setSuccessMessage(null), 4000);
-          }
-        };
-        void saveLessonPlan();
+          if (saved.error) throw saved.error;
+          setSavedLessonId((saved.data as { id: string }).id);
+          setSuccessMessage("Saved to My lessons.");
+        } catch (saveError) {
+          console.error("Lesson auto-save failed", saveError);
+          setError("Your lesson is ready, but could not be saved. Use Save to my lessons to try again.");
+        } finally {
+          setSaving(false);
+        }
       };
 
       if (response.ok && pptSelected && contentType.includes("application/x-ndjson")) {
@@ -792,51 +779,26 @@ export function LessonPlanGenerator() {
   }, [loading]);
 
   const onSaveLessonPlan = async () => {
-    if (!user || !lessonPlan) return;
+    if (!user || !lessonPlan || saving || savedLessonId) return;
     setError(null);
-    setSuccessMessage(null);
     setSaving(true);
-
     try {
-      const payload = {
-        user_id: user.id,
-        curriculum_type: form.curriculumType,
-        curriculum_framework: form.curriculumFramework.trim() || "",
-        subject: form.subject,
-        grade: form.grade,
-        chapter: form.chapter.trim(),
-        topic: form.topic.trim(),
-        learning_objectives: form.learningObjectives,
-        lesson_plan: mergePptSlideImageUrlsIntoPlan(
-          mergeSectionImagesMeta(lessonPlan, sectionImages),
-          pptSlideImageUrls,
-        ),
+      const basePayload = {
+        user_id: user.id, subject: form.subject, grade: form.grade, topic: form.topic.trim(),
+        curriculum: form.curriculumType, learning_objectives: form.learningObjectives,
+        lesson_content: JSON.stringify(mergePptSlideImageUrlsIntoPlan(mergeSectionImagesMeta(lessonPlan, sectionImages), pptSlideImageUrls)),
+        ppt_content: lessonPlan["PPT Slide Content"] ?? "",
       };
-
-      if (activePlanId) {
-        const { error: updateError } = await supabase
-          .from("lesson_plans")
-          .update(payload)
-          .eq("id", activePlanId)
-          .eq("user_id", user.id);
-        if (updateError) throw new Error(updateError.message);
-        setSuccessMessage("Lesson plan updated successfully.");
-      } else {
-        const { data, error: insertError } = await supabase
-          .from("lesson_plans")
-          .insert(payload)
-          .select("id")
-          .single();
-        if (insertError) throw new Error(insertError.message);
-        const newId = (data as { id: string }).id;
-        setActivePlanId(newId);
-        setSuccessMessage("Lesson plan saved successfully.");
+      let saved = await supabase.from("saved_lessons").insert({ ...basePayload, chapter: form.chapter.trim() }).select("id").single();
+      if (saved.error && /column .*chapter.* does not exist|could not find.*chapter/i.test(saved.error.message)) {
+        saved = await supabase.from("saved_lessons").insert(basePayload).select("id").single();
       }
+      if (saved.error) throw saved.error;
+      setSavedLessonId((saved.data as { id: string }).id);
+      setSuccessMessage("Saved to My lessons.");
     } catch (err) {
       setError(toUserFacingError(err, "lesson-plan-save"));
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const onSendToDifferentiatedPack = () => {
@@ -865,7 +827,7 @@ export function LessonPlanGenerator() {
   // Skeleton in the composer's own shape, so nothing jumps when it resolves.
   if (checkingAuth) {
     return (
-      <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+      <div className="workspace-page" aria-hidden>
         <Skeleton className="h-6 w-40" />
         <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Skeleton className="h-[420px] rounded-lg" />
@@ -919,38 +881,35 @@ export function LessonPlanGenerator() {
   return (
     <div className="w-full" ref={wizardRef}>
       {!lessonPlan ? (
-        <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8">
+        <div className="workspace-page">
           <PageTitle
-            title="New lesson"
-            description="One generation produces the whole package — plan, slides, worksheet, homework, assessment and teacher notes."
+            title="Create a lesson"
+            description="Choose the materials your class needs. One generation creates your package — plan, slides, worksheet, homework, assessment and teacher notes."
           />
 
-          {/* Single screen, not a three-step wizard. The old flow made a
-              teacher click through three screens for what is six required
-              fields, and buried Generate — the product's primary action — on
-              the last of them. Here the inputs sit on the left, the output
-              spec and the Generate button stay in view on the right, and the
-              two optional groups are collapsed rather than mandatory stops. */}
           <form
             ref={formRef}
             onSubmit={onSubmit}
             aria-busy={loading}
             noValidate
-            className={
-              composerStep === "details"
-                ? "mt-6 mx-auto max-w-[780px]"
-                : "mt-6 mx-auto max-w-[520px]"
-            }
+            className="mt-7 grid items-start gap-6 lg:grid-cols-[230px_minmax(0,1fr)]"
           >
+            <aside className="space-y-4 lg:sticky lg:top-24">
+              <nav aria-label="Lesson setup" className="rounded-xl border border-line bg-surface p-2">
+                <button type="button" onClick={() => setComposerStep("details")} aria-current={composerStep === "details" ? "step" : undefined} className={`flex w-full gap-3 rounded-lg p-3 text-left text-sm ${composerStep === "details" ? "bg-brand-subtle text-brand-text" : "text-muted"}`}><span className="font-semibold">1</span><span><span className="block font-semibold">Lesson details</span><span className="mt-1 block text-xs">Class, topic, and teaching approach</span></span></button>
+                <button type="button" disabled={!detailsComplete} onClick={() => setComposerStep("outputs")} aria-current={composerStep === "outputs" ? "step" : undefined} className={`flex w-full gap-3 rounded-lg p-3 text-left text-sm disabled:opacity-50 ${composerStep === "outputs" ? "bg-brand-subtle text-brand-text" : "text-muted"}`}><span className="font-semibold">2</span><span><span className="block font-semibold">Choose materials</span><span className="mt-1 block text-xs">Review and generate your package</span></span></button>
+              </nav>
+              <div className="rounded-xl border border-line bg-surface p-4"><p className="text-sm font-semibold text-ink">Your class</p><p className="mt-2 text-sm text-muted">{form.subject} / {form.grade}</p><p className="mt-1 text-sm text-faint">{form.curriculumType}</p>{form.topic.trim() ? <p className="mt-4 border-t border-line-subtle pt-3 text-sm text-ink">{form.topic}</p> : null}</div>
+            </aside>
             {composerStep === "details" ? (
-            <RuleRail className="min-w-0 space-y-5">
+            <RuleRail className="min-w-0 space-y-7">
               {/* ── 1. Class ─────────────────────────────────────────── */}
               <RuleItem num={1} state={classComplete ? "done" : "active"}>
-                <h2 className="text-[13px] font-semibold text-ink">Class</h2>
-                <p className="mt-0.5 text-[12px] text-faint">Who the lesson is for.</p>
+                <h2 className="section-heading">Class</h2>
+                <p className="mt-0.5 text-sm text-faint">Who the lesson is for.</p>
 
-                <Panel className="mt-2.5 p-3.5">
-                  <div className="grid gap-3 sm:grid-cols-2">
+                <Panel className="mt-4 p-5 sm:p-6">
+                  <div className="grid gap-5 sm:grid-cols-2">
                     <Field label="Curriculum" className="sm:col-span-2">
                       <Select
                         value={form.curriculumType}
@@ -1110,8 +1069,8 @@ export function LessonPlanGenerator() {
 
               {/* ── 2. Source material ───────────────────────────────── */}
               <RuleItem num={2} state={hasSource ? "done" : "idle"}>
-                <h2 className="text-[13px] font-semibold text-ink">Source material</h2>
-                <p className="mt-0.5 text-[12px] text-faint">
+                <h2 className="section-heading">Source material</h2>
+                <p className="mt-0.5 text-sm text-faint">
                   Optional. Give Layah your textbook pages or notes and it generates from those
                   instead of from the topic alone.
                 </p>
@@ -1135,7 +1094,7 @@ export function LessonPlanGenerator() {
                     defaultOpen={hasSource}
                   >
                     <div className="space-y-3.5">
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-5 sm:grid-cols-2">
                         <Field label="Upload PDF" optional>
                           <input
                             ref={pdfInputRef}
@@ -1209,7 +1168,7 @@ export function LessonPlanGenerator() {
                       {uploadedChunks.length > 0 ? (
                         <div>
                           <div className="mb-1.5 flex items-center justify-between gap-2">
-                            <p className="text-[12px] font-medium text-ink">
+                            <p className="text-sm font-medium text-ink">
                               {uploadedChunks.length} file
                               {uploadedChunks.length === 1 ? "" : "s"} ·{" "}
                               <span className="font-mono tabular-nums text-faint">
@@ -1233,10 +1192,10 @@ export function LessonPlanGenerator() {
                                 className="flex items-center gap-2 bg-surface px-2.5 py-1.5"
                               >
                                 <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-[12px] text-ink">
+                                  <span className="block truncate text-sm text-ink">
                                     {chunk.fileName}
                                   </span>
-                                  <span className="block font-mono text-[10px] text-disabled">
+                                  <span className="block font-mono text-xs text-disabled">
                                     {chunk.kind === "pdf" ? "PDF" : "Image"} ·{" "}
                                     {chunk.text.length.toLocaleString()} chars
                                   </span>
@@ -1272,7 +1231,7 @@ export function LessonPlanGenerator() {
                             value={combinedSourcePreview}
                             rows={8}
                             spellCheck={false}
-                            className="max-h-72 font-mono text-[11px] leading-relaxed"
+                            className="max-h-72 font-mono text-xs leading-relaxed"
                           />
                         </Field>
                       ) : null}
@@ -1297,8 +1256,8 @@ export function LessonPlanGenerator() {
 
               {/* ── 3. Teaching approach ─────────────────────────────── */}
               <RuleItem num={3} state={hasApproach ? "done" : "idle"}>
-                <h2 className="text-[13px] font-semibold text-ink">Teaching approach</h2>
-                <p className="mt-0.5 text-[12px] text-faint">
+                <h2 className="section-heading">Teaching approach</h2>
+                <p className="mt-0.5 text-sm text-faint">
                   Optional. Shapes how activities are delivered; the lesson structure stays the
                   same either way.
                 </p>
@@ -1373,19 +1332,9 @@ export function LessonPlanGenerator() {
                   )}
                 </div>
               </RuleItem>
-              <div className="flex justify-end">
-                {detailsComplete ? (
-                  <Button
-                    type="button"
-                    size="lg"
-                    onClick={() => {
-                      setError(null);
-                      setComposerStep("outputs");
-                    }}
-                  >
-                    Next
-                  </Button>
-                ) : null}
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-line bg-surface p-5">
+                <p className="text-sm text-faint">{detailsComplete ? "Next, choose your teaching materials." : "Add your topic and learning objectives to continue."}</p>
+                <Button type="button" size="lg" disabled={!detailsComplete} onClick={() => { setError(null); setComposerStep("outputs"); }}>Choose materials</Button>
               </div>
 
               {error ? (
@@ -1450,7 +1399,7 @@ export function LessonPlanGenerator() {
                   }
                 />
 
-                <div className="p-2">
+                <div className="space-y-1 p-4">
                   {TEACHER_PACKAGE_SECTIONS.map((key) => {
                     const allowed = entitlements.allowedSections.includes(key);
                     if (!allowed) {
@@ -1466,7 +1415,7 @@ export function LessonPlanGenerator() {
                             aria-hidden
                           />
                           <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                            <span className="truncate text-[13px] text-disabled">
+                            <span className="truncate text-sm text-disabled">
                               {GENERATION_CHECKBOX_LABELS[key]}
                             </span>
                             <ProBadge />
@@ -1488,7 +1437,7 @@ export function LessonPlanGenerator() {
                   })}
                 </div>
 
-                <div className="border-t border-line-subtle p-3">
+                <div className="border-t border-line-subtle p-5">
                   <Button
                     type="button"
                     variant="ghost"
@@ -1496,7 +1445,7 @@ export function LessonPlanGenerator() {
                     className="mb-2"
                     onClick={() => setComposerStep("details")}
                   >
-                    Back
+                    Back to details
                   </Button>
                   <Button
                     type="submit"
@@ -1507,7 +1456,7 @@ export function LessonPlanGenerator() {
                     {loading ? "Generating…" : "Generate lesson"}
                   </Button>
 
-                  <p className="mt-2 text-center text-[11px] text-faint">
+                  <p className="mt-2 text-center text-xs text-faint">
                     {selectedGenerationCount === 0 ? (
                       "Pick at least one item to generate"
                     ) : (
@@ -1543,7 +1492,7 @@ export function LessonPlanGenerator() {
           </form>
         </div>
       ) : (
-        <section ref={resultsRef} className="animate-rise">
+        <section ref={resultsRef} className="">
           <TeacherPackageViewer
             lessonPlan={lessonPlan}
             sectionImages={sectionImages ?? undefined}
@@ -1569,7 +1518,8 @@ export function LessonPlanGenerator() {
               // "regenerate" means adjust-and-rerun rather than start over.
               setLessonPlan(null);
             }}
-            onSave={onSaveLessonPlan}
+            onSave={savedLessonId ? undefined : onSaveLessonPlan}
+            saved={Boolean(savedLessonId)}
             saving={saving}
             onSendToDifferentiatedPack={onSendToDifferentiatedPack}
           />

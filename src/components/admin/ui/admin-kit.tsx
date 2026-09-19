@@ -1,16 +1,6 @@
 "use client";
 
-/**
- * Design system for the Super Admin console — deliberately distinct from the
- * marketing site's warm cream/teal palette (this is an internal ops tool,
- * not a landing page). Cool paper background, hairline borders, color used
- * only to carry meaning (indigo = primary action, green = positive/active,
- * red = destructive/money-out, amber = pending/warning).
- *
- * Fonts reuse what's already loaded globally on <body> in the root layout
- * (Space Grotesk for display, IBM Plex Mono for data/ledger rows) — no new
- * font loading here, so this never touches non-admin routes.
- */
+/** Admin components use the same semantic palette and type as the teaching workspace. */
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
@@ -28,29 +18,29 @@ import {
 // Tokens
 // ---------------------------------------------------------------------------
 
-export const INK = "#17161B";
-export const INK_MUTED = "#6B6873";
-export const INK_FAINT = "#A6A3AC";
-export const PAPER = "#F5F4F1";
-export const SURFACE = "#FFFFFF";
-export const BORDER = "#E4E1DB";
-export const BORDER_STRONG = "#D2CEC5";
+export const INK = "var(--text)";
+export const INK_MUTED = "var(--text-secondary)";
+export const INK_FAINT = "var(--text-muted)";
+export const PAPER = "var(--canvas)";
+export const SURFACE = "var(--surface)";
+export const BORDER = "var(--border)";
+export const BORDER_STRONG = "var(--border-strong)";
 
-export const ACCENT = "#3E4C8A";
-export const ACCENT_SOFT = "rgba(62,76,138,0.08)";
-export const ACCENT_STRONG = "#2E3A6B";
+export const ACCENT = "var(--brand-text)";
+export const ACCENT_SOFT = "var(--brand-subtle)";
+export const ACCENT_STRONG = "var(--brand-active)";
 
-export const POSITIVE = "#1F7A5C";
-export const POSITIVE_SOFT = "rgba(31,122,92,0.10)";
+export const POSITIVE = "var(--success)";
+export const POSITIVE_SOFT = "var(--success-subtle)";
 
-export const DANGER = "#B3261E";
-export const DANGER_SOFT = "rgba(179,38,30,0.08)";
+export const DANGER = "var(--danger-text)";
+export const DANGER_SOFT = "var(--danger-subtle)";
 
-export const WARNING = "#9A6B14";
-export const WARNING_SOFT = "rgba(154,107,20,0.10)";
+export const WARNING = "var(--generated-text)";
+export const WARNING_SOFT = "var(--generated-subtle)";
 
-export const FONT_DISPLAY = "[font-family:var(--font-space-grotesk),var(--font-jakarta),sans-serif]";
-export const FONT_MONO = "[font-family:var(--font-plex-mono),ui-monospace,monospace]";
+export const FONT_DISPLAY = "font-sans";
+export const FONT_MONO = "font-mono tabular-nums";
 
 export function formatAdminDate(iso: string | null | undefined) {
   if (!iso) return "—";
@@ -82,7 +72,7 @@ export function AdminCard({
   tone = "default",
   ...props
 }: React.ComponentProps<"div"> & { padded?: boolean; tone?: "default" | "danger" | "warning" }) {
-  const toneBorder = tone === "danger" ? "rgba(179,38,30,0.28)" : tone === "warning" ? "rgba(154,107,20,0.3)" : BORDER;
+  const toneBorder = tone === "danger" ? "var(--danger-border)" : tone === "warning" ? "var(--generated-border)" : BORDER;
   return (
     <div
       className={cn("rounded-xl bg-surface shadow-[0_1px_2px_rgba(23,22,27,0.04)]", padded && "p-5", className)}
@@ -132,14 +122,14 @@ export function StatCard({
   const color = tone === "positive" ? POSITIVE : tone === "warning" ? WARNING : tone === "danger" ? DANGER : INK;
   return (
     <AdminCard>
-      <p className={cn("text-[11px] font-semibold uppercase tracking-wider", FONT_MONO)} style={{ color: INK_FAINT }}>
+      <p className={cn("text-sm font-medium")} style={{ color: INK_FAINT }}>
         {label}
       </p>
       <p className={cn("mt-2 text-[1.75rem] font-semibold leading-none tracking-tight", FONT_DISPLAY)} style={{ color }}>
         {value}
       </p>
       {hint && (
-        <p className="mt-1.5 text-xs" style={{ color: INK_FAINT }}>
+        <p className="mt-1.5 text-sm" style={{ color: INK_FAINT }}>
           {hint}
         </p>
       )}
@@ -154,7 +144,7 @@ export function EmptyState({ title, description }: { title: string; description?
         {title}
       </p>
       {description && (
-        <p className="mt-1 text-xs" style={{ color: INK_FAINT }}>
+        <p className="mt-1 text-sm" style={{ color: INK_FAINT }}>
           {description}
         </p>
       )}
@@ -165,7 +155,7 @@ export function EmptyState({ title, description }: { title: string; description?
 type Tone = "neutral" | "positive" | "danger" | "warning" | "accent";
 
 const TONE_STYLES: Record<Tone, { bg: string; fg: string }> = {
-  neutral: { bg: "#F0EFEC", fg: INK_MUTED },
+  neutral: { bg: "var(--surface-sunken)", fg: INK_MUTED },
   positive: { bg: POSITIVE_SOFT, fg: POSITIVE },
   danger: { bg: DANGER_SOFT, fg: DANGER },
   warning: { bg: WARNING_SOFT, fg: WARNING },
@@ -176,7 +166,7 @@ export function Badge({ tone = "neutral", children }: { tone?: Tone; children: R
   const s = TONE_STYLES[tone];
   return (
     <span
-      className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+      className="inline-flex items-center rounded-full px-2 py-0.5 text-sm font-medium"
       style={{ background: s.bg, color: s.fg }}
     >
       {children}
@@ -189,7 +179,7 @@ export function Badge({ tone = "neutral", children }: { tone?: Tone; children: R
 // ---------------------------------------------------------------------------
 
 const fieldBase =
-  "w-full rounded-lg border bg-surface px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-offset-0";
+  "w-full rounded-lg border bg-surface px-3 py-2 text-sm outline-none transition-colors duration-[var(--t-fast)] focus:border-brand focus:ring-2 focus:ring-brand/20 focus:ring-offset-0";
 
 export function AdminInput(props: React.ComponentProps<"input">) {
   return (
@@ -232,23 +222,23 @@ export function AdminSelect(props: React.ComponentProps<"select">) {
 type ButtonTone = "primary" | "secondary" | "danger" | "ghost" | "positive";
 
 const BUTTON_TONE_CLASS: Record<ButtonTone, string> = {
-  primary: "text-white hover:opacity-90",
-  secondary: "border hover:bg-black/[0.02]",
-  danger: "border hover:bg-[rgba(179,38,30,0.06)]",
-  ghost: "hover:bg-black/[0.03]",
-  positive: "text-white hover:opacity-90",
+  primary: "text-brand-on hover:opacity-90",
+  secondary: "border hover:brightness-95",
+  danger: "border hover:brightness-95",
+  ghost: "hover:bg-hover",
+  positive: "text-brand-on hover:opacity-90",
 };
 
 function buttonToneStyle(tone: ButtonTone): React.CSSProperties {
   switch (tone) {
     case "primary":
-      return { background: ACCENT };
+      return { background: "var(--brand)" };
     case "positive":
       return { background: POSITIVE };
     case "secondary":
-      return { borderColor: BORDER_STRONG, color: INK, background: "white" };
+      return { borderColor: BORDER_STRONG, color: INK, background: SURFACE };
     case "danger":
-      return { borderColor: "rgba(179,38,30,0.35)", color: DANGER, background: "white" };
+      return { borderColor: "var(--danger-border)", color: DANGER, background: SURFACE };
     case "ghost":
       return { color: INK_MUTED };
   }
@@ -263,13 +253,13 @@ export function AdminButton({
   disabled,
   ...props
 }: React.ComponentProps<"button"> & { tone?: ButtonTone; size?: "sm" | "md"; loading?: boolean }) {
-  const sizeClass = size === "sm" ? "px-2.5 py-1.5 text-xs" : "px-4 py-2 text-sm";
+  const sizeClass = size === "sm" ? "min-h-9 px-3 py-2 text-sm" : "min-h-10 px-4 py-2 text-sm";
   return (
     <button
       type="button"
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors duration-[var(--t-fast)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50",
         sizeClass,
         BUTTON_TONE_CLASS[tone],
         className,
@@ -304,10 +294,11 @@ export function useToast(): ToastContextValue {
 
 function ToastStack({ items, onDismiss }: { items: ToastItem[]; onDismiss: (id: number) => void }) {
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-[100] flex w-full max-w-sm flex-col gap-2">
+    <div className="pointer-events-none fixed right-4 top-4 z-[100] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2">
       {items.map((t) => (
         <div
           key={t.id}
+          role={t.tone === "error" ? "alert" : "status"}
           className="pointer-events-auto flex items-start gap-2.5 rounded-xl bg-surface p-3.5 shadow-lg ring-1 ring-black/5"
           style={{ borderLeft: `3px solid ${t.tone === "success" ? POSITIVE : DANGER}` }}
         >
@@ -422,14 +413,21 @@ function ActionDialogRenderer({
     }
     setSubmitting(true);
     setLocalError(null);
-    const result = await config.run(values);
-    setSubmitting(false);
-    if (result.ok) {
-      if (result.message) toast.success(result.message);
-      onClose("confirmed");
-    } else {
-      setLocalError(result.error);
-      toast.error(result.error);
+    try {
+      const result = await config.run(values);
+      if (result.ok) {
+        if (result.message) toast.success(result.message);
+        onClose("confirmed");
+      } else {
+        setLocalError(result.error);
+        toast.error(result.error);
+      }
+    } catch {
+      const message = "The request could not be completed. Please try again.";
+      setLocalError(message);
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -456,10 +454,10 @@ function ActionDialogRenderer({
                 className="flex items-baseline justify-between gap-3 px-3 py-1.5"
                 style={{ borderTop: i > 0 ? `1px dashed ${BORDER_STRONG}` : undefined }}
               >
-                <span className="text-[11px] uppercase tracking-wide" style={{ color: INK_FAINT }}>
+                <span className="text-sm" style={{ color: INK_FAINT }}>
                   {row.label}
                 </span>
-                <span className={cn("truncate text-right text-xs font-medium", FONT_MONO)} style={{ color: INK }}>
+                <span className={cn("break-words text-right text-sm font-medium")} style={{ color: INK }}>
                   {row.value}
                 </span>
               </div>
@@ -474,7 +472,7 @@ function ActionDialogRenderer({
               if (field.kind === "reason") {
                 return (
                   <div key={key}>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: INK_MUTED }}>
+                    <label className="mb-1 block text-sm font-medium" style={{ color: INK_MUTED }}>
                       {field.label ?? "Reason"}
                     </label>
                     <AdminTextarea
@@ -489,7 +487,7 @@ function ActionDialogRenderer({
               if (field.kind === "text") {
                 return (
                   <div key={key}>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: INK_MUTED }}>
+                    <label className="mb-1 block text-sm font-medium" style={{ color: INK_MUTED }}>
                       {field.label}
                     </label>
                     <AdminInput
@@ -503,7 +501,7 @@ function ActionDialogRenderer({
               if (field.kind === "amount") {
                 return (
                   <div key={key}>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: INK_MUTED }}>
+                    <label className="mb-1 block text-sm font-medium" style={{ color: INK_MUTED }}>
                       {field.label}
                     </label>
                     <AdminInput
@@ -519,7 +517,7 @@ function ActionDialogRenderer({
               }
               return (
                 <div key={key}>
-                  <label className="mb-1 block text-xs font-semibold" style={{ color: INK_MUTED }}>
+                  <label className="mb-1 block text-sm font-medium" style={{ color: INK_MUTED }}>
                     {field.label}
                   </label>
                   <AdminInput value={values[key] ?? ""} onChange={(e) => setField(key, e.target.value)} />

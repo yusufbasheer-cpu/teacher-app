@@ -2,16 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Container } from "@/components/ui/container";
-import { Footer } from "@/components/layout/footer";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Search, Plus, ArrowUpRight } from "lucide-react";
+import { PublicPage } from "@/components/marketing/public-page";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SectionLabel } from "@/components/marketing/section-label";
 import { PLANS } from "@/lib/plans";
 
 type FaqItem = { q: string; a: string };
 type FaqCategory = { title: string; items: FaqItem[] };
-
 const FAQ_DATA: FaqCategory[] = [
   {
     title: "General Questions",
@@ -64,7 +62,7 @@ const FAQ_DATA: FaqCategory[] = [
       },
       {
         q: "Is my data safe?",
-        a: "Yes. We take data privacy seriously. Your lesson plans and personal information are securely stored and never shared with third parties.",
+        a: "Yes. We take data privacy seriously. See our Privacy Policy for how account information, lesson content and service providers are handled.",
       },
       {
         q: "Does Layah work on mobile?",
@@ -74,155 +72,58 @@ const FAQ_DATA: FaqCategory[] = [
   },
 ];
 
-function ChevronIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      className={`size-5 shrink-0 transition-transform duration-300 ${open ? "rotate-180 text-primary" : "text-muted-foreground"}`}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  );
-}
-
-function AccordionItem({ item, isOpen, onToggle }: { item: FaqItem; isOpen: boolean; onToggle: () => void }) {
-  return (
-    <div className="border-b border-border">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between gap-4 py-5 text-left"
-      >
-        <span className="text-sm font-semibold text-navy sm:text-base">{item.q}</span>
-        <ChevronIcon open={isOpen} />
-      </button>
-      <div
-        className="overflow-hidden transition-all duration-300"
-        style={{ maxHeight: isOpen ? 300 : 0, opacity: isOpen ? 1 : 0 }}
-      >
-        <p className="pb-5 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
-      </div>
-    </div>
-  );
-}
 
 export default function FaqPage() {
-  const [openKey, setOpenKey] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-
-  const filtered = FAQ_DATA.map((cat) => ({
-    ...cat,
-    items: cat.items.filter(
-      (item) =>
-        item.q.toLowerCase().includes(search.toLowerCase()) ||
-        item.a.toLowerCase().includes(search.toLowerCase()),
-    ),
-  })).filter((cat) => cat.items.length > 0);
+  const query = search.trim().toLowerCase();
+  const filtered = FAQ_DATA.map((category) => ({
+    ...category,
+    items: category.items.filter((item) => item.q.toLowerCase().includes(query) || item.a.toLowerCase().includes(query)),
+  })).filter((category) => category.items.length > 0);
+  const count = filtered.reduce((total, category) => total + category.items.length, 0);
 
   return (
-    <div className="site-editorial min-h-screen bg-background text-foreground">
-      {/* Hero */}
-      <section className="bg-navy py-20 sm:py-28">
-        <Container>
-          <div className="mx-auto max-w-3xl text-center">
-            <SectionLabel className="justify-center flex">Help center</SectionLabel>
-            <h1 className="font-display mt-4 text-3xl font-semibold tracking-tight text-chalk sm:text-5xl">
-              Frequently asked questions
-            </h1>
-            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-chalk/65">
-              Everything you need to know about Layah. Can&apos;t find the answer you&apos;re looking for? Reach out to our support team.
-            </p>
-
-            <div className="relative mx-auto mt-8 max-w-md">
-              <svg
-                className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-chalk/40"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-              <Input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search questions..."
-                className="h-12 border-chalk/15 bg-chalk/8 pl-12 text-chalk placeholder:text-chalk/40"
-              />
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      {/* FAQ Content */}
-      <section className="py-16 sm:py-20">
-        <Container>
-          <div className="mx-auto max-w-3xl">
-            {filtered.length === 0 ? (
-              <div className="py-12 text-center">
-                <p className="text-lg font-semibold text-navy">No results found</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Try a different search term or browse all questions below.
-                </p>
-                <Button className="mt-4 rounded-lg" onClick={() => setSearch("")}>
-                  Clear search
-                </Button>
+    <PublicPage
+      eyebrow="Help centre"
+      title="A little help, when you need it."
+      description="Find answers about getting started, your plan and the resources you can create."
+      headerContent={
+        <div className="relative max-w-xl">
+          <label htmlFor="faq-search" className="sr-only">Search questions and answers</label>
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-faint" aria-hidden />
+          <Input id="faq-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search questions and answers" className="h-12 bg-canvas pl-10" />
+        </div>
+      }
+    >
+      <div className="grid items-start gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
+        <aside className="lg:sticky lg:top-24">
+          <p className="text-sm font-medium">Browse by topic</p>
+          <nav aria-label="Help topics" className="mt-3 flex flex-wrap gap-2 lg:flex-col">
+            {FAQ_DATA.map((category, index) => <a key={category.title} href={`#faq-category-${index}`} onClick={() => setSearch("")} className="rounded-lg px-3 py-2.5 text-sm text-muted hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">{category.title.replace(" Questions", "")}</a>)}
+          </nav>
+          <div className="mt-6 border-t border-line pt-6"><p className="text-sm font-medium">Need a hand?</p><p className="mt-2 text-sm leading-relaxed text-muted">Our team can help with your specific question.</p><Link href="/contact" className="mt-3 inline-flex items-center gap-1 rounded text-sm font-medium text-brand-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">Contact support <ArrowUpRight className="size-4" aria-hidden /></Link></div>
+        </aside>
+        <div className="min-w-0">
+          <p className="mb-5 text-sm text-muted" role="status">{query ? `${count} answer${count === 1 ? "" : "s"} matching ?${search.trim()}?` : "Common questions, answered."}</p>
+          {filtered.length === 0 ? (
+            <div className="rounded-xl border border-line bg-surface p-8 text-center"><h2 className="section-heading">No matching answers</h2><p className="mt-2 text-sm text-muted">Try another phrase, browse the topics or contact our team.</p><Button variant="outline" className="mt-5" onClick={() => setSearch("")}>Clear search</Button></div>
+          ) : filtered.map((category) => (
+            <section key={category.title} id={`faq-category-${FAQ_DATA.findIndex((item) => item.title === category.title)}`} className="mb-8 scroll-mt-24 last:mb-0">
+              <h2 className="section-heading mb-4">{category.title.replace(" Questions", "")}</h2>
+              <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+                {category.items.map((item) => (
+                  <details key={item.q} className="group px-5 sm:px-6">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-5 text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand">
+                      {item.q}<Plus className="size-4 shrink-0 text-faint transition-transform duration-150 group-open:rotate-45 motion-reduce:transition-none" aria-hidden />
+                    </summary>
+                    <p className="max-w-2xl pb-5 text-sm leading-relaxed text-muted">{item.a}</p>
+                  </details>
+                ))}
               </div>
-            ) : (
-              filtered.map((category) => (
-                <div key={category.title} className="mb-10">
-                  <h2 className="mb-1 text-lg font-bold text-navy sm:text-xl">{category.title}</h2>
-                  <div className="mb-4 h-0.5 w-12 rounded-full bg-primary" />
-                  {category.items.map((item) => {
-                    const key = `${category.title}-${item.q}`;
-                    return (
-                      <AccordionItem
-                        key={key}
-                        item={item}
-                        isOpen={openKey === key}
-                        onToggle={() => setOpenKey(openKey === key ? null : key)}
-                      />
-                    );
-                  })}
-                </div>
-              ))
-            )}
-          </div>
-        </Container>
-      </section>
-
-      {/* Still have questions */}
-      <section className="border-t border-border bg-navy py-16 sm:py-20">
-        <Container>
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-2xl font-semibold text-chalk sm:text-3xl">Still have questions?</h2>
-            <p className="mt-4 text-base text-chalk/70">
-              Our team is here to help. Reach out and we&apos;ll get back to you within 24 hours.
-            </p>
-            <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-              <Link href="/contact" className={buttonVariants({ size: "lg", className: "h-11 rounded-lg px-8" })}>
-                Contact us
-              </Link>
-              <a
-                href="mailto:info@layah.in"
-                className={buttonVariants({
-                  variant: "outline",
-                  size: "lg",
-                  className: "h-11 rounded-lg border-chalk/25 bg-transparent px-8 text-chalk hover:bg-chalk/10 hover:text-chalk",
-                })}
-              >
-                info@layah.in
-              </a>
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      <Footer />
-    </div>
+            </section>
+          ))}
+        </div>
+      </div>
+    </PublicPage>
   );
 }

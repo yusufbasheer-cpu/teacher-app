@@ -24,6 +24,24 @@ const lesson = {
   created_at: "2026-09-03T00:00:00Z",
 };
 
+/** A row as `saved_lessons` stores it — different column names from the legacy
+ * `lesson_plans` table, which is why the export has to map it. Every lesson
+ * generated since the auto-save change lands here, so an export that skips this
+ * table hands the user an empty file. */
+const savedLesson = {
+  id: "saved-a",
+  user_id: "user-a",
+  subject: "Science",
+  grade: "Grade 8",
+  curriculum: "CBSE/NCERT",
+  chapter: "Industrial Revolution",
+  topic: "Causes of the Industrial Revolution",
+  learning_objectives: "Explain the causes",
+  lesson_content: '{"Full Lesson Plan":"Saved content"}',
+  ppt_content: "",
+  created_at: "2026-09-01T00:00:00Z",
+};
+
 function configureNextPath() {
   authenticateRequest.mockResolvedValue({
     ok: true,
@@ -58,7 +76,11 @@ function configureNextPath() {
                   },
                 }),
               }
-            : { order: vi.fn().mockResolvedValue({ data: [lesson] }) },
+            : {
+                order: vi
+                  .fn()
+                  .mockResolvedValue({ data: table === "saved_lessons" ? [savedLesson] : [lesson] }),
+              },
         ),
       })),
     })),
@@ -96,10 +118,27 @@ describe("account export route", () => {
       last_sign_in: "2026-09-04T00:00:00Z",
       auth_provider: "google",
     });
-    expect(payload.lesson_plans).toEqual([{ ...lesson, content: lesson.lesson_plan, lesson_plan: undefined }]);
-    expect(payload.summary).toEqual({ total_lesson_plans: 1 });
+    // Legacy `lesson_plans` rows keep their existing shape, and `saved_lessons`
+    // rows are mapped onto the same fields so the file reads as one list.
+    expect(payload.lesson_plans).toEqual([
+      { ...lesson, content: lesson.lesson_plan, lesson_plan: undefined },
+      {
+        id: savedLesson.id,
+        subject: savedLesson.subject,
+        grade: savedLesson.grade,
+        curriculum_type: savedLesson.curriculum,
+        curriculum_framework: null,
+        chapter: savedLesson.chapter,
+        topic: savedLesson.topic,
+        learning_objectives: savedLesson.learning_objectives,
+        content: savedLesson.lesson_content,
+        created_at: savedLesson.created_at,
+      },
+    ]);
+    expect(payload.summary).toEqual({ total_lesson_plans: 2 });
     expect(client.from).toHaveBeenCalledWith("user_usage");
     expect(client.from).toHaveBeenCalledWith("lesson_plans");
+    expect(client.from).toHaveBeenCalledWith("saved_lessons");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -156,7 +195,7 @@ describe("account export route", () => {
     const response = await GET(new Request("http://localhost/api/account/export"));
 
     expect(response.status).toBe(200);
-    expect((await response.json()).summary).toEqual({ total_lesson_plans: 1 });
+    expect((await response.json()).summary).toEqual({ total_lesson_plans: 2 });
     expect(authenticateRequest).toHaveBeenCalledTimes(1);
   });
 

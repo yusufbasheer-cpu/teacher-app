@@ -30,34 +30,39 @@ function apply(theme: Theme) {
   document.documentElement.style.colorScheme = dark ? "dark" : "light";
 }
 
+const CHANGE_EVENT = "layah:theme-change";
+let memoryTheme: Theme = "system";
+function currentTheme(): Theme {
+  try {
+    const value = localStorage.getItem(KEY);
+    return value === "light" || value === "dark" || value === "system" ? value : memoryTheme;
+  } catch { return memoryTheme; }
+}
+function subscribeTheme(onChange: () => void) {
+  window.addEventListener(CHANGE_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
 export function useTheme() {
-  const [theme, setThemeState] = React.useState<Theme>("system");
-
+  const theme = React.useSyncExternalStore(subscribeTheme, currentTheme, () => "system" as Theme);
   React.useEffect(() => {
-    const stored = (localStorage.getItem(KEY) as Theme | null) ?? "system";
-    setThemeState(stored);
-  }, []);
-
-  // Follow the OS while the choice is "system" — without this, a user on
-  // "system" keeps whatever the OS was at page load until they reload.
-  React.useEffect(() => {
+    apply(theme);
     if (theme !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => apply("system");
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
   }, [theme]);
-
   const setTheme = React.useCallback((next: Theme) => {
-    setThemeState(next);
-    try {
-      localStorage.setItem(KEY, next);
-    } catch {
-      /* private mode — the theme just won't persist */
-    }
+    memoryTheme = next;
+    try { localStorage.setItem(KEY, next); } catch { /* selection works without persistence */ }
     apply(next);
+    window.dispatchEvent(new Event(CHANGE_EVENT));
   }, []);
-
   return { theme, setTheme };
 }
 
@@ -89,13 +94,22 @@ export function ThemeToggle({ className }: { className?: string }) {
             role="radio"
             aria-checked={active}
             aria-label={label}
+            tabIndex={active ? 0 : -1}
             title={label}
             onClick={() => setTheme(value)}
+            onKeyDown={(event) => {
+              const direction = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : ["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : 0;
+              if (!direction && event.key !== "Home" && event.key !== "End") return;
+              event.preventDefault();
+              const index = event.key === "Home" ? 0 : event.key === "End" ? OPTIONS.length - 1 : (OPTIONS.findIndex((option) => option.value === value) + direction + OPTIONS.length) % OPTIONS.length;
+              setTheme(OPTIONS[index].value);
+              (event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[index])?.focus();
+            }}
             className={cn(
-              "flex size-6 items-center justify-center rounded-sm transition-colors duration-[110ms]",
+              "flex size-8 items-center justify-center rounded-sm transition-colors duration-[140ms]",
               "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand",
               active
-                ? "bg-surface text-ink shadow-pop"
+                ? "bg-surface text-brand-text shadow-sm"
                 : "text-faint hover:text-ink",
             )}
           >

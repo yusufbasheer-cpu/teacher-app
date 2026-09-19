@@ -1,178 +1,45 @@
 import Link from "next/link";
-import { Container } from "@/components/ui/container";
+import { ArrowUpRight } from "lucide-react";
 
-const NAVY = "var(--text)";
-const TEAL = "var(--brand)";
-
-function InstagramIcon() {
-  return (
-    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-      <path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z" />
-      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-    </svg>
-  );
-}
-
-function LinkedInIcon() {
-  return (
-    <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z" />
-      <rect x="2" y="9" width="4" height="12" />
-      <circle cx="4" cy="4" r="2" />
-    </svg>
-  );
-}
-
-function XIcon() {
-  return (
-    <svg className="size-5" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
-  );
-}
-
-const COMPANY_LINKS = [
-  { label: "About Layah", href: "/about" },
-  { label: "Blog", href: "/blog" },
-  { label: "Contact Us", href: "/contact" },
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Terms of Service", href: "/terms" },
+const GROUPS = [
+  { title: "Teaching tools", links: [
+    ["Lesson plans & slides", "/lesson-plan"], ["Worksheet packs", "/differentiated-worksheets"], ["Question papers", "/question-paper"], ["Plans & pricing", "/pricing"],
+  ] },
+  { title: "Layah", links: [
+    ["About us", "/about"], ["For schools", "/school-register"], ["Teacher resources", "/blog"], ["Contact", "/contact"],
+  ] },
+  { title: "Support", links: [
+    ["Help & FAQs", "/faq"], ["Privacy policy", "/privacy"], ["Terms of service", "/terms"],
+  ] },
 ];
-
-const FEATURE_LINKS = [
-  { label: "Lesson Plan Generator", href: "/lesson-plan" },
-  { label: "PPT Generator", href: "/lesson-plan" },
-  { label: "Question Paper Generator", href: "/question-paper" },
-  { label: "Activity Sheet AFL", href: "/lesson-plan" },
-];
-
-const SUPPORT_LINKS = [
-  { label: "FAQs", href: "/faq" },
-  { label: "School Plans", href: "/pricing" },
-];
-
-const SOCIAL_LINKS = [
-  { label: "Instagram", href: "https://www.instagram.com/layah.teachers?igsh=NHAwOGFoaXNkc2hh&utm_source=qr", icon: InstagramIcon },
-  { label: "LinkedIn", href: "https://www.linkedin.com/company/layah-ai/", icon: LinkedInIcon },
-  { label: "X (Twitter)", href: "https://x.com/layah_ai", icon: XIcon },
-];
-
-function FooterLinkGroup({ title, links }: { title: string; links: { label: string; href: string }[] }) {
-  return (
-    <div>
-      <h3 className="mb-4 text-sm font-bold uppercase tracking-wider" style={{ color: TEAL }}>
-        {title}
-      </h3>
-      <ul className="space-y-2.5">
-        {links.map((link) => {
-          const isExternal = link.href.startsWith("mailto:") || link.href.startsWith("http");
-          return (
-            <li key={link.label}>
-              {isExternal ? (
-                <a
-                  href={link.href}
-                  className="inline-flex min-h-[44px] items-center py-1 text-sm transition hover:opacity-100"
-                  style={{ color: "color-mix(in oklch, var(--text-inverse) 65%, transparent)" }}
-                  target={link.href.startsWith("http") ? "_blank" : undefined}
-                  rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                >
-                  {link.label}
-                </a>
-              ) : (
-                <Link
-                  href={link.href}
-                  className="inline-flex min-h-[44px] items-center py-1 text-sm transition hover:opacity-100"
-                  style={{ color: "color-mix(in oklch, var(--text-inverse) 65%, transparent)" }}
-                >
-                  {link.label}
-                </Link>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
 
 export function Footer() {
   return (
-    <footer style={{ background: NAVY }}>
-      <Container className="pb-8 pt-14">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="sm:col-span-2 lg:col-span-1">
-            <Link href="/" className="inline-flex items-center">
-              <img
-                src="/Logo.png"
-                alt="Layah"
-                height={36}
-                className="h-9 w-auto"
-                style={{ height: 36, width: "auto" }}
-              />
+    <footer className="border-t border-line-subtle bg-surface">
+      <div className="mx-auto max-w-7xl px-5 pb-7 pt-14 sm:px-8 lg:pt-16">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
+          <div>
+            <Link href="/" aria-label="Layah home" className="inline-flex items-center gap-2.5">
+              <img src="/logo-mark.png" alt="" aria-hidden className="size-9 rounded-md object-cover" />
+              <span className="text-[23px] font-semibold tracking-[-0.04em] text-ink">Layah</span>
             </Link>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed" style={{ color: "color-mix(in oklch, var(--text-inverse) 55%, transparent)" }}>
-              AI-powered lesson planning for teachers worldwide. Generate complete lesson plans, PPTs, worksheets, and more in minutes.
-            </p>
-            <div className="mt-5 flex gap-3">
-              {SOCIAL_LINKS.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={social.label}
-                  className="flex h-11 w-11 items-center justify-center rounded-xl transition hover:opacity-100"
-                  style={{ background: "color-mix(in oklch, var(--text-inverse) 8%, transparent)", color: "color-mix(in oklch, var(--text-inverse) 60%, transparent)" }}
-                >
-                  <social.icon />
-                </a>
-              ))}
+            <p className="mt-4 max-w-[270px] text-sm leading-relaxed text-muted">A thoughtful workspace for lesson planning, classroom resources, and the teachers behind them.</p>
+            <div className="mt-5 flex items-center gap-2">
+              <a href="https://www.instagram.com/layah.teachers" target="_blank" rel="noopener noreferrer" aria-label="Layah on Instagram" className="flex size-10 items-center justify-center rounded-md border border-line-subtle text-faint transition-colors hover:bg-hover hover:text-ink"><svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.7" fill="currentColor" /></svg></a>
+              <a href="https://www.linkedin.com/company/layah-ai/" target="_blank" rel="noopener noreferrer" aria-label="Layah on LinkedIn" className="flex size-10 items-center justify-center rounded-md border border-line-subtle text-faint transition-colors hover:bg-hover hover:text-ink"><svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6Z" /><path d="M2 9h4v12H2z" /><circle cx="4" cy="4" r="2" /></svg></a>
+              <a href="https://x.com/layah_ai" target="_blank" rel="noopener noreferrer" aria-label="Layah on X" className="flex size-10 items-center justify-center rounded-md border border-line-subtle text-sm text-faint transition-colors hover:bg-hover hover:text-ink">X</a>
             </div>
           </div>
-
-          <FooterLinkGroup title="Company" links={COMPANY_LINKS} />
-          <FooterLinkGroup title="Features" links={FEATURE_LINKS} />
-          <FooterLinkGroup title="Support" links={SUPPORT_LINKS} />
+          {GROUPS.map((group) => <div key={group.title}>
+            <h2 className="mb-3 text-sm font-semibold text-ink">{group.title}</h2>
+            <ul className="space-y-1">{group.links.map(([label, href]) => <li key={href}><Link href={href} className="inline-flex min-h-10 items-center text-sm text-muted transition-colors hover:text-brand-text">{label}</Link></li>)}</ul>
+          </div>)}
         </div>
-
-        {/* Product Hunt badge */}
-        <div
-          className="mt-12 flex flex-col items-center gap-3 border-t pt-8"
-          style={{ borderColor: "color-mix(in oklch, var(--text-inverse) 8%, transparent)" }}
-        >
-          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "color-mix(in oklch, var(--text-inverse) 30%, transparent)" }}>
-            Featured on
-          </p>
-          <a
-            href="https://www.producthunt.com/products/layah?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-layah"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition hover:opacity-80"
-          >
-            <img
-              alt="Layah - AI lesson plans & PPTs — built by a teacher, for teachers | Product Hunt"
-              width="250"
-              height="54"
-              src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1176691&theme=light&t=1782192628393"
-              style={{ width: 250, height: 54 }}
-            />
-          </a>
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-line-subtle pt-6 text-xs text-faint">
+          <p>&copy; {new Date().getFullYear()} Layah. All rights reserved.</p>
+          <Link href="/contact" className="inline-flex items-center gap-1.5 hover:text-brand-text">Built around your teaching day<ArrowUpRight className="size-3.5" aria-hidden /></Link>
         </div>
-
-        {/* Copyright bar */}
-        <div
-          className="mt-6 flex flex-col items-center gap-2 border-t pt-6 text-center sm:flex-row sm:justify-between"
-          style={{ borderColor: "color-mix(in oklch, var(--text-inverse) 8%, transparent)" }}
-        >
-          <p className="text-xs" style={{ color: "color-mix(in oklch, var(--text-inverse) 40%, transparent)" }}>
-            &copy; 2026 Layah. All rights reserved.
-          </p>
-          <p className="text-xs" style={{ color: "color-mix(in oklch, var(--text-inverse) 35%, transparent)" }}>
-            Made with love for teachers worldwide
-          </p>
-        </div>
-      </Container>
+      </div>
     </footer>
   );
 }

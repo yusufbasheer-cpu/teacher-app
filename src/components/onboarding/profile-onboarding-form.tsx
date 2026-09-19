@@ -2,13 +2,14 @@
 
 import { type ReactNode, FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getSafeAuthNext } from "@/lib/auth-redirect";
 import { supabase } from "@/lib/supabase";
 import { getTeacherProfile, hasCompletedTeacherProfile } from "@/lib/user-profile";
 import { useErrorToast } from "@/hooks/use-error-toast";
 
 const inputClass = [
-  "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-[13px] text-ink",
-  "outline-none transition-[border-color,box-shadow] duration-[110ms]",
+  "w-full min-h-11 rounded-lg border border-line bg-surface px-3 py-2.5 text-sm text-ink",
+  "outline-none transition-[border-color,box-shadow] duration-[var(--t-fast)]",
   "placeholder:text-disabled hover:border-line-strong",
   "focus:border-brand focus:ring-2 focus:ring-brand/25",
 ].join(" ");
@@ -54,7 +55,7 @@ export function ProfileOnboardingForm() {
       }
 
       if (hasCompletedTeacherProfile(session.user)) {
-        router.replace("/overview");
+        router.replace(getSafeAuthNext(new URLSearchParams(window.location.search).get("next")));
         return;
       }
 
@@ -107,7 +108,7 @@ export function ProfileOnboardingForm() {
 
       if (updateError) throw updateError;
 
-      router.replace("/overview");
+      router.replace(getSafeAuthNext(new URLSearchParams(window.location.search).get("next")));
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -130,143 +131,75 @@ export function ProfileOnboardingForm() {
     );
   }
 
+  const sections = [
+    {
+      title: "Your details",
+      description: "How we should address you in your workspace.",
+      fields: [
+        { id: "full-name", label: "Full name", value: fullName, set: setFullName, placeholder: "e.g. Priya Sharma", required: true, autoComplete: "name" },
+        { id: "phone", label: "Mobile number", value: phone, set: setPhone, placeholder: "+91 98765 43210", autoComplete: "tel", type: "tel" },
+        { id: "designation", label: "Designation", value: designation, set: setDesignation, placeholder: "Teacher, HOD, Principal" },
+      ],
+    },
+    {
+      title: "Your classroom",
+      description: "A little context for the resources you prepare.",
+      fields: [
+        { id: "subjects", label: "Subjects you teach", value: subjects, set: setSubjects, placeholder: "Science, Biology, Physics" },
+        { id: "grades", label: "Grades you teach", value: grades, set: setGrades, placeholder: "Grade 6, Grade 7, Grade 8" },
+        { id: "school-name", label: "School name", value: schoolName, set: setSchoolName, placeholder: "Your school or institution" },
+        { id: "city", label: "City or region", value: city, set: setCity, placeholder: "Mumbai", autoComplete: "address-level2" },
+        { id: "experience-years", label: "Teaching experience", value: experienceYears, set: setExperienceYears, placeholder: "e.g. 8 years" },
+      ],
+    },
+  ];
+
   return (
-    <form
-      onSubmit={onSubmit}
-      className="rounded-2xl border border-line bg-surface/95 p-6 shadow-sm backdrop-blur"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--brand)" }}>
-            Teacher setup
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-ink">
-            Finish your profile
-          </h2>
-          <p className="mt-2 max-w-xl text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-            We use these details to personalize your lesson plans, address you correctly in the app,
-            and keep your account profile ready for school and teacher workflows.
-          </p>
-        </div>
+    <form onSubmit={onSubmit} className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm" aria-busy={saving}>
+      <div className="divide-y divide-line">
+        {sections.map((section) => (
+          <fieldset key={section.title} className="grid gap-6 p-6 sm:p-8 md:grid-cols-[200px_1fr]">
+            <legend className="sr-only">{section.title}</legend>
+            <div>
+              <h2 className="section-heading">{section.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">{section.description}</p>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              {section.fields.map((field) => (
+                <div key={field.id} className={`flex flex-col gap-2 ${field.id === "full-name" ? "sm:col-span-2" : ""}`}>
+                  <Label htmlFor={field.id}>{field.label}{"required" in field && field.required ? " *" : ""}</Label>
+                  <input
+                    id={field.id}
+                    value={field.value}
+                    onChange={(event) => field.set(event.target.value)}
+                    placeholder={field.placeholder}
+                    className={inputClass}
+                    type={"type" in field ? field.type : "text"}
+                    autoComplete={"autoComplete" in field ? field.autoComplete : undefined}
+                    required={"required" in field && field.required}
+                    disabled={saving}
+                  />
+                </div>
+              ))}
+              {section.title === "Your classroom" && (
+                <div className="flex flex-col gap-2 sm:col-span-2">
+                  <Label htmlFor="about-you">Additional context</Label>
+                  <textarea id="about-you" value={aboutYou} onChange={(event) => setAboutYou(event.target.value)} placeholder="Your preferred curriculum, teaching style, or language." className={textareaClass} disabled={saving} />
+                  <p className="text-sm text-faint">Optional. Add anything that helps describe your teaching.</p>
+                </div>
+              )}
+            </div>
+          </fieldset>
+        ))}
       </div>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-2 sm:col-span-2">
-          <Label htmlFor="full-name">Full name</Label>
-          <input
-            id="full-name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="e.g. Priya Sharma"
-            className={inputClass}
-            autoComplete="name"
-            required
-          />
+      <div className="border-t border-line bg-sunken px-6 py-5 sm:px-8">
+        {error ? <p role="alert" className="mb-4 text-sm text-danger">{error}</p> : null}
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <p className="text-sm text-muted">Your workspace is ready after this step.</p>
+          <button type="submit" disabled={saving} className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-brand-on transition-colors duration-[var(--t-fast)] hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
+            {saving ? "Saving profile..." : "Save and continue"}
+          </button>
         </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="phone">Mobile number</Label>
-          <input
-            id="phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+91 98765 43210"
-            className={inputClass}
-            autoComplete="tel"
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="designation">Designation</Label>
-          <input
-            id="designation"
-            value={designation}
-            onChange={(e) => setDesignation(e.target.value)}
-            placeholder="Teacher, HOD, Principal..."
-            className={inputClass}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="subjects">Subjects you teach</Label>
-          <textarea
-            id="subjects"
-            value={subjects}
-            onChange={(e) => setSubjects(e.target.value)}
-            placeholder="Science, Biology, Physics"
-            className={textareaClass}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="grades">Grades you teach</Label>
-          <textarea
-            id="grades"
-            value={grades}
-            onChange={(e) => setGrades(e.target.value)}
-            placeholder="Grade 6, Grade 7, Grade 8"
-            className={textareaClass}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="school-name">School name</Label>
-          <input
-            id="school-name"
-            value={schoolName}
-            onChange={(e) => setSchoolName(e.target.value)}
-            placeholder="Your school or institution"
-            className={inputClass}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="city">City / region</Label>
-          <input
-            id="city"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="Mumbai, Delhi, etc."
-            className={inputClass}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="experience-years">Teaching experience</Label>
-          <input
-            id="experience-years"
-            value={experienceYears}
-            onChange={(e) => setExperienceYears(e.target.value)}
-            placeholder="e.g. 8 years"
-            className={inputClass}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2 sm:col-span-2">
-          <Label htmlFor="about-you">Anything else we should know?</Label>
-          <textarea
-            id="about-you"
-            value={aboutYou}
-            onChange={(e) => setAboutYou(e.target.value)}
-            placeholder="Preferred board, teaching style, language, or any extra context."
-            className={textareaClass}
-          />
-        </div>
-      </div>
-
-      {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-lg text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-          This only happens once. After you save it, we will take you straight into the app.
-        </p>
-        <button
-          type="submit"
-          disabled={saving}
-          className="inline-flex items-center justify-center rounded-md bg-brand px-5 py-2.5 text-sm font-medium text-brand-on transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {saving ? "Saving..." : "Continue to dashboard"}
-        </button>
       </div>
     </form>
   );

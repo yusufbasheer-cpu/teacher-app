@@ -1,522 +1,123 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Container } from "@/components/ui/container";
+import { useEffect, useState } from "react";
+import { ArrowRight, Check, Plus, School } from "lucide-react";
+import { PublicPage } from "@/components/marketing/public-page";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { PaymentModal, type UpgradePlanKey } from "@/components/payment/payment-modal";
 import { usePricingRegion } from "@/hooks/use-pricing-region";
-import {
-  formatRegionalPrice,
-  type PaidPlanKey,
-  type PricingRegion,
-} from "@/lib/pricing-regions";
-import { NAVY, TEAL, TEAL_DARK, TEXT_INVERSE, TEXT_MUTED, withAlpha } from "@/lib/design-tokens";
+import { useErrorToast } from "@/hooks/use-error-toast";
+import { formatRegionalPrice, PRICING_REGION_LIST, isPricingRegionId, type PricingRegion } from "@/lib/pricing-regions";
 import { PLANS } from "@/lib/plans";
-import { BorderTrail } from "@/components/motion-primitives/border-trail";
-
-const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]";
+import { supabase } from "@/lib/supabase";
 
 type Billing = "monthly" | "annual";
+type Plan = { id: "free" | UpgradePlanKey; name: string; description: string; limit: number | null; features: string[] };
 
-type PlanDef = {
-  id: string;
-  name: string;
-  badge?: "Most Popular" | "Best Value";
-  priceKey: PaidPlanKey | null;
-  upgradeKey?: UpgradePlanKey;
-  generations: string;
-  teachers?: string;
-  features: readonly string[];
-  cta: { label: string; href: string };
-  variant?: "light" | "featured" | "school";
-};
-
-const TEACHER_PLAN_DEFS: PlanDef[] = [
-  {
-    id: "free",
-    name: "Free",
-    priceKey: null,
-    generations: `${PLANS.free.generationsLimit} per month`,
-    features: [
-      `${PLANS.free.generationsLimit} Lesson Plans per month`,
-      "PPT Slides included",
-      "Class details & curriculum setup",
-      "Standard Themes",
-      "Email Support",
-    ],
-    cta: { label: "Get Started Free", href: "/signup" },
-    variant: "light",
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    badge: "Most Popular",
-    priceKey: "pro",
-    upgradeKey: "pro",
-    generations: `${PLANS.pro.generationsLimit} per month`,
-    features: [
-      "Everything in Free",
-      `${PLANS.pro.generationsLimit} generations per month`,
-      "Upload your own source material (PDF, text)",
-      "Full Assessment for Learning library",
-      "Teaching & Learning Strategy selector",
-      "Worksheets, Assessments, Homework & Teacher Notes",
-      "Question Paper Generator + Blueprint Generator",
-      "Differentiated Worksheet Pack",
-      "All 5 Themes",
-      "Global Curriculum Framework Alignment",
-      "Priority Support",
-    ],
-    cta: { label: "Join Waitlist", href: "/signup" },
-    variant: "featured",
-  },
-  {
-    id: "pro-plus",
-    name: "Pro Plus",
-    badge: "Best Value",
-    priceKey: "proPlus",
-    upgradeKey: "proPlus",
-    generations: `${PLANS.pro_plus.generationsLimit} per month`,
-    features: [
-      "Everything in Pro",
-      `${PLANS.pro_plus.generationsLimit} generations per month`,
-      "Advanced Analytics",
-      "Early Access to New Features",
-    ],
-    cta: { label: "Join Waitlist", href: "/signup" },
-    variant: "light",
-  },
+const TEACHER_PLANS: Plan[] = [
+  { id: "free", name: "Free", description: "Find your lesson planning rhythm.", limit: PLANS.free.generationsLimit, features: ["Lesson plans and presentation slides", "Class details and curriculum setup", "Standard presentation themes", "Email support"] },
+  { id: "pro", name: "Pro", description: "Prepare the complete teaching package.", limit: PLANS.pro.generationsLimit, features: ["Everything in Free", "Upload your source material", "Worksheets, assessments and homework", "Teacher notes and the full AFL library", "Question papers and blueprints", "Differentiated worksheet packs", "All presentation themes", "Teaching strategies and global frameworks", "Priority support"] },
+  { id: "proPlus", name: "Pro Plus", description: "More room for a busy teaching schedule.", limit: PLANS.pro_plus.generationsLimit, features: ["Everything in Pro", "Twice the monthly generations", "Advanced analytics", "Early access to new features"] },
 ];
-
-const SCHOOL_PLAN_DEFS: PlanDef[] = [
-  {
-    id: "schools-institutes",
-    name: "Schools & Institutes",
-    priceKey: null,
-    generations: "Unlimited generations for every teacher",
-    features: [
-      "HOD Dashboard & Department Groups",
-      "School Branding on PPTs",
-      "Usage Analytics",
-      "Custom Feature Requests & API Access",
-      "Dedicated Account Manager & SLA Support",
-    ],
-    cta: {
-      label: "Contact Sales",
-      href: "mailto:info@layah.in?subject=School%2FInstitute%20Plan%20Enquiry",
-    },
-    variant: "school",
-  },
-];
-
 const FAQ = [
-  {
-    q: "Can I cancel anytime?",
-    a: "Yes. No contracts — cancel monthly or annual plans whenever you like.",
-  },
-  {
-    q: "What counts as a generation?",
-    a: "Each full AI run (lesson plan, question paper, worksheet pack, etc.) counts as one generation toward your monthly limit.",
-  },
-  {
-    q: "Do school plans share one login?",
-    a: "No. Each teacher gets their own account under your school plan, with unlimited generations for the school.",
-  },
-  {
-    q: "How does annual billing save money?",
-    a: "Annual plans are priced at 10 months — you get 2 months free compared to paying monthly.",
-  },
-] as const;
+  { q: "What counts as a generation?", a: "Each AI run, such as a lesson package, question paper or worksheet pack, counts as one generation toward your monthly limit." },
+  { q: "Can I cancel my subscription?", a: "You can manage and cancel an active subscription from Settings. Your checkout shows the billing period and whether the plan renews automatically." },
+  { q: "How does annual billing work?", a: "You pay once for the year. Annual pricing is equivalent to ten monthly payments, saving two months compared with paying monthly." },
+  { q: "Does each teacher need an account?", a: "Yes. Teachers have individual accounts under a school plan, with unlimited generations and access managed by the school." },
+];
 
-function CheckIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={`size-5 shrink-0 ${className}`}
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden
-    >
-      <path
-        d="M5 10l3 3 7-7"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function PlanPrice({
-  plan,
-  region,
-  billing,
-  lightText,
-}: {
-  plan: PlanDef;
-  region: PricingRegion;
-  billing: Billing;
-  lightText?: boolean;
-}) {
-  if (!plan.priceKey) {
-    return (
-      <p
-        className="text-3xl font-extrabold tracking-tight"
-        style={{ color: lightText ? TEXT_INVERSE : NAVY }}
-      >
-        {plan.variant === "school" ? "Custom Pricing" : "Free Forever"}
-      </p>
-    );
-  }
-
-  const prices = region.prices[plan.priceKey];
-  const amount = billing === "annual" ? prices.annual : prices.monthly;
-  const period = billing === "annual" ? "year" : "month";
-  const showStrike = billing === "annual";
-
-  return (
-    <div>
-      {showStrike ? (
-        <p
-          className="text-sm line-through"
-          style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.5) : "var(--text-disabled)" }}
-        >
-          {formatRegionalPrice(region, prices.monthly * 12, "year")}
-        </p>
-      ) : null}
-      <p
-        className="text-3xl font-extrabold tracking-tight"
-        style={{ color: lightText ? TEXT_INVERSE : NAVY }}
-      >
-        {formatRegionalPrice(region, amount, period)}
-      </p>
-      {billing === "annual" ? (
-        <span
-          className="mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide"
-          style={{ background: "color-mix(in oklch, var(--brand) 20%, transparent)", color: TEAL }}
-        >
-          Save 2 months
-        </span>
-      ) : null}
-      {billing === "monthly" ? (
-        <p
-          className="mt-2 text-sm"
-          style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.65) : "var(--text-secondary)" }}
-        >
-          Or {formatRegionalPrice(region, prices.annual, "year")}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function PricingCard({
-  plan,
-  region,
-  billing,
-  onUpgrade,
-}: {
-  plan: PlanDef;
-  region: PricingRegion;
-  billing: Billing;
-  onUpgrade?: (key: UpgradePlanKey) => void;
-}) {
-  const isFeatured = plan.variant === "featured";
-  const isSchool = plan.variant === "school";
-  const lightText = isFeatured;
-  const isMailto = plan.cta.href.startsWith("mailto:");
-  const ctaClassName = `mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 py-3 text-center text-sm font-semibold transition hover:opacity-95 ${FOCUS_RING}`;
-  const ctaStyle = isFeatured
-    ? { background: TEAL, color: NAVY }
-    : plan.id === "schools-institutes"
-      ? { background: NAVY, color: TEXT_INVERSE, border: `2px solid ${TEAL}` }
-      : { background: NAVY, color: TEXT_INVERSE };
-
-  return (
-    <article
-      className={`relative flex flex-col rounded-3xl p-7 shadow-sm transition duration-300 hover:shadow-lg sm:p-8 ${
-        isFeatured ? "lg:-translate-y-3 lg:scale-[1.04] lg:hover:-translate-y-4" : ""
-      }`}
-      style={
-        isFeatured
-          ? {
-              background: `linear-gradient(160deg, ${NAVY} 0%, var(--l-gray-11) 55%, ${NAVY} 100%)`,
-              border: `2px solid ${TEAL}`,
-              boxShadow: `0 24px 60px -12px color-mix(in oklch, var(--brand) 35%, transparent), 0 0 0 1px color-mix(in oklch, var(--brand) 15%, transparent)`,
-            }
-          : isSchool
-            ? { background: "var(--surface-raised)", border: `2px solid ${NAVY}` }
-            : { background: "var(--surface-raised)", border: `1px solid color-mix(in oklch, var(--text) 12%, transparent)` }
-      }
-    >
-      {plan.badge ? (
-        <span
-          className="absolute right-5 top-5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide"
-          style={{
-            background: plan.badge === "Best Value" ? NAVY : TEAL,
-            color: plan.badge === "Best Value" ? TEXT_INVERSE : NAVY,
-          }}
-        >
-          {plan.badge}
-        </span>
-      ) : null}
-
-      <h3 className="text-xl font-bold" style={{ color: lightText ? TEXT_INVERSE : NAVY }}>
-        {plan.name}
-      </h3>
-
-      <div className="mt-3">
-        <PlanPrice plan={plan} region={region} billing={billing} lightText={lightText} />
-      </div>
-
-      <p className="mt-4 text-sm font-semibold" style={{ color: lightText ? TEAL : "var(--brand-active)" }}>
-        {plan.generations}
-      </p>
-      {plan.teachers ? (
-        <p className="mt-1 text-sm" style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.75) : "var(--text-secondary)" }}>
-          {plan.teachers}
-        </p>
-      ) : null}
-
-      <ul className="mt-6 flex flex-1 flex-col gap-2.5">
-        {plan.features.map((item) => (
-          <li
-            key={item}
-            className="flex items-start gap-2.5 text-sm leading-snug"
-            style={{ color: lightText ? withAlpha(TEXT_INVERSE, 0.9) : "var(--text)" }}
-          >
-            <span
-              className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full"
-              style={{ background: lightText ? "color-mix(in oklch, var(--brand) 22%, transparent)" : "color-mix(in oklch, var(--brand) 12%, transparent)" }}
-            >
-              <CheckIcon
-                className={`!size-3 ${lightText ? "text-[var(--brand)]" : "text-[var(--brand-active)]"}`}
-              />
-            </span>
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-
-      {plan.upgradeKey && onUpgrade ? (
-        <button
-          type="button"
-          onClick={() => onUpgrade(plan.upgradeKey!)}
-          className={`relative ${ctaClassName}`}
-          style={ctaStyle}
-        >
-          {isFeatured ? (
-            <BorderTrail
-              className="bg-[var(--text)]"
-              size={40}
-              style={{ boxShadow: "0 0 8px 2px color-mix(in oklch, var(--text) 50%, transparent), 0 0 16px 4px color-mix(in oklch, var(--text) 25%, transparent)" }}
-            />
-          ) : null}
-          {plan.cta.label}
-        </button>
-      ) : isMailto ? (
-        <a href={plan.cta.href} className={ctaClassName} style={ctaStyle}>
-          {plan.cta.label}
-        </a>
-      ) : (
-        <Link href={plan.cta.href} className={ctaClassName} style={ctaStyle}>
-          {plan.cta.label}
-        </Link>
-      )}
-    </article>
-  );
+function Price({ plan, region, billing }: { plan: Plan; region: PricingRegion; billing: Billing }) {
+  if (plan.id === "free") return <p className="text-3xl font-semibold tracking-tight">Free</p>;
+  const prices = region.prices[plan.id];
+  return <div><p className="text-2xl font-semibold tracking-tight">{formatRegionalPrice(region, prices[billing], billing === "annual" ? "year" : "month")}</p><p className="mt-1 text-xs text-muted">{billing === "annual" ? "Billed annually · save 2 months" : "Monthly billing"}</p></div>;
 }
 
 export function PricingPage() {
   const [billing, setBilling] = useState<Billing>("monthly");
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [paymentPlan, setPaymentPlan] = useState<UpgradePlanKey>("pro");
-  const { region } = usePricingRegion();
-  const isAnnual = billing === "annual";
+  const [paymentPlan, setPaymentPlan] = useState<UpgradePlanKey | null>(null);
+  const [openingPlan, setOpeningPlan] = useState<UpgradePlanKey | null>(null);
+  const [error, setError] = useErrorToast<string>("");
+  const { region, regionId, setRegionManually, loading: regionLoading } = usePricingRegion();
 
-  const openPayment = (planKey: UpgradePlanKey) => { setPaymentPlan(planKey); setPaymentOpen(true); };
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const selected = params.get("plan");
+    if (selected !== "pro" && selected !== "proPlus") return;
+    let cancelled = false;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (cancelled || !data.session) return;
+      setBilling(params.get("billing") === "annual" ? "annual" : "monthly");
+      setPaymentPlan(selected);
+      params.delete("plan");
+      params.delete("billing");
+      const query = params.toString();
+      window.history.replaceState(window.history.state, "", `/pricing${query ? `?${query}` : ""}${window.location.hash}`);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const openPayment = async (plan: UpgradePlanKey) => {
+    if (openingPlan) return;
+    setError("");
+    setOpeningPlan(plan);
+    try {
+      const { data, error: authError } = await supabase.auth.getSession();
+      if (authError) throw authError;
+      if (!data.session) {
+        const next = `/pricing?plan=${plan}&billing=${billing}`;
+        window.location.assign(`/login?next=${encodeURIComponent(next)}`);
+        return;
+      }
+      setPaymentPlan(plan);
+    } catch {
+      setError("We couldn’t open checkout. Please try again.");
+    } finally {
+      setOpeningPlan(null);
+    }
+  };
 
   return (
-    <main className="min-h-screen bg-[var(--surface)] pb-24">
-      <Container>
-        {/* Standard secondary-page hero: badge + headline + subtext, matching
-            the landing page's hero pattern. */}
-        <section className="mx-auto max-w-[820px] px-4 pb-4 pt-14 text-center sm:px-6">
-          <span
-            className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-            style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL_DARK }}
-          >
-            Pricing
-          </span>
-          <h1
-            className="mt-5 font-extrabold leading-[1.1] tracking-tight"
-            style={{ color: NAVY, fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
-          >
-            Simple pricing for teachers and schools
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: TEXT_MUTED }}>
-            Start free. Upgrade when you are ready. Schools get unlimited generations for every teacher.
-          </p>
-        </section>
-
-        <div className="mx-auto mt-6 flex justify-center">
-          <p
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm"
-            style={{ background: "var(--surface-raised)", border: `1px solid color-mix(in oklch, var(--brand) 30%, transparent)`, color: NAVY }}
-          >
-            <span className="text-lg leading-none" aria-hidden>{region.flag}</span>
-            <span>
-              Prices shown in <strong>{region.currency}</strong> ({region.currencyName})
-            </span>
-          </p>
-        </div>
-
-        <div className="mx-auto mt-10 flex flex-col items-center gap-3">
-          <div
-            className="inline-flex rounded-full p-1 shadow-sm"
-            style={{ background: "var(--surface-raised)", border: `1px solid color-mix(in oklch, var(--text) 12%, transparent)` }}
-            role="group"
-            aria-label="Billing period"
-          >
-            <button
-              type="button"
-              onClick={() => setBilling("monthly")}
-              className={`rounded-full px-6 py-3 text-sm font-semibold transition ${FOCUS_RING}`}
-              style={{
-                background: !isAnnual ? NAVY : "transparent",
-                color: !isAnnual ? TEXT_INVERSE : "var(--text-secondary)",
-              }}
-            >
-              Monthly
-            </button>
-            <button
-              type="button"
-              onClick={() => setBilling("annual")}
-              className={`rounded-full px-6 py-3 text-sm font-semibold transition ${FOCUS_RING}`}
-              style={{
-                background: isAnnual ? NAVY : "transparent",
-                color: isAnnual ? TEXT_INVERSE : "var(--text-secondary)",
-              }}
-            >
-              Annual
-            </button>
+    <>
+      <PublicPage eyebrow="Plans & pricing" title="A plan for the way you teach." description="Start with the essentials. Choose more resources and capacity as your teaching needs grow.">
+        <section aria-labelledby="teacher-plans-title">
+          <div className="mb-7 flex flex-wrap items-end justify-between gap-5">
+            <div><h2 id="teacher-plans-title" className="section-heading">For individual teachers</h2><p className="mt-2 text-sm text-muted">One account. Your teaching workspace.</p></div>
+            <div className="inline-flex gap-1 rounded-lg border border-line bg-surface p-1" role="group" aria-label="Billing period">
+              {(["monthly", "annual"] as const).map((period) => <button key={period} type="button" aria-pressed={billing === period} onClick={() => setBilling(period)} className="min-h-10 rounded-md px-4 text-sm font-medium text-muted transition-colors duration-150 hover:text-ink aria-pressed:bg-brand/10 aria-pressed:text-brand-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand motion-reduce:transition-none">{period === "monthly" ? "Monthly" : "Annual · save 2 months"}</button>)}
+            </div>
           </div>
-          {isAnnual ? (
-            <p
-              className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold"
-              style={{ background: "color-mix(in oklch, var(--brand) 12%, transparent)", color: "var(--brand-active)" }}
-            >
-              <span className="inline-block h-2 w-2 rounded-full" style={{ background: TEAL }} aria-hidden />
-              Save 2 months on all annual plans
-            </p>
-          ) : null}
-        </div>
-
-        <section className="mt-14">
-          <h2 className="text-center text-sm font-bold uppercase tracking-widest" style={{ color: TEAL }}>
-            For teachers
-          </h2>
-          <p className="mt-2 text-center text-lg font-semibold sm:text-xl" style={{ color: NAVY }}>
-            Individual plans
-          </p>
-          <div className="mt-8 grid gap-6 pt-2 md:grid-cols-2 lg:pt-4 xl:grid-cols-3 xl:items-stretch">
-            {TEACHER_PLAN_DEFS.map((plan) => (
-              <PricingCard key={plan.id} plan={plan} region={region} billing={billing} onUpgrade={openPayment} />
+          {error ? <p role="alert" className="mb-5 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p> : null}
+          <div className="grid gap-5 lg:grid-cols-3">
+            {TEACHER_PLANS.map((plan) => (
+              <article key={plan.id} className={`flex flex-col rounded-xl border bg-surface p-6 sm:p-7 ${plan.id === "pro" ? "border-brand ring-1 ring-brand/15" : "border-line"}`}>
+                <div className="flex items-center justify-between gap-3"><h3 className="text-xl font-semibold">{plan.name}</h3>{plan.id === "pro" ? <span className="rounded-md bg-brand/10 px-2 py-1 text-xs font-medium text-brand-text">Complete toolkit</span> : null}</div>
+                <p className="mt-2 min-h-10 text-sm leading-relaxed text-muted">{plan.description}</p>
+                <div className="mt-6 min-h-16" aria-live="polite">{regionLoading && plan.id !== "free" ? <p className="text-sm text-muted">Loading local pricing…</p> : <Price plan={plan} region={region} billing={billing} />}</div>
+                <p className="mt-4 text-sm font-medium">{plan.limit} generations per month</p>
+                {plan.id === "free" ? <Link href="/lesson-plan" className={buttonVariants({ variant: "outline", className: "mt-5 w-full" })}>Start free</Link> : <Button variant={plan.id === "pro" ? "default" : "outline"} className="mt-5 w-full" disabled={openingPlan !== null || regionLoading} onClick={() => void openPayment(plan.id as UpgradePlanKey)}>{openingPlan === plan.id ? "Opening…" : `Choose ${plan.name}`}</Button>}
+                <ul className="mt-6 space-y-3 border-t border-line pt-6">{plan.features.map((feature) => <li key={feature} className="flex items-start gap-2.5 text-sm leading-relaxed text-muted"><Check className="mt-0.5 size-4 shrink-0 text-brand-text" aria-hidden />{feature}</li>)}</ul>
+              </article>
             ))}
           </div>
-        </section>
-
-        <section
-          className="mt-20 rounded-3xl p-6 sm:p-10"
-          style={{
-            background: `linear-gradient(135deg, ${NAVY} 0%, var(--l-gray-11) 100%)`,
-            border: `1px solid color-mix(in oklch, var(--brand) 25%, transparent)`,
-          }}
-        >
-          <h2 className="text-center text-sm font-bold uppercase tracking-widest text-[var(--brand)]">
-            For schools
-          </h2>
-          <p className="mt-2 text-center text-lg font-semibold text-white sm:text-xl">
-            School &amp; district plans
-          </p>
-          <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-white/65">
-            Unlimited generations for every teacher on your plan. Enterprise includes custom branding and API access.
-          </p>
-          <div className="mx-auto mt-10 max-w-md">
-            {SCHOOL_PLAN_DEFS.map((plan) => (
-              <PricingCard key={plan.id} plan={plan} region={region} billing={billing} />
-            ))}
-          </div>
-          <div className="mt-10 text-center">
-            <p className="text-sm text-white/50">Prefer to self-serve?</p>
-            <Link
-              href="/school-register"
-              className={`mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--text)]`}
-              style={{ background: TEAL, color: NAVY }}
-            >
-              <svg
-                className="size-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-              </svg>
-              Register Your School
-            </Link>
-            <p className="mt-3 text-sm text-white/50">
-              Set up your own plan and our team will onboard you within 24 hours
-            </p>
+          <div className="mt-5 flex flex-wrap items-start justify-between gap-4 text-xs text-muted">
+            <p className="max-w-lg leading-relaxed">Prices are displayed for your region. Checkout is billed in INR; you can review the final amount before paying. Generation limits renew monthly on both billing periods.</p>
+            <label className="flex items-center gap-2">Display currency<select aria-label="Display pricing region and currency" value={regionId} onChange={(event) => { if (isPricingRegionId(event.target.value)) setRegionManually(event.target.value); }} className="min-h-9 max-w-48 rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand">{PRICING_REGION_LIST.map((item) => <option key={item.id} value={item.id}>{item.selectorLabel}</option>)}</select></label>
           </div>
         </section>
 
-        <section className="mt-20">
-          <h2 className="text-center text-2xl font-bold sm:text-3xl" style={{ color: NAVY }}>
-            Frequently asked questions
-          </h2>
-          <div className="mx-auto mt-10 max-w-3xl space-y-4">
-            {FAQ.map((item) => (
-              <details
-                key={item.q}
-                className="group rounded-2xl border bg-[var(--surface)] p-5 shadow-sm transition hover:shadow-md open:shadow-md"
-                style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
-              >
-                <summary
-                  className={`cursor-pointer list-none rounded-lg text-base font-semibold marker:content-none ${FOCUS_RING}`}
-                  style={{ color: NAVY }}
-                >
-                  <span className="flex items-center justify-between gap-4">
-                    {item.q}
-                    <span
-                      className="text-xl font-normal transition group-open:rotate-45"
-                      style={{ color: TEAL }}
-                      aria-hidden
-                    >
-                      +
-                    </span>
-                  </span>
-                </summary>
-                <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                  {item.a}
-                </p>
-              </details>
-            ))}
-          </div>
+        <section id="schools" className="mt-14 grid scroll-mt-24 gap-8 rounded-xl border border-line bg-surface p-7 sm:p-9 md:grid-cols-2">
+          <div><School className="size-6 text-brand-text" aria-hidden /><p className="page-kicker mt-5">For schools & institutes</p><h2 className="mt-3 text-2xl font-semibold tracking-tight">Bring your teaching team together.</h2><p className="mt-3 text-sm leading-relaxed text-muted">Individual teacher accounts, unlimited generations and a shared view of your school’s teaching resources. Contact us for a plan that fits your team.</p><div className="mt-6 flex flex-wrap items-center gap-4"><Link href="/school-register" className={buttonVariants()}>Register your school <ArrowRight className="size-4" aria-hidden /></Link><a href="mailto:info@layah.in?subject=School%20plan%20enquiry" className="rounded text-sm font-medium text-brand-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">Talk to our team</a></div></div>
+          <ul className="space-y-4 md:border-l md:border-line md:pl-8">{["Unlimited generations for every teacher", "HOD dashboards and department groups", "School branding on presentations", "Usage analytics", "Custom features and API access", "Dedicated account support"].map((feature) => <li key={feature} className="flex gap-3 text-sm text-muted"><Check className="size-4 shrink-0 text-brand-text" aria-hidden />{feature}</li>)}</ul>
         </section>
-      </Container>
 
-      <PaymentModal
-        open={paymentOpen}
-        planKey={paymentPlan}
-        initialBilling={billing}
-        onClose={() => setPaymentOpen(false)}
-        onSuccess={() => window.location.reload()}
-      />
-    </main>
+        <section className="mt-14 grid gap-8 md:grid-cols-[0.6fr_1.4fr]">
+          <div><h2 className="section-heading">Before you choose</h2><p className="mt-3 text-sm text-muted">Need a little more detail?</p><Link href="/faq" className="mt-3 inline-flex rounded text-sm font-medium text-brand-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">Visit the help centre</Link></div>
+          <div className="divide-y divide-line rounded-xl border border-line bg-surface">{FAQ.map((item) => <details key={item.q} className="group px-5"><summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand">{item.q}<Plus className="size-4 shrink-0 text-faint transition-transform duration-150 group-open:rotate-45 motion-reduce:transition-none" aria-hidden /></summary><p className="pb-5 text-sm leading-relaxed text-muted">{item.a}</p></details>)}</div>
+        </section>
+      </PublicPage>
+      {paymentPlan ? <PaymentModal open planKey={paymentPlan} initialBilling={billing} onClose={() => setPaymentPlan(null)} onSuccess={() => window.location.assign("/settings")} /> : null}
+    </>
   );
 }
+

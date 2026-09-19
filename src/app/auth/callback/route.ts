@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase-ssr";
 import { sendWelcomeEmailIfNew } from "@/lib/welcome-email";
 import { sanitizeUserMessage } from "@/lib/user-facing-errors";
 import { hasCompletedTeacherProfile } from "@/lib/user-profile";
+import { getOnboardingDestination, getSafeAuthNext } from "@/lib/auth-redirect";
 
 export const runtime = "nodejs";
 
@@ -43,7 +44,8 @@ export async function GET(request: Request) {
 
   console.log("[auth/callback] User after exchange:", { email, userId });
 
-  const customRedirect = requestUrl.searchParams.get("redirect_to");
+  const requestedRedirect = requestUrl.searchParams.get("redirect_to");
+  const customRedirect = requestedRedirect ? getSafeAuthNext(requestedRedirect) : null;
 
   if (customRedirect) {
     console.log("[auth/callback] custom redirect_to:", customRedirect);
@@ -54,7 +56,7 @@ export async function GET(request: Request) {
     }
     return NextResponse.redirect(
       new URL(
-        hasCompletedTeacherProfile(user) ? customRedirect : "/onboarding",
+        hasCompletedTeacherProfile(user) ? customRedirect : getOnboardingDestination(customRedirect),
         origin,
       ).toString(),
     );

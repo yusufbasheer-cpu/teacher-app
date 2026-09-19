@@ -32,7 +32,7 @@ export function Panel({
   return (
     <div
       className={cn(
-        "on-surface rounded-lg border border-line-subtle",
+        "on-surface rounded-xl border border-line-subtle",
         inset ? "bg-sunken" : "bg-surface",
         className,
       )}
@@ -55,15 +55,15 @@ export function PanelHeader({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center justify-between gap-3 border-b border-line-subtle px-4 py-3",
+        "flex flex-wrap items-center justify-between gap-3 border-b border-line-subtle px-5 py-4",
         className,
       )}
       {...props}
     >
       <div className="min-w-0">
-        <h2 className="truncate text-[13px] font-semibold text-ink">{title}</h2>
+        <h2 className="text-base font-semibold text-ink">{title}</h2>
         {description ? (
-          <p className="mt-0.5 text-[12px] text-faint">{description}</p>
+          <p className="mt-1 text-[13px] text-faint">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
@@ -87,13 +87,13 @@ export function PageTitle({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-wrap items-start justify-between gap-3", className)}>
+    <div className={cn("page-header", className)}>
       <div className="min-w-0">
-        <h1 className="text-[19px] font-semibold leading-tight tracking-[-0.015em] text-ink">
+        <h1 className="page-title">
           {title}
         </h1>
         {description ? (
-          <p className="mt-1 max-w-prose text-[13px] text-muted">{description}</p>
+          <p className="page-description">{description}</p>
         ) : null}
       </div>
       {actions ? (
@@ -123,8 +123,8 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5",
-        "text-[11px] font-medium leading-none",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-1",
+        "text-xs font-medium leading-none",
         BADGE_TONE[tone],
         className,
       )}
@@ -214,13 +214,13 @@ export function EmptyState({
       )}
     >
       {Icon ? (
-        <span className="mb-3 flex size-9 items-center justify-center rounded-md border border-line-subtle bg-sunken text-faint">
+        <span className="mb-4 flex size-12 items-center justify-center rounded-md border border-line-subtle bg-sunken text-faint">
           <Icon className="size-4" aria-hidden />
         </span>
       ) : null}
-      <p className="text-[13px] font-medium text-ink">{title}</p>
+      <p className="text-base font-medium text-ink">{title}</p>
       {description ? (
-        <p className="mt-1 max-w-sm text-[12px] leading-relaxed text-faint">{description}</p>
+        <p className="mt-2 max-w-sm text-sm leading-relaxed text-faint">{description}</p>
       ) : null}
       {action || secondaryAction ? (
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -251,7 +251,7 @@ export function ErrorState({
 }) {
   return (
     <div className={cn("flex flex-col items-center justify-center px-6 py-14 text-center", className)}>
-      <span className="mb-3 flex size-9 items-center justify-center rounded-md border border-danger-border/60 bg-danger-subtle text-danger-text">
+      <span className="mb-4 flex size-12 items-center justify-center rounded-md border border-danger-border/60 bg-danger-subtle text-danger-text">
         <svg viewBox="0 0 16 16" className="size-4" fill="none" aria-hidden>
           <path
             d="M8 5v3.5M8 11h.01"
@@ -262,9 +262,9 @@ export function ErrorState({
           <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="1.4" />
         </svg>
       </span>
-      <p className="text-[13px] font-medium text-ink">{title}</p>
+      <p className="text-base font-medium text-ink">{title}</p>
       {description ? (
-        <p className="mt-1 max-w-sm text-[12px] leading-relaxed text-faint">{description}</p>
+        <p className="mt-2 max-w-sm text-sm leading-relaxed text-faint">{description}</p>
       ) : null}
       {onRetry ? (
         <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
@@ -294,7 +294,7 @@ export function Notice({
   return (
     <div
       className={cn(
-        "rounded-md border px-3 py-2 text-[12px] leading-relaxed",
+        "rounded-lg border px-4 py-3 text-sm leading-relaxed",
         tones[tone],
         className,
       )}
@@ -324,7 +324,7 @@ export function Meter({
   label?: React.ReactNode;
   className?: string;
 }) {
-  const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+  const pct = limit > 0 ? Math.max(0, Math.min(100, (used / limit) * 100)) : 0;
   const left = Math.max(0, limit - used);
   const tone = left === 0 ? "danger" : left <= Math.max(1, limit * 0.2) ? "gen" : "brand";
   const fill = tone === "danger" ? "bg-danger" : tone === "gen" ? "bg-gen" : "bg-brand";
@@ -335,14 +335,14 @@ export function Meter({
       <div
         className="h-1 overflow-hidden rounded-full bg-sunken"
         role="progressbar"
-        aria-valuenow={used}
+        aria-valuenow={Math.max(0, Math.min(used, limit))}
         aria-valuemin={0}
-        aria-valuemax={limit}
+        aria-valuemax={Math.max(0, limit)}
         aria-label={`${used} of ${limit} generations used`}
       >
         <div
-          className={cn("h-full rounded-full transition-[width] duration-500 ease-out", fill)}
-          style={{ width: `${pct}%` }}
+          className={cn("h-full origin-left rounded-full transition-transform duration-300 ease-[var(--ease)]", fill)}
+          style={{ transform: `scaleX(${pct / 100})` }}
         />
       </div>
     </div>
@@ -411,6 +411,7 @@ export function Disclosure({
   className?: string;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
+  const contentId = React.useId();
 
   return (
     <div className={cn("rounded-lg border border-line-subtle bg-surface", className)}>
@@ -418,10 +419,11 @@ export function Disclosure({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-controls={contentId}
         disabled={locked}
         className={cn(
-          "flex w-full items-center gap-2 px-3.5 py-2.5 text-left",
-          "transition-colors duration-[110ms]",
+          "flex w-full items-center gap-3 px-5 py-4 text-left",
+          "transition-colors duration-[140ms]",
           !locked && "hover:bg-hover",
           open ? "rounded-t-lg" : "rounded-lg",
           locked && "cursor-not-allowed",
@@ -438,13 +440,13 @@ export function Disclosure({
           <path d="M4 2.5L8 6l-4 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <span className="min-w-0 flex-1">
-          <span className="block text-[13px] font-medium text-ink">{title}</span>
+          <span className="block text-base font-medium text-ink">{title}</span>
           {summary && !open ? (
-            <span className="mt-0.5 block truncate text-[11px] text-faint">{summary}</span>
+            <span className="mt-0.5 block truncate text-[13px] text-faint">{summary}</span>
           ) : null}
         </span>
       </button>
-      {open ? <div className="border-t border-line-subtle px-3.5 py-3.5">{children}</div> : null}
+      {open ? <div id={contentId} className="animate-fade-in border-t border-line-subtle p-5">{children}</div> : null}
     </div>
   );
 }

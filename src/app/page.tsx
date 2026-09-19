@@ -1,229 +1,116 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import type { Metadata } from "next";
+import { ArrowRight, BookOpen, Check, FileText, Presentation, School } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
-import { BackButtonLogoutModal } from "@/components/landing/back-button-logout-modal";
+import { Footer } from "@/components/layout/footer";
 import { LessonPlanBento } from "@/components/landing/lesson-plan-bento";
 import { HowItWorksTimeline } from "@/components/landing/how-it-works-timeline";
-import { StatsSection } from "@/components/home/stats-section";
-import { TestimonialsSection } from "@/components/home/testimonials-section";
-import { TextEffect } from "@/components/motion-primitives/text-effect";
-import { HeroBackdrop } from "@/components/marketing/hero-backdrop";
-import { InView } from "@/components/motion-primitives/in-view";
-import { BG_SOFT, BORDER, NAVY, TEAL, TEAL_DARK, TEXT_MUTED } from "@/lib/design-tokens";
-
-const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]";
-
-const FADE_UP = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0 },
-} as const;
+import { buttonVariants } from "@/components/ui/button";
+import { PLANS } from "@/lib/plans";
 
 export const metadata: Metadata = {
-  title: "Layah — AI Lesson Planning for Teachers",
-  description:
-    "Layah generates complete lesson plans, PowerPoint presentations, worksheets, and assessments in seconds. Built specifically for teachers.",
+  title: "Layah — A teaching day, thoughtfully prepared",
+  description: "Create lesson plans, PowerPoint presentations, worksheets and assessments in one teaching workspace. Built by a teacher, for teachers.",
 };
-
-const TRUST_BADGES = ["CBSE", "ICSE", "IB", "Cambridge"] as const;
-
-const FOOTER_PRODUCT_LINKS = [
-  { href: "/lesson-plan", label: "Lesson Plans" },
-  { href: "/differentiated-worksheets", label: "Worksheets" },
-  { href: "/question-paper", label: "Question Papers" },
-  { href: "/pricing", label: "Pricing" },
-] as const;
-
-const FOOTER_COMPANY_LINKS = [
-  { href: "/about", label: "About" },
-  { href: "/blog", label: "Blog" },
-  { href: "/contact", label: "Contact" },
-  { href: "/privacy", label: "Privacy Policy" },
-  { href: "/terms", label: "Terms" },
-] as const;
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[var(--surface)]">
-      <BackButtonLogoutModal />
+    <div className="min-h-screen bg-canvas text-ink">
       <Navbar />
-
       <main>
-        {/* ══════════════════════════════════════════════════════════════
-            HERO — full-bleed background, content column capped at 820px
-            ══════════════════════════════════════════════════════════════ */}
-        <section className="relative isolate overflow-hidden">
-          <HeroBackdrop />
-          <div className="mx-auto max-w-[820px] px-4 pb-10 pt-14 text-center sm:px-6">
-            <span
-              className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide"
-              style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL_DARK }}
-            >
-              AI for Teachers
-            </span>
-
-            <TextEffect
-              as="h1"
-              preset="fade-in-blur"
-              speedReveal={1.1}
-              speedSegment={0.3}
-              className="mt-5 font-extrabold leading-[1.1] tracking-tight"
-              style={{ color: NAVY, fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
-            >
-              Layah creates lesson plans, PPTs, worksheets, and assessments in minutes
-            </TextEffect>
-
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: TEXT_MUTED }}>
-              Generate curriculum-aligned teaching resources for <strong style={{ color: NAVY }}>CBSE, ICSE, IB, Cambridge, and 15+ more curriculums</strong> from
-              a topic, chapter, or textbook page.
-            </p>
-
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link
-                href="/lesson-plan"
-                className={`inline-flex min-h-12 w-full items-center justify-center rounded-lg px-8 text-base font-semibold text-brand-on transition-colors hover:bg-brand-hover sm:w-auto ${FOCUS_RING}`}
-                style={{ background: TEAL }}
-              >
-                Start Generating
-              </Link>
-              <a
-                href="#preview"
-                className={`inline-flex min-h-12 w-full items-center justify-center rounded-lg px-8 text-base font-semibold transition-colors hover:border-line-strong hover:bg-hover sm:w-auto ${FOCUS_RING}`}
-                style={{ border: `1px solid ${BORDER}`, color: NAVY, background: "var(--surface-raised)" }}
-              >
-                View Sample Package
-              </a>
-            </div>
-
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
-              {TRUST_BADGES.map((badge) => (
-                <span
-                  key={badge}
-                  className="rounded-full px-3.5 py-1.5 text-xs font-bold"
-                  style={{ background: "var(--surface-raised)", border: `1px solid ${BORDER}`, color: TEXT_MUTED }}
-                >
-                  {badge}
-                </span>
-              ))}
-              <span
-                className="rounded-full px-3.5 py-1.5 text-xs font-bold"
-                style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", border: `1px solid ${BORDER}`, color: TEAL_DARK }}
-              >
-                +15 more
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════
-            PRODUCT PREVIEW — 3-card feature grid
-            ══════════════════════════════════════════════════════════════ */}
-        <section id="preview" className="mx-auto max-w-6xl px-4 py-[72px] sm:px-6 lg:px-8">
-          <InView
-            variants={FADE_UP}
-            viewOptions={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="mx-auto max-w-2xl text-center"
-          >
-            <h2 className="text-2xl font-extrabold sm:text-3xl" style={{ color: NAVY }}>
-              See what teachers receive
-            </h2>
-            <p className="mt-3 text-base" style={{ color: TEXT_MUTED }}>
-              One generation produces a complete, classroom-ready package.
-            </p>
-          </InView>
-
-          <div className="mt-10">
-            <LessonPlanBento />
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════
-            TESTIMONIALS — teacher social proof
-            ══════════════════════════════════════════════════════════════ */}
-        <TestimonialsSection />
-
-        {/* ══════════════════════════════════════════════════════════════
-            STATS — factual product coverage numbers as the social-proof beat
-            ══════════════════════════════════════════════════════════════ */}
-        <StatsSection />
-
-        {/* ══════════════════════════════════════════════════════════════
-            HOW IT WORKS — 3 horizontal numbered steps
-            ══════════════════════════════════════════════════════════════ */}
-        <section className="py-[72px]" style={{ background: BG_SOFT, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <InView
-              variants={FADE_UP}
-              viewOptions={{ once: true, amount: 0.4 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="mx-auto max-w-2xl text-center"
-            >
-              <h2 className="text-2xl font-extrabold sm:text-3xl" style={{ color: NAVY }}>
-                How it works
-              </h2>
-              <p className="mt-3 text-base" style={{ color: TEXT_MUTED }}>
-                From blank page to a complete teaching package in three steps.
+        <section className="border-b border-line bg-surface">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
+            <div>
+              <p className="page-kicker">The workspace for your teaching day</p>
+              <h1 className="mt-5 max-w-xl text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl lg:text-[3.5rem]">
+                {/* The space before the <br /> is load-bearing: without it the
+                    accessible name runs the two sentences together as
+                    "Less preparation.More teaching." */}
+                Less preparation. <br />
+                <span className="text-brand-text">More teaching.</span>
+              </h1>
+              <p className="mt-6 max-w-lg text-base leading-relaxed text-muted sm:text-lg">
+                Turn your next topic into a complete lesson, presentation and classroom resources. All together, ready for your review.
               </p>
-            </InView>
-
-            <HowItWorksTimeline />
-
-            <div className="mt-12 text-center">
-              <Link
-                href="/lesson-plan"
-                className={`relative inline-flex min-h-12 items-center justify-center rounded-full px-8 text-base font-semibold text-white shadow-[0_8px_24px_-8px_color-mix(in oklch, var(--brand) 55%, transparent)] transition hover:opacity-90 hover:shadow-[0_10px_28px_-6px_color-mix(in oklch, var(--brand) 65%, transparent)] ${FOCUS_RING}`}
-                style={{ background: TEAL }}
-              >
-                Start Generating
-              </Link>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <Link href="/lesson-plan" className={buttonVariants({ size: "lg" })}>
+                  Create a lesson <ArrowRight className="size-4" aria-hidden />
+                </Link>
+                <a href="#teaching-tools" className="rounded-lg px-2 py-3 text-sm font-medium text-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand motion-reduce:transition-none">
+                  Explore the tools
+                </a>
+              </div>
+              <p className="mt-4 text-sm text-muted">Start with {PLANS.free.generationsLimit} free lesson generations per month. No card required.</p>
+              <p className="mt-10 border-t border-line pt-5 text-sm leading-relaxed text-muted">
+                For CBSE, ICSE, British, Cambridge, IB and more.
+              </p>
             </div>
+
+            <figure className="rounded-2xl border border-line bg-canvas p-3 shadow-sm sm:p-4">
+              <figcaption className="flex items-center justify-between gap-3 px-2 pb-4 pt-1 text-xs font-medium text-muted">
+                <span className="flex items-center gap-2"><BookOpen className="size-4 text-brand-text" aria-hidden /> A look inside a lesson</span>
+                <span className="rounded-md border border-line bg-surface px-2 py-1">Example</span>
+              </figcaption>
+              <div className="overflow-hidden rounded-xl border border-line bg-surface">
+                <div className="border-b border-line p-5 sm:p-6">
+                  <p className="text-xs font-medium text-brand-text">Science · Grade 5 · 40 minutes</p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight">The water cycle</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">How does water move through our world?</p>
+                </div>
+                <div className="space-y-5 p-5 sm:p-6">
+                  <div>
+                    <h3 className="text-sm font-semibold">Learning objective</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-muted">Explain evaporation, condensation and precipitation using an everyday example.</p>
+                  </div>
+                  <ol className="space-y-3">
+                    {[
+                      ["Engage", "Where do puddles go after it rains?", "5 min"],
+                      ["Explore", "Observe water changing state.", "20 min"],
+                      ["Apply", "Draw and explain the cycle.", "10 min"],
+                      ["Reflect", "Check understanding with an exit ticket.", "5 min"],
+                    ].map(([title, detail, time]) => (
+                      <li key={title} className="flex items-start gap-3 text-sm">
+                        <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
+                        <div className="min-w-0 flex-1"><span className="font-medium">{title}</span><p className="mt-0.5 text-xs leading-relaxed text-muted">{detail}</p></div>
+                        <span className="shrink-0 text-xs tabular-nums text-faint">{time}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-line bg-canvas px-5 py-4 text-xs font-medium text-muted">
+                  <span className="flex items-center gap-1.5"><Presentation className="size-3.5" aria-hidden /> Slides</span>
+                  <span className="flex items-center gap-1.5"><FileText className="size-3.5" aria-hidden /> Worksheet</span>
+                  <span className="flex items-center gap-1.5"><Check className="size-3.5" aria-hidden /> Assessment</span>
+                </div>
+              </div>
+            </figure>
+          </div>
+        </section>
+
+        <section id="teaching-tools" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-14 sm:px-8 sm:py-20">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div><p className="page-kicker">One connected workspace</p><h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Prepare for the whole lesson.</h2></div>
+            <p className="max-w-md text-sm leading-relaxed text-muted">Choose a starting point. Keep your curriculum, teaching goals and classroom needs at the centre.</p>
+          </div>
+          <LessonPlanBento />
+        </section>
+
+        <section className="border-y border-line bg-surface">
+          <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-16">
+            <div className="max-w-xl"><p className="page-kicker">Your expertise, supported</p><h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">From your idea to your classroom.</h2></div>
+            <HowItWorksTimeline />
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
+          <div className="grid gap-8 rounded-2xl border border-line bg-surface p-7 sm:p-10 md:grid-cols-[1fr_auto] md:items-center">
+            <div><School className="mb-5 size-7 text-brand-text" aria-hidden /><h2 className="text-2xl font-semibold tracking-tight">A shared standard for your school.</h2><p className="mt-3 max-w-xl text-base leading-relaxed text-muted">Give teachers their own workspace, support departments and bring your school branding to teaching resources.</p></div>
+            <Link href="/pricing#schools" className={buttonVariants({ variant: "outline", size: "lg" })}>Explore school plans <ArrowRight className="size-4" aria-hidden /></Link>
           </div>
         </section>
       </main>
-
-      {/* ══════════════════════════════════════════════════════════════════
-          FOOTER — simplified, homepage-specific (the shared Footer
-          component is intentionally left untouched — it's also used on
-          /about, /contact, /pricing, /blog, /faq).
-          ══════════════════════════════════════════════════════════════════ */}
-      <footer className="py-14" style={{ borderTop: `1px solid ${BORDER}` }}>
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-10 sm:grid-cols-2 sm:gap-8">
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: TEXT_MUTED }}>
-                Product
-              </h3>
-              <ul className="mt-4 space-y-2.5">
-                {FOOTER_PRODUCT_LINKS.map((link) => (
-                  <li key={link.href}>
-                    <Link href={link.href} className={`rounded text-sm transition hover:opacity-70 ${FOCUS_RING}`} style={{ color: "var(--text)" }}>
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: TEXT_MUTED }}>
-                Company
-              </h3>
-              <ul className="mt-4 space-y-2.5">
-                {FOOTER_COMPANY_LINKS.map((link) => (
-                  <li key={link.href}>
-                    <Link href={link.href} className={`rounded text-sm transition hover:opacity-70 ${FOCUS_RING}`} style={{ color: "var(--text)" }}>
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          <p className="mt-12 text-xs" style={{ color: TEXT_MUTED }}>
-            © 2026 Layah. Built for teachers.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
+

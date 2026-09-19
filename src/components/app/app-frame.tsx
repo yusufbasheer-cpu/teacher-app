@@ -2,48 +2,22 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import {
-  ChevronsLeft,
-  ChevronsRight,
-  LogOut,
-  Menu,
-  PanelsTopLeft,
-  Search,
-  Settings,
-  X,
-} from "lucide-react";
+import { ArrowUpRight, ChevronsLeft, ChevronsRight, ChevronDown, HelpCircle, LogOut, Menu, Search, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { clearActiveSession } from "@/lib/active-session";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PLANS, isFreePlan } from "@/lib/plans";
-import { isNavActive, navGroups, routeLabel, type NavItem } from "@/lib/app-nav";
+import { isNavActive, navGroups, routeLabel } from "@/lib/app-nav";
 import { getTeacherDisplayName } from "@/lib/user-profile";
-import { Badge, Kbd, Meter } from "@/components/ui/panel";
+import { Badge, Kbd } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/app/theme";
 import { CommandPalette } from "@/components/app/command-palette";
-
-/**
- * The authenticated app frame.
- *
- * Replaces a 248px sidebar that had no responsive treatment at all — on a
- * 390px phone it took 248px of the viewport and left ~140px for content,
- * wrapping body text to one word per line. That was the single most serious
- * defect in the product, since most of this audience works from a phone.
- *
- * Structure:
- *   ≥lg   fixed rail (collapsible, persisted) + sticky top bar + content
- *   <lg   top bar with a menu button; the rail becomes an overlay drawer and
- *         content gets the full width
- *
- * The rail carries navigation only. Identity, quota, search and theme live in
- * the top bar, so the rail can collapse to icons without hiding anything the
- * user needs.
- */
 
 const COLLAPSE_KEY = "layah:rail-collapsed";
 
@@ -136,126 +110,33 @@ function initials(user: User): string {
   return (user.email?.[0] ?? "?").toUpperCase();
 }
 
-/* -------------------------------------------------------------------------- */
-/* Rail                                                                       */
-/* -------------------------------------------------------------------------- */
-
-function RailLink({
-  item,
-  active,
-  collapsed,
-  isFree,
-  onNavigate,
-  onBeforeNavigate,
-}: {
-  item: NavItem;
-  active: boolean;
-  collapsed: boolean;
-  isFree: boolean;
-  onNavigate?: () => void;
-  /** Fires synchronously in the click, before the router transition starts —
-   *  see useOptimisticActivePath above. */
-  onBeforeNavigate: (href: string) => void;
-}) {
-  const Icon = item.icon;
-  return (
-    <Link
-      href={item.href}
-      onClick={() => {
-        onBeforeNavigate(item.href);
-        onNavigate?.();
-      }}
-      title={collapsed ? item.label : undefined}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "group relative flex items-center gap-2.5 rounded-md py-1.5 text-[13px]",
-        "transition-colors duration-[110ms]",
-        collapsed ? "justify-center px-0" : "px-2",
-        active ? "bg-hover font-medium text-ink" : "text-muted hover:bg-hover hover:text-ink",
-      )}
-    >
-      {/* The active marker is a rule segment — the same ruled-margin device
-          the composer and package viewer use — and it is ONE shared element
-          rather than one-per-link. `layoutId` makes Framer Motion treat every
-          render of it (regardless of which link it's currently inside) as the
-          same physical object, so moving between items animates as a single
-          surface travelling to its new position instead of one bar fading out
-          while another fades in. Conditionally rendered — only the active
-          link ever mounts it — which is what lets it "jump" DOM parents while
-          still reading as continuous motion. */}
-      {active ? (
-        <motion.span
-          layoutId="rail-active-indicator"
-          aria-hidden
-          className={cn(
-            "absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand",
-            collapsed && "left-[-6px]",
-          )}
-          transition={{ type: "spring", stiffness: 620, damping: 45, mass: 0.5 }}
-        />
-      ) : null}
-      <Icon
-        className={cn(
-          "size-4 shrink-0 transition-[color,transform] duration-150 ease-out",
-          active ? "scale-[1.05] text-brand-text" : "text-faint group-hover:text-muted",
-        )}
-        aria-hidden
-      />
-      {!collapsed ? (
-        <>
-          <span className="min-w-0 flex-1 truncate">{item.label}</span>
-          {item.pro && isFree ? (
-            <Badge tone="generated" className="shrink-0">
-              Pro
-            </Badge>
-          ) : null}
-        </>
-      ) : null}
-    </Link>
-  );
-}
-
-function RailContent({
-  activePath,
-  roles,
-  collapsed,
-  isFree,
-  onNavigate,
-  onBeforeNavigate,
-}: {
-  /** The optimistic path — see useOptimisticActivePath. Drives which item
-   *  lights up; may be ahead of the browser's real current route. */
+function RailContent({ activePath, roles, collapsed, isFree, onNavigate }: {
   activePath: string;
   roles: Roles;
   collapsed: boolean;
   isFree: boolean;
-  onNavigate?: () => void;
-  onBeforeNavigate: (href: string) => void;
+  onNavigate: (href: string) => void;
 }) {
-  const groups = navGroups(roles);
   return (
-    <nav className="flex-1 overflow-y-auto px-2.5 py-2" aria-label="Main">
-      {groups.map((group, gi) => (
-        <div key={group.id} className={cn(gi > 0 && "mt-4")}>
-          {!collapsed ? (
-            <p className="px-2 pb-1.5 font-mono text-[10px] uppercase tracking-wider text-disabled">
-              {group.label}
-            </p>
-          ) : gi > 0 ? (
-            <div className="mx-auto mb-2 h-px w-5 bg-line-subtle" aria-hidden />
-          ) : null}
-          <div className="space-y-0.5">
-            {group.items.map((item) => (
-              <RailLink
-                key={item.href}
-                item={item}
-                active={isNavActive(activePath, item.href)}
-                collapsed={collapsed}
-                isFree={isFree}
-                onNavigate={onNavigate}
-                onBeforeNavigate={onBeforeNavigate}
-              />
-            ))}
+    <nav className="min-h-0 flex-1 space-y-7 overflow-y-auto px-3 py-6" aria-label="Workspace">
+      {navGroups(roles).map((group) => (
+        <div key={group.id}>
+          {!collapsed && <p className="mb-2 px-3 text-xs font-medium text-faint">{group.label}</p>}
+          <div className="space-y-1">
+            {group.items.map((item) => {
+              const active = isNavActive(activePath, item.href);
+              const Icon = item.icon;
+              return (
+                <Link key={item.href} href={item.href} onClick={(event) => {
+                  if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) onNavigate(item.href);
+                }} title={collapsed ? item.label : undefined} aria-label={collapsed ? item.label : undefined}
+                  aria-current={active ? "page" : undefined}
+                  className={cn("flex min-h-11 items-center gap-3 rounded-md text-sm transition-colors duration-[140ms]", collapsed ? "justify-center px-2" : "px-3", active ? "bg-brand-subtle font-semibold text-brand-text" : "text-muted hover:bg-hover hover:text-ink")}>
+                  <Icon className="size-[18px] shrink-0" aria-hidden />
+                  {!collapsed && <><span className="min-w-0 flex-1 truncate">{item.label}</span>{item.pro && isFree && <Badge className="text-[10px]">Pro</Badge>}</>}
+                </Link>
+              );
+            })}
           </div>
         </div>
       ))}
@@ -263,378 +144,155 @@ function RailContent({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Account menu                                                               */
-/* -------------------------------------------------------------------------- */
-
 function AccountMenu({ user }: { user: User }) {
-  const [open, setOpen] = React.useState(false);
   const [loggingOut, setLoggingOut] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement>(null);
   const { usage } = useUserUsage(true);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onEsc);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onEsc);
-    };
-  }, [open]);
-
+  const name = getTeacherDisplayName(user);
   const onLogout = async () => {
     if (loggingOut) return;
     setLoggingOut(true);
-    setOpen(false);
-    try {
-      await clearActiveSession(user.id);
-    } catch {
-      /* local sign-out below still ends the session */
-    }
-    try {
-      await supabase.auth.signOut({ scope: "local" });
-    } catch {
-      /* proceed to redirect regardless */
-    }
+    try { await clearActiveSession(user.id); } catch { /* local sign-out still ends this session */ }
+    try { await supabase.auth.signOut({ scope: "local" }); } catch { /* redirect even if remote cleanup fails */ }
     window.location.href = "/login";
   };
-
-  const name = getTeacherDisplayName(user);
-  const plan = usage ? PLANS[usage.planType].adminLabel : null;
-
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Account"
-        className={cn(
-          "flex size-7 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-brand-on",
-          "transition-opacity duration-[110ms] hover:opacity-90",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
-        )}
-      >
-        {initials(user)}
-      </button>
-
-      {open ? (
-        <div
-          role="menu"
-          className="animate-pop absolute right-0 top-full z-50 mt-1.5 w-60 overflow-hidden rounded-lg border border-line bg-raised shadow-overlay"
-        >
-          <div className="border-b border-line-subtle px-3 py-2.5">
-            <p className="truncate text-[13px] font-medium text-ink">{name}</p>
-            <p className="truncate text-[11px] text-faint">{user.email}</p>
-            {plan ? (
-              <Badge tone={usage && isFreePlan(usage.planType) ? "neutral" : "brand"} className="mt-2">
-                {plan}
-              </Badge>
-            ) : null}
-          </div>
-          <div className="p-1">
-            <Link
-              href="/settings"
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] text-muted hover:bg-hover hover:text-ink"
-            >
-              <Settings className="size-3.5" aria-hidden />
-              Settings
-            </Link>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => void onLogout()}
-              disabled={loggingOut}
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px] text-muted hover:bg-hover hover:text-ink disabled:opacity-60"
-            >
-              <LogOut className="size-3.5" aria-hidden />
-              {loggingOut ? "Signing out…" : "Sign out"}
-            </button>
-          </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="ghost" className="gap-2 px-1.5" aria-label="Open account menu" />}>
+        <span className="flex size-9 items-center justify-center rounded-full border border-brand-border bg-brand-subtle text-xs font-semibold text-brand-text">{initials(user)}</span>
+        <ChevronDown className="hidden size-3.5 text-faint sm:block" aria-hidden />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" sideOffset={8} className="w-64 p-1.5">
+        <div className="px-3 py-3">
+          <p className="truncate text-sm font-semibold text-ink">{name}</p>
+          <p className="mt-0.5 truncate text-xs text-faint">{user.email}</p>
+          {usage && <Badge className="mt-2" tone={isFreePlan(usage.planType) ? "neutral" : "brand"}>{PLANS[usage.planType].adminLabel}</Badge>}
         </div>
-      ) : null}
-    </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem render={<Link href="/settings" />}><Settings aria-hidden />Account & settings</DropdownMenuItem>
+        <DropdownMenuItem disabled={loggingOut} onClick={() => void onLogout()}><LogOut aria-hidden />{loggingOut ? "Signing out?" : "Sign out"}</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Quota pill                                                                 */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Quota in the top bar rather than as a dashboard stat card. It is a *constraint
- * on the current action*, so it belongs where the user is working — and it only
- * takes visual weight once it starts to matter.
- */
 function QuotaPill() {
   const { usage, loading } = useUserUsage(true);
-  if (loading || !usage) return null;
-  if (usage.unlimited || usage.generationsLimit == null) return null;
-
+  if (loading || !usage || usage.unlimited || usage.generationsLimit == null) return null;
   const left = Math.max(0, usage.generationsLimit - usage.generationsUsed);
   const low = left <= Math.max(1, usage.generationsLimit * 0.2);
-
   return (
-    <Link
-      href="/settings"
-      className="hidden items-center gap-2 rounded-md px-2 py-1 transition-colors hover:bg-hover sm:flex"
-      title={`${usage.generationsUsed} of ${usage.generationsLimit} generations used this month`}
-    >
-      {/* The bar only appears once headroom is short. At full quota an empty
-          track is a line that says nothing; when it matters, the bar and its
-          colour carry the urgency that the number alone doesn't. */}
-      {low ? (
-        <Meter used={usage.generationsUsed} limit={usage.generationsLimit} className="w-10" />
-      ) : null}
-      <span
-        className={cn(
-          "font-mono text-[11px] tabular-nums",
-          left === 0 ? "text-danger-text" : low ? "text-gen-text" : "text-faint",
-        )}
-      >
-        {left} left
-      </span>
+    <Link href="/settings" className={cn("hidden min-h-9 items-center gap-2 rounded-md px-3 text-xs transition-colors hover:bg-hover xl:flex", left === 0 ? "text-danger-text" : low ? "text-gen-text" : "text-faint")}
+      title={`${usage.generationsUsed} of ${usage.generationsLimit} generations used this month`}>
+      <span className={cn("size-1.5 rounded-full", left === 0 ? "bg-danger" : low ? "bg-gen" : "bg-success")} aria-hidden />
+      {left} generations left
     </Link>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Frame                                                                      */
-/* -------------------------------------------------------------------------- */
+function Brand({ collapsed = false }: { collapsed?: boolean }) {
+  return (
+    <Link href="/overview" aria-label="Layah dashboard" className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+      <img src="/logo-mark.png" alt="" aria-hidden className="size-9 rounded-md object-cover" />
+      {!collapsed && <span><span className="block text-xl font-semibold tracking-[-0.04em] text-ink">Layah</span><span className="block text-[11px] text-faint">Teacher workspace</span></span>}
+    </Link>
+  );
+}
 
 export function AppFrame({ user, children }: { user: User; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { activePath, onNavigate: onBeforeNavigate } = useOptimisticActivePath(pathname);
+  const { activePath, onNavigate } = useOptimisticActivePath(pathname);
   const roles = useRoles(user.id);
   const { usage } = useUserUsage(true);
   const isFree = Boolean(usage && isFreePlan(usage.planType));
-
   const [collapsed, setCollapsed] = React.useState(false);
   const [drawer, setDrawer] = React.useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === "1");
+    try { setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === "1"); } catch { /* storage may be unavailable */ }
+  }, []);
+  React.useEffect(() => {
+    setDrawer(false);
+    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  }, [pathname]);
+  // A drawer opened on a phone must release its focus trap when resized to desktop.
+  React.useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = () => { if (desktop.matches) setDrawer(false); };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
   }, []);
 
-  // Close the drawer on navigation — otherwise it covers the page you just
-  // asked for.
-  React.useEffect(() => setDrawer(false), [pathname]);
-
-  React.useEffect(() => {
-    if (!drawer) return;
-    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && setDrawer(false);
-    document.addEventListener("keydown", onEsc);
-    // Prevent the page behind the drawer from scrolling under it.
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onEsc);
-      document.body.style.overflow = prev;
-    };
-  }, [drawer]);
-
-  const toggleCollapsed = () => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
-      return next;
-    });
-  };
-
-  /* `g` then a key jumps to a section — the standard two-stroke navigation
-     idiom, skipped whenever focus is in a field so it never eats typing. */
+  const toggleCollapsed = () => setCollapsed((previous) => {
+    const next = !previous;
+    try { window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0"); } catch { /* keep local state */ }
+    return next;
+  });
   React.useEffect(() => {
     let armed = false;
     let timer: ReturnType<typeof setTimeout>;
-    const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
-      if (el?.isContentEditable) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-
+    const onKey = (event: KeyboardEvent) => {
+      const element = event.target as HTMLElement | null;
+      if (element && (/^(INPUT|TEXTAREA|SELECT)$/.test(element.tagName) || element.isContentEditable || element.closest('[role="dialog"]'))) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (armed) {
         armed = false;
         clearTimeout(timer);
-        const all = navGroups(roles).flatMap((g) => g.items);
-        const hit = all.find((i) => i.key === e.key.toLowerCase());
-        if (hit) {
-          e.preventDefault();
-          router.push(hit.href);
-        }
-        return;
-      }
-      if (e.key.toLowerCase() === "g") {
+        const hit = navGroups(roles).flatMap((group) => group.items).find((item) => item.key === event.key.toLowerCase());
+        if (hit) { event.preventDefault(); router.push(hit.href); }
+      } else if (event.key.toLowerCase() === "g") {
         armed = true;
-        timer = setTimeout(() => (armed = false), 1200);
+        timer = setTimeout(() => { armed = false; }, 1200);
       }
     };
     window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      clearTimeout(timer);
-    };
+    return () => { window.removeEventListener("keydown", onKey); clearTimeout(timer); };
   }, [roles, router]);
 
-  const railWidth = collapsed ? "lg:w-14" : "lg:w-[232px]";
-
   return (
-    <div className="flex h-screen overflow-hidden bg-canvas">
-      <CommandPalette roles={roles} />
-
-      {/* ---- Rail (desktop) ---- */}
-      <aside
-        className={cn(
-          "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-line-subtle bg-surface lg:flex",
-          "relative transition-[width] duration-200 ease-[cubic-bezier(0.2,0,0,1)]",
-          railWidth,
-        )}
-      >
-        {/* Collapsed at 56px, the logo and a collapse button never both fit on
-            one row — they used to wrap and overlap. The toggle now lives as a
-            floating handle straddling the rail's own edge, so it never
-            competes with the header for width and reads identically whether
-            the rail is open or shut. */}
-        <div
-          className={cn(
-            "flex h-[52px] shrink-0 items-center border-b border-line-subtle",
-            collapsed ? "justify-center px-0" : "justify-start gap-2 px-3",
-          )}
-        >
-          <Link
-            href="/overview"
-            aria-label="Layah — dashboard"
-            className="flex items-center gap-2"
-          >
-            <img src="/logo-mark.png" alt="" aria-hidden className="size-6 rounded-sm object-cover" />
-            {!collapsed ? (
-              <span className="text-[13px] font-semibold tracking-[-0.01em] text-ink">Layah</span>
-            ) : null}
-          </Link>
-        </div>
-
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={cn(
-            "absolute -right-2.5 top-[16px] z-10 flex size-5 items-center justify-center rounded-full",
-            "border border-line bg-surface text-faint shadow-pop",
-            "transition-colors duration-150 hover:border-brand hover:text-brand-text",
-          )}
-        >
-          {collapsed ? <ChevronsRight className="size-3" /> : <ChevronsLeft className="size-3" />}
-        </button>
-
-        <RailContent
-          activePath={activePath}
-          roles={roles}
-          collapsed={collapsed}
-          isFree={isFree}
-          onBeforeNavigate={onBeforeNavigate}
-        />
-
-      </aside>
-
-      {/* ---- Drawer (below lg) ---- */}
-      {drawer ? (
-        <div className="fixed inset-0 z-[200] lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
-          <button
-            type="button"
-            aria-label="Close navigation"
-            onClick={() => setDrawer(false)}
-            className="animate-fade-in absolute inset-0 bg-ink/30 backdrop-blur-[2px]"
-          />
-          <div className="animate-rise absolute inset-y-0 left-0 flex w-[264px] max-w-[82vw] flex-col border-r border-line bg-surface shadow-overlay">
-            <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-line-subtle px-3">
-              <span className="flex items-center gap-2">
-                <img src="/logo-mark.png" alt="" aria-hidden className="size-6 rounded-sm object-cover" />
-                <span className="text-[13px] font-semibold text-ink">Layah</span>
-              </span>
-              <Button variant="ghost" size="icon-sm" onClick={() => setDrawer(false)} aria-label="Close navigation">
-                <X />
+    <Sheet open={drawer} onOpenChange={setDrawer}>
+      <div className="flex h-dvh overflow-hidden bg-canvas">
+        <a href="#workspace-content" className="skip-link">Skip to content</a>
+        <CommandPalette roles={roles} />
+        <aside className={cn("hidden shrink-0 flex-col border-r border-line-subtle bg-surface lg:flex", collapsed ? "w-[76px]" : "w-64")}>
+          <div className={cn("flex h-[88px] shrink-0 items-center", collapsed ? "justify-center" : "px-6")}><Brand collapsed={collapsed} /></div>
+          <RailContent activePath={activePath} roles={roles} collapsed={collapsed} isFree={isFree} onNavigate={onNavigate} />
+          <div className="space-y-3 border-t border-line-subtle p-3">
+            <Link href="/faq" title={collapsed ? "Help & support" : undefined} aria-label={collapsed ? "Help & support" : undefined}
+              className={cn("flex min-h-10 items-center gap-3 rounded-md text-sm text-muted hover:bg-hover", collapsed ? "justify-center" : "px-3")}>
+              <HelpCircle className="size-[18px] shrink-0" aria-hidden />{!collapsed && <><span className="flex-1">Help & support</span><ArrowUpRight className="size-3.5" aria-hidden /></>}
+            </Link>
+            <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between px-1")}>
+              {!collapsed && <ThemeToggle />}
+              <Button variant="ghost" size="icon-sm" onClick={toggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed}>
+                {collapsed ? <ChevronsRight aria-hidden /> : <ChevronsLeft aria-hidden />}
               </Button>
             </div>
-            <RailContent
-              activePath={activePath}
-              roles={roles}
-              collapsed={false}
-              isFree={isFree}
-              onNavigate={() => setDrawer(false)}
-              onBeforeNavigate={onBeforeNavigate}
-            />
-            <div className="border-t border-line-subtle p-3">
-              <ThemeToggle />
+          </div>
+        </aside>
+        <SheetContent side="left" className="w-[300px] max-w-[88vw] gap-0 p-0" aria-describedby={undefined}>
+          <SheetTitle className="sr-only">Workspace navigation</SheetTitle>
+          <SheetDescription className="sr-only">Navigate your teaching tools and account.</SheetDescription>
+          <div className="flex h-20 shrink-0 items-center border-b border-line-subtle px-5"><Brand /></div>
+          <RailContent activePath={activePath} roles={roles} collapsed={false} isFree={isFree} onNavigate={(href) => { onNavigate(href); setDrawer(false); }} />
+          <div className="flex items-center justify-between border-t border-line-subtle p-4"><ThemeToggle /><Button variant="ghost" size="sm" render={<Link href="/faq" />}>Help & support</Button></div>
+        </SheetContent>
+        <div ref={scrollRef} className="flex min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+          <header className="sticky top-0 z-40 flex h-[72px] shrink-0 items-center gap-3 border-b border-line-subtle bg-surface/95 px-4 backdrop-blur-md sm:px-6 lg:px-9">
+            <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation" />}><Menu aria-hidden /></SheetTrigger>
+            <div className="flex min-w-0 items-center gap-3 text-sm"><span className="hidden text-faint lg:inline">Workspace</span><span className="hidden text-disabled lg:inline" aria-hidden>/</span><span className="truncate font-medium text-ink">{routeLabel(activePath)}</span></div>
+            <div className="ml-auto flex items-center gap-2 sm:gap-3">
+              <QuotaPill />
+              <Button variant="outline" className="px-2.5 text-faint sm:w-44 sm:justify-start" onClick={() => window.dispatchEvent(new Event("layah:open-command-palette"))} aria-label="Search lessons and commands">
+                <Search className="size-4" aria-hidden /><span className="hidden sm:inline">Search</span><Kbd className="ml-auto hidden sm:inline-flex">Ctrl K</Kbd>
+              </Button>
+              <AccountMenu user={user} />
             </div>
-          </div>
+          </header>
+          <main id="workspace-content" tabIndex={-1} className="min-w-0 flex-1 outline-none">{children}</main>
         </div>
-      ) : null}
-
-      {/* ---- Main column ---- */}
-      {/* This, not the document, is the scroll container: with the outer row
-          fixed to h-screen, the rail's own h-screen box never has to hold a
-          sticky position past its own bottom edge (the classic reason a
-          `sticky` sidebar still scrolls away — its containing block runs out
-          of room once the page grows past one viewport height). Scoping
-          overflow here instead keeps the rail (and this header, sticky
-          *within* this container) pinned regardless of how long the page
-          content is. */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <header className="sticky top-0 z-40 flex h-[52px] shrink-0 items-center gap-2 border-b border-line-subtle bg-canvas/85 px-3 backdrop-blur-md sm:px-4">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="lg:hidden"
-            onClick={() => setDrawer(true)}
-            aria-label="Open navigation"
-          >
-            <Menu />
-          </Button>
-
-          <span className="flex min-w-0 items-center gap-1.5">
-            <PanelsTopLeft className="hidden size-3.5 shrink-0 text-disabled sm:block" aria-hidden />
-            <h2 className="truncate text-[13px] font-medium text-ink">{routeLabel(activePath)}</h2>
-          </span>
-
-          <div className="ml-auto flex items-center gap-1.5">
-            <QuotaPill />
-
-            {/* Dispatches the same ⌘K the palette listens for, so there is one
-                code path whether you click or type. */}
-            <button
-              type="button"
-              onClick={() =>
-                window.dispatchEvent(
-                  new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }),
-                )
-              }
-              aria-label="Search lessons or run a command"
-              className={cn(
-                "flex items-center gap-2 rounded-md border border-line-subtle bg-surface py-1 pl-2 pr-1.5",
-                "text-[12px] text-faint transition-colors hover:border-line hover:text-muted",
-                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
-              )}
-            >
-              <Search className="size-3.5" aria-hidden />
-              <span className="hidden md:inline">Search</span>
-              <Kbd className="hidden md:inline-flex">⌘K</Kbd>
-            </button>
-
-            <ThemeToggle className="hidden sm:inline-flex" />
-            <AccountMenu user={user} />
-          </div>
-        </header>
-
-        <main className="min-w-0 flex-1">{children}</main>
       </div>
-    </div>
+    </Sheet>
   );
 }

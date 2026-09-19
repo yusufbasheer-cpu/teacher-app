@@ -1,146 +1,73 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { ArrowRight, Menu } from "lucide-react";
 import { isNavLinkActive } from "@/lib/app-nav-links";
-import { BORDER, NAVY, TEAL, TEXT_MUTED } from "@/lib/design-tokens";
+import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
-// Rendered for signed-out visitors and for signed-in visitors on public
-// pages — AppShell swaps to AppFrame (the dashboard rail) only on actual
-// dashboard routes. Same header markup as `/` (the homepage, which renders
-// this component too), so there is exactly one public-facing nav bar in the app.
 const NAV_LINKS = [
-  { href: "/lesson-plan", label: "Lesson Plans" },
+  { href: "/lesson-plan", label: "Lesson plans" },
   { href: "/differentiated-worksheets", label: "Worksheets" },
-  { href: "/question-paper", label: "Question Papers" },
+  { href: "/question-paper", label: "Question papers" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/about", label: "About" },
 ] as const;
-
-const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]";
 
 export function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => setMenuOpen(false), [pathname]);
   useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    let active = true;
+    void supabase.auth.getSession().then(({ data }) => { if (active) setSignedIn(Boolean(data.session)); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session)));
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = () => { if (desktop.matches) setMenuOpen(false); };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => { active = false; subscription.unsubscribe(); desktop.removeEventListener("change", closeOnDesktop); };
   }, []);
-
+  const links = (mobile = false) => NAV_LINKS.map((link) => (
+    <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)}
+      aria-current={isNavLinkActive(pathname, link.href) ? "page" : undefined}
+      className={cn("rounded-md font-medium transition-colors duration-[140ms]", mobile ? "px-4 py-3.5 text-base" : "px-3 py-2.5 text-sm", isNavLinkActive(pathname, link.href) ? "bg-brand-subtle text-brand-text" : "text-muted hover:bg-hover hover:text-ink")}>
+      {link.label}
+    </Link>
+  ));
   return (
-    <header
-      className={`sticky top-0 z-50 bg-[color-mix(in_oklch,var(--surface)_90%,transparent)] backdrop-blur transition-shadow duration-300 ${
-        scrolled ? "shadow-[0_1px_0_color-mix(in oklch, var(--text) 6%, transparent),0_8px_24px_-16px_color-mix(in oklch, var(--text) 25%, transparent)]" : ""
-      }`}
-      style={{ borderBottom: `1px solid ${BORDER}` }}
-    >
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/" className={`flex shrink-0 items-center gap-2.5 rounded-lg ${FOCUS_RING}`}>
-          <img src="/logo-mark.png" alt="Layah" className="h-9 w-9 rounded-xl object-cover" />
-          <span className="leading-tight">
-            <span className="block text-[15px] font-extrabold" style={{ color: NAVY }}>
-              Layah
-            </span>
-            <span className="block text-[11px] font-semibold" style={{ color: TEXT_MUTED }}>
-              Prep Less. Teach More.
-            </span>
-          </span>
-        </Link>
-
-        <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              aria-current={isNavLinkActive(pathname, link.href) ? "page" : undefined}
-              className={`rounded-full px-3.5 py-2 text-sm font-medium transition hover:bg-hover ${FOCUS_RING}`}
-              style={{
-                color: isNavLinkActive(pathname, link.href) ? "var(--brand-active)" : "var(--text)",
-                background: isNavLinkActive(pathname, link.href) ? "color-mix(in oklch, var(--brand) 8%, transparent)" : "transparent",
-                fontWeight: isNavLinkActive(pathname, link.href) ? 600 : 500,
-              }}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="hidden shrink-0 items-center gap-2 lg:flex">
-          <Link
-            href="/login"
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-70 ${FOCUS_RING}`}
-            style={{ color: "var(--text)" }}
-          >
-            Login
+    <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+      <header className="sticky top-0 z-40 border-b border-line-subtle bg-surface/95 backdrop-blur-md">
+        <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
+          <Link href="/" aria-label="Layah home" className="flex shrink-0 items-center gap-2.5">
+            <img src="/logo-mark.png" alt="" aria-hidden className="size-9 rounded-md object-cover" />
+            <span className="text-[23px] font-semibold tracking-[-0.04em] text-ink">Layah</span>
           </Link>
-          <Link
-            href="/lesson-plan"
-            className={`rounded-full px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 hover:shadow-md ${FOCUS_RING}`}
-            style={{ background: TEAL }}
-          >
-            Start Generating
-          </Link>
-        </div>
-
-        {/* Mobile: hamburger */}
-        <button
-          type="button"
-          onClick={() => setMenuOpen((prev) => !prev)}
-          aria-label="Toggle navigation menu"
-          aria-expanded={menuOpen}
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg lg:hidden ${FOCUS_RING}`}
-          style={{ border: `1px solid ${BORDER}`, color: "var(--text)" }}
-        >
-          {menuOpen ? <X size={18} aria-hidden /> : <Menu size={18} aria-hidden />}
-        </button>
-
-        {menuOpen ? (
-          <div
-            className="fixed inset-x-0 top-16 flex flex-col gap-1 bg-[var(--surface)] p-4 shadow-md lg:hidden"
-            style={{ borderBottom: `1px solid ${BORDER}` }}
-          >
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`rounded-lg px-3 py-2.5 text-sm font-medium ${FOCUS_RING}`}
-                style={{
-                  color: isNavLinkActive(pathname, link.href) ? "var(--brand-active)" : "var(--text)",
-                  background: isNavLinkActive(pathname, link.href) ? "color-mix(in oklch, var(--brand) 8%, transparent)" : "transparent",
-                }}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <div className="mt-2 flex flex-col gap-2 border-t pt-3" style={{ borderColor: BORDER }}>
-              <Link
-                href="/login"
-                className={`rounded-lg px-3 py-2.5 text-center text-sm font-semibold ${FOCUS_RING}`}
-                style={{ color: "var(--text)", border: `1px solid ${BORDER}` }}
-              >
-                Login
-              </Link>
-              <Link
-                href="/lesson-plan"
-                className={`rounded-lg px-3 py-2.5 text-center text-sm font-semibold text-white ${FOCUS_RING}`}
-                style={{ background: TEAL }}
-              >
-                Start Generating
-              </Link>
-            </div>
+          <nav aria-label="Main navigation" className="hidden items-center gap-0.5 lg:flex">{links()}</nav>
+          <div className="hidden items-center gap-2 lg:flex">
+            {signedIn ? <Button render={<Link href="/overview" />}>Go to workspace<ArrowRight aria-hidden /></Button> : <>
+              <Button variant="ghost" render={<Link href="/login" />}>Sign in</Button>
+              <Button render={<Link href="/signup" />}>Get started<ArrowRight aria-hidden /></Button>
+            </>}
           </div>
-        ) : null}
-      </div>
-    </header>
+          <SheetTrigger render={<Button variant="outline" size="icon" aria-label="Open navigation" className="lg:hidden" />}><Menu aria-hidden /></SheetTrigger>
+        </div>
+      </header>
+      <SheetContent side="right" className="w-[340px] max-w-[90vw] gap-0 p-5" aria-describedby={undefined}>
+        <SheetTitle className="mb-7 mt-1 text-xl">Explore Layah</SheetTitle>
+        <nav aria-label="Mobile navigation" className="flex flex-col gap-1">{links(true)}</nav>
+        <div className="mt-auto space-y-3 border-t border-line-subtle pt-5">
+          {signedIn ? <Button block size="lg" render={<Link href="/overview" />}>Go to workspace<ArrowRight aria-hidden /></Button> : <>
+            <Button block size="lg" render={<Link href="/signup" />}>Get started<ArrowRight aria-hidden /></Button>
+            <Button block variant="outline" size="lg" render={<Link href="/login" />}>Sign in</Button>
+          </>}
+          <Link href="/contact" className="block py-3 text-center text-sm text-muted hover:text-brand-text">Contact our team</Link>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

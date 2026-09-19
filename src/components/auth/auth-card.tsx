@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { motion, type Variants } from "motion/react";
+import { Eye, EyeOff } from "lucide-react";
 import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
 import { completeEmailPostAuthLogin } from "@/lib/auth-post-login";
 import { hasCompletedTeacherProfile } from "@/lib/user-profile";
@@ -11,28 +11,12 @@ import { supabase } from "@/lib/supabase";
 import { sanitizeUserMessage, toUserFacingError } from "@/lib/user-facing-errors";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { getOnboardingDestination, getSafeAuthNext } from "@/lib/auth-redirect";
 
 const MIN_SIGNUP_MS = 3000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type AuthMode = "login" | "signup";
-
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.1 },
-  },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 300, damping: 24 },
-  },
-};
 
 function GoogleLogo() {
   return (
@@ -97,10 +81,12 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const next = getSafeAuthNext(searchParams.get("next"));
   const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useErrorToast();
@@ -142,7 +128,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin + "/auth/callback",
+          redirectTo: `${window.location.origin}/auth/callback?redirect_to=${encodeURIComponent(next)}`,
           // Ask Google to show the account chooser instead of reusing the last account.
           queryParams: {
             prompt: "select_account",
@@ -246,7 +232,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             setError(postAuth.message);
             return;
           }
-          router.replace(hasCompletedTeacherProfile(data.session.user) ? "/overview" : "/onboarding");
+          router.replace(hasCompletedTeacherProfile(data.session.user) ? next : getOnboardingDestination(next));
           router.refresh();
           return;
         }
@@ -270,7 +256,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             setError(postAuth.message);
             return;
           }
-          router.replace(hasCompletedTeacherProfile(session.user) ? "/overview" : "/onboarding");
+          router.replace(hasCompletedTeacherProfile(session.user) ? next : getOnboardingDestination(next));
           router.refresh();
           return;
         }
@@ -291,56 +277,53 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   };
 
   const footerPrefix = mode === "login" ? "Need an account?" : "Already have an account?";
-  const footerAction = mode === "login" ? "Sign up" : "Login";
+  const footerAction = mode === "login" ? "Sign up" : "Sign in";
   const inputClass = [
-    "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-[13px] text-ink",
-    "outline-none transition-[border-color,box-shadow] duration-[110ms]",
+    "w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm text-ink",
+    "outline-none transition-[border-color,box-shadow] duration-[var(--t-fast)]",
     "placeholder:text-disabled hover:border-line-strong",
     "focus:border-brand focus:ring-2 focus:ring-brand/25",
   ].join(" ");
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="w-full max-w-[400px]"
+    <div
+      className="w-full"
     >
-      <motion.div variants={itemVariants} className="mb-8 text-center">
-        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">
-          {mode === "login" ? "Teacher Login" : "Create Teacher Account"}
+      <div className="mb-7">
+        <h1 className="text-[30px] font-semibold tracking-tight text-ink">
+          {mode === "login" ? "Welcome back" : "Create your account"}
         </h1>
         <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
           {mode === "login"
-            ? "Login to access your lesson plans."
-            : "Tell us a bit about yourself to get started."}
+            ? "Sign in to continue your lesson preparation."
+            : "Start building classroom resources with Layah."}
         </p>
-      </motion.div>
+      </div>
 
-      <motion.div variants={itemVariants} className="mb-6">
+      <div className="mb-6">
         <button
           type="button"
           onClick={() => void onGoogleSignIn()}
           disabled={loading || googleLoading}
-          className="flex w-full items-center justify-center gap-2.5 rounded-md border border-line bg-surface py-2.5 text-[13px] font-medium text-ink transition-colors duration-[110ms] hover:border-line-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-60"
-          style={{ borderColor: "#dadce0", color: "var(--text)" }}
+          className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-line bg-surface py-2.5 text-sm font-medium text-ink transition-colors duration-[var(--t-fast)] hover:border-line-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-60"
+          
         >
           {googleLoading ? <GoogleSpinner /> : <GoogleLogo />}
           <span>{googleLoading ? "Connecting…" : "Continue with Google"}</span>
         </button>
 
-        <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-          School teachers: Sign in with your school Google account to access your school plan
+        <p className="mt-3 text-center text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+          Joining a school workspace? Use your school Google account.
         </p>
-      </motion.div>
+      </div>
 
-      <motion.div variants={itemVariants} className="relative mb-6 flex items-center">
+      <div className="relative mb-6 flex items-center">
         <div className="grow border-t" style={{ borderColor: "var(--border)" }} />
-        <span className="px-4 text-[11px] font-semibold tracking-wider uppercase" style={{ color: "var(--text-disabled)" }}>
-          Or
+        <span className="px-4 text-sm" style={{ color: "var(--text-disabled)" }}>
+          or use email
         </span>
         <div className="grow border-t" style={{ borderColor: "var(--border)" }} />
-      </motion.div>
+      </div>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-5">
         {/* Honeypot — invisible to humans, bots fill it. Must use CSS positioning, NOT display:none */}
@@ -356,7 +339,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
         </div>
 
         {mode === "signup" && (
-          <motion.div variants={itemVariants} className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
             <label htmlFor="full-name" className="text-sm font-medium" style={{ color: "var(--text)" }}>
               Full name
             </label>
@@ -370,9 +353,9 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
               className={inputClass}
               required
             />
-          </motion.div>
+          </div>
         )}
-        <motion.div variants={itemVariants} className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           <label htmlFor="email" className="text-sm font-medium" style={{ color: "var(--text)" }}>
             Email
           </label>
@@ -386,51 +369,62 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             className={inputClass}
             required
           />
-        </motion.div>
+        </div>
 
-        <motion.div variants={itemVariants} className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           <label htmlFor="password" className="text-sm font-medium" style={{ color: "var(--text)" }}>
             Password
           </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            minLength={6}
-            className={inputClass}
-            required
-          />
-        </motion.div>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={mode === "signup" ? "At least 6 characters" : "Enter your password"}
+              minLength={6}
+              className={`${inputClass} pr-12`}
+              required
+            />
+            <button
+              type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((shown) => !shown)}
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-muted hover:text-ink"
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
+        </div>
 
         {mode === "signup" && (
-          <motion.div variants={itemVariants}>
+          <div>
             <TurnstileWidget
               onVerify={onTurnstileVerify}
               onExpire={onTurnstileExpire}
             />
-          </motion.div>
+          </div>
         )}
 
-        <motion.div variants={itemVariants} className="mt-1">
+        <div className="mt-1">
           <button
             type="submit"
             disabled={loading || googleLoading}
-            className="w-full rounded-md bg-brand py-2.5 text-[13px] font-medium text-brand-on transition-colors duration-[110ms] hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-brand py-2.5 text-sm font-medium text-brand-on transition-colors duration-[var(--t-fast)] hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
             style={{ background: "var(--brand)" }}
           >
             {loading
               ? "Please wait..."
               : mode === "login"
-                ? "Login"
-                : "Create Account"}
+                ? "Sign in"
+                : "Create account"}
           </button>
-        </motion.div>
+        </div>
       </form>
 
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {error ? <p role="alert" className="mt-4 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">{error}</p> : null}
       {showResend ? (
         <button
           type="button"
@@ -442,13 +436,13 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           {resendLoading ? "Sending…" : "Resend confirmation email"}
         </button>
       ) : null}
-      {message ? <p className="mt-3 text-sm" style={{ color: "var(--brand-active)" }}>{message}</p> : null}
+      {message ? <p role="status" className="mt-4 rounded-lg bg-brand/10 p-3 text-sm text-brand-text">{message}</p> : null}
 
-      <motion.div variants={itemVariants} className="mt-6 text-center text-[13px]" style={{ color: "var(--text-secondary)" }}>
+      <div className="mt-6 text-center text-sm" style={{ color: "var(--text-secondary)" }}>
         {footerPrefix}{" "}
         {linkMode ? (
           <Link
-            href={mode === "login" ? "/signup" : "/login"}
+            href={`${mode === "login" ? "/signup" : "/login"}${next !== "/overview" ? `?next=${encodeURIComponent(next)}` : ""}`}
             className="font-bold transition hover:underline"
             style={{ color: "var(--text)" }}
           >
@@ -475,7 +469,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             {footerAction}
           </button>
         )}
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

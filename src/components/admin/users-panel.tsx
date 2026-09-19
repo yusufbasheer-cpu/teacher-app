@@ -532,13 +532,13 @@ export function UsersPanel() {
                       </div>
 
                       <div>
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: INK_FAINT }}>
+                        <p className="mb-1 text-sm font-medium" style={{ color: INK_FAINT }}>
                           Recent generations ({detail.generationEvents.length})
                         </p>
                         {detail.generationEvents.length === 0 ? (
                           <p className="text-xs" style={{ color: INK_FAINT }}>None yet.</p>
                         ) : (
-                          <div className="max-h-40 overflow-y-auto rounded-lg text-xs" style={{ background: "#FAFAF8" }}>
+                          <div className="max-h-40 overflow-y-auto rounded-lg text-xs" style={{ background: "var(--surface-sunken)" }}>
                             {detail.generationEvents.map((ev) => (
                               <div key={ev.id} className="flex justify-between gap-2 px-2 py-1.5" style={{ borderBottom: `1px solid ${BORDER}` }}>
                                 <span>{ev.generation_type}</span>
@@ -551,13 +551,13 @@ export function UsersPanel() {
                       </div>
 
                       <div>
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: INK_FAINT }}>
+                        <p className="mb-1 text-sm font-medium" style={{ color: INK_FAINT }}>
                           Admin action history ({detail.auditHistory.length})
                         </p>
                         {detail.auditHistory.length === 0 ? (
                           <p className="text-xs" style={{ color: INK_FAINT }}>None yet.</p>
                         ) : (
-                          <div className="max-h-40 overflow-y-auto rounded-lg text-xs" style={{ background: "#FAFAF8" }}>
+                          <div className="max-h-40 overflow-y-auto rounded-lg text-xs" style={{ background: "var(--surface-sunken)" }}>
                             {detail.auditHistory.map((a) => (
                               <div key={a.id} className="flex justify-between gap-2 px-2 py-1.5" style={{ borderBottom: `1px solid ${BORDER}` }}>
                                 <span>{a.action}</span>
@@ -569,7 +569,7 @@ export function UsersPanel() {
                       </div>
 
                       <div>
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: INK_FAINT }}>
+                        <p className="mb-1 text-sm font-medium" style={{ color: INK_FAINT }}>
                           Subscription management
                         </p>
                         {(() => {
@@ -604,7 +604,7 @@ export function UsersPanel() {
                       </div>
 
                       <div>
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: INK_FAINT }}>
+                        <p className="mb-1 text-sm font-medium" style={{ color: INK_FAINT }}>
                           Payments — live from Razorpay ({payments.length})
                         </p>
                         {paymentsLoading ? (
@@ -614,7 +614,7 @@ export function UsersPanel() {
                         ) : (
                           <div className="space-y-1.5">
                             {payments.map((p) => (
-                              <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: "#FAFAF8" }}>
+                              <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: "var(--surface-sunken)" }}>
                                 <div>
                                   <span className={`font-medium ${FONT_MONO}`} style={{ color: INK }}>
                                     {p.currency} {(p.amount / 100).toFixed(2)}

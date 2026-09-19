@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { Check, CreditCard, Loader2, LockKeyhole } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { getAuthHeaders } from "@/lib/auth-headers";
 import { usePricingRegion } from "@/hooks/use-pricing-region";
 import { PRICING_REGIONS, formatRegionalPrice, type PaidPlanKey } from "@/lib/pricing-regions";
 import { PLANS } from "@/lib/plans";
 import { useErrorToast } from "@/hooks/use-error-toast";
-
-const NAVY = "var(--text)";
-const TEAL = "var(--brand)";
 
 export type UpgradePlanKey = "pro" | "proPlus";
 
@@ -90,48 +90,27 @@ declare global {
   }
 }
 
-function CheckIcon() {
-  return (
-    <svg className="size-4 shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path d="M3 8l3 3 7-7" stroke={TEAL} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+
+/** Mount a fresh checkout each time, so the chosen plan and billing always agree. */
+export function PaymentModal(props: PaymentModalProps) {
+  return props.open ? <PaymentDialog key={props.planKey} {...props} /> : null;
 }
 
-function LockIcon() {
-  return (
-    <svg className="size-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="2" />
-      <path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function UpiIcon() {
-  return (
-    <svg className="size-5 shrink-0" viewBox="0 0 40 20" fill="none" aria-hidden>
-      <text x="0" y="15" fontSize="13" fontWeight="700" fill="#5F259F" fontFamily="Arial, sans-serif">UPI</text>
-    </svg>
-  );
-}
-
-export function PaymentModal({ open, planKey, initialBilling = "monthly", onClose, onSuccess }: PaymentModalProps) {
+function PaymentDialog({ planKey, initialBilling = "monthly", onClose, onSuccess }: PaymentModalProps) {
   const [billing, setBilling] = useState<Billing>(initialBilling);
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "checkout" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useErrorToast();
   const { regionId } = usePricingRegion();
-
-  if (!open) return null;
-
   const plan = PLAN_INFO[planKey];
   const prices = INR_REGION.prices[plan.priceKey];
   const amount = billing === "annual" ? prices.annual : prices.monthly;
-  const period = billing === "annual" ? "year" : "month";
   const isIndia = regionId === "india";
-  const isProMonthlySubscription = planKey === "pro" && billing === "monthly";
+  const isSubscription = planKey === "pro" && billing === "monthly";
+  const busy = status === "loading" || status === "checkout";
 
   const handlePayClick = async (method: "card" | "upi") => {
-    if (typeof window === "undefined" || !window.Razorpay) {
+    if (busy) return;
+    if (!window.Razorpay) {
       setStatus("error");
       setErrorMessage("Payment is still loading. Please try again in a moment.");
       return;
@@ -139,306 +118,91 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
 
     setStatus("loading");
     setErrorMessage(null);
-
     try {
       const headers = await getAuthHeaders();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
+      const endpoint = isSubscription ? "/api/razorpay/create-subscription" : "/api/razorpay/create-order";
+      const payload = isSubscription
+        ? { planType: "pro" }
+        : { planType: RAZORPAY_PLAN_TYPE[planKey], billingPeriod: billing === "annual" ? "yearly" : "monthly" };
+      const response = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(payload) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not start checkout.");
 
-      if (isProMonthlySubscription) {
-        const subRes = await fetch("/api/razorpay/create-subscription", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ planType: "pro" }),
-        });
-        const subData = await subRes.json();
-        if (!subRes.ok) {
-          throw new Error(subData.error ?? "Could not start checkout.");
-        }
-
-        const razorpay = new window.Razorpay({
-          key: subData.keyId,
-          name: "Layah",
-          description: "Pro — Monthly (auto-renews every 30 days)",
-          image: LAYAH_LOGO_URL,
-          subscription_id: subData.subscriptionId,
-          prefill: { email: user?.email ?? undefined, method },
-          theme: { color: NAVY },
-          handler: async (response) => {
-            try {
-              const verifyHeaders = await getAuthHeaders();
-              const verifyRes = await fetch("/api/razorpay/verify-subscription", {
-                method: "POST",
-                headers: verifyHeaders,
-                body: JSON.stringify(response),
-              });
-              const verifyData = await verifyRes.json();
-              if (!verifyRes.ok) {
-                throw new Error(verifyData.error ?? "Subscription verification failed.");
-              }
-              setStatus("success");
-              onSuccess?.();
-            } catch (err) {
-              setStatus("error");
-              setErrorMessage(err instanceof Error ? err.message : "Subscription verification failed.");
-            }
-          },
-          modal: {
-            ondismiss: () => setStatus("idle"),
-          },
-        });
-
-        razorpay.open();
-        setStatus("idle");
-        return;
-      }
-
-      const orderRes = await fetch("/api/razorpay/create-order", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          planType: RAZORPAY_PLAN_TYPE[planKey],
-          billingPeriod: billing === "annual" ? "yearly" : "monthly",
-        }),
-      });
-      const orderData = await orderRes.json();
-      if (!orderRes.ok) {
-        throw new Error(orderData.error ?? "Could not start checkout.");
-      }
-
-      const razorpay = new window.Razorpay({
-        key: orderData.keyId,
-        amount: orderData.amount,
-        currency: orderData.currency,
+      const checkout = new window.Razorpay({
+        key: data.keyId,
+        ...(isSubscription
+          ? { subscription_id: data.subscriptionId }
+          : { order_id: data.orderId, amount: data.amount, currency: data.currency }),
         name: "Layah",
-        description: `${plan.name} — ${billing === "annual" ? "Annual" : "Monthly"}`,
+        description: isSubscription ? "Pro — Monthly (auto-renews every 30 days)" : `${plan.name} — ${billing === "annual" ? "Annual" : "Monthly"}`,
         image: LAYAH_LOGO_URL,
-        order_id: orderData.orderId,
         prefill: { email: user?.email ?? undefined, method },
-        theme: { color: NAVY },
-        handler: async (response) => {
+        theme: { color: "#4f46e5" },
+        handler: async (paymentResponse) => {
+          setStatus("loading");
           try {
             const verifyHeaders = await getAuthHeaders();
-            const verifyRes = await fetch("/api/razorpay/verify-payment", {
-              method: "POST",
-              headers: verifyHeaders,
-              body: JSON.stringify(response),
-            });
-            const verifyData = await verifyRes.json();
-            if (!verifyRes.ok) {
-              throw new Error(verifyData.error ?? "Payment verification failed.");
-            }
+            const verifyResponse = await fetch(
+              isSubscription ? "/api/razorpay/verify-subscription" : "/api/razorpay/verify-payment",
+              { method: "POST", headers: verifyHeaders, body: JSON.stringify(paymentResponse) },
+            );
+            const verified = await verifyResponse.json();
+            if (!verifyResponse.ok) throw new Error(verified.error ?? "Payment verification failed.");
             setStatus("success");
             onSuccess?.();
-          } catch (err) {
+          } catch (error) {
             setStatus("error");
-            setErrorMessage(err instanceof Error ? err.message : "Payment verification failed.");
+            setErrorMessage(error instanceof Error ? error.message : "Payment verification failed.");
           }
         },
-        modal: {
-          ondismiss: () => setStatus("idle"),
-        },
+        modal: { ondismiss: () => setStatus((current) => current === "checkout" ? "idle" : current) },
       });
-
-      razorpay.open();
-      setStatus("idle");
-    } catch (err) {
+      setStatus("checkout");
+      checkout.open();
+    } catch (error) {
       setStatus("error");
-      setErrorMessage(err instanceof Error ? err.message : "Could not start checkout.");
+      setErrorMessage(error instanceof Error ? error.message : "Could not start checkout.");
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[300] flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="payment-modal-title"
-    >
-      {/* Backdrop */}
-      <button
-        type="button"
-        className="absolute inset-0 bg-[color-mix(in_oklch,var(--text)_70%,transparent)] backdrop-blur-sm"
-        aria-label="Close"
-        onClick={onClose}
-      />
+    <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }} modal={status !== "checkout"}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto p-6 sm:max-w-md sm:p-7" showCloseButton={!busy}>
+        <DialogHeader>
+          <p className="page-kicker">Your teaching workspace</p>
+          <DialogTitle className="text-2xl font-semibold tracking-tight">{status === "success" ? "You’re ready to go." : `Choose ${plan.name}`}</DialogTitle>
+          <DialogDescription>{status === "success" ? "Your payment has been verified and your plan is active." : "Review your plan and billing before continuing to secure checkout."}</DialogDescription>
+        </DialogHeader>
 
-      <div
-        className="relative w-full max-w-md rounded-3xl border bg-[var(--surface)] shadow-2xl"
-        style={{ borderColor: "color-mix(in oklch, var(--brand) 30%, transparent)" }}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between rounded-t-3xl px-6 py-5"
-          style={{ background: `linear-gradient(135deg, ${NAVY} 0%, var(--l-gray-11) 100%)` }}
-        >
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: TEAL }}>
-              Upgrade Plan
-            </p>
-            <h2
-              id="payment-modal-title"
-              className="mt-0.5 text-xl font-bold text-white"
-            >
-              {plan.name}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-white/60 transition hover:bg-surface/10 hover:text-white"
-            aria-label="Close"
-          >
-            <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="px-6 py-5">
-          {/* Billing toggle */}
-          <div
-            className="mb-5 inline-flex w-full rounded-xl p-1"
-            style={{ background: "var(--canvas)" }}
-          >
-            <button
-              type="button"
-              onClick={() => setBilling("monthly")}
-              className="flex-1 rounded-lg py-2 text-sm font-semibold transition"
-              style={{
-                background: billing === "monthly" ? "#fff" : "transparent",
-                color: billing === "monthly" ? NAVY : "var(--text-secondary)",
-                boxShadow: billing === "monthly" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-              }}
-            >
-              Monthly
-            </button>
-            <button
-              type="button"
-              onClick={() => setBilling("annual")}
-              className="flex-1 rounded-lg py-2 text-sm font-semibold transition"
-              style={{
-                background: billing === "annual" ? "#fff" : "transparent",
-                color: billing === "annual" ? NAVY : "var(--text-secondary)",
-                boxShadow: billing === "annual" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-              }}
-            >
-              Annual
-              <span
-                className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase"
-                style={{ background: "color-mix(in oklch, var(--brand) 15%, transparent)", color: "var(--brand-active)" }}
-              >
-                -17%
-              </span>
-            </button>
-          </div>
-
-          {/* Price */}
-          <div className="mb-5 rounded-2xl p-4" style={{ background: "var(--canvas)", border: "1px solid color-mix(in oklch, var(--brand) 15%, transparent)" }}>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-3xl font-extrabold tracking-tight" style={{ color: NAVY }}>
-                  {formatRegionalPrice(INR_REGION, amount, period)}
-                </p>
-                <p className="mt-1 text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
-                  {plan.generations}
-                </p>
-              </div>
-              {billing === "annual" && (
-                <p className="text-xs font-semibold" style={{ color: "var(--brand-active)" }}>
-                  2 months free
-                </p>
-              )}
-            </div>
-            {!isIndia && (
-              <p className="mt-2 text-[11px]" style={{ color: "var(--text-disabled)" }}>
-                Billed in Indian Rupees (INR) via Razorpay, regardless of your local currency shown elsewhere.
-              </p>
-            )}
-            {isProMonthlySubscription && (
-              <p className="mt-2 text-[11px]" style={{ color: "var(--text-disabled)" }}>
-                Auto-renews every 30 days until cancelled. Manage or cancel anytime from Settings.
-              </p>
-            )}
-          </div>
-
-          {/* Features */}
-          <ul className="mb-5 space-y-2">
-            {plan.features.map((f) => (
-              <li key={f} className="flex items-center gap-2 text-sm" style={{ color: "var(--text)" }}>
-                <CheckIcon />
-                {f}
-              </li>
-            ))}
-          </ul>
-
-          {/* Payment buttons / status */}
-          {status === "success" ? (
-            <div
-              className="rounded-2xl p-5 text-center"
-              style={{ background: "color-mix(in oklch, var(--brand) 8%, transparent)", border: "1px solid color-mix(in oklch, var(--brand) 30%, transparent)" }}
-            >
-              <div
-                className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl"
-                style={{ background: "color-mix(in oklch, var(--brand) 15%, transparent)" }}
-              >
-                <CheckIcon />
-              </div>
-              <p className="font-bold" style={{ color: NAVY }}>
-                {isProMonthlySubscription
-                  ? "Your Pro subscription is active!"
-                  : "Your plan has been upgraded successfully!"}
-              </p>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                Refresh the page to see your new limits and unlocked features.
-              </p>
-              <button
-                type="button"
-                onClick={onClose}
-                className="mt-4 inline-flex min-h-10 items-center justify-center rounded-xl px-6 text-sm font-semibold text-white transition hover:opacity-90"
-                style={{ background: NAVY }}
-              >
-                Got it
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {status === "error" && errorMessage && (
-                <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
-              )}
-              <button
-                type="button"
-                onClick={() => handlePayClick("card")}
-                disabled={status === "loading"}
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
-                style={{ background: NAVY }}
-              >
-                <LockIcon />
-                {status === "loading" ? "Starting checkout…" : "Pay with Card"}
-              </button>
-
-              {isIndia && (
-                <button
-                  type="button"
-                  onClick={() => handlePayClick("upi")}
-                  disabled={status === "loading"}
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-bold transition hover:bg-hover disabled:opacity-60"
-                  style={{ borderColor: "#5F259F", color: "#5F259F" }}
-                >
-                  <UpiIcon />
-                  Pay with UPI
+        {status === "success" ? (
+          <div role="status" className="space-y-5 py-3"><div className="rounded-xl border border-line bg-canvas p-5"><Check className="mb-3 size-6 text-brand-text" aria-hidden /><p className="font-medium">{plan.name} is active</p><p className="mt-2 text-sm text-muted">Your new limits and features are ready. You can manage your plan in Settings.</p></div><Button className="w-full" onClick={onClose}>Continue</Button></div>
+        ) : (
+          <>
+            <div className="flex gap-1 rounded-lg bg-canvas p-1" role="group" aria-label="Payment billing period">
+              {(["monthly", "annual"] as const).map((period) => (
+                <button key={period} type="button" disabled={busy} aria-pressed={billing === period} onClick={() => { setBilling(period); setErrorMessage(null); setStatus("idle"); }} className="min-h-10 flex-1 rounded-md px-3 text-sm font-medium text-muted transition-colors duration-150 aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60 motion-reduce:transition-none">
+                  {period === "monthly" ? "Monthly" : "Annual · save 2 months"}
                 </button>
-              )}
-
-              <p className="flex items-center justify-center gap-1.5 text-xs" style={{ color: "var(--text-disabled)" }}>
-                <LockIcon />
-                Secure payment · Cancel anytime
-              </p>
+              ))}
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+            <div className="rounded-xl border border-line bg-canvas p-5" aria-live="polite">
+              <p className="text-2xl font-semibold tracking-tight">{formatRegionalPrice(INR_REGION, amount, billing === "annual" ? "year" : "month")}</p>
+              <p className="mt-2 text-sm text-muted">{plan.generations}</p>
+              {regionId !== "india" ? <p className="mt-3 text-xs leading-relaxed text-muted">Your payment is charged in Indian Rupees (INR). Your bank may apply a currency conversion.</p> : null}
+              <p className="mt-3 text-xs leading-relaxed text-muted">{isSubscription ? "Renews automatically every 30 days until cancelled. Manage your subscription from Settings." : billing === "annual" ? "A single payment for one year of access." : "A single payment for one month of access."}</p>
+            </div>
+            <ul className="space-y-2.5 py-1">{plan.features.map((feature) => <li key={feature} className="flex items-start gap-2.5 text-sm text-muted"><Check className="mt-0.5 size-4 shrink-0 text-brand-text" aria-hidden />{feature}</li>)}</ul>
+            {errorMessage ? <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-3 text-sm text-destructive">{errorMessage}</p> : null}
+            <div className="space-y-3 border-t border-line pt-5">
+              <Button className="w-full" disabled={busy} onClick={() => void handlePayClick("card")}>{busy ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> : <CreditCard className="size-4" aria-hidden />}{status === "checkout" ? "Complete your secure checkout" : status === "loading" ? "Processing…" : "Continue with card"}</Button>
+              {isIndia ? <Button variant="outline" className="w-full" disabled={busy} onClick={() => void handlePayClick("upi")}>Pay with UPI</Button> : null}
+              <p className="flex items-center justify-center gap-1.5 text-xs text-muted"><LockKeyhole className="size-3.5" aria-hidden />Secure checkout with Razorpay</p>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
+

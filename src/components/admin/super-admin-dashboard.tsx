@@ -556,7 +556,7 @@ function DashboardBody({ role, email }: { role: "super_admin" | "admin"; email: 
                       ) : (
                         <div className="space-y-1.5">
                           {schoolTeachers.map((t) => (
-                            <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm" style={{ background: "#FAFAF8" }}>
+                            <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--surface-sunken)" }}>
                               <div>
                                 <span className="break-all font-medium" style={{ color: INK }}>{t.email}</span>
                                 <span className="ml-2 text-xs" style={{ color: INK_MUTED }}>
@@ -707,7 +707,7 @@ function DashboardBody({ role, email }: { role: "super_admin" | "admin"; email: 
                       <span>{formatAdminDate(item.created_at)}</span>
                     </div>
                     {item.flagged && item.flagged_reason && (
-                      <p className="mt-1 text-xs font-medium" style={{ color: "#B3261E" }}>Reason: {item.flagged_reason}</p>
+                      <p className="mt-1 text-xs font-medium" style={{ color: "var(--danger-text)" }}>Reason: {item.flagged_reason}</p>
                     )}
                   </div>
                   <div className="flex gap-2">

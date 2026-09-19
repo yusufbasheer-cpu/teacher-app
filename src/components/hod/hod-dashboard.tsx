@@ -1,284 +1,53 @@
 "use client";
 
+import { useState } from "react";
+import { BookOpen, Search, Users } from "lucide-react";
 import type { HodDashboardData } from "@/lib/hod-server";
 import { resolveLessonTitle, resolveLessonTopicNote } from "@/lib/lesson-plan";
 
-const TEAL = "var(--brand)";
-const NAVY = "var(--text)";
-
 function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function shortEmail(email: string): string {
-  return email.split("@")[0] ?? email;
-}
-
-type StatCardProps = {
-  label: string;
-  value: string | number;
-  sub?: string;
-};
-
-function StatCard({ label, value, sub }: StatCardProps) {
-  return (
-    <div
-      className="rounded-2xl bg-[var(--surface)] p-5 shadow-sm"
-      style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
-    >
-      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: TEAL }}>
-        {label}
-      </p>
-      <p className="mt-2 text-3xl font-bold" style={{ color: NAVY }}>
-        {value}
-      </p>
-      {sub ? (
-        <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>
-          {sub}
-        </p>
-      ) : null}
-    </div>
-  );
+  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 export function HodDashboard({ data }: { data: HodDashboardData }) {
   const { hod, departmentTeachers, recentLessons, stats } = data;
+  const [search, setSearch] = useState("");
+  const [teacherFilter, setTeacherFilter] = useState("");
+  const visibleLessons = recentLessons.filter((lesson) => {
+    const text = `${resolveLessonTitle(lesson.topic, lesson.chapter, lesson.subject)} ${lesson.subject} ${lesson.grade} ${lesson.teacherEmail}`;
+    return text.toLowerCase().includes(search.trim().toLowerCase()) && (!teacherFilter || lesson.teacherEmail === teacherFilter);
+  });
+  const teacherEmails = Array.from(new Set([...departmentTeachers.map((teacher) => teacher.email), ...recentLessons.map((lesson) => lesson.teacherEmail)]));
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold" style={{ color: NAVY }}>
-              HOD Dashboard
-            </h1>
-            <span
-              className="rounded-full px-3 py-1 text-xs font-semibold text-white"
-              style={{ background: TEAL }}
-            >
-              {hod.department}
-            </span>
-          </div>
-          <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-            Monitor and manage your department&apos;s teaching activity
-          </p>
-        </div>
+    <div className="space-y-7">
+      <header className="page-header !mb-0"><div><p className="page-kicker">Department overview</p><h1 className="page-title">{hod.department}</h1><p className="page-description">Follow your team&apos;s lesson preparation and classroom activity.</p></div></header>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          { label: "Department teachers", value: String(stats.teacherCount), detail: "Assigned to your department" },
+          { label: "Lessons this month", value: String(stats.totalLessonsThisMonth), detail: "Created by your teaching team" },
+          { label: "Most active teacher", value: stats.mostActiveTeacher?.email.split("@")[0] ?? "No activity yet", detail: stats.mostActiveTeacher ? `${stats.mostActiveTeacher.generations} generations` : "Activity appears as lessons are created" },
+        ].map((stat) => <div key={stat.label} className="rounded-xl border border-line bg-surface p-5"><p className="text-sm text-muted">{stat.label}</p><p className="mt-3 break-words text-2xl font-semibold tracking-tight text-ink">{stat.value}</p><p className="mt-2 text-sm text-faint">{stat.detail}</p></div>)}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Teachers in Department"
-          value={stats.teacherCount}
-        />
-        <StatCard
-          label="Lesson Plans This Month"
-          value={stats.totalLessonsThisMonth}
-        />
-        <StatCard
-          label="Most Active Teacher"
-          value={
-            stats.mostActiveTeacher
-              ? shortEmail(stats.mostActiveTeacher.email)
-              : "—"
-          }
-          sub={
-            stats.mostActiveTeacher
-              ? `${stats.mostActiveTeacher.generations} generations`
-              : undefined
-          }
-        />
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="overflow-hidden rounded-2xl border border-line bg-surface">
+          <div className="border-b border-line p-5 sm:p-6">
+            <h2 className="section-heading">Recent lesson activity</h2><p className="mt-1 text-sm text-muted">Explore the lessons your department is preparing.</p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <div className="relative flex-1"><Search aria-hidden className="absolute left-3 top-3 size-4 text-faint" /><input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search department lessons" placeholder="Search topic, subject, or grade" className="min-h-10 w-full rounded-lg border border-line bg-surface py-2 pl-10 pr-3 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" /></div>
+              <select value={teacherFilter} onChange={(event) => setTeacherFilter(event.target.value)} aria-label="Filter lessons by teacher" className="min-h-10 max-w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink sm:max-w-48"><option value="">All teachers</option>{teacherEmails.map((email) => <option key={email}>{email}</option>)}</select>
+            </div>
+          </div>
+          {visibleLessons.length > 0 ? <ul className="divide-y divide-line">{visibleLessons.map((lesson) => <li key={lesson.id} className="flex gap-4 p-5 sm:p-6"><div className="mt-1 hidden size-10 shrink-0 items-center justify-center rounded-lg bg-brand-subtle text-brand-text sm:flex"><BookOpen className="size-5" aria-hidden /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-2"><h3 className="font-medium text-ink">{resolveLessonTitle(lesson.topic, lesson.chapter, lesson.subject)}</h3><time dateTime={lesson.createdAt} className="shrink-0 text-sm text-faint">{formatDate(lesson.createdAt)}</time></div>{resolveLessonTopicNote(lesson.topic, lesson.chapter) ? <p className="mt-1 text-sm text-muted">{resolveLessonTopicNote(lesson.topic, lesson.chapter)}</p> : null}<p className="mt-2 text-sm text-muted">{lesson.subject}{lesson.grade ? ` ? ${lesson.grade}` : ""}</p><p className="mt-1 break-all text-sm text-faint">{lesson.teacherEmail}</p></div></li>)}</ul> : <div className="px-6 py-14 text-center"><BookOpen className="mx-auto mb-4 size-8 text-faint" aria-hidden /><p className="font-medium text-ink">{recentLessons.length ? "No matching lessons" : "No lessons yet"}</p><p className="mt-2 text-sm text-muted">{recentLessons.length ? "Try a different search or teacher." : "Department lesson activity will appear here."}</p>{recentLessons.length > 0 && <button type="button" className="mt-4 rounded-lg px-4 py-2 text-sm font-medium text-brand-text hover:bg-brand-subtle" onClick={() => { setSearch(""); setTeacherFilter(""); }}>Clear filters</button>}</div>}
+          {visibleLessons.length > 0 ? <p className="border-t border-line px-6 py-4 text-sm text-faint">Showing {visibleLessons.length} of {recentLessons.length} recent lessons</p> : null}
+        </section>
+
+        <aside className="overflow-hidden rounded-2xl border border-line bg-surface">
+          <div className="border-b border-line p-5"><div className="flex items-center gap-2"><Users className="size-5 text-brand-text" aria-hidden /><h2 className="section-heading">Your teaching team</h2></div><p className="mt-2 text-sm leading-6 text-muted">Department assignments are managed by your school administrator.</p></div>
+          {departmentTeachers.length > 0 ? <ul className="divide-y divide-line">{departmentTeachers.map((teacher) => <li key={teacher.userId} className="p-5"><p className="break-all text-sm font-medium text-ink">{teacher.email}</p><div className="mt-2 flex flex-wrap justify-between gap-2 text-sm text-muted"><span>{teacher.generationsUsedThisMonth} lessons this month</span>{teacher.joinedAt ? <span className="text-faint">Joined {formatDate(teacher.joinedAt)}</span> : null}</div></li>)}</ul> : <p className="p-6 text-sm leading-6 text-muted">No teachers are assigned yet. Your school administrator can add teachers to {hod.department}.</p>}
+        </aside>
       </div>
-
-      {/* Department Teachers */}
-      <section>
-        <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>
-          Teachers in {hod.department}
-        </h2>
-
-        {departmentTeachers.length === 0 ? (
-          <div
-            className="rounded-2xl bg-[var(--surface)] px-6 py-10 text-center shadow-sm"
-            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
-          >
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              No teachers have been assigned to this department yet.
-            </p>
-            <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-              The school admin can assign teachers to departments from the School Admin dashboard.
-            </p>
-          </div>
-        ) : (
-          <div
-            className="overflow-hidden rounded-2xl bg-[var(--surface)] shadow-sm"
-            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
-          >
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th
-                    className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Teacher
-                  </th>
-                  <th
-                    className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Joined
-                  </th>
-                  <th
-                    className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Lessons This Month
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {departmentTeachers.map((teacher, i) => (
-                  <tr
-                    key={teacher.userId}
-                    style={{
-                      borderBottom:
-                        i < departmentTeachers.length - 1 ? "1px solid var(--border-subtle)" : undefined,
-                    }}
-                  >
-                    <td className="px-5 py-3.5">
-                      <span className="font-medium" style={{ color: NAVY }}>
-                        {teacher.email}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-sm" style={{ color: "var(--text-secondary)" }}>
-                      {teacher.joinedAt ? formatDate(teacher.joinedAt) : "—"}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <span
-                        className="inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                        style={{
-                          background:
-                            teacher.generationsUsedThisMonth > 0
-                              ? "color-mix(in oklch, var(--brand) 12%, transparent)"
-                              : "var(--surface-sunken)",
-                          color:
-                            teacher.generationsUsedThisMonth > 0 ? TEAL : "var(--text-muted)",
-                        }}
-                      >
-                        {teacher.generationsUsedThisMonth}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* Recent Lesson Plans */}
-      <section>
-        <h2 className="mb-4 text-lg font-semibold" style={{ color: NAVY }}>
-          Recent Lesson Plans
-        </h2>
-
-        {recentLessons.length === 0 ? (
-          <div
-            className="rounded-2xl bg-[var(--surface)] px-6 py-10 text-center shadow-sm"
-            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
-          >
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              No lesson plans generated yet in this department.
-            </p>
-          </div>
-        ) : (
-          <div
-            className="overflow-hidden rounded-2xl bg-[var(--surface)] shadow-sm"
-            style={{ border: "1px solid color-mix(in oklch, var(--brand) 20%, transparent)" }}
-          >
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th
-                    className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Topic
-                  </th>
-                  <th
-                    className="hidden px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide sm:table-cell"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Subject / Grade
-                  </th>
-                  <th
-                    className="hidden px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide md:table-cell"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Teacher
-                  </th>
-                  <th
-                    className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Date
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentLessons.map((lesson, i) => (
-                  <tr
-                    key={lesson.id}
-                    style={{
-                      borderBottom:
-                        i < recentLessons.length - 1 ? "1px solid var(--border-subtle)" : undefined,
-                    }}
-                  >
-                    <td className="px-5 py-3.5">
-                      <span className="font-medium" style={{ color: NAVY }}>
-                        {resolveLessonTitle(lesson.topic, lesson.chapter, lesson.subject)}
-                      </span>
-                      {resolveLessonTopicNote(lesson.topic, lesson.chapter) ? (
-                        <span className="block text-xs" style={{ color: "var(--text-muted)" }}>
-                          Topic: {resolveLessonTopicNote(lesson.topic, lesson.chapter)}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td
-                      className="hidden px-5 py-3.5 text-sm sm:table-cell"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {lesson.subject}
-                      {lesson.grade ? ` · ${lesson.grade}` : ""}
-                    </td>
-                    <td
-                      className="hidden px-5 py-3.5 text-sm md:table-cell"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {lesson.teacherEmail}
-                    </td>
-                    <td
-                      className="px-5 py-3.5 text-right text-sm"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {formatDate(lesson.createdAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </div>
   );
 }

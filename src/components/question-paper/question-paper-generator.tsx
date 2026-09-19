@@ -13,12 +13,13 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
-import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
+import { ArtifactWorkspace } from "@/components/lesson-plan/artifact-workspace";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useErrorToast } from "@/hooks/use-error-toast";
-import { FORM_COLUMN_CLASS } from "@/components/layout/page-header";
 import { useUserUsage } from "@/hooks/use-user-usage";
 import { PaymentModal } from "@/components/payment/payment-modal";
-import { EmptyState, PageTitle, Panel, Skeleton } from "@/components/ui/panel";
+import { EmptyState, Notice, PageTitle, Panel, Skeleton } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { LockedPageState } from "@/components/premium/locked-page-state";
 import { PLANS } from "@/lib/plans";
@@ -118,7 +119,6 @@ export function QuestionPaperGenerator() {
 
   const [loading, setLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<string | null>(null);
-  const [paperReady, setPaperReady] = useState(false);
   const [error, setError] = useErrorToast();
   const [result, setResult] = useState<QuestionPaperResult | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -324,17 +324,9 @@ export function QuestionPaperGenerator() {
     }
   };
 
-  useEffect(() => {
-    if (!loading && result) {
-      setPaperReady(true);
-      const bannerTimer = setTimeout(() => setPaperReady(false), 3000);
-      document.getElementById("download-section")?.scrollIntoView({ behavior: "smooth" });
-      return () => clearTimeout(bannerTimer);
-    }
-  }, [loading, result]);
-
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (step !== 3) { goToNextStep(); return; }
     setError(null);
 
     if (usageLoading) {
@@ -415,9 +407,7 @@ export function QuestionPaperGenerator() {
 
       if (!generateBlueprint) {
         setGenerationProgress("Preparing downloads...");
-        await new Promise<void>((r) => setTimeout(r, 500));
         setGenerationProgress("Finalizing...");
-        await new Promise<void>((r) => setTimeout(r, 3000));
         return;
       }
 
@@ -457,9 +447,7 @@ export function QuestionPaperGenerator() {
             : prev,
         );
         setGenerationProgress("Preparing downloads...");
-        await new Promise<void>((r) => setTimeout(r, 500));
         setGenerationProgress("Finalizing...");
-        await new Promise<void>((r) => setTimeout(r, 3000));
         return;
       }
 
@@ -471,9 +459,7 @@ export function QuestionPaperGenerator() {
         });
         setResult((prev) => (prev ? { ...prev, blueprintError: "failed" } : prev));
         setGenerationProgress("Preparing downloads...");
-        await new Promise<void>((r) => setTimeout(r, 500));
         setGenerationProgress("Finalizing...");
-        await new Promise<void>((r) => setTimeout(r, 3000));
         return;
       }
 
@@ -486,9 +472,7 @@ export function QuestionPaperGenerator() {
           : prev,
       );
       setGenerationProgress("Preparing downloads...");
-      await new Promise<void>((r) => setTimeout(r, 500));
       setGenerationProgress("Finalizing...");
-      await new Promise<void>((r) => setTimeout(r, 3000));
     } catch (err) {
       setError(toUserFacingError(err, "question-paper-generate"));
     } finally {
@@ -499,7 +483,7 @@ export function QuestionPaperGenerator() {
 
   const scrollToWizard = () => {
     window.setTimeout(() => {
-      wizardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      wizardRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
     }, 0);
   };
 
@@ -516,7 +500,7 @@ export function QuestionPaperGenerator() {
 
   if (checkingAuth) {
     return (
-      <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+      <div className="workspace-page" aria-hidden>
         <Skeleton className="h-6 w-48" />
         <Skeleton className="mt-6 h-[420px] rounded-lg" />
       </div>
@@ -549,7 +533,7 @@ export function QuestionPaperGenerator() {
 
   if (usageLoading || !usage) {
     return (
-      <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+      <div className="workspace-page" aria-hidden>
         <Skeleton className="h-6 w-48" />
         <Skeleton className="mt-6 h-[420px] rounded-lg" />
       </div>
@@ -581,19 +565,20 @@ export function QuestionPaperGenerator() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1100px] px-4 py-6 sm:px-6 sm:py-8" ref={wizardRef}>
+    <div className="workspace-page" ref={wizardRef}>
       {!result ? (
         <>
           <PageTitle
-            title="New question paper"
+            title="Create a question paper"
             description="Set the blueprint, then generate the paper, mark scheme and answer key together."
             className="mb-5"
           />
-          <div className={FORM_COLUMN_CLASS}>
-            <StepWizardProgress steps={WIZARD_STEPS} currentStep={step} />
-          </div>
-
-          <form ref={formRef} onSubmit={onSubmit} noValidate className={`${FORM_COLUMN_CLASS} space-y-6`}>
+          <div className="grid items-start gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
+            <aside className="space-y-4 lg:sticky lg:top-24">
+              <nav aria-label="Question paper setup" className="rounded-xl border border-line bg-surface p-2">{WIZARD_STEPS.map((item) => <button key={item.id} type="button" disabled={item.id > step} aria-current={item.id === step ? "step" : undefined} onClick={() => setStep(item.id)} className={`flex w-full gap-3 rounded-lg p-3 text-left text-sm disabled:opacity-50 ${item.id === step ? "bg-brand-subtle font-semibold text-brand-text" : "text-muted"}`}><span>{item.id}</span><span>{item.label}</span></button>)}</nav>
+              <div className="rounded-xl border border-line bg-surface p-4"><p className="text-sm font-semibold text-ink">Paper overview</p><dl className="mt-4 space-y-3 text-sm"><div className="flex justify-between gap-2"><dt className="text-faint">Class</dt><dd className="text-ink">{grade}</dd></div><div className="flex justify-between gap-2"><dt className="text-faint">Subject</dt><dd className="text-ink">{subject}</dd></div><div className="flex justify-between gap-2"><dt className="text-faint">Marks</dt><dd className="text-ink">{totalMarks}</dd></div><div className="flex justify-between gap-2"><dt className="text-faint">Duration</dt><dd className="text-ink">{timeAllowed}</dd></div></dl></div>
+            </aside>
+          <form ref={formRef} onSubmit={onSubmit} noValidate aria-busy={loading} className="min-w-0 space-y-6 rounded-xl border border-line bg-surface p-5 sm:p-7">
         {/* ══════════ STEP 1 — PAPER DETAILS ══════════ */}
         <fieldset hidden={step !== 1} className="min-w-0">
           <legend className="block w-full border-b border-line pb-3 text-lg font-semibold text-ink">
@@ -601,8 +586,8 @@ export function QuestionPaperGenerator() {
           </legend>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-muted">Curriculum type</label>
-              <select
+              <label htmlFor="qp-field-0" className="mb-1 block text-sm font-medium text-muted">Curriculum type</label>
+              <select id="qp-field-0"
                 value={curriculumType}
                 onChange={(e) => setCurriculumType(e.target.value)}
                 className={inputClass}
@@ -620,8 +605,8 @@ export function QuestionPaperGenerator() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-muted">Grade</label>
-              <select value={grade} onChange={(e) => setGrade(e.target.value)} className={inputClass} required>
+              <label htmlFor="qp-field-1" className="mb-1 block text-sm font-medium text-muted">Grade</label>
+              <select id="qp-field-1" value={grade} onChange={(e) => setGrade(e.target.value)} className={inputClass} required>
                 {GRADE_YEAR_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
@@ -630,8 +615,8 @@ export function QuestionPaperGenerator() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-muted">Subject</label>
-              <select value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} required>
+              <label htmlFor="qp-field-2" className="mb-1 block text-sm font-medium text-muted">Subject</label>
+              <select id="qp-field-2" value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} required>
                 <optgroup label="Subjects">
                   {CORE_SUBJECT_OPTIONS.filter(
                     (opt) => !(STEM_SUBJECT_OPTIONS as readonly string[]).includes(opt),
@@ -658,8 +643,8 @@ export function QuestionPaperGenerator() {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-muted">Topic or chapter name</label>
-              <input
+              <label htmlFor="qp-field-3" className="mb-1 block text-sm font-medium text-muted">Topic or chapter name</label>
+              <input id="qp-field-3"
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
@@ -669,8 +654,8 @@ export function QuestionPaperGenerator() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-muted">Total marks</label>
-              <input
+              <label htmlFor="qp-field-4" className="mb-1 block text-sm font-medium text-muted">Total marks</label>
+              <input id="qp-field-4"
                 type="number"
                 min={1}
                 max={500}
@@ -681,8 +666,8 @@ export function QuestionPaperGenerator() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-muted">Time allowed</label>
-              <select
+              <label htmlFor="qp-field-5" className="mb-1 block text-sm font-medium text-muted">Time allowed</label>
+              <select id="qp-field-5"
                 value={timeAllowed}
                 onChange={(e) =>
                   setTimeAllowed(e.target.value as (typeof QUESTION_PAPER_TIME_OPTIONS)[number])
@@ -697,8 +682,8 @@ export function QuestionPaperGenerator() {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-muted">Difficulty level</label>
-              <select
+              <label htmlFor="qp-field-6" className="mb-1 block text-sm font-medium text-muted">Difficulty level</label>
+              <select id="qp-field-6"
                 value={difficulty}
                 onChange={(e) =>
                   setDifficulty(e.target.value as (typeof QUESTION_PAPER_DIFFICULTY_OPTIONS)[number])
@@ -732,7 +717,7 @@ export function QuestionPaperGenerator() {
           <legend className="block w-full border-b border-line pb-3 text-lg font-semibold text-ink">
             Provide your content
           </legend>
-          <p className="mt-3 text-xs text-muted">
+          <p className="mt-3 text-sm text-muted">
             Optional — AI will generate based on topic if no content is provided (except in Strict
             mode).
           </p>
@@ -776,11 +761,12 @@ export function QuestionPaperGenerator() {
             disabled={uploadExtracting || loading}
             rows={6}
             className={`${inputClass} mt-4`}
+            aria-label="Source content"
             placeholder="Paste chapter notes, textbook extract, or teaching content…"
           />
-          {uploadInfo ? <p className="mt-2 text-xs text-teal-800">{uploadInfo}</p> : null}
+          {uploadInfo ? <p className="mt-2 text-sm text-brand-text">{uploadInfo}</p> : null}
           {uploadedChunks.length > 0 ? (
-            <p className="mt-2 text-xs text-muted">
+            <p className="mt-2 text-sm text-muted">
               {uploadedChunks.length} file(s) attached ({extractedMaterial.length.toLocaleString()}{" "}
               chars extracted)
             </p>
@@ -819,8 +805,8 @@ export function QuestionPaperGenerator() {
                 className="flex items-center justify-between gap-2 rounded-xl border border-line-subtle bg-hover/80 px-3 py-2"
               >
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-ink">{spec.label}</p>
-                  <p className="text-[11px] text-faint">{spec.description}</p>
+                  <p className="text-sm font-semibold text-ink">{spec.label}</p>
+                  <p className="text-xs text-faint">{spec.description}</p>
                 </div>
                 <input
                   type="number"
@@ -836,7 +822,7 @@ export function QuestionPaperGenerator() {
           </div>
           <div
             className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm"
-            style={{ background: "var(--text)", color: "#fff" }}
+            style={{ background: "var(--brand-subtle)", color: "var(--text)" }}
           >
             <span>
               Total questions: <strong>{totalQuestions}</strong>
@@ -862,14 +848,14 @@ export function QuestionPaperGenerator() {
               />
               <span>
                 <span className="font-semibold text-ink">Strictly based on my content</span>
-                <span className="mt-1 block text-xs text-muted">
+                <span className="mt-1 block text-sm text-muted">
                   AI will generate questions using ONLY the content you provided. No additional
                   information will be added.
                 </span>
               </span>
             </label>
             {generationMode === "strict" ? (
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <p className="rounded-lg border border-warning/25 bg-warning-subtle px-3 py-2 text-sm text-warning-text">
                 Please upload or paste your content above for best results.
               </p>
             ) : null}
@@ -883,7 +869,7 @@ export function QuestionPaperGenerator() {
               />
               <span>
                 <span className="font-semibold text-ink">AI enhanced generation</span>
-                <span className="mt-1 block text-xs text-muted">
+                <span className="mt-1 block text-sm text-muted">
                   AI may paraphrase and enhance questions beyond your provided content.
                 </span>
               </span>
@@ -895,6 +881,7 @@ export function QuestionPaperGenerator() {
                   <span style={{ color: "var(--brand)" }}>{enhancementPercent}%</span>
                 </div>
                 <input
+                  aria-label="Enhancement level"
                   type="range"
                   min={0}
                   max={100}
@@ -902,7 +889,7 @@ export function QuestionPaperGenerator() {
                   onChange={(e) => setEnhancementPercent(Number(e.target.value))}
                   className="mt-3 w-full accent-[var(--brand)]"
                 />
-                <p className="mt-2 text-[11px] text-muted">
+                <p className="mt-2 text-xs text-muted">
                   0–20%: mostly your content · 21–50%: balanced · 51–80%: mostly AI · 81–100%: fully AI
                   from topic
                 </p>
@@ -955,16 +942,15 @@ export function QuestionPaperGenerator() {
               <span className="text-sm font-semibold text-ink">
                 Generate Blueprint with Question Paper
               </span>
-              <span className="mt-1 block text-xs text-muted">
-                After your paper is ready, a second pass analyzes it and builds chapter-wise,
-                Bloom&apos;s, question-type, and difficulty tables (plain text, not JSON).
+              <span className="mt-1 block text-sm text-muted">
+                Include a breakdown of chapter coverage, learning levels, question types, and difficulty.
               </span>
             </span>
           </label>
         </section>
 
         {error ? (
-          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
+          <p className="rounded-xl border border-danger/25 bg-danger-subtle px-4 py-3 text-sm text-danger-text">{error}</p>
         ) : null}
 
         <div className="flex justify-between gap-3">
@@ -987,126 +973,20 @@ export function QuestionPaperGenerator() {
         </button>
         </fieldset>
           </form>
+          </div>
         </>
       ) : (
-        <section className="mx-auto w-full max-w-[820px] space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <h3 className="text-xl font-semibold text-ink">Your question paper is ready</h3>
-            <button
-              type="button"
-              onClick={() => {
-                setResult(null);
-                setStep(1);
-              }}
-              className="shrink-0 rounded-xl border border-line bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-muted transition hover:border-line-strong hover:text-ink"
-            >
-              ← Edit details
-            </button>
-          </div>
-
-          <div
-            role="status"
-            aria-live="polite"
-            style={{
-              transition: "opacity 0.4s ease, transform 0.4s ease",
-              opacity: paperReady ? 1 : 0,
-              transform: paperReady ? "translateY(0)" : "translateY(-8px)",
-              pointerEvents: paperReady ? "auto" : "none",
-            }}
-            className="rounded-2xl border border-[color-mix(in_oklch,var(--brand)_40%,transparent)] bg-[color-mix(in_oklch,var(--brand)_10%,transparent)] px-4 py-3 text-sm font-semibold text-[#007a66] shadow-sm"
-          >
-            Your Question Paper is ready!
-          </div>
-
-          <div
-            className="min-h-[420px] rounded-2xl border shadow-sm"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 30%, transparent)", background: "var(--surface-raised)" }}
-          >
-            <div
-              className="rounded-t-2xl px-4 py-3 text-sm font-semibold text-white sm:px-5"
-              style={{ background: "var(--text)" }}
-            >
-              Preview
-            </div>
-            {result?.blueprintText ? (
-              <div className="flex border-b border-line bg-hover px-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setPreviewTab("paper")}
-                  className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
-                  style={{
-                    background: previewTab === "paper" ? "#fff" : "transparent",
-                    color: previewTab === "paper" ? "var(--text)" : "var(--text-secondary)",
-                  }}
-                >
-                  Question paper
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewTab("blueprint")}
-                  className="rounded-t-lg px-4 py-2 text-xs font-semibold transition"
-                  style={{
-                    background: previewTab === "blueprint" ? "#fff" : "transparent",
-                    color: previewTab === "blueprint" ? "var(--text)" : "var(--text-secondary)",
-                  }}
-                >
-                  Blueprint
-                </button>
-              </div>
-            ) : null}
-            <div className="max-h-[min(60vh,560px)] overflow-y-auto p-4 sm:p-5">
-              {result?.parseNotice ? (
-                <p className="mb-3 text-xs text-amber-800">{result.parseNotice}</p>
-              ) : null}
-              {result?.blueprintError ? (
-                <p className="mb-3 text-xs text-amber-800">
-                  Blueprint could not be generated. Your question paper and downloads are still
-                  available.
-                </p>
-              ) : null}
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink">
-                {previewText}
-              </pre>
-            </div>
-          </div>
-
-          <div
-            id="download-section"
-            className="rounded-2xl border px-4 py-5 shadow-sm sm:px-5"
-            style={{ borderColor: "color-mix(in oklch, var(--brand) 30%, transparent)", background: "var(--surface-raised)" }}
-          >
-            <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                disabled={!!downloading}
-                onClick={() => downloadQuestionPaper()}
-                className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                style={{ background: "var(--brand)" }}
-              >
-                {downloading === "paper" ? "Downloading…" : "Download Question Paper as Word"}
-              </button>
-              <button
-                type="button"
-                disabled={!!downloading || !result?.blueprintText}
-                onClick={() => downloadBlueprint()}
-                className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                style={{ background: "var(--text)" }}
-              >
-                {downloading === "blueprint" ? "Downloading…" : "Download Blueprint as Word"}
-              </button>
-              <button
-                type="button"
-                disabled={!!downloading}
-                onClick={() => downloadZip()}
-                className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                style={{
-                  background: "linear-gradient(135deg, var(--brand) 0%, var(--text) 100%)",
-                }}
-              >
-                {downloading === "zip" ? "Downloading…" : "Download Complete Pack as ZIP"}
-              </button>
-            </div>
-          </div>
+        <section>
+          <header className="page-header"><div><p className="page-kicker">Assessment package</p><h1 className="page-title">{topic || "Your question paper"}</h1><p className="page-description">{subject} / {grade} / {totalMarks} marks / {timeAllowed}</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={Boolean(downloading)} onClick={() => { setResult(null); setStep(1); }}>Edit paper details</Button><Button variant="outline" disabled={Boolean(downloading)} onClick={() => void downloadZip()}>{downloading === "zip" ? "Preparing ZIP..." : "Download complete ZIP"}</Button></div></header>
+          {result.parseNotice ? <Notice className="mb-5">{result.parseNotice}</Notice> : null}
+          {result.blueprintError ? <Notice tone="generated" className="mb-5">The blueprint could not be generated. Your question paper is ready to use.</Notice> : null}
+          {error ? <Notice tone="danger" className="mb-5">{error}</Notice> : null}
+          <ArtifactWorkspace artifacts={[
+            { id: "paper", title: "Question paper", description: "Word document with your selected answer resources", onDownload: downloadQuestionPaper },
+            ...(result.blueprintText ? [{ id: "blueprint", title: "Blueprint", description: "Coverage, question types, and difficulty distribution", onDownload: downloadBlueprint }] : []),
+          ]} activeId={previewTab} onSelect={(id) => setPreviewTab(id as "paper" | "blueprint")} busy={Boolean(downloading)} downloading={downloading === previewTab} sidebarFooter={<p className="px-1 text-sm leading-relaxed text-faint">Check the questions, answers, and marks before sharing this assessment.</p>}>
+            <div className="artifact"><ReactMarkdown remarkPlugins={[remarkGfm]}>{previewText}</ReactMarkdown></div>
+          </ArtifactWorkspace>
         </section>
       )}
 

@@ -1,50 +1,51 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { HeroBackdrop } from "@/components/marketing/hero-backdrop";
+import { BookOpen, FileCheck2, Layers3 } from "lucide-react";
 
-const CURRICULA = ["CBSE", "ICSE", "IB", "Cambridge"] as const;
+const WORKSPACE_TOOLS = [
+  { icon: BookOpen, title: "Plan with confidence", detail: "Build lessons around your curriculum and classroom." },
+  { icon: FileCheck2, title: "Prepare your assessments", detail: "Create question papers and differentiated practice." },
+  { icon: Layers3, title: "Keep everything together", detail: "Return to saved resources whenever you need them." },
+];
 
-/**
- * Shell for /login and /signup.
- *
- * Was a two-column split: a navy panel carrying a decorative blob, the logo and
- * four floating badges on the left, the form on the right. At most widths the
- * left half read as empty — a large branded rectangle doing no work — and it
- * disappeared entirely below `lg`, so the desktop and mobile versions of the
- * page had nothing in common.
- *
- * A single centred column is both more professional and more honest about what
- * the page is for: one task, one focal point, nothing competing with it. The
- * ruled backdrop is the same one the homepage hero uses, so arriving here from
- * the marketing site feels continuous rather than like a different product.
- */
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative flex min-h-[calc(100vh-64px)] w-full flex-col items-center justify-center px-4 py-12">
-      <HeroBackdrop />
-
-      <div className="flex w-full max-w-[400px] flex-col items-center">
-        <Link href="/" className="mb-7 flex flex-col items-center gap-2.5">
-          <img
-            src="/logo-mark.png"
-            alt=""
-            aria-hidden
-            className="size-10 rounded-lg object-cover"
-          />
-          <span className="text-center">
-            <span className="block text-[15px] font-semibold tracking-[-0.015em] text-ink">Layah</span>
-            <span className="mt-0.5 block text-[12px] text-faint">Prep less. Teach more.</span>
-          </span>
-        </Link>
-
-        {children}
-
-        {/* Trust signal as one quiet line rather than a row of floating chips.
-            It supports the decision without competing with the form. */}
-        <p className="mt-7 text-center text-[11px] leading-relaxed text-disabled">
-          Curriculum-aligned for{" "}
-          <span className="text-faint">{CURRICULA.join(", ")}</span> and 15+ more
-        </p>
+    <div className="min-h-[calc(100dvh-64px)] bg-canvas px-4 py-8 sm:px-6 lg:py-14">
+      <div className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-2xl border border-line bg-surface shadow-sm lg:grid-cols-[1fr_1.05fr]">
+        <aside className="flex flex-col justify-between border-b border-line bg-sunken p-6 sm:p-10 lg:border-b-0 lg:border-r">
+          <div>
+            <Link href="/" className="inline-flex items-center gap-3 text-lg font-semibold text-ink">
+              <img src="/logo-mark.png" alt="" aria-hidden className="size-10 rounded-xl object-cover" />
+              Layah
+            </Link>
+            <p className="page-kicker mt-10">Your teaching workspace</p>
+            <h2 className="mt-3 max-w-sm text-3xl font-semibold leading-tight tracking-tight text-ink">
+              A clearer start to every lesson.
+            </h2>
+            <p className="mt-4 max-w-sm text-base leading-7 text-muted">
+              Bring your preparation into one place, from the first lesson idea to classroom resources.
+            </p>
+          </div>
+          <ul className="mt-10 hidden space-y-6 lg:block">
+            {WORKSPACE_TOOLS.map(({ icon: Icon, title, detail }) => (
+              <li key={title} className="flex gap-3">
+                <Icon className="mt-0.5 size-5 shrink-0 text-brand-text" aria-hidden />
+                <div>
+                  <p className="text-sm font-medium text-ink">{title}</p>
+                  <p className="mt-1 text-sm leading-6 text-muted">{detail}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </aside>
+        <div className="flex flex-col justify-center p-6 sm:p-10">
+          {children}
+          <p className="mt-8 text-center text-sm leading-6 text-faint">
+            <Link href="/privacy" className="hover:text-ink hover:underline">Privacy policy</Link>
+            <span className="mx-2" aria-hidden>?</span>
+            <Link href="/terms" className="hover:text-ink hover:underline">Terms of service</Link>
+          </p>
+        </div>
       </div>
     </div>
   );

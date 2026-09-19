@@ -15,6 +15,7 @@ import { supabase } from "@/lib/supabase";
 import { resolveLessonTitle } from "@/lib/lesson-plan";
 import { cn } from "@/lib/utils";
 import { Kbd } from "@/components/ui/panel";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useTheme } from "@/components/app/theme";
 import { ACCOUNT_ITEMS, CREATE_ITEMS, LIBRARY_ITEMS, ROLE_ITEMS, type NavItem } from "@/lib/app-nav";
 
@@ -67,6 +68,7 @@ export function CommandPalette({
 
   /* ---- open/close ------------------------------------------------------ */
   React.useEffect(() => {
+    const onOpen = () => setOpen(true);
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -76,7 +78,11 @@ export function CommandPalette({
       if (e.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("layah:open-command-palette", onOpen);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("layah:open-command-palette", onOpen);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -221,8 +227,6 @@ export function CommandPalette({
       ?.scrollIntoView({ block: "nearest" });
   }, [active]);
 
-  if (!open) return null;
-
   // Group headings, preserving result order.
   const groups: { name: string; items: { cmd: Cmd; index: number }[] }[] = [];
   results.forEach((cmd, index) => {
@@ -232,20 +236,10 @@ export function CommandPalette({
   });
 
   return (
-    <div
-      className="fixed inset-0 z-[300] flex items-start justify-center px-4 pt-[12vh]"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Command palette"
-    >
-      <button
-        type="button"
-        aria-label="Close command palette"
-        onClick={() => setOpen(false)}
-        className="absolute inset-0 bg-ink/25 backdrop-blur-[2px] animate-fade-in"
-      />
-
-      <div className="animate-pop relative w-full max-w-[560px] overflow-hidden rounded-xl border border-line bg-raised shadow-overlay">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent initialFocus={inputRef} showCloseButton={false} className="top-[12vh] translate-y-0 gap-0 overflow-hidden p-0 sm:max-w-[600px]">
+        <DialogTitle className="sr-only">Search lessons and commands</DialogTitle>
+        <DialogDescription className="sr-only">Type to search. Use arrow keys to select a result and Enter to open it.</DialogDescription>
         <div className="flex items-center gap-2.5 border-b border-line-subtle px-3.5">
           <Search className="size-4 shrink-0 text-faint" aria-hidden />
           <input
@@ -255,12 +249,17 @@ export function CommandPalette({
             onKeyDown={onKeyDown}
             placeholder="Search lessons, or jump to…"
             aria-label="Search lessons or run a command"
-            className="h-11 w-full bg-transparent text-[13px] text-ink outline-none placeholder:text-disabled"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={open}
+            aria-controls="command-results"
+            aria-activedescendant={results[active] ? `command-result-${active}` : undefined}
+            className="h-14 w-full bg-transparent text-base text-ink outline-none placeholder:text-faint"
           />
           <Kbd className="shrink-0">Esc</Kbd>
         </div>
 
-        <div ref={listRef} className="max-h-[52vh] overflow-y-auto py-1.5" role="listbox">
+        <div id="command-results" ref={listRef} className="max-h-[52vh] overflow-y-auto p-2" role="listbox" aria-label="Search results">
           {results.length === 0 ? (
             <p className="px-4 py-8 text-center text-[12px] text-faint">
               Nothing matches “{query}”.
@@ -268,7 +267,7 @@ export function CommandPalette({
           ) : (
             groups.map((group) => (
               <div key={group.name} className="mb-0.5">
-                <p className="px-3.5 pb-1 pt-2 font-mono text-[10px] uppercase tracking-wider text-disabled">
+                <p className="px-3 pb-2 pt-3 text-xs font-medium text-faint">
                   {group.name}
                 </p>
                 {group.items.map(({ cmd, index }) => {
@@ -279,13 +278,15 @@ export function CommandPalette({
                       key={cmd.id}
                       type="button"
                       data-index={index}
+                      id={`command-result-${index}`}
+                      tabIndex={-1}
                       role="option"
                       aria-selected={isActive}
                       onMouseMove={() => setActive(index)}
                       onClick={() => cmd.run()}
                       className={cn(
-                        "flex w-full items-center gap-2.5 px-3.5 py-2 text-left",
-                        isActive ? "bg-hover" : "bg-transparent",
+                        "flex w-full items-center gap-3 rounded-md px-3 py-3 text-left",
+                        isActive ? "bg-brand-subtle" : "bg-transparent",
                       )}
                     >
                       <Icon
@@ -293,9 +294,9 @@ export function CommandPalette({
                         aria-hidden
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] text-ink">{cmd.label}</span>
+                        <span className="block truncate text-sm font-medium text-ink">{cmd.label}</span>
                         {cmd.hint ? (
-                          <span className="block truncate text-[11px] text-faint">{cmd.hint}</span>
+                          <span className="mt-0.5 block truncate text-xs text-faint">{cmd.hint}</span>
                         ) : null}
                       </span>
                       {isActive ? (
@@ -322,7 +323,7 @@ export function CommandPalette({
               : `${lessons.length} lesson${lessons.length === 1 ? "" : "s"} searchable`}
           </span>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -3,14 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Download } from "lucide-react";
+import { Download, ShieldCheck, CreditCard, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm";
 import {
   Badge,
   Meter,
   Notice,
-  PageTitle,
   Panel,
   PanelHeader,
   Skeleton,
@@ -51,6 +50,7 @@ export default function SettingsPage() {
   const [deleteError, setDeleteError] = useErrorToast();
   const [downloading, setDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [downloadError, setDownloadError] = useErrorToast();
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -112,6 +112,7 @@ export default function SettingsPage() {
   const handleDownload = async () => {
     setDownloading(true);
     setDownloadSuccess(false);
+    setDownloadError(null);
     try {
       const headers = await getAuthHeaders();
       const res = await fetch("/api/account/export", { headers, cache: "no-store" });
@@ -128,7 +129,7 @@ export default function SettingsPage() {
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 5000);
     } catch {
-      /* silent - browser already shows network errors */
+      setDownloadError("We could not prepare your data export. Please try again.");
     } finally {
       setDownloading(false);
     }
@@ -186,7 +187,7 @@ export default function SettingsPage() {
 
   if (loadingPage) {
     return (
-      <div className="mx-auto w-full max-w-[720px] px-4 py-6 sm:px-6 sm:py-8" aria-hidden>
+      <div className="workspace-page !max-w-5xl" aria-hidden>
         <Skeleton className="h-6 w-32" />
         <Skeleton className="mt-5 h-[132px] rounded-lg" />
         <Skeleton className="mt-4 h-[96px] rounded-lg" />
@@ -201,153 +202,89 @@ export default function SettingsPage() {
     subscription && (subscription.status === "active" || subscription.status === "pending");
 
   return (
-    <div className="mx-auto w-full max-w-[720px] px-4 py-6 sm:px-6 sm:py-8">
-      <PageTitle title="Settings" description="Your account, plan and data." />
+    <div className="workspace-page !max-w-5xl">
+      <header className="page-header">
+        <div>
+          <p className="page-kicker">Your workspace</p>
+          <h1 className="page-title">Account settings</h1>
+          <p className="page-description">Manage your profile details, subscription, and personal data.</p>
+        </div>
+      </header>
 
-      <Panel className="mt-5 overflow-hidden">
-        <PanelHeader title="Account" />
-        <dl className="divide-y divide-line-subtle">
-          <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-            <dt className="text-[13px] text-muted">Full name</dt>
-            <dd className="truncate text-[13px] text-ink">{profile?.fullName ?? "-"}</dd>
+      <div className="grid items-start gap-6 lg:grid-cols-[300px_1fr]">
+        <Panel className="overflow-hidden">
+          <div className="border-b border-line bg-sunken p-6">
+            <div className="mb-4 flex size-12 items-center justify-center rounded-xl border border-line bg-surface text-brand-text"><UserRound className="size-6" aria-hidden /></div>
+            <h2 className="section-heading break-words">{profile?.fullName ?? "Your account"}</h2>
+            <p className="mt-2 break-all text-sm text-muted">{profile?.email}</p>
+            <div className="mt-4"><Badge tone={onFree ? "neutral" : "brand"}>{planLabel}</Badge></div>
           </div>
-          <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-            <dt className="text-[13px] text-muted">Mobile number</dt>
-            <dd className="truncate text-[13px] text-ink">{profile?.phone ?? "-"}</dd>
-          </div>
-          <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-            <dt className="text-[13px] text-muted">Email</dt>
-            <dd className="truncate text-[13px] text-ink">{profile?.email ?? "-"}</dd>
-          </div>
-          <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-            <dt className="text-[13px] text-muted">Plan</dt>
-            <dd className="flex items-center gap-2">
-              <Badge tone={onFree ? "neutral" : "brand"}>{planLabel}</Badge>
-              {onFree ? (
-                <Link
-                  href="/pricing"
-                  className="text-[12px] font-medium text-brand-text underline-offset-2 hover:underline"
-                >
-                  Compare plans
-                </Link>
-              ) : null}
-            </dd>
-          </div>
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-[13px] text-muted">Generations this month</dt>
-              <dd className="font-mono text-[12px] tabular-nums text-ink">
-                {usage
-                  ? usage.unlimited || usage.generationsLimit == null
-                    ? "Unlimited"
-                    : `${usage.generationsUsed} / ${usage.generationsLimit}`
-                  : "-"}
-              </dd>
-            </div>
-            {usage && !usage.unlimited && usage.generationsLimit != null ? (
-              <Meter used={usage.generationsUsed} limit={usage.generationsLimit} className="mt-2" />
-            ) : null}
-          </div>
-        </dl>
-      </Panel>
-
-      {hasLiveSub ? (
-        <Panel className="mt-4 overflow-hidden">
-          <PanelHeader title="Subscription" description="Pro Monthly - Rs.349 every 30 days" />
-          <div className="p-4">
-            {subscription.status === "pending" ? (
-              <Notice tone="generated" className="mb-3">
-                Your last renewal payment failed and we&apos;re retrying automatically. Pro access
-                is unaffected for now.
-              </Notice>
-            ) : null}
-            {cancelError ? (
-              <Notice tone="danger" className="mb-3">
-                {cancelError}
-              </Notice>
-            ) : null}
-
-            {subscription.cancel_at_cycle_end ? (
-              <p className="text-[13px] text-muted">
-                Auto-renewal is off. Pro stays active until{" "}
-                <span className="font-medium text-ink">
-                  {subscription.current_period_end ?? "your next billing date"}
-                </span>
-                , then no further charges.
-              </p>
-            ) : (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-[13px] text-muted">
-                  {subscription.current_period_end
-                    ? `Renews ${subscription.current_period_end}`
-                    : "Renews automatically"}
-                </p>
-                <Button variant="outline" size="sm" onClick={() => setShowCancelModal(true)}>
-                  Turn off auto-renewal
-                </Button>
-              </div>
-            )}
-          </div>
+          <dl className="space-y-5 p-6">
+            <div><dt className="text-sm text-muted">Mobile number</dt><dd className="mt-1 text-sm font-medium text-ink">{profile?.phone ?? "-"}</dd></div>
+            <div><dt className="text-sm text-muted">Email</dt><dd className="mt-1 break-all text-sm font-medium text-ink">{profile?.email ?? "-"}</dd></div>
+          </dl>
         </Panel>
-      ) : null}
 
-      <Panel className="mt-4 overflow-hidden">
-        <PanelHeader title="Your data" />
-        <div className="p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="max-w-sm text-[13px] text-muted">
-              Download everything Layah holds for you - account details, usage and every saved
-              lesson - as a JSON file.
-            </p>
-            <Button variant="outline" size="sm" onClick={handleDownload} disabled={downloading}>
-              {downloading ? <Spinner className="size-3.5" /> : <Download />}
-              {downloading ? "Preparing..." : "Download"}
-            </Button>
-          </div>
-          {downloadSuccess ? (
-            <Notice tone="brand" className="mt-3">
-              Downloaded. Check your browser&apos;s downloads folder.
-            </Notice>
-          ) : null}
+        <div className="space-y-6">
+          <Panel className="overflow-hidden">
+            <PanelHeader title="Plan and usage" description="Your current access and monthly allowance." />
+            <div className="space-y-5 p-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3"><CreditCard className="size-5 text-brand-text" aria-hidden /><p className="font-medium text-ink">{planLabel}</p></div>
+                <Button render={<Link href="/pricing" />} variant="outline" size="sm">Compare plans</Button>
+              </div>
+              <div className="rounded-xl border border-line bg-sunken p-4">
+                <div className="flex flex-wrap justify-between gap-3 text-sm"><span className="text-muted">Generations this month</span><span className="font-medium tabular-nums text-ink">{usage ? usage.unlimited || usage.generationsLimit == null ? `${usage.generationsUsed} used ? Unlimited` : `${usage.generationsUsed} / ${usage.generationsLimit}` : "Usage unavailable"}</span></div>
+                {usage && !usage.unlimited && usage.generationsLimit != null ? <Meter used={usage.generationsUsed} limit={usage.generationsLimit} className="mt-3" /> : null}
+              </div>
+              {hasLiveSub && subscription ? (
+                <div className="border-t border-line pt-5">
+                  {subscription.status === "pending" ? <Notice tone="generated" className="mb-4">Your last renewal payment failed. We are retrying automatically; your access is unaffected for now.</Notice> : null}
+                  {cancelError ? <Notice tone="danger" className="mb-4">{cancelError}</Notice> : null}
+                  {subscription.cancel_at_cycle_end ? (
+                    <p className="text-sm leading-6 text-muted">Auto-renewal is off. Your plan stays active until {subscription.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString(undefined, { dateStyle: "medium" }) : "the end of this billing period"}.</p>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm text-muted">{subscription.current_period_end ? `Renews ${new Date(subscription.current_period_end).toLocaleDateString(undefined, { dateStyle: "medium" })}` : "Renews automatically"}</p>
+                      <Button variant="ghost" size="sm" onClick={() => setShowCancelModal(true)}>Turn off auto-renewal</Button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </Panel>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line-subtle pt-4">
-            <p className="max-w-sm text-[13px] text-muted">
-              Layah only uses cookies required for sign-in and your session. You can reset your
-              choice at any time.
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                localStorage.removeItem("layah_cookie_consent");
-                window.location.reload();
-              }}
-            >
-              Reset cookie choice
-            </Button>
-          </div>
+          <Panel className="overflow-hidden">
+            <PanelHeader title="Privacy and data" description="Access your information and manage your preferences." />
+            <div className="divide-y divide-line px-6">
+              <div className="py-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="max-w-sm"><h3 className="text-sm font-medium text-ink">Export your data</h3><p className="mt-1 text-sm leading-6 text-muted">Download your account details, usage, and saved lessons as a JSON file.</p></div>
+                  <Button variant="outline" size="sm" onClick={handleDownload} disabled={downloading}>{downloading ? <Spinner className="size-4" /> : <Download />}{downloading ? "Preparing..." : "Export data"}</Button>
+                </div>
+                {downloadError ? <Notice tone="danger" className="mt-4">{downloadError}</Notice> : null}
+                {downloadSuccess ? <Notice tone="brand" className="mt-4">Your export is ready. Check your browser downloads.</Notice> : null}
+              </div>
+              <div className="flex flex-wrap items-start justify-between gap-4 py-5">
+                <div className="max-w-sm"><h3 className="text-sm font-medium text-ink">Cookie preferences</h3><p className="mt-1 text-sm leading-6 text-muted">Reopen the cookie notice to review your choice.</p></div>
+                <Button variant="ghost" size="sm" onClick={() => { localStorage.removeItem("layah_cookie_consent"); window.location.reload(); }}>Review preferences</Button>
+              </div>
+              <div className="flex items-start gap-3 py-5 text-sm leading-6 text-muted"><ShieldCheck className="mt-0.5 size-5 shrink-0 text-brand-text" aria-hidden /><p>Read how we handle your information in our <Link href="/privacy" className="font-medium text-brand-text underline underline-offset-4">privacy policy</Link>.</p></div>
+            </div>
+          </Panel>
+
+          <Panel className="overflow-hidden !border-danger/25">
+            <div className="p-6">
+              <h2 className="section-heading">Delete account</h2>
+              {deleteError ? <Notice tone="danger" className="mt-4">{deleteError}</Notice> : null}
+              <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+                <p className="max-w-sm text-sm leading-6 text-muted">Permanently delete your account and all generated resources. This action cannot be undone.</p>
+                <Button variant="danger-quiet" size="sm" onClick={() => setShowDeleteModal(true)}>Delete account</Button>
+              </div>
+            </div>
+          </Panel>
         </div>
-      </Panel>
-
-      <Panel className="mt-4 overflow-hidden">
-        <PanelHeader title="Delete account" />
-        <div className="p-4">
-          {deleteError ? (
-            <Notice tone="danger" className="mb-3">
-              {deleteError}
-            </Notice>
-          ) : null}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="max-w-sm text-[13px] text-muted">
-              Permanently removes your account and every lesson, question paper and worksheet you
-              have generated. This can&apos;t be undone.
-            </p>
-            <Button variant="danger-quiet" size="sm" onClick={() => setShowDeleteModal(true)}>
-              Delete account
-            </Button>
-          </div>
-        </div>
-      </Panel>
+      </div>
 
       <ConfirmDialog
         open={showDeleteModal}

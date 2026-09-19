@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
 import { SchoolAdminDashboard } from "@/components/school/school-admin-dashboard";
-import { Container } from "@/components/ui/container";
-import { FadeIn } from "@/components/ui/animate";
 import {
   findSchoolForAdmin,
   getSchoolAdminDashboard,
@@ -69,12 +67,8 @@ export default async function SchoolAdminPage() {
   }
 
   return (
-    <main className="min-h-screen pb-16 pt-10">
-      <Container>
-        <FadeIn>
+    <div className="workspace-page">
           <SchoolAdminDashboard initialData={dashboard} />
-        </FadeIn>
-      </Container>
-    </main>
+    </div>
   );
 }

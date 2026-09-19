@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  BarChart3,
   Building2,
   CreditCard,
   ArrowLeft,
@@ -13,7 +12,6 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ACCENT, ACCENT_SOFT, BORDER, FONT_DISPLAY, FONT_MONO, INK, INK_FAINT, INK_MUTED, PAPER } from "./admin-kit";
 
 export type AdminTab = "overview" | "pending" | "schools" | "users" | "admins" | "content" | "billing" | "announcements";
 
@@ -46,139 +44,46 @@ export function AdminShell({
   const items = NAV.filter((item) => !item.founderOnly || role === "super_admin");
   const activeItem = NAV.find((n) => n.tab === active);
 
+  // Same containment as AppFrame: the row is capped to one viewport and the main
+  // column owns the scrolling, so the sidebar can never scroll away.
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: PAPER }}>
-      <aside
-        className="hidden w-60 shrink-0 flex-col gap-1 overflow-y-auto px-3 py-5 lg:flex"
-        style={{ borderRight: `1px solid ${BORDER}` }}
-      >
-        <div className="mb-5 flex items-center gap-2 px-2">
-          <div
-            className="flex size-8 items-center justify-center rounded-lg text-sm font-bold text-white"
-            style={{ background: ACCENT }}
-          >
-            L
-          </div>
-          <div>
-            <p className={cn("text-sm font-semibold leading-tight", FONT_DISPLAY)} style={{ color: INK }}>
-              Layah Console
-            </p>
-            <p className={cn("text-[10px] uppercase tracking-wider", FONT_MONO)} style={{ color: INK_FAINT }}>
-              Operator access
-            </p>
-          </div>
-        </div>
-
-        <Link
-          href="/overview"
-          className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-black/[0.03]"
-          style={{ color: ACCENT }}
-        >
-          <ArrowLeft className="size-4" />
-          Back to platform
+    <div className="flex h-dvh overflow-hidden bg-canvas">
+      <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-line bg-surface px-4 py-6 lg:flex">
+        <Link href="/overview" className="flex items-center gap-3 px-2 text-lg font-semibold text-ink">
+          {/* Same plain <img> the public navbar/footer and app frame use for the
+              logo mark, so all five sites stay on one pattern. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-mark.png" alt="" aria-hidden className="size-9 rounded-lg object-cover" />
+          Layah <span className="text-sm font-normal text-muted">Console</span>
         </Link>
-
-        <nav className="flex flex-1 flex-col gap-0.5">
+        <p className="mb-3 mt-10 px-3 text-sm font-medium text-faint">Administration</p>
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto" aria-label="Administration sections">
           {items.map((item) => {
             const Icon = item.icon;
             const isActive = item.tab === active;
-            const count = item.tab === "pending" ? pendingCount : undefined;
             return (
-              <button
-                key={item.tab}
-                type="button"
-                onClick={() => onNavigate(item.tab)}
-                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition"
-                style={{
-                  background: isActive ? ACCENT_SOFT : "transparent",
-                  color: isActive ? ACCENT : INK_MUTED,
-                }}
-              >
-                <Icon className="size-4 shrink-0" />
-                <span className="flex-1">{item.label}</span>
-                {!!count && (
-                  <span
-                    className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                    style={{ background: isActive ? "white" : "#EDEBE6", color: isActive ? ACCENT : INK_FAINT }}
-                  >
-                    {count}
-                  </span>
-                )}
+              <button key={item.tab} type="button" onClick={() => onNavigate(item.tab)} aria-current={isActive ? "page" : undefined}
+                className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors duration-[var(--t-fast)]", isActive ? "bg-brand-subtle text-brand-text" : "text-muted hover:bg-hover hover:text-ink")}>
+                <Icon className="size-4 shrink-0" aria-hidden /><span className="flex-1">{item.label}</span>
+                {item.tab === "pending" && pendingCount > 0 ? <span className="rounded-md bg-surface px-2 py-0.5 text-xs tabular-nums">{pendingCount}</span> : null}
               </button>
             );
           })}
         </nav>
-
-        <div className="mt-4 rounded-lg px-2.5 py-2.5" style={{ background: "#EFEEEA" }}>
-          <p className="truncate text-xs font-semibold" style={{ color: INK }}>
-            {email}
-          </p>
-          <p className="mt-0.5 text-[11px] font-medium" style={{ color: INK_FAINT }}>
-            {role === "super_admin" ? "Super Admin" : "Admin"}
-          </p>
-        </div>
+        <div className="mt-6 border-t border-line px-3 pt-5"><p className="truncate text-sm font-medium text-ink" title={email}>{email}</p><p className="mt-1 text-sm text-faint">{role === "super_admin" ? "Super administrator" : "Administrator"}</p></div>
       </aside>
-
-      {/* Scroll container for header + nav + main, same reason as the app rail's
-          shell: the outer row is fixed to h-screen, so this is where scrolling
-          happens instead of the document — the sidebar never has to hold a
-          sticky/fixed position past a containing block that runs out of room. */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <header
-          className="flex items-center justify-between gap-3 px-5 py-4 lg:px-8"
-          style={{ borderBottom: `1px solid ${BORDER}` }}
-        >
-          <div>
-            <p className={cn("text-[11px] font-semibold uppercase tracking-wider", FONT_MONO)} style={{ color: INK_FAINT }}>
-              Super Admin
-            </p>
-            <h1 className={cn("text-xl font-semibold tracking-tight", FONT_DISPLAY)} style={{ color: INK }}>
-              {activeItem?.label ?? "Overview"}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/overview"
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-black/[0.03]"
-              style={{ background: "white", color: ACCENT, border: `1px solid ${BORDER}` }}
-            >
-              <ArrowLeft className="size-3.5" />
-              Back to platform
-            </Link>
-            <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold" style={{ background: ACCENT_SOFT, color: ACCENT }}>
-              <BarChart3 className="size-3.5" />
-              Live data
-            </div>
-          </div>
+      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+        <header className="sticky top-0 z-40 flex min-h-[72px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-5 py-4 sm:px-8">
+          <p className="text-sm text-muted">Administration <span className="mx-2 text-faint" aria-hidden>/</span><span className="font-medium text-ink">{activeItem?.label}</span></p>
+          <Link href="/overview" className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-hover"><ArrowLeft className="size-4" aria-hidden />Back to workspace</Link>
         </header>
-
-        <nav className="flex gap-1 overflow-x-auto border-b px-3 py-2 lg:hidden" style={{ borderColor: BORDER }}>
-          <Link
-            href="/overview"
-            className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold"
-            style={{ background: "white", color: ACCENT, border: `1px solid ${BORDER}` }}
-          >
-            Back to platform
-          </Link>
-          {items.map((item) => (
-            <button
-              key={item.tab}
-              type="button"
-              onClick={() => onNavigate(item.tab)}
-              className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold"
-              style={{
-                background: item.tab === active ? ACCENT : "transparent",
-                color: item.tab === active ? "white" : INK_MUTED,
-                border: item.tab === active ? "none" : `1px solid ${BORDER}`,
-              }}
-            >
-              {item.label}
-              {item.tab === "pending" && pendingCount > 0 ? ` (${pendingCount})` : ""}
-            </button>
-          ))}
+        <nav className="flex shrink-0 gap-2 overflow-x-auto border-b border-line bg-surface px-5 py-3 lg:hidden" aria-label="Administration sections">
+          {items.map((item) => <button key={item.tab} type="button" onClick={() => onNavigate(item.tab)} aria-current={item.tab === active ? "page" : undefined} className={cn("shrink-0 rounded-lg px-3 py-2 text-sm font-medium", item.tab === active ? "bg-brand-subtle text-brand-text" : "text-muted hover:bg-hover")}>{item.label}{item.tab === "pending" && pendingCount > 0 ? ` (${pendingCount})` : ""}</button>)}
         </nav>
-
-        <main className="px-5 py-6 pb-16 lg:px-8 lg:py-8">{children}</main>
+        <div className="workspace-page">
+          <div className="page-header"><div><p className="page-kicker">Layah console</p><h1 className="page-title">{activeItem?.label ?? "Overview"}</h1><p className="page-description">{active === "overview" ? "A clear view of platform activity and the work that needs attention." : `Manage ${activeItem?.label.toLowerCase() ?? "your platform"} from one place.`}</p></div></div>
+          {children}
+        </div>
       </div>
     </div>
   );

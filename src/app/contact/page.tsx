@@ -1,51 +1,20 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
-import { Container } from "@/components/ui/container";
-import { Footer } from "@/components/layout/footer";
+import { CheckCircle2, Mail, ArrowUpRight } from "lucide-react";
+import { PublicPage } from "@/components/marketing/public-page";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { toUserFacingError } from "@/lib/user-facing-errors";
 
-const NAVY = "var(--text)";
-const TEAL = "var(--brand)";
-
 const SUBJECTS = ["General Inquiry", "School Plans", "Technical Support", "Feedback"];
-
-function MailIcon() {
-  return (
-    <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-    </svg>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-    </svg>
-  );
-}
-
-const CONTACT_INFO = [
-  { icon: MailIcon, label: "Email", value: "info@layah.in", href: "mailto:info@layah.in" },
-  { icon: ClockIcon, label: "Response Time", value: "Within 24 hours" },
-  { icon: CalendarIcon, label: "Support Hours", value: "Mon – Fri, 9 AM – 6 PM GST" },
-];
-
 const SOCIAL_LINKS = [
-  { label: "Instagram", href: "https://www.instagram.com/layah.teachers?igsh=NHAwOGFoaXNkc2hh&utm_source=qr" },
+  { label: "Instagram", href: "https://www.instagram.com/layah.teachers" },
   { label: "LinkedIn", href: "https://linkedin.com/company/layah-ai" },
-  { label: "X (Twitter)", href: "https://x.com/layah_ai" },
+  { label: "X", href: "https://x.com/layah_ai" },
 ];
 
 export default function ContactPage() {
@@ -54,18 +23,19 @@ export default function ContactPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useErrorToast<string>("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (sending) return;
     setSending(true);
     setError("");
     try {
-      const res = await fetch("/api/contact", {
+      const response = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error || "Failed to send message");
       }
       setSent(true);
@@ -77,173 +47,44 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--canvas)", color: NAVY }}>
-      {/* Hero */}
-      <section className="relative overflow-hidden py-20 sm:py-28" style={{ background: NAVY }}>
-        <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 70% 50%, color-mix(in oklch, var(--brand) 20%, transparent), transparent 60%)` }} />
-        <Container>
-          <div className="relative mx-auto max-w-3xl text-center">
-            <p className="mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider" style={{ background: "color-mix(in oklch, var(--brand) 15%, transparent)", color: TEAL }}>
-              Contact Us
-            </p>
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-5xl" style={{ fontWeight: 700 }}>
-              We would love to hear from you
-            </h1>
-            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/60">
-              Whether you have a question, feedback, or want to explore school plans — reach out and we will get back to you.
-            </p>
-          </div>
-        </Container>
-      </section>
+    <PublicPage eyebrow="Contact" title="Let’s talk about your teaching day." description="Get help with Layah, share an idea or explore what a school workspace could look like.">
+      <div className="grid items-start gap-10 lg:grid-cols-[0.7fr_1.3fr] lg:gap-16">
+        <aside className="space-y-8">
+          <div><h2 className="section-heading">A conversation with our team</h2><p className="mt-3 text-sm leading-relaxed text-muted">Tell us what you need and include any useful details. For a technical issue, the page name and error message help us find the problem.</p></div>
+          <div className="border-y border-line py-6"><p className="text-sm font-medium">Prefer email?</p><a href="mailto:info@layah.in" className="mt-3 inline-flex items-center gap-2 rounded text-sm text-brand-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><Mail className="size-4" aria-hidden />info@layah.in</a><p className="mt-4 text-sm text-muted">Monday–Friday, 9 am–6 pm GST</p></div>
+          <div><h3 className="text-sm font-medium">Looking for a quick answer?</h3><Link href="/faq" className="mt-2 inline-flex items-center gap-1 rounded text-sm text-brand-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">Browse the help centre <ArrowUpRight className="size-4" aria-hidden /></Link></div>
+          <div className="flex flex-wrap gap-5">{SOCIAL_LINKS.map((social) => <a key={social.label} href={social.href} target="_blank" rel="noopener noreferrer" className="rounded text-sm text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">{social.label}<span className="sr-only"> (opens in a new tab)</span></a>)}</div>
+        </aside>
 
-      {/* Contact Details + Form */}
-      <section className="py-16 sm:py-20">
-        <Container>
-          <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-5">
-            {/* Details card */}
-            <div className="lg:col-span-2">
-              <div className="rounded-2xl border bg-[var(--surface)] p-6 shadow-sm sm:p-8" style={{ borderColor: "color-mix(in oklch, var(--brand) 15%, transparent)" }}>
-                <h2 className="text-lg font-bold" style={{ color: NAVY }}>Get in Touch</h2>
-                <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                  We are here to help. Reach out through any of these channels.
-                </p>
-                <div className="mt-6 space-y-5">
-                  {CONTACT_INFO.map((item) => (
-                    <div key={item.label} className="flex gap-4">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl" style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL }}>
-                        <item.icon />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-disabled)" }}>{item.label}</p>
-                        {item.href ? (
-                          <a href={item.href} className="text-sm font-medium transition hover:opacity-80" style={{ color: TEAL }}>{item.value}</a>
-                        ) : (
-                          <p className="text-sm font-medium" style={{ color: NAVY }}>{item.value}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-8 border-t pt-6" style={{ borderColor: "var(--border)" }}>
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-disabled)" }}>Follow Us</p>
-                  <div className="flex gap-3">
-                    {SOCIAL_LINKS.map((link) => (
-                      <a
-                        key={link.label}
-                        href={link.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg px-3 py-1.5 text-xs font-medium transition hover:opacity-80"
-                        style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL }}
-                      >
-                        {link.label}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </div>
+        <section className="rounded-2xl border border-line bg-surface p-6 sm:p-8" aria-labelledby="contact-form-title">
+          {sent ? (
+            <div className="py-10" role="status">
+              <CheckCircle2 className="size-10 text-brand-text" aria-hidden />
+              <h2 id="contact-form-title" className="mt-5 text-2xl font-semibold">Your message is with us.</h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted">Thank you for getting in touch. We’ll reply to {form.email} as soon as possible.</p>
+              <Button type="button" variant="outline" className="mt-6" onClick={() => { setSent(false); setForm({ name: "", email: "", subject: SUBJECTS[0], message: "" }); }}>Send another message</Button>
             </div>
-
-            {/* Form */}
-            <div className="lg:col-span-3">
-              <div className="rounded-2xl border bg-[var(--surface)] p-6 shadow-sm sm:p-8" style={{ borderColor: "color-mix(in oklch, var(--brand) 15%, transparent)" }}>
-                {sent ? (
-                  <div className="py-12 text-center">
-                    <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full" style={{ background: "color-mix(in oklch, var(--brand) 15%, transparent)" }}>
-                      <svg className="size-8" fill="none" viewBox="0 0 24 24" stroke={TEAL} strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
-                    </div>
-                    <h3 className="text-xl font-bold" style={{ color: NAVY }}>Message Sent!</h3>
-                    <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-                      Thank you for reaching out. We will get back to you within 24 hours.
-                    </p>
-                    <Link href="/" className="mt-6 inline-flex rounded-lg px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: TEAL }}>
-                      Back to Home
-                    </Link>
+          ) : (
+            <>
+              <h2 id="contact-form-title" className="section-heading">Send a message</h2>
+              <p className="mt-2 text-sm text-muted">All fields are required.</p>
+              <form onSubmit={handleSubmit} className="mt-7 space-y-5" aria-busy={sending}>
+                <fieldset disabled={sending} className="space-y-5 disabled:opacity-70">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div><Label htmlFor="contact-name" className="mb-2">Your name</Label><Input id="contact-name" name="name" autoComplete="name" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Full name" /></div>
+                    <div><Label htmlFor="contact-email" className="mb-2">Email address</Label><Input id="contact-email" name="email" autoComplete="email" required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="you@school.edu" /></div>
                   </div>
-                ) : (
-                  <>
-                    <h2 className="text-lg font-bold" style={{ color: NAVY }}>Send us a message</h2>
-                    <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                      Fill out the form below and we will respond as soon as possible.
-                    </p>
-                    <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-                      <div>
-                        <label htmlFor="contact-name" className="mb-1.5 block text-sm font-medium" style={{ color: NAVY }}>Name</label>
-                        <input
-                          id="contact-name"
-                          required
-                          type="text"
-                          value={form.name}
-                          onChange={(e) => setForm({ ...form, name: e.target.value })}
-                          className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition focus:ring-2"
-                          style={{ borderColor: "var(--border)", color: NAVY }}
-                          placeholder="Your name"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="contact-email" className="mb-1.5 block text-sm font-medium" style={{ color: NAVY }}>Email</label>
-                        <input
-                          id="contact-email"
-                          required
-                          type="email"
-                          value={form.email}
-                          onChange={(e) => setForm({ ...form, email: e.target.value })}
-                          className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition focus:ring-2"
-                          style={{ borderColor: "var(--border)", color: NAVY }}
-                          placeholder="you@example.com"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="contact-subject" className="mb-1.5 block text-sm font-medium" style={{ color: NAVY }}>Subject</label>
-                        <select
-                          id="contact-subject"
-                          value={form.subject}
-                          onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                          className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition focus:ring-2"
-                          style={{ borderColor: "var(--border)", color: NAVY }}
-                        >
-                          {SUBJECTS.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label htmlFor="contact-message" className="mb-1.5 block text-sm font-medium" style={{ color: NAVY }}>Message</label>
-                        <textarea
-                          id="contact-message"
-                          required
-                          rows={5}
-                          value={form.message}
-                          onChange={(e) => setForm({ ...form, message: e.target.value })}
-                          className="w-full resize-none rounded-lg border px-4 py-2.5 text-sm outline-none transition focus:ring-2"
-                          style={{ borderColor: "var(--border)", color: NAVY }}
-                          placeholder="How can we help you?"
-                        />
-                      </div>
-                      {error ? (
-                        <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</p>
-                      ) : null}
-                      <button
-                        type="submit"
-                        disabled={sending}
-                        className="flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                        style={{ background: TEAL }}
-                      >
-                        {sending ? "Sending..." : "Send Message"}
-                      </button>
-                    </form>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      <Footer />
-    </div>
+                  <div><Label htmlFor="contact-subject" className="mb-2">What can we help with?</Label><select id="contact-subject" name="subject" value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20">{SUBJECTS.map((subject) => <option key={subject} value={subject}>{subject}</option>)}</select></div>
+                  <div><Label htmlFor="contact-message" className="mb-2">Your message</Label><textarea id="contact-message" name="message" required rows={6} value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} placeholder="Tell us a little about what you need…" className="min-h-36 w-full resize-y rounded-lg border border-line bg-surface px-3 py-3 text-sm text-ink placeholder:text-faint outline-none focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand/20" /></div>
+                </fieldset>
+                {error ? <p role="alert" className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p> : null}
+                <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line pt-5"><p className="max-w-xs text-xs leading-relaxed text-muted">We’ll use these details to respond to your enquiry. <Link href="/privacy" className="text-brand-text underline underline-offset-2">Privacy policy</Link></p><Button type="submit" disabled={sending}>{sending ? "Sending…" : "Send message"}</Button></div>
+              </form>
+            </>
+          )}
+        </section>
+      </div>
+    </PublicPage>
   );
 }
+

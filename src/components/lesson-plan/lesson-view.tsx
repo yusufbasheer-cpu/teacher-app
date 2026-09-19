@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Disclosure, Notice } from "@/components/ui/panel";
+import { Disclosure } from "@/components/ui/panel";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
@@ -47,9 +47,6 @@ export function LessonView({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useErrorToast();
   const [pptThemeId, setPptThemeId] = useState<PptThemeId>(DEFAULT_PPT_THEME_ID);
-  const [activePlanId, setActivePlanId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -140,6 +137,7 @@ export function LessonView({ id }: { id: string }) {
     `/lesson-plan?subject=${encodeURIComponent(lesson.subject)}` +
     `&grade=${encodeURIComponent(lesson.grade)}` +
     `&topic=${encodeURIComponent(lesson.topic)}` +
+    `&chapter=${encodeURIComponent(lesson.chapter ?? "")}` +
     `&learningObjectives=${encodeURIComponent(lesson.learning_objectives ?? "")}` +
     `&curriculumType=${encodeURIComponent(lesson.curriculum)}`;
 
@@ -148,50 +146,6 @@ export function LessonView({ id }: { id: string }) {
     month: "long",
     year: "numeric",
   });
-
-  const onSaveLessonPlan = async () => {
-    setError(null);
-    setSuccessMessage(null);
-    setSaving(true);
-
-    try {
-      const payload = {
-        user_id: user.id,
-        curriculum_type: lesson.curriculum,
-        curriculum_framework: "",
-        subject: lesson.subject,
-        grade: lesson.grade,
-        chapter: lesson.chapter ?? "",
-        topic: displayTitle,
-        learning_objectives: lesson.learning_objectives ?? "",
-        lesson_plan: lessonPlan,
-      };
-
-      if (activePlanId) {
-        const { error: updateError } = await supabase
-          .from("lesson_plans")
-          .update(payload)
-          .eq("id", activePlanId)
-          .eq("user_id", user.id);
-        if (updateError) throw new Error(updateError.message);
-        setSuccessMessage("Lesson plan updated successfully.");
-      } else {
-        const { data, error: insertError } = await supabase
-          .from("lesson_plans")
-          .insert(payload)
-          .select("id")
-          .single();
-        if (insertError) throw new Error(insertError.message);
-        const newId = (data as { id: string }).id;
-        setActivePlanId(newId);
-        setSuccessMessage("Lesson plan saved successfully.");
-      }
-    } catch (err) {
-      setError(toUserFacingError(err, "lesson-plan-save"));
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const onSendToDifferentiatedPack = () => {
     setError(null);
@@ -219,11 +173,11 @@ export function LessonView({ id }: { id: string }) {
           in it, so this is a breadcrumb and the metadata that the viewer does
           NOT show — objectives and when it was saved — rather than a second
           title card repeating subject, grade and curriculum. */}
-      <div className="mx-auto w-full max-w-[1180px] px-4 pt-5 sm:px-6">
+      <div className="workspace-page !pb-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/my-lesson-plans"
-            className="inline-flex items-center gap-1 text-[12px] text-faint transition-colors hover:text-ink"
+            className="inline-flex items-center gap-1 text-sm text-faint transition-colors hover:text-ink"
           >
             <ArrowLeft className="size-3" aria-hidden />
             My lessons
@@ -243,37 +197,33 @@ export function LessonView({ id }: { id: string }) {
             <dl className="space-y-2.5">
               {displayTopicNote ? (
                 <div>
-                  <dt className="font-mono text-[10px] uppercase tracking-wider text-disabled">
+                  <dt className="text-sm font-medium text-faint">
                     Topic
                   </dt>
-                  <dd className="mt-0.5 text-[13px] text-ink">{displayTopicNote}</dd>
+                  <dd className="mt-0.5 text-sm text-ink">{displayTopicNote}</dd>
                 </div>
               ) : null}
               {lesson.learning_objectives ? (
                 <div>
-                  <dt className="font-mono text-[10px] uppercase tracking-wider text-disabled">
+                  <dt className="text-sm font-medium text-faint">
                     Learning objectives
                   </dt>
-                  <dd className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed text-ink">
+                  <dd className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed text-ink">
                     {lesson.learning_objectives}
                   </dd>
                 </div>
               ) : null}
               <div>
-                <dt className="font-mono text-[10px] uppercase tracking-wider text-disabled">
+                <dt className="text-sm font-medium text-faint">
                   Saved
                 </dt>
-                <dd className="mt-0.5 text-[13px] text-ink">{dateStr}</dd>
+                <dd className="mt-0.5 text-sm text-ink">{dateStr}</dd>
               </div>
             </dl>
           </Disclosure>
         ) : null}
 
-        {successMessage ? (
-          <Notice tone="brand" className="mt-3">
-            {successMessage}
-          </Notice>
-        ) : null}
+
       </div>
 
       {/* Lesson content + downloads */}
@@ -287,8 +237,7 @@ export function LessonView({ id }: { id: string }) {
         pptThemeId={pptThemeId}
         onPptThemeChange={setPptThemeId}
         teacherName={user.email?.split("@")[0]}
-        onSave={onSaveLessonPlan}
-        saving={saving}
+        saved
         onSendToDifferentiatedPack={onSendToDifferentiatedPack}
       />
     </div>

@@ -21,9 +21,9 @@ import { cn } from "@/lib/utils"
  */
 const buttonVariants = cva(
   [
-    "group/button relative inline-flex shrink-0 select-none items-center justify-center gap-1.5",
+    "group/button relative inline-flex shrink-0 select-none items-center justify-center gap-2",
     "whitespace-nowrap rounded-md border border-transparent font-medium",
-    "transition-[background-color,border-color,color,box-shadow,opacity] duration-[110ms] ease-[cubic-bezier(0.2,0,0,1)]",
+    "transition-[background-color,border-color,color,box-shadow,opacity] duration-[140ms] ease-[var(--ease)]",
     "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
     "disabled:pointer-events-none disabled:opacity-45",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -49,17 +49,17 @@ const buttonVariants = cva(
         link: "text-brand-text underline-offset-4 hover:underline h-auto p-0",
       },
       size: {
-        xs: "h-6 px-1.5 text-[11px] rounded-sm [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 px-2 text-[12px] [&_svg:not([class*='size-'])]:size-3.5",
-        default: "h-8 px-2.5 text-[13px]",
-        lg: "h-9 px-3.5 text-[13px]",
+        xs: "h-7 px-2 text-xs rounded-sm [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-9 px-3 text-[13px] [&_svg:not([class*='size-'])]:size-3.5",
+        default: "h-10 px-4 text-sm",
+        lg: "h-11 px-5 text-sm",
         /* Page-level primary actions. The old scale topped out at 36px, which
            is why the product's most important button never looked important. */
-        xl: "h-11 px-5 text-[14px] rounded-lg",
-        icon: "size-8",
-        "icon-xs": "size-6 rounded-sm [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-7 [&_svg:not([class*='size-'])]:size-3.5",
-        "icon-lg": "size-9",
+        xl: "h-12 px-6 text-[15px] rounded-lg",
+        icon: "size-10",
+        "icon-xs": "size-7 rounded-sm [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-9 [&_svg:not([class*='size-'])]:size-3.5",
+        "icon-lg": "size-11",
       },
       /** Fills the container. Use for stacked mobile actions and menu items. */
       block: { true: "w-full", false: "" },

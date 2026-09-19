@@ -83,6 +83,9 @@
   --color-danger-subtle: var(--danger-subtle);
   --color-danger-border: var(--danger-border);
   --color-danger-on: var(--danger-on);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-border: var(--success-border);
 
   /* the rail */
   --color-rule: var(--rule);
@@ -151,7 +154,7 @@
   --destructive: var(--danger);
   --input: var(--border);
   --ring: var(--brand);
-  --radius: 8px;
+  --radius: 10px;
   --navy: var(--l-gray-12);
   --navy-rule: var(--l-gray-11);
   --chalk: var(--l-gray-2);
@@ -174,8 +177,8 @@
    cream palette; the new system is one palette everywhere, so this now only
    softens the canvas a half-step for long-form reading. */
 .site-editorial {
-  --canvas: var(--l-gray-2);
-  --surface: var(--l-gray-1);
+  background: var(--canvas);
+  color: var(--text);
 }
 
 /* ===========================================================================
@@ -197,11 +200,8 @@
     background: var(--canvas);
     color: var(--text);
     font-family: var(--font-sans);
-    /* 13px base. The whole density argument rests on this: at 13/20 an
-       interface fits a working amount of information on a laptop without
-       feeling cramped. Long-form artifact content overrides it locally. */
-    font-size: 13px;
-    line-height: 1.538;
+    font-size: 14px;
+    line-height: 1.6;
     font-feature-settings: "cv05" 1, "ss01" 1;
     overscroll-behavior-y: none;
     -webkit-font-smoothing: antialiased;
@@ -539,4 +539,17 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Shared page geometry; utility classes can still adjust individual layouts. */
+@layer components {
+  .workspace-page { width: 100%; max-width: 1320px; margin-inline: auto; padding: 28px 20px 48px; }
+  .page-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
+  .page-kicker { margin-bottom: 8px; color: var(--brand-text); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
+  .page-title { color: var(--text); font-size: clamp(26px, 2.5vw, 32px); line-height: 1.2; font-weight: 650; letter-spacing: -0.035em; }
+  .page-description { max-width: 64ch; margin-top: 10px; color: var(--text-secondary); font-size: 15px; line-height: 1.65; }
+  .section-heading { color: var(--text); font-size: 18px; font-weight: 600; line-height: 1.4; letter-spacing: -0.02em; }
+  .skip-link { position: fixed; top: 12px; left: 12px; z-index: 500; transform: translateY(-160%); border-radius: var(--r-md); background: var(--brand); color: var(--brand-on); padding: 10px 16px; }
+  .skip-link:focus { transform: translateY(0); }
+  @media (min-width: 768px) { .workspace-page { padding: 36px 36px 56px; } }
 }
