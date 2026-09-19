@@ -2,32 +2,44 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 /**
- * One policy for every environment.
+ * Vercel injects its Toolbar / Live Feedback bundle (vercel.live) into
+ * preview deployments only — production never serves it. Without these
+ * origins the CSP blocked `vercel.live/_next_live/feedback/feedback.js` on
+ * every staging page load, which is a real console error but only ever on
+ * preview.
  *
- * A previous revision widened this on preview only, to admit Vercel's Toolbar
- * bundle (vercel.live) which was otherwise blocked on every staging page load.
- * The Toolbar is now disabled for this project instead, so nothing requests
- * those origins and the allowance was removed — staging and production run the
- * same policy again, which is one less way for the two to diverge silently.
+ * Gated on VERCEL_ENV so the production policy stays byte-for-byte what it
+ * was: production does not load the toolbar, so it must not trust its
+ * origins. `toolbar()` returns an empty string there, leaving each directive
+ * below unchanged.
  */
+const TOOLBAR_ORIGINS_ALLOWED = process.env.VERCEL_ENV !== "production";
+const toolbar = (...sources: string[]): string =>
+  TOOLBAR_ORIGINS_ALLOWED ? sources.map((source) => ` ${source}`).join("") : "";
+
 const CSP = [
   "default-src 'self'",
   // Next.js requires unsafe-inline for hydration scripts
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com https://checkout.razorpay.com https://cdn.razorpay.com",
-  "style-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com https://checkout.razorpay.com https://cdn.razorpay.com" +
+    toolbar("https://vercel.live"),
+  "style-src 'self' 'unsafe-inline'" + toolbar("https://vercel.live"),
   // Images: self, data URIs, blobs, and any HTTPS source (Pexels, fal.ai CDN, etc.)
   "img-src 'self' data: blob: https:",
-  "font-src 'self'",
+  "font-src 'self'" + toolbar("https://vercel.live", "https://assets.vercel.com"),
   // API connections: Supabase, DeepSeek, fal.ai, ipapi, Sentry, Razorpay.
   // cdn.razorpay.com is Razorpay's risk/fraud-detection bundle, pulled by
   // checkout.js into OUR page context (not their iframe), so it needs both a
   // script-src entry above and a connect-src entry here - without them the CSP
   // silently blocked fraud detection on every checkout.
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.deepseek.com https://rest.fal.run https://fal.run https://queue.fal.run https://ipapi.co https://api.country.is https://api.pexels.com https://*.sentry.io https://sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://api.razorpay.com https://lumberjack.razorpay.com https://cdn.razorpay.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.deepseek.com https://rest.fal.run https://fal.run https://queue.fal.run https://ipapi.co https://api.country.is https://api.pexels.com https://*.sentry.io https://sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://api.razorpay.com https://lumberjack.razorpay.com https://cdn.razorpay.com" +
+    // The toolbar's comments feature opens a Pusher websocket alongside its
+    // own origin, so both are needed or the script loads and then fails.
+    toolbar("https://vercel.live", "wss://ws-us3.pusher.com"),
   // Workers: blob: required by Sentry replay and other browser workers
   "worker-src blob: 'self'",
   // Razorpay's checkout overlay renders card/3DS/OTP steps in an iframe from these origins
-  "frame-src https://api.razorpay.com https://checkout.razorpay.com https://cdn.razorpay.com",
+  "frame-src https://api.razorpay.com https://checkout.razorpay.com https://cdn.razorpay.com" +
+    toolbar("https://vercel.live"),
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
