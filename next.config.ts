@@ -2,16 +2,22 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 /**
- * Vercel injects its Toolbar / Live Feedback bundle (vercel.live) into
- * preview deployments only — production never serves it. Without these
- * origins the CSP blocked `vercel.live/_next_live/feedback/feedback.js` on
- * every staging page load, which is a real console error but only ever on
- * preview.
+ * Next.js bakes a loader for `vercel.live/_next-live/feedback/feedback.js`
+ * into preview builds. Without these origins the CSP blocks it and every
+ * staging page logs a violation.
+ *
+ * This is NOT the Vercel Toolbar project setting, which is a separate thing
+ * and is switched off for this project. Turning that off removed the
+ * toolbar's own traffic (the `/.well-known/vercel/jwe` probe and the
+ * `vercel.live/login/validate` POST) but left this script untouched —
+ * confirmed with a `--force` deploy that skipped the build cache and still
+ * produced a byte-identical chunk containing the URL, while the served HTML
+ * stayed clean. So it cannot be configured away from here.
  *
  * Gated on VERCEL_ENV so the production policy stays byte-for-byte what it
- * was: production does not load the toolbar, so it must not trust its
- * origins. `toolbar()` returns an empty string there, leaving each directive
- * below unchanged.
+ * was: production builds never contain the loader, so production must not
+ * trust these origins. `toolbar()` returns an empty string there, leaving
+ * each directive below unchanged.
  */
 const TOOLBAR_ORIGINS_ALLOWED = process.env.VERCEL_ENV !== "production";
 const toolbar = (...sources: string[]): string =>
