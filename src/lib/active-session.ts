@@ -5,10 +5,43 @@ export const LAYAH_SESSION_TOKEN_KEY = "layah_active_session_token";
 export const SESSION_REVOKED_MESSAGE =
   "Your account was logged in from another device. You have been logged out for security. Please log in again.";
 
+/**
+ * The device token lives in localStorage, deliberately.
+ *
+ * It used to live in sessionStorage, which is per-tab and is discarded when the
+ * tab closes — while Supabase keeps the auth session in localStorage, which is
+ * not. The two disagreed on every return visit: the user came back still
+ * signed in, but with no device token, and `validateActiveSession` reads a
+ * missing token against a live `active_sessions` row as "logged in elsewhere"
+ * and revokes. That logged people out of every protected route.
+ *
+ * `/dashboard` hid it, which is why it was the one page that worked: it calls
+ * `registerActiveSession` on every visit, minting a fresh token and healing
+ * the tab it runs in.
+ *
+ * localStorage is the right scope: single-session enforcement is about one
+ * device, not one tab, so the token should live exactly as long as the auth
+ * session it guards.
+ */
 export function getLocalSessionToken(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    return sessionStorage.getItem(LAYAH_SESSION_TOKEN_KEY);
+    const stored = localStorage.getItem(LAYAH_SESSION_TOKEN_KEY);
+    if (stored) return stored;
+
+    // Migrate a token written by the old sessionStorage build, so upgrading
+    // does not itself look like a missing token and log the user out.
+    const legacy = sessionStorage.getItem(LAYAH_SESSION_TOKEN_KEY);
+    if (legacy) {
+      try {
+        localStorage.setItem(LAYAH_SESSION_TOKEN_KEY, legacy);
+        sessionStorage.removeItem(LAYAH_SESSION_TOKEN_KEY);
+      } catch {
+        /* migration is best-effort; the legacy value is still returned */
+      }
+      return legacy;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -17,18 +50,29 @@ export function getLocalSessionToken(): string | null {
 export function setLocalSessionToken(token: string): void {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(LAYAH_SESSION_TOKEN_KEY, token);
+    localStorage.setItem(LAYAH_SESSION_TOKEN_KEY, token);
   } catch {
     /* ignore quota / private mode */
+  }
+  try {
+    // Never leave a stale per-tab copy behind to be migrated back later.
+    sessionStorage.removeItem(LAYAH_SESSION_TOKEN_KEY);
+  } catch {
+    /* ignore */
   }
 }
 
 export function clearLocalSessionToken(): void {
   if (typeof window === "undefined") return;
-  try {
-    sessionStorage.removeItem(LAYAH_SESSION_TOKEN_KEY);
-  } catch {
-    /* ignore */
+  for (const storage of [
+    () => localStorage,
+    () => sessionStorage,
+  ]) {
+    try {
+      storage().removeItem(LAYAH_SESSION_TOKEN_KEY);
+    } catch {
+      /* ignore */
+    }
   }
 }
 
