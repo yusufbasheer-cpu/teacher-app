@@ -40,6 +40,31 @@ def png(red: int, green: int, blue: int):
     )
 
 
+def artwork_only_deck(slide_count: int = 1):
+    """A school-style design: full-slide artwork with a wave down the left edge and a
+    faint crest in the middle, plus a plain header band, and no text areas at all."""
+    from PIL import Image, ImageDraw
+
+    art = Image.new("RGBA", (800, 450), (255, 255, 255, 255))
+    draw = ImageDraw.Draw(art)
+    draw.polygon([(0, 0), (90, 0), (140, 450), (0, 450)], fill=(90, 145, 205, 255))
+    draw.ellipse([350, 170, 450, 270], fill=(235, 238, 245, 255))  # faint crest, floating
+    art_bytes = io.BytesIO()
+    art.save(art_bytes, "PNG")
+    band = io.BytesIO()
+    Image.new("RGB", (200, 40), (255, 255, 255)).save(band, "PNG")
+
+    deck = Presentation()
+    deck.slide_width, deck.slide_height = Inches(13.333), Inches(7.5)
+    for _ in range(slide_count):
+        slide = deck.slides.add_slide(deck.slide_layouts[6])
+        slide.shapes.add_picture(io.BytesIO(art_bytes.getvalue()), 0, 0, deck.slide_width, deck.slide_height)
+        slide.shapes.add_picture(io.BytesIO(band.getvalue()), Inches(1.7), Inches(0.3), Inches(10.9), Inches(1.1))
+    output = io.BytesIO()
+    deck.save(output)
+    return output.getvalue()
+
+
 class UploadedTemplateTests(unittest.TestCase):
     def test_completed_source_reused_for_full_lesson_without_old_text(self):
         slides = [{"title": f"Lesson {n}", "content": f"New content {n}", "speakerNotes": "Teacher note"} for n in range(13)]
@@ -97,6 +122,51 @@ class UploadedTemplateTests(unittest.TestCase):
         result = Presentation(io.BytesIO(render_template(output.getvalue(), [{"title": "New title", "content": "New content"}])))
         self.assertEqual(result.slides[0].shapes.title.text, "New title")
         self.assertEqual(result.slides[0].placeholders[1].text, "New content")
+
+    def test_artwork_only_single_slide_template_generates_every_slide(self):
+        slides = [{"title": f"Lesson {n}", "content": f"Point one for {n}\nPoint two for {n}", "speakerNotes": "note"} for n in range(13)]
+        result = Presentation(io.BytesIO(render_template(artwork_only_deck(), slides)))
+        self.assertEqual(len(result.slides), 13)
+        for n, slide in enumerate(result.slides):
+            titles = [s for s in slide.shapes if s.name == "Layah Title"]
+            bodies = [s for s in slide.shapes if s.name == "Layah Content"]
+            self.assertEqual(titles[0].text_frame.text, f"Lesson {n}")
+            self.assertEqual(bodies[0].text_frame.text, f"Point one for {n}\nPoint two for {n}")
+        # Design pictures stay, and the text sits clear of the wave down the left edge.
+        first = result.slides[0]
+        self.assertEqual(sum(1 for s in first.shapes if s.shape_type == 13), 2)
+        wave_edge = int(result.slide_width * 140 / 800)
+        for shape in first.shapes:
+            if shape.name.startswith("Layah"):
+                self.assertGreater(shape.left, wave_edge)
+                self.assertLessEqual(shape.left + shape.width, result.slide_width)
+        self.assertEqual(first.notes_slide.notes_text_frame.text, "note")
+
+    def test_artwork_only_template_places_lesson_image_beside_text(self):
+        result = Presentation(io.BytesIO(render_template(
+            artwork_only_deck(), [{"title": "With picture", "content": "Some content"}], {0: png(0, 0, 255)},
+        )))
+        slide = result.slides[0]
+        body = next(s for s in slide.shapes if s.name == "Layah Content")
+        picture = slide.shapes[-1]
+        self.assertEqual(picture.image.blob, png(0, 0, 255))
+        self.assertGreaterEqual(picture.left, body.left + body.width)
+        self.assertLessEqual(picture.left + picture.width, result.slide_width)
+
+    def test_artwork_only_template_splits_long_content_across_slides(self):
+        content = "\n".join(f"Line {n}: keep both sides of the equation balanced at every step" for n in range(40))
+        result = Presentation(io.BytesIO(render_template(artwork_only_deck(), [{"title": "Long", "content": content}])))
+        self.assertGreater(len(result.slides), 1)
+        joined = " ".join(s.text_frame.text for slide in result.slides for s in slide.shapes if s.name == "Layah Content")
+        self.assertIn("Line 39", joined)
+
+    def test_artwork_only_template_with_text_is_still_checked_strictly(self):
+        deck = Presentation(io.BytesIO(artwork_only_deck()))
+        deck.slides[0].shapes.add_textbox(Inches(2), Inches(2), Inches(4), Inches(1)).text = "Old lesson text"
+        output = io.BytesIO()
+        deck.save(output)
+        with self.assertRaises(TemplateIncompatible):
+            render_template(output.getvalue(), [{"title": "New", "content": "Content"}])
 
     def test_service_requires_secret_and_returns_structured_fit_issue(self):
         from main import app
