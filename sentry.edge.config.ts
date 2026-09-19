@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { serverEnvironment } from "@/lib/telemetry-env";
+import { serverEnvironment } from "@/lib/runtime-env";
 
 // Production only — see sentry.server.config.ts.
 Sentry.init({

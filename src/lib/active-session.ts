@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { isProductionRuntime } from "@/lib/runtime-env";
 
 export const LAYAH_SESSION_TOKEN_KEY = "layah_active_session_token";
 
@@ -102,6 +103,15 @@ export async function registerActiveSession(userId: string): Promise<string | nu
   const sessionToken = crypto.randomUUID();
   const device_info = getDeviceInfo();
 
+  // Preview deployments share production's Supabase project, so writing here
+  // would rotate the token of whoever is signed in to www.layah.in and kick
+  // them out. Keep a local token so the rest of the flow behaves normally,
+  // but leave the shared row alone.
+  if (!isProductionRuntime()) {
+    setLocalSessionToken(sessionToken);
+    return sessionToken;
+  }
+
   const { error } = await supabase.from("active_sessions").upsert(
     {
       user_id: userId,
@@ -128,6 +138,11 @@ export async function registerActiveSession(userId: string): Promise<string | nu
 export async function clearActiveSession(userId: string): Promise<void> {
   clearLocalSessionToken();
 
+  // Same shared-database reason as registerActiveSession, and worse here:
+  // signing out of staging would delete the production row outright, forcing
+  // a real teacher to sign in again.
+  if (!isProductionRuntime()) return;
+
   const { error } = await supabase.from("active_sessions").delete().eq("user_id", userId);
 
   if (error && !isActiveSessionsTableError(error)) {
@@ -144,6 +159,14 @@ export type ValidateActiveSessionResult =
  * does not match the latest session in the database.
  */
 export async function validateActiveSession(): Promise<ValidateActiveSessionResult> {
+  // Outside production this check can only produce false revokes: the row it
+  // reads belongs to production, which a preview deployment never writes, so
+  // signing in on www.layah.in would silently log you out of staging and vice
+  // versa. Single-session enforcement stays fully intact in production.
+  if (!isProductionRuntime()) {
+    return { ok: true };
+  }
+
   const {
     data: { session },
   } = await supabase.auth.getSession();

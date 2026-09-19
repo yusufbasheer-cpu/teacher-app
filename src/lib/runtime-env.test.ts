@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { environmentForHost, serverEnvironment } from "./telemetry-env";
+import { environmentForHost, serverEnvironment } from "./runtime-env";
 
 describe("environmentForHost", () => {
   it("treats the real production domains as production", () => {

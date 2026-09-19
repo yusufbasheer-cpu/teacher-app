@@ -45,6 +45,19 @@ export function shouldSendTelemetry(): boolean {
 }
 
 /**
+ * Whether this browser session is the real production site.
+ *
+ * Used for more than telemetry: preview deployments point at the **same**
+ * Supabase project as production, so anything that writes shared per-user
+ * state has to be fenced off here or staging and production corrupt each
+ * other's data. `active_sessions` is the case that bit — see
+ * `lib/active-session.ts`.
+ */
+export function isProductionRuntime(): boolean {
+  return browserEnvironment() === "production";
+}
+
+/**
  * Server-side equivalent. `VERCEL_ENV` is set automatically on Vercel and is
  * authoritative there; absent it (local `next dev`, tests) this is not
  * production.

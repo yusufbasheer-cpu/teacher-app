@@ -4,7 +4,7 @@ import posthog from "posthog-js";
 import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, Suspense } from "react";
-import { shouldSendTelemetry } from "@/lib/telemetry-env";
+import { shouldSendTelemetry } from "@/lib/runtime-env";
 
 function PostHogPageView() {
   const pathname = usePathname();

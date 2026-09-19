@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { serverEnvironment } from "@/lib/telemetry-env";
+import { serverEnvironment } from "@/lib/runtime-env";
 
 // Production only, for the same reason as the client config: preview builds
 // have NODE_ENV="production", so without this their errors were indistinguishable

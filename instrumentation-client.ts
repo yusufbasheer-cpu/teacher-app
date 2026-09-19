@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { browserEnvironment, shouldSendTelemetry } from "@/lib/telemetry-env";
+import { browserEnvironment, shouldSendTelemetry } from "@/lib/runtime-env";
 
 /**
  * Browser-side Sentry setup.
