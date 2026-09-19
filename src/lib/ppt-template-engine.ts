@@ -217,7 +217,7 @@ function isTeacherFacingRenderLine(line: string): boolean {
   );
 }
 
-function moveTeacherFacingLinesToNotes(model: StructuredLessonSlideModel): StructuredLessonSlideModel {
+export function moveTeacherFacingLinesToNotes(model: StructuredLessonSlideModel): StructuredLessonSlideModel {
   const rawLines = model.body.replace(/\r\n/g, "\n").split("\n");
   const studentLines: string[] = [];
   const noteLines: string[] = [];

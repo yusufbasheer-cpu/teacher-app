@@ -35,7 +35,7 @@ import {
   type TemplateId as PptThemeId,
 } from "@/lib/ppt-template-config";
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
-import { getAuthHeaders } from "@/lib/auth-headers";
+import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
 import type { PresentationLanguage } from "@/lib/ppt-language";
 import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
@@ -286,6 +286,63 @@ export function TeacherPackageViewer({
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
   const [busy, setBusy] = useState<ExportKey | null>(null);
   const [exportError, setExportError] = useErrorToast();
+  const [templateMode, setTemplateMode] = useState<"layah" | "uploaded">("layah");
+  const [savedTemplate, setSavedTemplate] = useState<{ original_filename: string; thumbnail_base64: string | null } | null>(null);
+  const [templateBusy, setTemplateBusy] = useState(false);
+  const [templateWarning, setTemplateWarning] = useState<{ code: string; error: string; slide: number | null } | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const response = await fetch("/api/school-template", { headers: await getAuthHeaders(), cache: "no-store" });
+        if (!response.ok) return;
+        const result = await response.json() as { template?: { original_filename: string; thumbnail_base64: string | null } | null };
+        if (live) setSavedTemplate(result.template ?? null);
+      } catch {
+        // The built-in template choice remains available.
+      }
+    })();
+    return () => { live = false; };
+  }, []);
+
+  const uploadTemplate = async (file: File) => {
+    setTemplateBusy(true);
+    setTemplateWarning(null);
+    setExportError(null);
+    try {
+      const form = new FormData();
+      form.append("template", file);
+      const response = await fetch("/api/school-template/upload", {
+        method: "POST",
+        headers: await getAuthOnlyHeaders(),
+        body: form,
+      });
+      const result = await response.json() as { error?: string; originalFilename?: string; thumbnailBase64?: string | null };
+      if (!response.ok) throw new Error(result.error || "PowerPoint upload failed.");
+      setSavedTemplate({ original_filename: result.originalFilename || file.name, thumbnail_base64: result.thumbnailBase64 ?? null });
+      setTemplateMode("uploaded");
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : "PowerPoint upload failed.");
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
+
+  const removeTemplate = async () => {
+    setTemplateBusy(true);
+    try {
+      const response = await fetch("/api/school-template", { method: "DELETE", headers: await getAuthHeaders() });
+      if (!response.ok) throw new Error("Could not remove the saved PowerPoint.");
+      setSavedTemplate(null);
+      setTemplateMode("layah");
+      setTemplateWarning(null);
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : "Could not remove the saved PowerPoint.");
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
 
   const showTeacherDownloads = hasTeacherPackageContent(lessonPlan);
   const hasPpt = hasSectionContent(lessonPlan, "PPT Slide Content");
@@ -322,6 +379,7 @@ export function TeacherPackageViewer({
     extraHeaders?: Record<string, string>,
   ) => {
     setExportError(null);
+    if (key === "ppt") setTemplateWarning(null);
     setBusy(key);
     try {
       const res = await fetch(url, {
@@ -334,6 +392,15 @@ export function TeacherPackageViewer({
 
       if (!res.ok) {
         const raw = await res.text();
+        if (key === "ppt") {
+          try {
+            const issue = JSON.parse(raw) as { code?: string; error?: string; slide?: number | null };
+            if (issue.code && issue.error) {
+              setTemplateWarning({ code: issue.code, error: issue.error, slide: issue.slide ?? null });
+              return;
+            }
+          } catch { /* Fall through to the standard export error. */ }
+        }
         console.error(`[teacher-package export ${key}] HTTP ${res.status}`, raw.slice(0, 500));
         throw new Error(USER_FACING_ERROR);
       }
@@ -375,7 +442,7 @@ export function TeacherPackageViewer({
     ...(language ? { language } : {}),
   };
 
-  const onDownloadPpt = () => {
+  const onDownloadPpt = (mode: "layah" | "uploaded" = templateMode) => {
     const fullLessonPlan = getPptSourceLessonText(lessonPlan);
     const pptContent = getPptSourceSlideOutline(lessonPlan);
     const lo = learningObjectives?.trim() || "";
@@ -398,6 +465,7 @@ export function TeacherPackageViewer({
         homeworkTask: hw,
         teacherName: teacherName?.trim() || "",
         pptTheme: pptThemeId,
+        templateMode: mode,
         curriculumFramework: curriculumFramework?.trim() ?? "",
         ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
         ...(urls ? { pptSlideImageUrls: urls } : {}),
@@ -504,7 +572,7 @@ export function TeacherPackageViewer({
           description: "Structured slide deck · Layah theme",
           icon: PresentationIcon,
           accent: "teal",
-          onDownload: onDownloadPpt,
+          onDownload: () => onDownloadPpt(),
         } as OverviewCard)
       : null,
     hasAflSheets
@@ -572,6 +640,7 @@ export function TeacherPackageViewer({
 
   return (
     <div className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-6">
+      <input id="uploaded-ppt-input" className="sr-only" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" disabled={templateBusy || busy !== null} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadTemplate(file); event.target.value = ""; }} />
       {/* Was a full-width banner announcing success and re-listing every
           artifact by name — a paragraph of confirmation for something the
           screen already demonstrates. The heading now names the lesson, which
@@ -610,6 +679,21 @@ export function TeacherPackageViewer({
       {exportError ? (
         <Notice tone="danger" className="animate-shake mb-3">
           {exportError}
+        </Notice>
+      ) : null}
+      {templateWarning ? (
+        <Notice tone="danger" className="mb-3">
+          <p className="font-semibold">We couldn&apos;t use this PowerPoint for your lesson.</p>
+          <p className="mt-1">{templateWarning.slide ? `Slide ${templateWarning.slide}: ` : ""}{templateWarning.error}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" disabled={busy !== null} onClick={() => { setTemplateMode("layah"); setTemplateWarning(null); onDownloadPpt("layah"); }}>
+              Use a Layah template
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { setTemplateWarning(null); document.getElementById("uploaded-ppt-input")?.click(); }}>
+              Upload another PowerPoint
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setTemplateWarning(null)}>Cancel</Button>
+          </div>
         </Notice>
       ) : null}
       {parseNotice ? (
@@ -743,6 +827,28 @@ export function TeacherPackageViewer({
                     <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-disabled">
                       Slide template
                     </p>
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <Button type="button" size="sm" variant={templateMode === "layah" ? "default" : "outline"} onClick={() => { setTemplateMode("layah"); setTemplateWarning(null); }}>
+                        Layah templates
+                      </Button>
+                      {savedTemplate ? (
+                        <Button type="button" size="sm" variant={templateMode === "uploaded" ? "default" : "outline"} onClick={() => { setTemplateMode("uploaded"); setTemplateWarning(null); }}>
+                          My PowerPoint
+                        </Button>
+                      ) : null}
+                      <label htmlFor="uploaded-ppt-input" className="cursor-pointer rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:bg-hover">
+                        {templateBusy ? "Uploading…" : savedTemplate ? "Replace PowerPoint" : "Upload PowerPoint"}
+                      </label>
+                    </div>
+                    {savedTemplate ? (
+                      <div className="mb-3 flex items-center gap-3 rounded-md border border-line-subtle bg-surface p-2 text-xs">
+                        {savedTemplate.thumbnail_base64?.startsWith("data:image/") ? <img src={savedTemplate.thumbnail_base64} alt="PowerPoint preview" className="h-12 w-20 object-contain" /> : null}
+                        <span className="min-w-0 flex-1 truncate">{savedTemplate.original_filename}</span>
+                        <Button type="button" variant="ghost" size="xs" disabled={templateBusy} onClick={() => void removeTemplate()}>Remove</Button>
+                      </div>
+                    ) : null}
+                    {templateMode === "uploaded" ? <p className="mb-3 text-xs text-faint">Your lesson will use the uploaded slide design. If its editable areas cannot hold the lesson, we&apos;ll ask you to choose a Layah template.</p> : null}
+                    {templateMode === "layah" ? (
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                       {PPT_THEME_CARDS.map((t) => {
                         const selected = pptThemeId === t.id;
@@ -771,6 +877,7 @@ export function TeacherPackageViewer({
                         );
                       })}
                     </div>
+                    ) : null}
                   </div>
                 ) : null}
 

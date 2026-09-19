@@ -49,6 +49,25 @@ The app deploys to Vercel on push to `main`. There is also a separate Python ser
 (`python-ppt-api/`) deployed independently — check `python-ppt-api/render.yaml` /
 `railway.json` / `Procfile` to confirm which platform is currently live for it.
 
+### Uploaded PowerPoint templates
+
+Apply `supabase/migrations/20260919120000_school_templates.sql` before enabling uploads.
+Deploy `python-ppt-api/` and set the same random `PPT_TEMPLATE_SERVICE_SECRET` in
+the Python service and the Next.js app. Set `PPT_TEMPLATE_SERVICE_URL` in Next.js
+to the Python service's origin (without a trailing path). The built-in Layah
+templates work without this service; uploaded-template exports return a clear
+unavailable message until it is configured.
+
+Teachers can upload a completed editable `.pptx` in the lesson's PPT template
+selector. The uploaded deck is reused as the visual source. The renderer
+supports slides with identifiable title and body text areas, ordinary shapes,
+and one large replaceable lesson picture per slide. Slides with generated images
+need a clear picture area in the uploaded design. It duplicates source slide
+designs when the lesson needs more slides. Charts, grouped content, embedded
+objects, and ambiguous old text return an incompatibility warning with a Layah
+template fallback. Fit detection is conservative and is based on text geometry;
+PowerPoint rendering can vary by installed fonts.
+
 ## Project structure
 
 - `src/app` — routes, root layout, API routes (`src/app/api`)
