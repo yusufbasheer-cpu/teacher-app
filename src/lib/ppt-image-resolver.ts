@@ -27,8 +27,13 @@ import {
 
 export type PptDeckImageMeta = PptSlideImageMeta & {
   curriculumFramework?: string;
+  chapter?: string;
+  learningObjectives?: string;
+  imageContext?: string;
   /** Per-deck-index lesson content, used to make Fal prompts contextually specific. */
   slideContentByIndex?: (string | null)[];
+  /** Per-deck-index slide titles, used as a visual grounding signal for Fal prompts. */
+  slideTitleByIndex?: (string | null)[];
 };
 
 /** Which provider is allowed to serve a given slide. */
@@ -186,7 +191,11 @@ export async function generatePptDeckSlideImages(
 
       if (falOk && !falCircuit) {
         const outcome = await generateLessonPptFluxImageDeduped(
-          { ...meta, lessonContentSnippet: meta.slideContentByIndex?.[spec.idx] ?? undefined },
+          {
+            ...meta,
+            slideTitle: meta.slideTitleByIndex?.[spec.idx] ?? undefined,
+            lessonContentSnippet: meta.slideContentByIndex?.[spec.idx] ?? undefined,
+          },
           spec.falSlot,
           used,
           { verboseLog: true, logLabel: label },

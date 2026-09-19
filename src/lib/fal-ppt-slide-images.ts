@@ -13,12 +13,20 @@ export type PptSlideImageMeta = {
   subject: string;
   grade: string;
   topic: string;
+  chapter?: string;
+  learningObjectives?: string;
   curriculumFramework?: string;
+  slideTitle?: string;
   /**
    * A short extract of the actual lesson content for this slide. Used to make the four
    * Fal-required slides contextually specific instead of generic stock-style artwork.
    */
   lessonContentSnippet?: string;
+  /**
+   * Compact source/context extract derived from uploaded PDFs, uploaded images, or pasted
+   * material. This is for visual grounding only; do not log the raw value in production.
+   */
+  imageContext?: string;
 };
 
 /** Mandatory wording for every fal PPT image (user requirement). */
@@ -53,8 +61,17 @@ function subjectVisualObjects(subject: string, topic: string): string {
   if (/math|mathematics|geometry|number/.test(haystack)) {
     return "color-coded counting blocks, geometric manipulatives, grouped counters, and a balance scale, all without printed symbols";
   }
+  if (/irrigation|crop|farming|agriculture|water conservation|seedling|sprinkler|drip/.test(haystack)) {
+    return "seedling rows, moist and dry soil sections, drip irrigation emitters, narrow furrow channels, sprinkler arcs, and water pipes, all without printed labels";
+  }
+  if (/plant|photosynthesis|ecosystem|soil|habitat|germination/.test(haystack)) {
+    return "plant specimens, soil layers, leaves, roots, seed trays, water droplets, and natural process models directly associated with the topic";
+  }
+  if (/force|motion|electric|light|sound|heat|energy|magnet/.test(haystack)) {
+    return "topic-specific physical models, measurement apparatus, circuits, magnets, lenses, or motion objects directly associated with the process being taught";
+  }
   if (/science|biology|chemistry|physics/.test(haystack)) {
-    return "complete laboratory apparatus, natural specimens, and a physical process model directly associated with the topic";
+    return "topic-specific natural objects and physical process models directly associated with the lesson, avoiding generic laboratory props";
   }
   if (/english|language|literacy|reading|writing/.test(haystack)) {
     return "closed books, story-sequence objects, picture cards with no markings, and concrete objects from the lesson theme";
@@ -107,10 +124,70 @@ function sanitizeLessonContext(s: string): string {
     .slice(0, 240);
 }
 
+const STOPWORDS = new Set([
+  "about", "after", "again", "also", "and", "are", "because", "before", "chapter", "class",
+  "clear", "content", "describe", "each", "example", "explain", "from", "grade", "have",
+  "into", "lesson", "learning", "objective", "objectives", "students", "teacher", "that",
+  "their", "them", "then", "this", "through", "topic", "understand", "using", "what",
+  "where", "which", "with", "write",
+]);
+
+function cleanAnchorText(s: string): string {
+  return s
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/[^\p{L}\p{N}\s'/-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function extractVisualAnchorsForPrompt(meta: PptSlideImageMeta): string[] {
+  const sources = [
+    meta.chapter,
+    meta.topic,
+    meta.slideTitle,
+    meta.lessonContentSnippet,
+    meta.learningObjectives,
+    meta.imageContext,
+  ].filter((x): x is string => Boolean(x?.trim()));
+
+  const phraseCandidates: string[] = [];
+  for (const source of sources) {
+    const clean = cleanAnchorText(source);
+    for (const chunk of clean.split(/\b(?:and|with|using|through|about|for|from|into|then)\b|[,;.\n]/i)) {
+      const phrase = chunk.trim();
+      const words = phrase.split(/\s+/).filter(Boolean);
+      if (words.length >= 2 && words.length <= 7 && phrase.length >= 8 && phrase.length <= 70) {
+        phraseCandidates.push(phrase);
+      }
+    }
+  }
+
+  const scored = new Map<string, number>();
+  for (const phrase of phraseCandidates) {
+    const key = phrase.toLowerCase();
+    const words = key.split(/\s+/).filter((w) => w.length > 2 && !STOPWORDS.has(w));
+    if (words.length === 0) continue;
+    scored.set(phrase, (scored.get(phrase) ?? 0) + words.length + (/[0-9]/.test(phrase) ? 1 : 0));
+  }
+
+  return [...scored.entries()]
+    .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)
+    .map(([phrase]) => phrase)
+    .filter((phrase, idx, arr) => arr.findIndex((x) => x.toLowerCase() === phrase.toLowerCase()) === idx)
+    .slice(0, 5);
+}
+
+function buildSpecificAnchorClause(meta: PptSlideImageMeta): string {
+  const anchors = extractVisualAnchorsForPrompt(meta);
+  if (anchors.length === 0) return "";
+  return ` Use these specific lesson/source anchors as the visual basis before any generic subject objects: ${anchors.join("; ")}.`;
+}
+
 export function buildLessonPptFluxPrompt(meta: PptSlideImageMeta, slot: LessonPptFluxSlot): string {
   const subject = sanitizePhrase(meta.subject);
   const grade = sanitizePhrase(meta.grade);
   const topic = sanitizePhrase(meta.topic);
+  const chapter = sanitizePhrase(meta.chapter ?? "");
   const visualObjects = subjectVisualObjects(subject, topic);
 
   let core: string;
@@ -157,10 +234,16 @@ export function buildLessonPptFluxPrompt(meta: PptSlideImageMeta, slot: LessonPp
   const context = meta.lessonContentSnippet
     ? sanitizeLessonContext(meta.lessonContentSnippet)
     : "";
+  const sourceContext = meta.imageContext ? sanitizeLessonContext(meta.imageContext).slice(0, 320) : "";
   const contextClause = context
     ? ` The scene must first and foremost depict this slide context: ${context}.`
     : "";
-  return `${COMPLETE_SCENE}.${contextClause} Visual approach: ${core}. Modern flat editorial illustration, crisp shapes, cohesive palette, clean light background, age-appropriate for ${grade}. ${LANDSCAPE_RECT}. ${FAL_PPT_SAFETY_SUFFIX}. ${FAL_PPT_NO_TEXT_SUFFIX}.`;
+  const sourceClause = sourceContext
+    ? ` Uploaded/reference context to reflect visually when relevant: ${sourceContext}.`
+    : "";
+  const chapterClause = chapter ? ` Chapter/unit: ${chapter}.` : "";
+  const anchorClause = buildSpecificAnchorClause(meta);
+  return `${COMPLETE_SCENE}.${chapterClause}${contextClause}${sourceClause}${anchorClause} Visual approach: ${core}. Avoid generic classroom props unless they are named in the slide or source context. Modern flat editorial illustration, crisp shapes, cohesive palette, clean light background, age-appropriate for ${grade}. ${LANDSCAPE_RECT}. ${FAL_PPT_SAFETY_SUFFIX}. ${FAL_PPT_NO_TEXT_SUFFIX}.`;
 }
 
 const PPT_IMAGE_SIZE = "landscape_16_9" as const;

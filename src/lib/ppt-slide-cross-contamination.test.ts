@@ -214,7 +214,7 @@ The Industrial Revolution had several key causes. The first cause is Agricultura
       /Research one factory town/,
       /name two causes/,
       /I can explain at least two causes/,
-      /Thank you/,
+      /Reflect:/,
     ];
     slides.forEach((slide, i) => {
       expect(slide.body, `slide ${i + 1} should contain its own fingerprint`).toMatch(fingerprints[i]!);

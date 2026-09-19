@@ -42,18 +42,35 @@ describe("slide-aware prompts", () => {
   const algebra = {
     subject: "Math",
     grade: "Grade 7",
-    topic: "Understanding Algebraic Expressions",
+    chapter: "Linear Equations in One Variable",
+    topic: "Solving Linear Equations",
+    slideTitle: "Starter Activity",
+    learningObjectives: "Solve linear equations in one variable using inverse operations.",
     lessonContentSnippet:
-      "Plan a snack stand with cookies and juice boxes. Group like terms and identify coefficients.",
+      "Plan a school canteen token puzzle with fruit cups and water bottles. Balance both sides to solve for x.",
+    imageContext:
+      "Uploaded worksheet: A school canteen sells fruit cups and water bottles. Example equation: 3x + 6 = 24. Students use balance diagrams to model inverse operations.",
   };
 
   it("grounds generated scenes in the slide content and protects the full frame", () => {
     const prompt = buildLessonPptFluxPrompt(algebra, "fallback_pexels_uae");
 
-    expect(prompt).toContain("snack stand with cookies and juice boxes");
+    expect(prompt).toContain("school canteen token puzzle");
+    expect(prompt).toContain("Linear Equations in One Variable");
+    expect(prompt).toContain("fruit cups and water bottles");
     expect(prompt).toContain("7 percent safe margin");
     expect(prompt).toContain("every object complete");
     expect(prompt).toContain("no people");
+  });
+
+  it("prioritizes source-specific anchors before generic subject props", () => {
+    const prompt = buildLessonPptFluxPrompt(algebra, "main_teaching");
+
+    expect(prompt).toContain("specific lesson/source anchors");
+    expect(prompt.indexOf("fruit cups and water bottles")).toBeLessThan(
+      prompt.indexOf("color-coded algebra tiles"),
+    );
+    expect(prompt).toContain("Avoid generic classroom props");
   });
 
   it("does not ask the image model to draw the forbidden glyphs seen in the broken deck", () => {
@@ -81,6 +98,30 @@ describe("slide-aware prompts", () => {
 
     expect(globalPrompt).not.toMatch(/UAE architectural/i);
     expect(uaePrompt).toMatch(/UAE architectural/i);
+  });
+
+  it("uses irrigation-specific science anchors instead of generic lab equipment", () => {
+    const prompt = buildLessonPptFluxPrompt(
+      {
+        subject: "Science",
+        grade: "Grade 8",
+        chapter: "Crop Production and Management",
+        topic: "Irrigation Methods and Water Conservation",
+        slideTitle: "Main Phase Core Teaching",
+        learningObjectives:
+          "Compare irrigation methods and explain how drip irrigation reduces water waste.",
+        lessonContentSnippet:
+          "Compare drip emitters beside seedling rows with sprinkler arcs and furrow channels.",
+        imageContext:
+          "Uploaded textbook: moat, chain pump, dhekli, rahat, sprinkler system, drip irrigation, dry field, moist soil, water pipes.",
+      },
+      "main_teaching",
+    );
+
+    expect(prompt).toContain("drip irrigation emitters");
+    expect(prompt).toContain("seedling rows");
+    expect(prompt).toContain("furrow channels");
+    expect(prompt).not.toContain("complete laboratory apparatus");
   });
 });
 

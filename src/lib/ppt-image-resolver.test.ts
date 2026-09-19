@@ -103,13 +103,27 @@ describe("routing when fal succeeds", () => {
   it("passes each slide's own lesson content into its image prompt", async () => {
     generateLessonPptFluxImageDeduped.mockResolvedValue({ ok: true, url: "https://fal.media/a.png" });
     const slideContentByIndex = Array.from({ length: 13 }, (_, i) => `body for slide ${i + 1}`);
+    const slideTitleByIndex = Array.from({ length: 13 }, (_, i) => `title for slide ${i + 1}`);
 
-    await generatePptDeckSlideImages({ ...META, slideContentByIndex });
+    await generatePptDeckSlideImages({
+      ...META,
+      chapter: "Weather and Climate",
+      learningObjectives: "Describe evaporation and condensation.",
+      imageContext: "Uploaded diagram mentions a rooftop rainwater collection tank.",
+      slideContentByIndex,
+      slideTitleByIndex,
+    });
 
     const starterCall = generateLessonPptFluxImageDeduped.mock.calls.find(
       (c) => c[1] === "fallback_pexels_starter",
     );
-    expect(starterCall?.[0]).toMatchObject({ lessonContentSnippet: "body for slide 2" });
+    expect(starterCall?.[0]).toMatchObject({
+      chapter: "Weather and Climate",
+      learningObjectives: "Describe evaporation and condensation.",
+      imageContext: "Uploaded diagram mentions a rooftop rainwater collection tank.",
+      slideTitle: "title for slide 2",
+      lessonContentSnippet: "body for slide 2",
+    });
   });
 });
 

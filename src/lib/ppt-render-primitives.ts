@@ -173,25 +173,106 @@ export function directionOptions(rtl: boolean): TextDirectionOptions {
   return rtl ? { rtlMode: true, align: "right", lang: "ar-AE" } : {};
 }
 
+export type StablePptIcon =
+  | "academic"
+  | "target"
+  | "book"
+  | "check"
+  | "concept"
+  | "activity"
+  | "world"
+  | "trophy"
+  | "home"
+  | "ticket"
+  | "star"
+  | "close";
+
+function drawStableIcon(
+  pptx: PptxGenJS,
+  slide: PptxGenJS.Slide,
+  icon: StablePptIcon,
+  opts: { x: number; y: number; size: number; color: string },
+): void {
+  const { x, y, size, color } = opts;
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  const pt = Math.max(0.8, size * 1.8);
+  const line = (x1: number, y1: number, x2: number, y2: number, width = pt) =>
+    slide.addShape(pptx.ShapeType.line, {
+      x: x1, y: y1, w: x2 - x1, h: y2 - y1,
+      line: { color, pt: width },
+    });
+  const rect = (rx: number, ry: number, rw: number, rh: number, transparency = 0) =>
+    slide.addShape(pptx.ShapeType.rect, {
+      x: rx, y: ry, w: rw, h: rh,
+      fill: { color, transparency },
+      line: { color, pt },
+    });
+  const ellipse = (ex: number, ey: number, ew: number, eh: number, transparency = 100) =>
+    slide.addShape(pptx.ShapeType.ellipse, {
+      x: ex, y: ey, w: ew, h: eh,
+      fill: { color, transparency },
+      line: { color, pt },
+    });
+
+  if (icon === "target") {
+    ellipse(x + size * 0.22, y + size * 0.22, size * 0.56, size * 0.56);
+    ellipse(x + size * 0.38, y + size * 0.38, size * 0.24, size * 0.24);
+    ellipse(x + size * 0.47, y + size * 0.47, size * 0.06, size * 0.06, 0);
+  } else if (icon === "book" || icon === "concept" || icon === "academic") {
+    rect(x + size * 0.22, y + size * 0.24, size * 0.24, size * 0.48, 100);
+    rect(x + size * 0.54, y + size * 0.24, size * 0.24, size * 0.48, 100);
+    line(cx, y + size * 0.25, cx, y + size * 0.72, pt * 0.75);
+    if (icon === "academic") line(x + size * 0.18, y + size * 0.2, x + size * 0.82, y + size * 0.2, pt);
+    if (icon === "concept") ellipse(x + size * 0.43, y + size * 0.1, size * 0.14, size * 0.14, 0);
+  } else if (icon === "check") {
+    line(x + size * 0.24, cy, x + size * 0.43, y + size * 0.68, pt * 1.25);
+    line(x + size * 0.43, y + size * 0.68, x + size * 0.78, y + size * 0.32, pt * 1.25);
+  } else if (icon === "activity") {
+    rect(x + size * 0.22, y + size * 0.22, size * 0.2, size * 0.2);
+    rect(x + size * 0.58, y + size * 0.22, size * 0.2, size * 0.2, 35);
+    rect(x + size * 0.4, y + size * 0.58, size * 0.2, size * 0.2, 65);
+  } else if (icon === "world") {
+    ellipse(x + size * 0.22, y + size * 0.22, size * 0.56, size * 0.56);
+    line(cx, y + size * 0.24, cx, y + size * 0.76, pt * 0.75);
+    line(x + size * 0.25, cy, x + size * 0.75, cy, pt * 0.75);
+  } else if (icon === "trophy") {
+    rect(x + size * 0.32, y + size * 0.24, size * 0.36, size * 0.28);
+    line(cx, y + size * 0.52, cx, y + size * 0.75, pt);
+    line(x + size * 0.32, y + size * 0.76, x + size * 0.68, y + size * 0.76, pt);
+  } else if (icon === "home") {
+    line(x + size * 0.24, y + size * 0.48, cx, y + size * 0.22, pt * 1.25);
+    line(cx, y + size * 0.22, x + size * 0.76, y + size * 0.48, pt * 1.25);
+    rect(x + size * 0.32, y + size * 0.48, size * 0.36, size * 0.3, 100);
+  } else if (icon === "ticket") {
+    rect(x + size * 0.22, y + size * 0.34, size * 0.56, size * 0.32, 100);
+    line(cx, y + size * 0.38, cx, y + size * 0.62, pt * 0.75);
+  } else if (icon === "star") {
+    ellipse(x + size * 0.42, y + size * 0.2, size * 0.16, size * 0.56, 0);
+    ellipse(x + size * 0.22, y + size * 0.4, size * 0.56, size * 0.16, 0);
+  } else {
+    line(x + size * 0.3, y + size * 0.3, x + size * 0.7, y + size * 0.7, pt);
+    line(x + size * 0.7, y + size * 0.3, x + size * 0.3, y + size * 0.7, pt);
+  }
+}
+
 // ─── Icon badge ───────────────────────────────────────────────────────────────────────────────
 
 export function drawIconBadge(
   pptx: PptxGenJS,
   slide: PptxGenJS.Slide,
-  opts: { icon: string; x: number; y: number; size: number; tpl: TemplateConfig; onDark?: boolean },
+  opts: { icon: StablePptIcon; x: number; y: number; size: number; tpl: TemplateConfig; onDark?: boolean },
 ): void {
   const { icon, x, y, size, tpl, onDark } = opts;
   const d = tpl.design;
+  const iconColor = onDark ? "FFFFFF" : tpl.colors.accent;
   slide.addShape(pptx.ShapeType.roundRect, {
     x, y, w: size, h: size,
     rectRadius: size * 0.32,
     fill: { color: onDark ? "FFFFFF" : d.chipFill, transparency: onDark ? 85 : 0 },
     line: { color: onDark ? "FFFFFF" : d.cardBorder, transparency: onDark ? 60 : 0, pt: 0.75 },
   });
-  slide.addText(icon, {
-    x, y, w: size, h: size,
-    fontSize: size * 34, align: "center", valign: "middle",
-  });
+  drawStableIcon(pptx, slide, icon, { x, y, size, color: iconColor });
 }
 
 // ─── Section chip / pill label ─────────────────────────────────────────────────────────────────
