@@ -50,6 +50,23 @@ const VALUES = [
   { title: "Always improving", description: "We listen to teacher feedback and ship improvements every week." },
 ];
 
+const TEAM = [
+  {
+    initials: "MY",
+    name: "Mohammed Yusuf",
+    role: "Founder & Teacher",
+    bio: "A working teacher who got tired of losing evenings to lesson planning — so he built the tool he wished existed, now used by educators around the world.",
+    linkedinUrl: "https://www.linkedin.com/company/layah-ai/",
+  },
+  {
+    initials: "MU",
+    name: "Mohammed Uvais",
+    role: "Founder & Developer",
+    bio: "The one who turned a teacher's wishlist into working software. Powered by coffee, stubborn bug reports, and a suspicious number of open browser tabs — and yes, the code wins more arguments than admitted.",
+    linkedinUrl: "https://www.linkedin.com/in/uvais-solanki-6504b8297/",
+  },
+];
+
 function OfferingIcon({ children }: { children: React.ReactNode }) {
   return (
     <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
@@ -165,31 +182,33 @@ export default function AboutPage() {
               The people behind Layah
             </h2>
           </div>
-          <Card className="mx-auto max-w-xs border-border py-8 text-center shadow-none">
-            <CardContent>
-              <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-navy font-display text-lg font-semibold text-chalk">
-                MY
-              </div>
-              <h3 className="mt-5 text-lg font-semibold text-navy">Mohammed Yusuf</h3>
-              <p className="mt-1 text-sm text-primary">Founder &amp; Teacher</p>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                A working teacher who got tired of losing evenings to lesson planning — so he built the tool he wished existed, now used by educators around the world.
-              </p>
-              <a
-                href="https://www.linkedin.com/company/layah-ai/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-              >
-                <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z" />
-                  <rect x="2" y="9" width="4" height="12" />
-                  <circle cx="4" cy="4" r="2" />
-                </svg>
-                Follow on LinkedIn
-              </a>
-            </CardContent>
-          </Card>
+          <div className="mx-auto grid max-w-2xl gap-5 sm:grid-cols-2">
+            {TEAM.map((member) => (
+              <Card key={member.name} className="mx-auto w-full max-w-xs border-border py-8 text-center shadow-none">
+                <CardContent>
+                  <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-navy font-display text-lg font-semibold text-chalk">
+                    {member.initials}
+                  </div>
+                  <h3 className="mt-5 text-lg font-semibold text-navy">{member.name}</h3>
+                  <p className="mt-1 text-sm text-primary">{member.role}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{member.bio}</p>
+                  <a
+                    href={member.linkedinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                  >
+                    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z" />
+                      <rect x="2" y="9" width="4" height="12" />
+                      <circle cx="4" cy="4" r="2" />
+                    </svg>
+                    Follow on LinkedIn
+                  </a>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </Container>
       </section>
 

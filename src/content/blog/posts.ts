@@ -11,6 +11,8 @@ export type BlogPost = {
   title: string;
   excerpt: string;
   author: string;
+  /** Optional profile link; when set the post page links the author name to it. */
+  authorUrl?: string;
   publishedAt: string;
   readTime: number;
   coverGradient: string;
@@ -903,6 +905,430 @@ export const posts: BlogPost[] = [
       {
         type: "p",
         text: "Layah generates complete, pedagogically structured lessons — lesson plan, presentation, differentiated worksheets, and assessment — from a single topic, in under five minutes. It's free to start, with no credit card required.",
+      },
+    ],
+  },
+  {
+    slug: "layah-turning-ideas-into-meaningful-solutions",
+    title: "LAYAH: A Great Tool for Turning Ideas into Meaningful Solutions!",
+    excerpt:
+      "A Head of Department shares how Layah brings Design Thinking into the classroom, helping students move from identifying a problem to developing creative and meaningful solutions.",
+    author: "Shahin Mukhtar",
+    authorUrl: "https://www.linkedin.com/in/shahin-mukhtar-502796293",
+    publishedAt: "2026-09-19",
+    readTime: 2,
+    coverGradient: "linear-gradient(135deg, var(--text) 0%, #16a34a 100%)",
+    content: [
+      {
+        type: "p",
+        text: "It is a valuable example of how LAYAH and digital innovation can support meaningful, student-centred learning experiences and prepare learners to approach real-world challenges with greater confidence and purpose.",
+      },
+      {
+        type: "p",
+        text: "As an educator, I found this app to be a practical and engaging tool for bringing Design Thinking into the classroom. It provides a clear structure that helps students move from identifying a problem to developing creative and meaningful solutions.",
+      },
+      {
+        type: "p",
+        text: "I particularly appreciate how it promotes critical thinking, collaboration, creativity, and student-led learning, while making the process accessible and enjoyable.",
+      },
+      {
+        type: "p",
+        text: "I would encourage fellow educators to try it in their classrooms and explore how LAYAH can make learning more innovative, interactive, and purposeful.",
+      },
+      {
+        type: "p",
+        text: "— Shahin Mukhtar (HOD)",
+      },
+    ],
+  },
+  {
+    slug: "assessment-for-learning-complete-guide",
+    title: "Assessment for Learning: The Complete Research-Backed Guide for Teachers",
+    excerpt:
+      "What Assessment for Learning actually is, why the original research behind it still matters 25+ years later, and how to implement it in a way that measurably improves student outcomes — not just busywork disguised as strategy.",
+    author: "Mohammed Yusuf",
+    publishedAt: "2026-09-10",
+    readTime: 11,
+    coverGradient: "linear-gradient(135deg, var(--text) 0%, #d97706 100%)",
+    content: [
+      {
+        type: "p",
+        text: "If you search \"Assessment for Learning\" online, you'll find dozens of lists — \"20 AFL Strategies,\" \"25 AFL Examples,\" \"10 Ways to Use AFL in Your Classroom.\" Most of them are useful. Almost none of them explain why Assessment for Learning works, where the idea actually came from, or why some AFL strategies move student outcomes significantly while others barely make a difference.",
+      },
+      {
+        type: "p",
+        text: "This guide is different. It's built on the actual research base behind AFL — not just a list of activities — because understanding the why is what lets a teacher choose the right strategy for the right moment, instead of running through a checklist.",
+      },
+      {
+        type: "h2",
+        text: "What Assessment for Learning Actually Is",
+      },
+      {
+        type: "p",
+        text: "Assessment for Learning (AFL), also called formative assessment, is the practice of gathering evidence of student understanding during the learning process — not just at the end of it — and using that evidence to adjust teaching in real time.",
+      },
+      {
+        type: "p",
+        text: "The most widely cited definition comes from the UK's Assessment Reform Group:",
+      },
+      {
+        type: "quote",
+        text: "Assessment for Learning is the process of seeking and interpreting evidence for use by learners and their teachers to decide where the learners are in their learning, where they need to go next, and how best to get there.",
+      },
+      {
+        type: "p",
+        text: "This is fundamentally different from Assessment of Learning (summative assessment) — the tests and exams that measure what a student has learned after instruction is complete. AFL happens during instruction, specifically so that instruction itself can change.",
+      },
+      {
+        type: "h2",
+        text: "Where This Actually Comes From — The Research Base",
+      },
+      {
+        type: "p",
+        text: "AFL isn't a trend. It's built on one of the most well-evidenced bodies of research in education.",
+      },
+      {
+        type: "p",
+        text: "Black and Wiliam's 1998 review — often considered the foundational study — examined over 250 studies on formative assessment and found effect sizes between d = 0.40 and 0.70. In plain terms: formative assessment, done well, produces some of the largest learning gains of any classroom intervention ever studied — larger than reducing class size, larger than most curriculum changes.",
+      },
+      {
+        type: "p",
+        text: "Hattie and Timperley's 2007 research on feedback built on this, identifying why formative assessment works: feedback is only effective when it's timely, specific, and actionable — telling a student not just that something is wrong, but what to do about it.",
+      },
+      {
+        type: "p",
+        text: "Wiliam and Thompson (2007) later distilled this into five core strategies, which remain the clearest practical framework for AFL today:",
+      },
+      {
+        type: "ol",
+        items: [
+          "Clarifying and sharing learning intentions and success criteria",
+          "Engineering effective classroom discussions, questions, and tasks",
+          "Providing feedback that moves learners forward",
+          "Activating students as instructional resources for one another",
+          "Activating students as owners of their own learning",
+        ],
+      },
+      {
+        type: "p",
+        text: "Every genuinely effective AFL strategy maps back to one of these five. If it doesn't, it's probably classroom activity dressed up as assessment — busy, but not actually formative.",
+      },
+      {
+        type: "h2",
+        text: "Why Most AFL Implementation Falls Short",
+      },
+      {
+        type: "p",
+        text: "Here's the honest problem: most schools adopt AFL as a set of activities — exit tickets, thumbs up/down, traffic light cards — without the underlying mechanism that makes them work. A hinge question asked without diagnostic wrong answers isn't really a hinge question. An exit ticket that's collected but never actually changes the next lesson isn't formative assessment — it's just paperwork.",
+      },
+      {
+        type: "p",
+        text: "The research is specific about this. Black and Wiliam's later work explicitly warned that AFL fails when it becomes a ritual rather than a genuine feedback loop. The strategy only works if evidence of understanding actually changes what the teacher does next.",
+      },
+      {
+        type: "h2",
+        text: "The Five Strategies in Practice",
+      },
+      {
+        type: "h3",
+        text: "1. Clarify and Share Learning Intentions and Success Criteria",
+      },
+      {
+        type: "p",
+        text: "Students cannot self-assess against a target they don't understand. Success criteria need to be specific enough that a student could look at their own work and answer: \"Have I done this or not?\" Vague objectives (\"understand photosynthesis\") don't allow this. Specific criteria (\"I can name the three raw materials plants need for photosynthesis\") do.",
+      },
+      {
+        type: "h3",
+        text: "2. Engineer Effective Discussions, Questions, and Tasks",
+      },
+      {
+        type: "p",
+        text: "This is where hinge questions live — a diagnostic question asked at a critical midpoint in a lesson, with wrong answers designed to reveal specific misconceptions rather than just \"incorrect.\" A good hinge question takes under two minutes, and every student responds, not just volunteers.",
+      },
+      {
+        type: "p",
+        text: "Other tools in this category: Think-Pair-Share, cold calling (structured, not random), and whole-class response systems (mini whiteboards, show of hands) that make thinking visible for every student, not just the ones who raise their hands.",
+      },
+      {
+        type: "h3",
+        text: "3. Provide Feedback That Moves Learners Forward",
+      },
+      {
+        type: "p",
+        text: "Hattie and Timperley's research is precise here: feedback should answer three questions for the student — Where am I going? How am I doing? Where to next? Feedback that only identifies an error, without a next step, has been shown to have minimal effect on future performance. Feedback that includes a specific next action does.",
+      },
+      {
+        type: "h3",
+        text: "4. Activate Students as Resources for One Another",
+      },
+      {
+        type: "p",
+        text: "Peer assessment — when structured against clear success criteria, not vague impressions — develops what researchers call assessment literacy: the ability to recognize quality work, which transfers directly to a student's own output. This only works when students assess against specific criteria, not just general impressions (\"this is good\").",
+      },
+      {
+        type: "h3",
+        text: "5. Activate Students as Owners of Their Own Learning",
+      },
+      {
+        type: "p",
+        text: "Self-assessment and structured reflection tools like KWL charts (Know, Want to know, Learned) build metacognition — the ability to monitor and direct one's own understanding. This is consistently one of the highest-leverage skills a student can develop, because it continues working long after any single lesson ends.",
+      },
+      {
+        type: "h2",
+        text: "A Practical Starting Point",
+      },
+      {
+        type: "p",
+        text: "If you're building AFL into your teaching for the first time, don't try to implement all five strategies at once. Research on implementation (and plain classroom experience) suggests starting with one or two:",
+      },
+      {
+        type: "ul",
+        items: [
+          "Start with sharing clear success criteria at the beginning of every lesson — this is the foundation everything else depends on.",
+          "Add one well-designed hinge question per lesson, placed after initial instruction and before independent practice.",
+          "Build in one structured peer or self-assessment moment per week, tied to explicit criteria — not just \"check your partner's work.\"",
+        ],
+      },
+      {
+        type: "p",
+        text: "Once these become routine, the other strategies layer on naturally.",
+      },
+      {
+        type: "h2",
+        text: "AFL Is a Structure, Not a Checklist",
+      },
+      {
+        type: "p",
+        text: "The single most important thing this research tells us is that Assessment for Learning is not a list of activities to rotate through. It's a structural approach to teaching — one where evidence of understanding is gathered constantly and instruction responds to it in real time. A lesson with the \"right\" AFL activities but no genuine adjustment based on what they reveal isn't formative assessment. It's just extra work.",
+      },
+      {
+        type: "p",
+        text: "This is also why AFL is difficult to do consistently well at scale — it requires a teacher to hold five interconnected practices in mind, lesson after lesson, subject after subject, often while also handling everything else a teaching day demands.",
+      },
+      {
+        type: "h2",
+        text: "How Layah Approaches This",
+      },
+      {
+        type: "p",
+        text: "This is precisely the gap Layah was built to close. Rather than treating AFL as an afterthought bolted onto a finished lesson, Layah includes 87 distinct AFL tools — spanning all five of Wiliam and Thompson's strategy categories — built directly into the structure of every generated lesson: diagnostic starter questions, hinge questions placed at the correct instructional midpoint, structured peer and self-assessment activities tied to explicit success criteria, and reflective plenary tools that close the feedback loop.",
+      },
+      {
+        type: "p",
+        text: "The goal isn't to hand teachers a longer list of activities. It's to make sure the structure behind effective formative assessment — the actual mechanism the research describes — is present in every lesson by default.",
+      },
+      {
+        type: "h2",
+        text: "References",
+      },
+      {
+        type: "ul",
+        items: [
+          "Black, P., & Wiliam, D. (1998). Assessment and Classroom Learning. Assessment in Education.",
+          "Wiliam, D., & Thompson, M. (2007). Integrating Assessment with Instruction: What Will It Take to Make It Work?",
+          "Hattie, J., & Timperley, H. (2007). The Power of Feedback. Review of Educational Research.",
+          "Assessment Reform Group (2002). Assessment for Learning: 10 Principles.",
+        ],
+      },
+      {
+        type: "p",
+        text: "Try Layah free — generate complete lessons with AFL strategies built directly into every stage, from starter to plenary. No credit card required. Visit layah.in to get started.",
+      },
+    ],
+  },
+  {
+    slug: "hinge-questions-explained",
+    title: "Hinge Questions Explained: The AFL Tool Most Teachers Are Using Wrong",
+    excerpt:
+      "Most 'hinge questions' teachers use aren't actually hinge questions — they're just quiz questions with a different name. Here's what makes a hinge question diagnostic, why the wrong answers matter more than the right one, and how to build one properly.",
+    author: "Mohammed Yusuf",
+    publishedAt: "2026-09-19",
+    readTime: 8,
+    coverGradient: "linear-gradient(135deg, var(--text) 0%, #7c3aed 100%)",
+    content: [
+      {
+        type: "p",
+        text: "Ask ten teachers what a hinge question is, and most will describe a quick check-for-understanding question asked partway through a lesson. That's true, but incomplete — and the missing part is exactly what makes a hinge question one of the most powerful tools in Assessment for Learning, rather than just another multiple-choice quiz question with a new name.",
+      },
+      {
+        type: "h2",
+        text: "What a Hinge Question Actually Is",
+      },
+      {
+        type: "p",
+        text: "The term comes from Dylan Wiliam, one of the researchers whose work underpins most modern formative assessment practice. A hinge question is a question placed at a critical \"hinge point\" in a lesson — a moment where the direction of the lesson should pivot based on the answer.",
+      },
+      {
+        type: "p",
+        text: "If most students understand the concept, the lesson moves forward. If they don't, the teacher reteaches before continuing. The question itself is the mechanism that decides which path the lesson takes next — which is why the lesson quite literally \"hinges\" on it.",
+      },
+      {
+        type: "p",
+        text: "This is a fundamentally different purpose from a general comprehension question. A hinge question isn't asked to grade students. It's asked to make an instructional decision, in real time, in the middle of teaching.",
+      },
+      {
+        type: "h2",
+        text: "The Five Requirements of a Genuine Hinge Question",
+      },
+      {
+        type: "p",
+        text: "Most questions teachers call \"hinge questions\" fail at least one of these five requirements — which is why they don't function the way the research describes.",
+      },
+      {
+        type: "h3",
+        text: "1. It must take less than two minutes, start to finish",
+      },
+      {
+        type: "p",
+        text: "If constructing, asking, and interpreting the question takes longer than this, it stops being a real-time instructional tool and becomes a mini-assessment that disrupts lesson flow rather than informing it.",
+      },
+      {
+        type: "h3",
+        text: "2. Every student must respond — not just volunteers",
+      },
+      {
+        type: "p",
+        text: "A question answered by three raised hands tells you about three students. A genuine hinge question requires a response mechanism where every student answers simultaneously — mini whiteboards, digit cards, colored response cards, or a live polling tool. Cold-calling one student and generalizing to the class is not a hinge question; it's a guess dressed as data.",
+      },
+      {
+        type: "h3",
+        text: "3. The wrong answers must be diagnostic, not random",
+      },
+      {
+        type: "p",
+        text: "This is the single most misunderstood requirement, and the one that separates a real hinge question from an ordinary quiz question.",
+      },
+      {
+        type: "p",
+        text: "A well-built hinge question's incorrect options are constructed to reveal specific misconceptions — not just \"not the right answer.\" Each wrong choice should tell the teacher something different about what a student misunderstands.",
+      },
+      {
+        type: "p",
+        text: "Weak example (not diagnostic):",
+      },
+      {
+        type: "p",
+        text: "Which planet is closest to the sun?",
+      },
+      {
+        type: "ul",
+        items: [
+          "A) Mercury",
+          "B) Jupiter",
+          "C) Pluto",
+          "D) Neptune",
+        ],
+      },
+      {
+        type: "p",
+        text: "Here, a wrong answer tells you almost nothing except that the student guessed. There's no pattern to interpret.",
+      },
+      {
+        type: "p",
+        text: "Strong example (genuinely diagnostic):",
+      },
+      {
+        type: "p",
+        text: "Which of these does a plant need for photosynthesis?",
+      },
+      {
+        type: "ul",
+        items: [
+          "A) Sunlight, water, carbon dioxide",
+          "B) Sunlight, water, oxygen",
+          "C) Sunlight, soil nutrients, oxygen",
+          "D) Water, soil nutrients, carbon dioxide",
+        ],
+      },
+      {
+        type: "p",
+        text: "Each wrong answer here maps to a specific misconception:",
+      },
+      {
+        type: "ul",
+        items: [
+          "B — the student has confused the input and output gases of photosynthesis",
+          "C — the student believes soil nutrients matter more than carbon dioxide in the process",
+          "D — the student has overlooked sunlight as a necessary input entirely",
+        ],
+      },
+      {
+        type: "p",
+        text: "If 60% of the class selects B, the teacher knows exactly what to reteach: the distinction between what a plant takes in versus what it releases. That is a precise, actionable instructional signal — which is the entire point of the tool.",
+      },
+      {
+        type: "h3",
+        text: "4. It must be asked at the actual hinge point of the lesson",
+      },
+      {
+        type: "p",
+        text: "Placement matters as much as construction. A hinge question belongs after initial instruction on a concept and before students move into independent practice or application. Asked too early, students haven't had enough exposure to answer meaningfully. Asked too late — say, at the very end of the lesson — there's no time left to act on what it reveals, and it becomes summative rather than formative.",
+      },
+      {
+        type: "h3",
+        text: "5. The teacher must actually act on the result",
+      },
+      {
+        type: "p",
+        text: "This is the requirement most often skipped, and the one that makes or breaks whether a hinge question is genuine Assessment for Learning or just an activity. If 70% of students answer B on the photosynthesis example above, the lesson needs to pause for two minutes of targeted reteaching before moving forward. If the teacher proceeds regardless of the result, the question was never really a hinge — it was decoration.",
+      },
+      {
+        type: "h2",
+        text: "Why This Matters More Than It Seems",
+      },
+      {
+        type: "p",
+        text: "Hattie and Timperley's research on feedback found that the most effective feedback answers three questions for a learner: Where am I going? How am I doing? Where to next? A properly diagnostic hinge question does something powerful here — it answers \"how am I doing\" and \"where to next\" for the teacher, in real time, which is what allows the next piece of instruction to be genuinely responsive rather than pre-planned regardless of need.",
+      },
+      {
+        type: "p",
+        text: "This is also why hinge questions are difficult to write well on the fly. Constructing diagnostic wrong answers requires anticipating the specific misconceptions students are likely to hold for a given topic — which takes either significant experience with that exact content, or deliberate planning beforehand. Most teachers don't have time to build this level of diagnostic precision into every lesson, for every topic, every week — which is exactly why so many \"hinge questions\" in classrooms end up being ordinary quiz questions instead.",
+      },
+      {
+        type: "h2",
+        text: "A Simple Framework for Writing Your Own",
+      },
+      {
+        type: "p",
+        text: "When constructing a hinge question, work backward from the misconceptions rather than forward from the correct answer:",
+      },
+      {
+        type: "ol",
+        items: [
+          "Identify the concept students must understand before moving forward.",
+          "List two or three common misconceptions students typically hold about it.",
+          "Write one wrong answer option per misconception, matched precisely to what a student who holds that misconception would select.",
+          "Write the correct answer last, so it doesn't unconsciously shape the wrong answers.",
+          "Decide in advance what you'll do for each likely outcome — if most students get it right, if most select misconception A, if the class is split.",
+        ],
+      },
+      {
+        type: "p",
+        text: "That last step is the one teachers skip most often, and the one that turns a hinge question from a nice idea into an actual instructional tool.",
+      },
+      {
+        type: "h2",
+        text: "Where Hinge Questions Fit in the Bigger Picture",
+      },
+      {
+        type: "p",
+        text: "Hinge questions are one part of a much larger framework. If you haven't already, it's worth reading [our complete guide to Assessment for Learning](/blog/assessment-for-learning-complete-guide), which covers the full research base — including why formative assessment produces some of the largest learning gains of any classroom intervention studied, and the other four strategies that work alongside diagnostic questioning.",
+      },
+      {
+        type: "h2",
+        text: "How Layah Handles This",
+      },
+      {
+        type: "p",
+        text: "Building genuinely diagnostic hinge questions — ones with wrong answers that map to real misconceptions, placed at the correct point in a lesson — is exactly the kind of task that benefits from structure. When a hinge question is selected as part of a Layah-generated lesson, it's built with diagnostic distractors specific to the topic and placed at the instructional midpoint between initial teaching and independent practice — not bolted on as an afterthought.",
+      },
+      {
+        type: "p",
+        text: "Try Layah free — generate complete lessons with properly diagnostic AFL tools, including hinge questions, built into every stage. No credit card required.",
+      },
+      {
+        type: "p",
+        text: "[layah.in](https://layah.in)",
       },
     ],
   },
