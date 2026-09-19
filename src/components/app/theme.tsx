@@ -73,15 +73,31 @@ const OPTIONS: { value: Theme; icon: React.ElementType; label: string }[] = [
 ];
 
 /** Segmented three-way control. Shows the actual choice, including "system". */
-export function ThemeToggle({ className }: { className?: string }) {
+export function ThemeToggle({
+  className,
+  orientation = "horizontal",
+}: {
+  className?: string;
+  /**
+   * Vertical is for the collapsed sidebar rail, which is 76px wide — a
+   * three-option segmented control does not fit across it and used to be
+   * dropped from the UI entirely rather than reflowed. The arrow-key handler
+   * below already treats Up/Down as equivalent to Left/Right, so stacking
+   * costs nothing in keyboard behaviour.
+   */
+  orientation?: "horizontal" | "vertical";
+}) {
   const { theme, setTheme } = useTheme();
+  const vertical = orientation === "vertical";
 
   return (
     <div
       role="radiogroup"
       aria-label="Colour theme"
+      aria-orientation={orientation}
       className={cn(
         "inline-flex items-center gap-0.5 rounded-md border border-line-subtle bg-sunken p-0.5",
+        vertical && "flex-col",
         className,
       )}
     >

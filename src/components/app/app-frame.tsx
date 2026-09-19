@@ -263,8 +263,12 @@ export function AppFrame({ user, children }: { user: User; children: React.React
               className={cn("flex min-h-10 items-center gap-3 rounded-md text-sm text-muted hover:bg-hover", collapsed ? "justify-center" : "px-3")}>
               <HelpCircle className="size-[18px] shrink-0" aria-hidden />{!collapsed && <><span className="flex-1">Help & support</span><ArrowUpRight className="size-3.5" aria-hidden /></>}
             </Link>
-            <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between px-1")}>
-              {!collapsed && <ThemeToggle />}
+            {/* The theme toggle used to be dropped entirely while collapsed, so
+                a teacher whose rail was collapsed — a setting that persists in
+                localStorage across sessions — had no way to change theme
+                anywhere in the app. Collapsing the rail stacks it instead. */}
+            <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between px-1")}>
+              <ThemeToggle orientation={collapsed ? "vertical" : "horizontal"} />
               <Button variant="ghost" size="icon-sm" onClick={toggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed}>
                 {collapsed ? <ChevronsRight aria-hidden /> : <ChevronsLeft aria-hidden />}
               </Button>

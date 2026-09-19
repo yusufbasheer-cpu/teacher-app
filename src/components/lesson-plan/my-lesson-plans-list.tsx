@@ -15,13 +15,15 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { resolveLessonTitle, resolveLessonTopicNote } from "@/lib/lesson-plan";
+import { summarizeLessonContents } from "@/lib/lesson-contents";
+import { groupByRecency } from "@/lib/lesson-grouping";
+import { LessonContentsStrip } from "@/components/lesson-plan/lesson-contents-strip";
 import { toUserFacingError } from "@/lib/user-facing-errors";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm";
 import {
-  Badge,
   EmptyState,
   ErrorState,
   PageTitle,
@@ -226,6 +228,16 @@ export function MyLessonPlansList() {
     return sorted;
   }, [plans, query, subject, grade, sort]);
 
+  // Recency bands are only meaningful while the list is in newest-first order.
+  const grouped = sort === "recent";
+  const groups = React.useMemo(
+    () =>
+      grouped
+        ? groupByRecency(visible)
+        : [{ id: "all" as const, label: "", items: visible }],
+    [grouped, visible],
+  );
+
   const confirmDelete = async () => {
     if (!pendingDelete || !user) return;
     setDeleting(true);
@@ -377,10 +389,28 @@ export function MyLessonPlansList() {
             }
           />
         ) : (
-          <ul className="divide-y divide-line-subtle">
-            {visible.map((plan) => {
+          <div>
+            {groups.map((group) => (
+              <section key={group.id} aria-labelledby={`lesson-group-${group.id}`}>
+                {/* Only when sorted newest-first, where a time band is the
+                    order the list is already in. Under A–Z or oldest-first a
+                    recency heading would contradict the sort. */}
+                {grouped ? (
+                  <h2
+                    id={`lesson-group-${group.id}`}
+                    className={cn(
+                      "sticky top-0 z-10 border-b border-line-subtle bg-sunken/85 px-4 py-1.5",
+                      "text-[11px] font-medium uppercase tracking-wide text-faint backdrop-blur-sm",
+                    )}
+                  >
+                    {group.label}
+                  </h2>
+                ) : null}
+                <ul className="divide-y divide-line-subtle">
+            {group.items.map((plan) => {
               const title = resolveLessonTitle(plan.topic, plan.chapter, plan.subject);
               const note = resolveLessonTopicNote(plan.topic, plan.chapter);
+              const contents = summarizeLessonContents(plan.lesson_content, plan.ppt_content);
               const hasPpt = Boolean(plan.ppt_content?.trim());
               const regenerateHref =
                 `/lesson-plan?subject=${encodeURIComponent(plan.subject)}` +
@@ -396,10 +426,10 @@ export function MyLessonPlansList() {
                       rather than a small "View" button inside it. */}
                   <Link
                     href={`/my-lesson-plans/${plan.id}`}
-                    className="flex items-center gap-3 px-4 py-2.5 transition-colors duration-[110ms] hover:bg-hover"
+                    className="flex items-center gap-3 px-4 py-3 transition-colors duration-[110ms] hover:bg-hover"
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-medium text-ink">{title}</span>
+                      <span className="block truncate text-sm font-semibold text-ink">{title}</span>
                       <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-faint">
                         <span className="sm:hidden">
                           {plan.subject} · {plan.grade}
@@ -408,10 +438,15 @@ export function MyLessonPlansList() {
                       </span>
                     </span>
 
-                    <span className="hidden shrink-0 items-center gap-1.5 sm:flex">
-                      <Badge tone="neutral">{plan.subject}</Badge>
-                      <Badge tone="neutral">{plan.grade}</Badge>
-                      {plan.curriculum ? <Badge tone="neutral">{plan.curriculum}</Badge> : null}
+                    {/* What this lesson actually holds. Three identical neutral
+                        badges used to sit here repeating subject/grade/curriculum
+                        — all of which are already the filter chips above the list
+                        — so every row looked the same. Class details are still
+                        here, as quiet text, and the contents carry the row. */}
+                    <LessonContentsStrip artifacts={contents} className="hidden sm:flex" />
+
+                    <span className="hidden w-[150px] shrink-0 truncate text-right text-[11px] text-faint lg:block">
+                      {plan.subject} · {plan.grade}
                     </span>
 
                     <time
@@ -461,7 +496,10 @@ export function MyLessonPlansList() {
                 </li>
               );
             })}
-          </ul>
+                </ul>
+              </section>
+            ))}
+          </div>
         )}
       </Panel>
 
