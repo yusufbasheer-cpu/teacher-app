@@ -36,6 +36,35 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+const INLINE_LINK = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+const INLINE_LINK_CLASS = "text-primary underline underline-offset-2 transition hover:text-primary/80";
+
+/** Renders `[label](href)` as a link: `/…` hrefs use next/link, everything else opens in a new tab. */
+function renderInline(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  for (const match of text.matchAll(INLINE_LINK)) {
+    const [full, label, href] = match;
+    const start = match.index ?? 0;
+    if (start > last) parts.push(text.slice(last, start));
+    parts.push(
+      href.startsWith("/") ? (
+        <Link key={start} href={href} className={INLINE_LINK_CLASS}>
+          {label}
+        </Link>
+      ) : (
+        <a key={start} href={href} target="_blank" rel="noopener noreferrer" className={INLINE_LINK_CLASS}>
+          {label}
+        </a>
+      ),
+    );
+    last = start + full.length;
+  }
+  if (parts.length === 0) return text;
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 function renderBlock(block: ContentBlock, index: number) {
   switch (block.type) {
     case "h2":
@@ -53,7 +82,7 @@ function renderBlock(block: ContentBlock, index: number) {
     case "p":
       return (
         <p key={index} className="mb-5 leading-relaxed text-foreground/85">
-          {block.text}
+          {renderInline(block.text)}
         </p>
       );
     case "ul":
@@ -61,7 +90,7 @@ function renderBlock(block: ContentBlock, index: number) {
         <ul key={index} className="mb-5 space-y-2 pl-5 text-foreground/85">
           {block.items.map((item, i) => (
             <li key={i} className="relative list-disc pl-2 leading-relaxed">
-              {item}
+              {renderInline(item)}
             </li>
           ))}
         </ul>
@@ -71,7 +100,7 @@ function renderBlock(block: ContentBlock, index: number) {
         <ol key={index} className="mb-5 space-y-2 pl-5 text-foreground/85">
           {block.items.map((item, i) => (
             <li key={i} className="relative list-decimal pl-2 leading-relaxed">
-              {item}
+              {renderInline(item)}
             </li>
           ))}
         </ol>
@@ -133,7 +162,18 @@ export default async function BlogPostPage({ params }: Props) {
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-navy font-mono-editorial text-xs font-medium text-chalk">
                 {post.author.split(" ").map((n) => n[0]).join("")}
               </span>
-              {post.author}
+              {post.authorUrl ? (
+                <a
+                  href={post.authorUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary transition hover:underline"
+                >
+                  {post.author}
+                </a>
+              ) : (
+                post.author
+              )}
             </span>
             <span>{formatDate(post.publishedAt)}</span>
             <span>{post.readTime} min read</span>

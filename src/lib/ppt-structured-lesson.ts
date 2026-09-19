@@ -1126,7 +1126,7 @@ export const STRUCTURED_LESSON_SLIDE_TITLES_EN: readonly string[] = [
   "Extended Task",
   "Exit Ticket",
   "Success Criteria and Self Evaluation",
-  "Thank You",
+  "Lesson Takeaway",
 ];
 
 /** Arabic slide titles (same order as English). Slide 8 uses {@link getStructuredLessonSlideTitle}. */
@@ -1143,7 +1143,7 @@ export const STRUCTURED_LESSON_SLIDE_TITLES_AR: readonly string[] = [
   "مهمة موسعة",
   "بطاقة الخروج",
   "معايير النجاح والتقييم الذاتي",
-  "شكراً لكم",
+  "خلاصة الدرس",
 ];
 
 /** Legacy slide 8 titles still accepted when parsing older PPT outlines. */
@@ -1409,12 +1409,12 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     slideTitle: T[12]!,
     body: stripMarkdownSymbolsForStudents(
       isAr
-        ? `شكراً لكم على تركيزكم ومشاركتكم البناءة في درس اليوم.\nأنتم قادرون على مواصلة التعلم بثقة.`
-        : `Thank you for your focus and constructive participation in today’s lesson.\nYou are ready to keep building on what you learned.`,
+        ? `الفكرة الأساسية: اربط تعلم اليوم بدليل واضح وخطوة تطبيقية تالية.\n\nتذكّر:\n1. الفكرة المهمة في الدرس.\n2. المثال أو الدليل الذي يثبت فهمك.\n3. السؤال الذي ما زلت تريد استكشافه.\n\nفكّر: ما خطوة التحسن التالية بالنسبة لك؟`
+        : `Lesson Takeaway: use today's core idea with evidence, accuracy, and confidence.\n\nRemember:\n1. Name the key idea from the lesson.\n2. Support your answer with an example or check.\n3. Ask one question that would deepen your understanding.\n\nReflect: What is your next step for improvement?`,
     ),
     speakerNotes: buildTeacherSlideNotes(
       "1 minute",
-      isAr ? `إغلاق إيجابي قصير فقط.` : `Brief positive close only; no new content on this slide.`,
+      isAr ? `اختتم الدرس بخلاصة تعليمية قصيرة وسؤال تأملي.` : `Close with a concise learning takeaway and one reflective next-step question.`,
       isAr,
     ),
     includeImageSlot: false,

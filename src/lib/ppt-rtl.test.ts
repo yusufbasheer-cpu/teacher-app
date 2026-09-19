@@ -85,6 +85,11 @@ describe("Arabic decks", () => {
     // Arabic must survive as Arabic — never transliterated into Latin characters.
     expect(xml).toContain("دورة الماء");
   });
+
+  it("does not emit emoji glyphs for renderer icons", async () => {
+    const xml = await buildArabic();
+    expect(xml).not.toMatch(/[🎓🎯📚✅📖🎨🌍🏆🏠🎫⭐👏]/u);
+  });
 });
 
 describe("English decks are unaffected", () => {
@@ -112,7 +117,7 @@ describe("English decks are unaffected", () => {
 });
 
 describe("static template strings follow the deck language", () => {
-  it("renders the continuation eyebrow in Arabic on an Arabic deck", async () => {
+  it("does not render a visible continuation eyebrow on an Arabic deck", async () => {
     // A very long body forces the renderer to paginate onto a continuation slide.
     const long = Array.from({ length: 60 }, (_, i) => `سطر رقم ${i + 1} من محتوى الدرس الطويل جداً.`).join("\n");
     const buf = await buildPptxFromTemplateEngine({
@@ -125,7 +130,7 @@ describe("static template strings follow the deck language", () => {
     });
     const xml = await slideXml(buf);
     expect(xml).not.toContain("CONTINUED");
-    expect(xml).toContain("تابع");
+    expect(xml).not.toContain("تابع");
   });
 
   it("renders the localised empty-body placeholder rather than the English one", async () => {

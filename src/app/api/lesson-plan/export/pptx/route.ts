@@ -119,6 +119,7 @@ export async function POST(req: Request) {
     const slideContentByIndex = deck.map((slide) =>
       `${slide.slideTitle}. ${slide.body}`.replace(/\s+/g, " ").trim(),
     );
+    const slideTitleByIndex = deck.map((slide) => slide.slideTitle);
 
     let slideImageUrls: (string | null)[];
     if (fromClient !== null) {
@@ -132,8 +133,11 @@ export async function POST(req: Request) {
           topic,
           subject,
           grade,
+          chapter: chapter || undefined,
+          learningObjectives: learningObjectives || undefined,
           curriculumFramework: curriculumFramework || undefined,
           slideContentByIndex,
+          slideTitleByIndex,
         });
         slideImageUrls = slideImageUrls.map((url, idx) =>
           FAL_REQUIRED_DECK_INDICES.includes(idx as (typeof FAL_REQUIRED_DECK_INDICES)[number])
@@ -149,8 +153,11 @@ export async function POST(req: Request) {
           topic,
           subject,
           grade,
+          chapter: chapter || undefined,
+          learningObjectives: learningObjectives || undefined,
           curriculumFramework: curriculumFramework || undefined,
           slideContentByIndex,
+          slideTitleByIndex,
         });
         slideImageUrls = Array.from({ length: deck.length }, (_, i) => generated.urls[i] ?? null);
       } catch (imgErr) {

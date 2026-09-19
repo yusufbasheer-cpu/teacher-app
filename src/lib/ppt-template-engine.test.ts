@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { chunkLinesByHeight } from "./ppt-template-engine";
+import JSZip from "jszip";
+import { buildStructuredLessonSlides } from "./ppt-structured-lesson";
+import { buildPptxFromTemplateEngine, chunkLinesByHeight } from "./ppt-template-engine";
 import { estimateRowHeight, isGroupHeaderLine } from "./ppt-render-primitives";
 
 // Wide enough that none of the fixture lines below wrap onto a second line, so each
@@ -66,5 +68,60 @@ describe("chunkLinesByHeight — activity headers never get stranded across a pa
     const tightHeight = estimateRowHeight(lines[0]!, CPL, 1, "activity");
     const chunks = chunkLinesByHeight(lines, CPL, tightHeight, "activity");
     expect(chunks.flat()).toEqual(lines);
+  });
+});
+
+describe("PPT renderer student-facing cleanup", () => {
+  it("moves teacher-only lines out of visible slide XML and does not render CONTINUED labels", async () => {
+    const slides = buildStructuredLessonSlides({
+      subject: "Math",
+      grade: "Grade 8",
+      topic: "Linear Equations",
+      teacherName: "Teacher",
+      learningObjectivesText: "Solve linear equations using inverse operations.",
+      language: "en",
+    });
+    slides[1] = {
+      ...slides[1]!,
+      body:
+        "TIME: 8 minutes\nTeacher Instructions: Ask students to predict the solution.\nSelected AFL for this part of lesson\nBalance puzzle: compare equal token trays.",
+    };
+
+    const buffer = await buildPptxFromTemplateEngine({
+      templateId: "modern",
+      slides,
+      subject: "Math",
+      grade: "Grade 8",
+      topic: "Linear Equations",
+      language: "en",
+    });
+    const zip = await JSZip.loadAsync(buffer);
+    const slideXml = (
+      await Promise.all(
+        Object.keys(zip.files)
+          .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
+          .map((name) => zip.file(name)!.async("string")),
+      )
+    ).join("\n");
+
+    expect(slideXml).toMatch(/BALANCE PUZZLE/i);
+    expect(slideXml).not.toMatch(/Teacher Instructions|Selected AFL|TIME: 8 minutes|CONTINUED/i);
+  });
+
+  it("uses a purposeful closing slide instead of a generic thank-you slide", () => {
+    const slides = buildStructuredLessonSlides({
+      subject: "Science",
+      grade: "Grade 8",
+      topic: "Irrigation Methods",
+      teacherName: "Teacher",
+      learningObjectivesText: "Compare irrigation methods.",
+      language: "en",
+    });
+
+    const close = slides[12]!;
+    expect(close.slideTitle).toBe("Lesson Takeaway");
+    expect(close.body).toContain("Remember:");
+    expect(close.body).toContain("Reflect:");
+    expect(close.body).not.toMatch(/^Thank you/i);
   });
 });

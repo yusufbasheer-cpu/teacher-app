@@ -29,6 +29,7 @@ import {
   getImageNaturalSize,
   isGroupHeaderLine,
   type BulletVariant,
+  type StablePptIcon,
   directionOptions,
 } from "@/lib/ppt-render-primitives";
 
@@ -55,23 +56,24 @@ import {
   type PptStringKey,
   type PresentationLanguage,
 } from "@/lib/ppt-language";
+import { validatePptContentSafety } from "@/lib/ppt-content-safety";
 
 // ─── Slide icons (0-based deck index) ────────────────────────────────────────
 
-const SLIDE_ICONS: readonly string[] = [
-  "🎓", // 0  Subject / Grade / Date
-  "🎯", // 1  Starter Activity
-  "📚", // 2  Chapter, Topic and SDG Goal
-  "🎯", // 3  Learning Objectives
-  "✅", // 4  Learning Outcomes
-  "📖", // 5  Main Phase Core Teaching
-  "🎨", // 6  Differentiated Activity and Mini Plenary
-  "🌍", // 7  UAE / Real-Life Connection
-  "🏆", // 8  Plenary
-  "🏠", // 9  Extended Task
-  "🎫", // 10 Exit Ticket
-  "⭐", // 11 Success Criteria and Self Evaluation
-  "👏", // 12 Thank You
+const SLIDE_ICONS: readonly StablePptIcon[] = [
+  "academic", // 0  Subject / Grade / Date
+  "target",   // 1  Starter Activity
+  "book",     // 2  Chapter, Topic and SDG Goal
+  "target",   // 3  Learning Objectives
+  "check",    // 4  Learning Outcomes
+  "concept",  // 5  Main Phase Core Teaching
+  "activity", // 6  Differentiated Activity and Mini Plenary
+  "world",    // 7  UAE / Real-Life Connection
+  "trophy",   // 8  Plenary
+  "home",     // 9  Extended Task
+  "ticket",   // 10 Exit Ticket
+  "star",     // 11 Success Criteria and Self Evaluation
+  "close",    // 12 Thank You
 ];
 
 // ─── Fixed slide "kind" per deck index — drives card/marker/chip styling ─────
@@ -202,6 +204,41 @@ function normalizeToLines(body: string): string[] {
       return s;
     })
     .filter((l) => l.length > 0);
+}
+
+function isTeacherFacingRenderLine(line: string): boolean {
+  const t = line.trim();
+  if (!t) return false;
+  return (
+    /^(?:time|timing|total duration|duration)\s*[:=]/i.test(t) ||
+    /^step\s*\d+\s*\([^)]*(?:minute|min|mins)\)/i.test(t) ||
+    /^(?:teacher|teacher instructions?|instructions to students?|display or say|pose this question|ask students|call on|circulate|collect responses|expected outcome|selected afl|purpose|why this works)\b/i.test(t) ||
+    /\b(?:teacher-selected|system-recommended|quick formative assessment|student autonomy and differentiation|visualises progress|clear success measurement|self-assessment)\b/i.test(t)
+  );
+}
+
+function moveTeacherFacingLinesToNotes(model: StructuredLessonSlideModel): StructuredLessonSlideModel {
+  const rawLines = model.body.replace(/\r\n/g, "\n").split("\n");
+  const studentLines: string[] = [];
+  const noteLines: string[] = [];
+
+  for (const raw of rawLines) {
+    const line = raw.trim();
+    if (line && isTeacherFacingRenderLine(line)) {
+      noteLines.push(line);
+    } else {
+      studentLines.push(raw);
+    }
+  }
+
+  if (noteLines.length === 0) return model;
+  const body = studentLines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const movedNotes = `Teacher-facing details moved from slide body:\n${noteLines.join("\n")}`;
+  return {
+    ...model,
+    body: body || model.body,
+    speakerNotes: [model.speakerNotes, movedNotes].filter(Boolean).join("\n\n"),
+  };
 }
 
 /**
@@ -356,6 +393,7 @@ function doHeroOpenSlide(
   tpl: TemplateConfig,
   subject: string,
   grade: string,
+  topic: string,
   image: ImageAsset | null,
   slideNum: number,
   total: number,
@@ -384,7 +422,7 @@ function doHeroOpenSlide(
 
   // icon badge (translucent white on the dark/colored hero background)
   drawIconBadge(pptx, slide, {
-    icon: SLIDE_ICONS[0] ?? "🎓", x: L.iconX, y: L.iconY, size: 0.9, tpl, onDark: true,
+    icon: SLIDE_ICONS[0] ?? "academic", x: L.iconX, y: L.iconY, size: 0.9, tpl, onDark: true,
   });
 
   // subject · grade eyebrow chip (sits in the gap between the icon badge and the title)
@@ -392,23 +430,32 @@ function doHeroOpenSlide(
     text: `${subject} · ${grade}`, x: L.iconX, y: L.iconY + 0.92, tpl, fontFace: ctx.fontFace,
   });
 
+  const titleTextW =
+    image && L.imageX > L.titleX
+      ? Math.max(4.2, Math.min(L.titleW, L.imageX - L.titleX - 0.45))
+      : L.titleW;
+  const subtitleTextW =
+    image && L.imageX > L.subtitleX
+      ? Math.max(4.2, Math.min(L.subtitleW, L.imageX - L.subtitleX - 0.45))
+      : L.subtitleW;
+
   // main title
-  slide.addText(subject, {
-    x: L.titleX, y: L.titleY, w: L.titleW, h: L.titleH,
+  slide.addText(topic.trim() || subject, {
+    x: L.titleX, y: L.titleY, w: titleTextW, h: L.titleH,
     fontSize: L.titleFontSize, bold: true,
     color: c.titleSlideTitle, fontFace: f.face, valign: "middle", fit: "shrink", ...dir,
   });
 
   // accent line
   slide.addShape(pptx.ShapeType.line, {
-    x: L.titleX, y: L.accentLineY, w: L.titleW * 0.85, h: 0,
+    x: L.titleX, y: L.accentLineY, w: titleTextW * 0.85, h: 0,
     line: { color: c.accent, pt: 2.5 },
   });
 
   // subtitle: grade / date from body
   const bodyLines = normalizeToLines(model.body);
-  slide.addText(bodyLines.slice(0, 3).join("   ·   "), {
-    x: L.subtitleX, y: L.subtitleY, w: L.subtitleW, h: L.subtitleH,
+  slide.addText([subject, ...bodyLines.slice(0, 3)].filter(Boolean).join("   /   "), {
+    x: L.subtitleX, y: L.subtitleY, w: subtitleTextW, h: L.subtitleH,
     fontSize: L.subtitleFontSize, color: c.titleSlideSubtitle, fontFace: f.face,
     valign: "top", fit: "shrink", ...dir,
   });
@@ -453,7 +500,7 @@ function doHeroCloseSlide(
   });
 
   drawIconBadge(pptx, slide, {
-    icon: SLIDE_ICONS[12] ?? "👏", x: (SLIDE_W - 1.1) / 2, y: 1.7, size: 1.1, tpl, onDark: true,
+    icon: SLIDE_ICONS[12] ?? "close", x: (SLIDE_W - 1.1) / 2, y: 1.7, size: 1.1, tpl, onDark: true,
   });
 
   slide.addText(model.slideTitle, {
@@ -501,6 +548,17 @@ function doContentSlide(
 
   slide.background = { color: c.background };
 
+  if (!isCont) {
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0,
+      y: HEADER_H,
+      w: 0.08,
+      h: SLIDE_H - HEADER_H - FOOTER_H,
+      fill: { color: c.accent, transparency: kind === "standard" ? 35 : 8 },
+      line: { color: c.accent, transparency: 100 },
+    });
+  }
+
   // ── Header bar ──
   slide.addShape(pptx.ShapeType.rect, {
     x: L.header.x, y: L.header.y, w: L.header.w, h: L.header.h,
@@ -514,7 +572,7 @@ function doContentSlide(
 
   // icon badge (first chunk only)
   if (!isCont) {
-    const icon = SLIDE_ICONS[deckIdx] ?? "";
+    const icon = SLIDE_ICONS[deckIdx];
     if (icon) {
       drawIconBadge(pptx, slide, {
         icon, x: HDR_BADGE_X, y: (HEADER_H - HDR_BADGE_SIZE) / 2, size: HDR_BADGE_SIZE, tpl, onDark: true,
@@ -522,24 +580,12 @@ function doContentSlide(
     }
   }
 
-  // title (+ small "Continued" eyebrow instead of appending to the title text)
+  // title
   const rawTitle = model.slideTitle.replace(/\r\n/g, " ").trim();
   const titleX = isCont ? 0.3 : L.headerTitleX;
   const titleW = isCont ? L.header.w - 0.4 : L.header.w - L.headerTitleX - 0.2;
-  if (isCont) {
-    // Uses headerText, not accent: this label sits on the header bar, which
-    // is the ONE surface every template already guarantees enough contrast
-    // for (it's what the slide title itself depends on). accent's contrast
-    // against the header bar isn't guaranteed — three of the five bundled
-    // templates fail WCAG AA there (2:1–3.7:1) because accent is tuned to
-    // read on the body background, not on the header fill.
-    slide.addText(ctx.s("continued"), {
-      x: titleX, y: 0.14, w: titleW, h: 0.24,
-      fontSize: 10.5, bold: true, color: c.headerText, fontFace: f.face, charSpacing: 1.5, ...dir,
-    });
-  }
   slide.addText(rawTitle, {
-    x: titleX, y: isCont ? 0.36 : HDR_TITLE_Y, w: titleW, h: isCont ? 0.72 : HDR_TITLE_H,
+    x: titleX, y: HDR_TITLE_Y, w: titleW, h: HDR_TITLE_H,
     fontSize: f.titleSize, bold: true,
     color: c.headerText, fontFace: f.face, valign: "middle", fit: "shrink", ...dir,
   });
@@ -665,9 +711,20 @@ export async function buildPptxFromTemplateEngine(params: {
   language?: PresentationLanguage;
 }): Promise<Buffer> {
   const tpl = getTemplateConfig(params.templateId);
-  const deck = params.slides;
+  const deck = params.slides.map(moveTeacherFacingLinesToNotes);
   const language = params.language ?? DEFAULT_PRESENTATION_LANGUAGE;
   const ctx = buildRenderContext(language, tpl);
+  const safetyWarnings = validatePptContentSafety(deck);
+  if (safetyWarnings.length > 0) {
+    console.warn(
+      "[pptx render] content safety warnings:",
+      JSON.stringify(safetyWarnings.map((w) => ({
+        slide: w.slideNumber1Based,
+        kind: w.kind,
+        message: w.message,
+      }))),
+    );
+  }
 
   // Resolve image URLs to data URIs (+ natural dimensions, for undistorted placement) in parallel
   const images: (ImageAsset | null)[] = await Promise.all(
@@ -727,7 +784,7 @@ export async function buildPptxFromTemplateEngine(params: {
     const kind = SLIDE_KIND_BY_INDEX[di] ?? "standard";
 
     if (kind === "hero-open") {
-      doHeroOpenSlide(pptx, model, tpl, params.subject, params.grade, image, slideNum, totalPhysical, layahLogo, schoolLogo, ctx);
+      doHeroOpenSlide(pptx, model, tpl, params.subject, params.grade, params.topic, image, slideNum, totalPhysical, layahLogo, schoolLogo, ctx);
       slideNum++;
       continue;
     }

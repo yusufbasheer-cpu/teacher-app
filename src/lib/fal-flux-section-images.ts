@@ -7,8 +7,8 @@ import type {
   TeacherPackageSectionKey,
 } from "@/lib/lesson-plan";
 
-/** Official fal model id for FLUX.1 [dev] text-to-image. */
-export const FAL_FLUX_MODEL_ID = "fal-ai/flux-1/dev" as const;
+/** Official fal model id for FLUX1.1 [pro] text-to-image. */
+export const FAL_FLUX_MODEL_ID = "fal-ai/flux-pro/v1.1" as const;
 
 /**
  * Appended to every image prompt. User requirements + Islamic-safe classroom visuals.
@@ -160,8 +160,6 @@ export async function generateFluxSectionImages(params: {
           prompt,
           image_size: "landscape_4_3",
           num_images: 1,
-          num_inference_steps: 28,
-          enable_safety_checker: true,
           output_format: "png",
         },
       });

@@ -71,7 +71,10 @@ import {
   parseDeckBodiesFromPptOutline,
   type EarlySlideSanitizeContext,
 } from "@/lib/ppt-slide-by-slide";
-import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
+import {
+  STRUCTURED_LESSON_DECK_SLIDE_COUNT,
+  getStructuredLessonSlideTitles,
+} from "@/lib/ppt-structured-lesson";
 import { generatePptDeckSlideImages } from "@/lib/ppt-image-resolver";
 import { buildSlide8PptModeBlock } from "@/lib/ppt-slide-validation";
 import {
@@ -237,6 +240,24 @@ ${strategyBlock}
       `.trim(),
     },
   ];
+}
+
+function buildPptImageContextFromSource(sourceMaterial: string | undefined): string | undefined {
+  const raw = sourceMaterial?.replace(/\r\n/g, "\n").trim();
+  if (!raw) return undefined;
+  const usefulLines = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => {
+      if (line.length < 12) return false;
+      if (/^=+/.test(line)) return true;
+      if (/[+\-=×÷<>≤≥]/.test(line)) return true;
+      if (/\b(?:chapter|topic|objective|example|activity|diagram|table|worksheet|equation|scenario)\b/i.test(line)) return true;
+      return line.length >= 45;
+    })
+    .slice(0, 24);
+  const compact = usefulLines.join("\n").slice(0, 3000).trim();
+  return compact || raw.slice(0, 1600);
 }
 
 function emptyLessonShell(sections: readonly TeacherPackageSectionKey[]): LessonPlanResult {
@@ -581,6 +602,7 @@ async function runFluxAndBuildResponsePayload(
   sections: readonly TeacherPackageSectionKey[],
   mergedPlan: LessonPlanResult,
   parseNotices: string[],
+  sourceMaterial?: string,
 ): Promise<{
   lessonPlan: LessonPlanResult;
   parseNotice?: string;
@@ -604,12 +626,20 @@ async function runFluxAndBuildResponsePayload(
         deckLanguage === "ar",
         isUaeCurriculumFramework(input.curriculumFramework),
       );
+      const slideTitleByIndex = [...getStructuredLessonSlideTitles(
+        deckLanguage === "ar",
+        isUaeCurriculumFramework(input.curriculumFramework),
+      )];
       const { urls, notices: imgNotices, diagnostics } = await generatePptDeckSlideImages({
         topic: input.topic.trim(),
         subject: input.subject.trim(),
         grade: input.grade.trim(),
+        chapter: input.chapter.trim() || undefined,
+        learningObjectives: input.learningObjectives.trim() || undefined,
+        imageContext: buildPptImageContextFromSource(sourceMaterial),
         curriculumFramework: input.curriculumFramework.trim() || undefined,
         ...(slideContentByIndex ? { slideContentByIndex } : {}),
+        slideTitleByIndex,
       });
       workingPlan = mergePptSlideImageUrlsIntoPlan(workingPlan, urls);
       pptSlideImageUrls = urls;
@@ -819,7 +849,7 @@ export async function POST(req: Request) {
             strategyBlock,
             onProgress: (message) => send({ type: "progress", message }),
           });
-          const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
+          const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices, sourceMaterial);
           send({ type: "complete", ...payload, usage: gate.usage });
           void logGenerationEvent({
             userId: auth.userId,
@@ -859,7 +889,7 @@ export async function POST(req: Request) {
       aflPromptBlock,
       strategyBlock,
     });
-    const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices);
+    const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices, sourceMaterial);
     void logGenerationEvent({
       userId: auth.userId,
       generationType: "lesson_plan",
