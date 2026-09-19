@@ -29,9 +29,43 @@ from pptx.oxml.ns import qn, nsmap
 from pptx.util import Inches, Pt, Emu
 from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
+from template_engine import TemplateIncompatible, render_template
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
+
+
+@app.route("/render-uploaded-template", methods=["POST"])
+def render_uploaded_template():
+    secret = os.environ.get("PPT_TEMPLATE_SERVICE_SECRET", "")
+    if not secret or request.headers.get("X-Template-Service-Secret") != secret:
+        return jsonify({"error": "Unauthorized."}), 401
+    uploaded = request.files.get("template")
+    raw_slides = request.form.get("slides")
+    if not uploaded or not raw_slides:
+        return jsonify({"error": "Template and slides are required."}), 400
+    try:
+        slides = json.loads(raw_slides)
+        if not isinstance(slides, list) or any(not isinstance(slide, dict) for slide in slides):
+            return jsonify({"error": "Invalid slides."}), 400
+        images = {}
+        for key, file in request.files.items():
+            if key.startswith("image_") and key[6:].isdigit():
+                images[int(key[6:])] = file.read()
+        output = render_template(uploaded.read(), slides, images)
+        return send_file(
+            io.BytesIO(output),
+            as_attachment=True,
+            download_name="lesson-presentation.pptx",
+            mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        )
+    except TemplateIncompatible as exc:
+        return jsonify({"code": exc.code, "error": str(exc), "slide": exc.slide}), 422
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid lesson data."}), 400
+    except Exception:
+        app.logger.exception("Uploaded-template rendering failed")
+        return jsonify({"error": "Template rendering failed. Please retry."}), 500
 
 # ── XML namespaces ────────────────────────────────────────────────────────────
 PML_NS  = "http://schemas.openxmlformats.org/presentationml/2006/main"

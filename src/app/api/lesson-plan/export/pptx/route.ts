@@ -14,6 +14,8 @@ import {
 import { resolvePresentationLanguage } from "@/lib/ppt-language";
 import { authenticateRequest } from "@/lib/user-usage-server";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
+import { renderUploadedPpt, UploadedTemplateError } from "@/lib/uploaded-ppt-export";
+import { moveTeacherFacingLinesToNotes } from "@/lib/ppt-template-engine";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -45,6 +47,7 @@ type Body = {
   teacherName?: string;
   curriculumFramework?: string;
   pptTheme?: string;
+  templateMode?: "layah" | "uploaded";
   aflSelections?: unknown;
   /** Pre-generated slide images from lesson creation (parallel to deck indices). */
   pptSlideImageUrls?: unknown;
@@ -98,7 +101,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid curriculumFramework." }, { status: 400 });
   }
 
-  console.log("[pptx export] ✦ Using template:", pptTheme);
+  if (body.templateMode && body.templateMode !== "layah" && body.templateMode !== "uploaded") {
+    return NextResponse.json({ error: "Invalid template mode." }, { status: 400 });
+  }
+
+  let uploadedTemplate: Buffer | null = null;
+  const serviceUrl = process.env.PPT_TEMPLATE_SERVICE_URL?.replace(/\/$/, "");
+  const serviceSecret = process.env.PPT_TEMPLATE_SERVICE_SECRET;
+  if (body.templateMode === "uploaded") {
+    if (!serviceUrl || !serviceSecret) {
+      return NextResponse.json({ code: "TEMPLATE_SERVICE_UNAVAILABLE", error: "Uploaded PowerPoint exports are temporarily unavailable. Please use a Layah template." }, { status: 503 });
+    }
+    const { data, error } = await auth.supabase
+      .from("school_templates")
+      .select("file_data")
+      .eq("user_id", auth.userId)
+      .maybeSingle();
+    if (error) {
+      console.error("[pptx export] saved template lookup failed", error);
+      return NextResponse.json({ code: "TEMPLATE_LOOKUP_FAILED", error: "We couldn't load your saved PowerPoint. Please retry or use a Layah template." }, { status: 503 });
+    }
+    if (!data?.file_data) {
+      return NextResponse.json({ code: "TEMPLATE_MISSING", error: "Upload a PowerPoint before exporting, or use a Layah template." }, { status: 404 });
+    }
+    uploadedTemplate = Buffer.from(data.file_data, "base64");
+    if (uploadedTemplate.length === 0 || uploadedTemplate.length > 15 * 1024 * 1024 || uploadedTemplate.subarray(0, 2).toString() !== "PK") {
+      return NextResponse.json({ code: "INVALID_TEMPLATE", error: "The saved PowerPoint is invalid. Please upload it again." }, { status: 422 });
+    }
+  }
+
+  console.log("[pptx export] using design:", body.templateMode === "uploaded" ? "uploaded" : pptTheme);
 
   try {
     // ── Build structured slide deck ───────────────────────────────────────
@@ -165,21 +197,29 @@ export async function POST(req: Request) {
       }
     }
 
-    // ── Build the presentation using the selected Layah theme ─────────────
-    const buffer = await buildPptxFromPptContent({
-      subject, grade, topic,
-      pptContent: pptContent || fullLessonPlan.slice(0, 1200),
-      teacherName: teacherName || "Teacher",
-      fullLessonPlan: fullLessonPlan || undefined,
-      learningObjectives: learningObjectives || undefined,
-      homeworkTask: homeworkTask || undefined,
-      structuredSlides: deck,
-      slideImageUrls,
-      themeId: pptTheme,
-      curriculumFramework: curriculumFramework || undefined,
-      language,
-      ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
-    });
+    // Reuse the source deck for uploaded designs; the Layah renderer keeps its existing path.
+    const buffer = uploadedTemplate && serviceUrl && serviceSecret
+      ? await renderUploadedPpt({
+          template: uploadedTemplate,
+          slides: deck.map(moveTeacherFacingLinesToNotes),
+          slideImageUrls,
+          serviceUrl,
+          serviceSecret,
+        })
+      : await buildPptxFromPptContent({
+          subject, grade, topic,
+          pptContent: pptContent || fullLessonPlan.slice(0, 1200),
+          teacherName: teacherName || "Teacher",
+          fullLessonPlan: fullLessonPlan || undefined,
+          learningObjectives: learningObjectives || undefined,
+          homeworkTask: homeworkTask || undefined,
+          structuredSlides: deck,
+          slideImageUrls,
+          themeId: pptTheme,
+          curriculumFramework: curriculumFramework || undefined,
+          language,
+          ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
+        });
 
     const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-ppt`) || "ppt-content";
     return new NextResponse(new Uint8Array(buffer), {
@@ -191,6 +231,9 @@ export async function POST(req: Request) {
       },
     });
   } catch (e) {
+    if (e instanceof UploadedTemplateError) {
+      return NextResponse.json({ code: e.code, error: e.message, slide: e.slide }, { status: e.status });
+    }
     const message = e instanceof Error ? e.message : String(e);
     console.error("[pptx export]", message, e);
     return NextResponse.json({ error: `Failed to build PowerPoint: ${message}` }, { status: 500 });
