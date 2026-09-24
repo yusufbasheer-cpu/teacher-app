@@ -357,17 +357,17 @@ async function generatePptSlideContentSlideBySlide(params: {
   // Shared completion counter — safe across parallel closures (JS is single-threaded at await points)
   let completedCount = 0;
 
-  const track = <T>(resultPromise: Promise<{ body: string; notices: string[] }>): Promise<string> =>
+  const track = (resultPromise: Promise<{ body: string; teacherNotes: string; notices: string[] }>): Promise<{ body: string; teacherNotes: string }> =>
     resultPromise.then((r) => {
       notices.push(...r.notices);
       onProgress(`Generating Slide ${++completedCount} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
-      return r.body;
+      return { body: r.body, teacherNotes: r.teacherNotes };
     });
 
-  const trackSync = (result: { body: string; notices: string[] }): string => {
+  const trackSync = (result: { body: string; teacherNotes: string; notices: string[] }): { body: string; teacherNotes: string } => {
     notices.push(...result.notices);
     onProgress(`Generating Slide ${++completedCount} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
-    return result.body;
+    return { body: result.body, teacherNotes: result.teacherNotes };
   };
 
   console.log(`[ppt-deck] Launching ${STRUCTURED_LESSON_DECK_SLIDE_COUNT} isolated parallel slide generators`);
@@ -395,14 +395,22 @@ async function generatePptSlideContentSlideBySlide(params: {
   const bodies = [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13].map((result, i) => {
     if (result.status === "fulfilled") return result.value;
     const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
-    notices.push(`PPT Slide ${i + 1} rejected — ${reason}`);
-    return `_(Slide ${i + 1} could not be generated — please regenerate.)_`;
+    notices.push(`PPT Slide ${i + 1} rejected: ${reason}`);
+    return {
+      body: `_(Slide ${i + 1} could not be generated — please regenerate.)_`,
+      teacherNotes: "Suggested timing: Adjust to the lesson period.\nAFL: Check understanding using the selected tool before continuing.\nDelivery tip: Regenerate this slide if needed.",
+    };
   });
 
   console.log(`[ppt-deck] All ${STRUCTURED_LESSON_DECK_SLIDE_COUNT} slides complete — ${completedCount} ready`);
 
   return {
-    text: assembleFullPptFromSlideBodies(bodies, isAr, uaeFrameworkEnabled),
+    text: assembleFullPptFromSlideBodies(
+      bodies.map((item) => item.body),
+      isAr,
+      uaeFrameworkEnabled,
+      bodies.map((item) => item.teacherNotes),
+    ),
     notices,
   };
 }

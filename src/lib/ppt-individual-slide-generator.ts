@@ -57,7 +57,7 @@ export type SlideGenParams = {
 
 export type { MainActivityStructure };
 
-export type SlideGenResult = { body: string; notices: string[] };
+export type SlideGenResult = { body: string; teacherNotes: string; notices: string[] };
 
 type DSMessage = { role: "system" | "user"; content: string };
 
@@ -120,7 +120,19 @@ ${buildLanguageDirective(language)}
 ${strategy ? `
 TEACHING STRATEGY (teacher-selected — shape the delivery around it):
 - ${strategy}` : ""}
-${PPT_AFL_DRIVEN_SYSTEM_RULES}`;
+${PPT_AFL_DRIVEN_SYSTEM_RULES}
+${studentFacingDirective()}`;
+}
+
+function studentFacingDirective(): string {
+  return `
+VISIBLE SLIDE AUDIENCE (MANDATORY):
+- The presentation is projected directly to students. Write the visible body FOR students, using "you", "your", and imperative instructions where appropriate.
+- Never write narration about the teacher or directions to the teacher in the visible body. Keep phrases such as "ask students", "explain to the class", "give students", "circulate", and "cold call" out of the body.
+- Explain concepts directly to students, then give them a clear task. Address activity steps directly: "Think...", "Discuss...", "Write...".
+- Timing, AFL delivery, teacher moves, answer reveals, and differentiation support belong only in teacher_notes.
+- Return JSON with exactly two keys: "body" (student-facing visible text) and "teacher_notes" (short teacher-only note with timing, AFL tool/reminder, and delivery/differentiation tip). Do not use markdown fences.
+`;
 }
 
 function cleanBody(body: string, slideName: string): string {
@@ -179,6 +191,7 @@ async function generateWithRetries(
 ): Promise<SlideGenResult> {
   const notices: string[] = [];
   let body = "";
+  let teacherNotes = "";
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const attemptHint =
@@ -195,7 +208,9 @@ async function generateWithRetries(
       continue;
     }
 
-    body = content.trim();
+    const parsed = parseStudentSlideResponse(content);
+    body = parsed.body;
+    teacherNotes = parsed.teacherNotes;
     if (body.length >= 30) break;
 
     notices.push(`${slideName} attempt ${attempt}: response too short (${body.length} chars)`);
@@ -206,7 +221,32 @@ async function generateWithRetries(
     body = `_(${slideName} could not be generated — please regenerate this slide.)_`;
   }
 
-  return { body, notices };
+  return { body, teacherNotes: teacherNotes || defaultTeacherNotes(slideName), notices };
+}
+
+function parseStudentSlideResponse(content: string): { body: string; teacherNotes: string } {
+  const raw = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  try {
+    const parsed = JSON.parse(raw) as { body?: unknown; teacher_notes?: unknown };
+    if (typeof parsed.body === "string" && parsed.body.trim()) {
+      return { body: parsed.body.trim(), teacherNotes: typeof parsed.teacher_notes === "string" ? parsed.teacher_notes.trim() : "" };
+    }
+  } catch {
+    // Keep compatibility with older/plain-text provider responses.
+  }
+  return { body: raw, teacherNotes: "" };
+}
+
+function defaultTeacherNotes(slideName: string): string {
+  const timings: Record<string, string> = {
+    "Starter Activity": "5–10 minutes",
+    "Learning Outcomes": "3 minutes",
+    "Main Phase Core Teaching": "25–35 minutes",
+    "Differentiated Activity and Mini Plenary": "10–12 minutes",
+    "Plenary": "8–10 minutes",
+    "Exit Ticket": "3–4 minutes",
+  };
+  return `Suggested timing: ${timings[slideName] ?? "Adjust to the lesson period"}\nAFL: Use the selected tool for this slide; model the response format, then scan responses before moving on.\nDelivery tip: Keep the visible instructions student-facing and provide verbal support for learners who need it.`;
 }
 
 // ── Slide generators ──────────────────────────────────────────────────────────
@@ -222,7 +262,7 @@ export function generateSlide1Body(params: SlideGenParams): SlideGenResult {
       day: "numeric",
     });
   const body = [params.grade.trim(), dateStr].filter(Boolean).join("\n");
-  return { body, notices: [] };
+  return { body, teacherNotes: "Suggested timing: 2 minutes\nAFL: Use a quick visual check that every student can see the lesson context.\nDelivery tip: Welcome students and connect the topic to today's learning.", notices: [] };
 }
 
 /** Slide 2: Starter Activity — engaging hook using the selected AFL starter tool. */
@@ -276,9 +316,9 @@ export function generateSlide4Body(params: SlideGenParams): SlideGenResult {
   // The teacher's objectives are the source of truth here. The placeholder is reached only when
   // the field is genuinely empty, never as a fallback for text we failed to carry through.
   const body = raw
-    ? stripSlideTitleEchoFromBody(raw, "Learning Objectives")
+    ? `By the end of this lesson, you will be able to:\n${stripSlideTitleEchoFromBody(raw, "Learning Objectives")}`
     : pptString(language, "objectivesNotProvided");
-  return { body, notices: [] };
+  return { body, teacherNotes: "Suggested timing: 3 minutes\nAFL: Use a quick show of hands or confidence check after displaying the objectives.\nDelivery tip: Read the objectives aloud and clarify unfamiliar vocabulary.", notices: [] };
 }
 
 /** Slide 5: Learning Outcomes — Bloom's verbs, aligned 1:1 to teacher objectives. */
@@ -296,6 +336,7 @@ Teacher's learning objectives (must align to these exactly):
 ${learningObjectives || "(Write appropriate outcomes for the topic)"}
 
 Requirements:
+- Phrase every outcome as a direct promise to the student, beginning with "By the end of this lesson, you will be able to..." or using clear "You will..." statements.
 - Write EXACTLY ${count} outcome(s) — one per objective, in the same order
 - Use Bloom's Taxonomy action verbs (e.g. identify, describe, explain, compare, evaluate, design)
 - Use Must / Should / Could format OR clear numbered list
@@ -373,6 +414,7 @@ ${mainAflBlock ? `AFL Main Phase Tool: ${mainAflBlock}` : ""}
 ${buildMainPhaseStructureBlock(mainActivity, topic, grade)}
 
 Requirements:
+- Write every visible instruction directly to students using "you" and imperative verbs. Put all teacher directions in teacher_notes only.
 - Rich, detailed, classroom-ready content throughout
 - All content specific to ${topic}
 - Do NOT include differentiation tasks (separate slide)
@@ -476,11 +518,12 @@ ${plenaryAflBlock ? `AFL Plenary Tool: ${plenaryAflBlock}` : "Choose the most ap
 Include:
 1. Activity name (do NOT use "Plenary" as the first word)
 2. Clear activity objective linked to today's learning about ${topic}
-3. Step-by-step teacher instructions with timing for each step
-4. What students do at each step
+3. Step-by-step student instructions with timing for each step
+4. What you do at each step
 5. How students reflect on and summarise their learning about ${topic}
 
 Requirements:
+- Address students directly throughout: "Reflect...", "Answer...", "Write...". Do not narrate what the teacher should ask or explain.
 - Total duration: 8-10 minutes
 - Specific to ${topic} — not generic
 - Do NOT start the body with the word "Plenary"
@@ -578,11 +621,13 @@ export function generateSlide13Body(params: SlideGenParams): SlideGenResult {
         "شكراً لتركيزكم وجهدكم وحماسكم طوال حصة اليوم.",
         "لقد عملتم بجد — واصلوا البناء على ما تعلمتموه اليوم.",
       ].join("\n"),
+      teacherNotes: "Suggested timing: 1 minute\nAFL: Use the closing response as a final positive check-in.\nDelivery tip: Acknowledge effort and dismiss students calmly.",
       notices: [],
     };
   }
   return {
     body: "Thank you for your focus, effort, and enthusiasm throughout today's lesson.\nYou have worked hard — keep building on what you have learned today.",
+    teacherNotes: "Suggested timing: 1 minute\nAFL: Use the closing response as a final positive check-in.\nDelivery tip: Acknowledge effort and dismiss students calmly.",
     notices: [],
   };
 }

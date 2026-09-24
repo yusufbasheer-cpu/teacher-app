@@ -847,7 +847,18 @@ export function TeacherPackageViewer({
                         <Button type="button" variant="ghost" size="xs" disabled={templateBusy} onClick={() => void removeTemplate()}>Remove</Button>
                       </div>
                     ) : null}
-                    {templateMode === "uploaded" ? <p className="mb-3 text-xs text-faint">Your lesson will use the uploaded slide design. If its editable areas cannot hold the lesson, we&apos;ll ask you to choose a Layah template.</p> : null}
+                    {templateMode === "uploaded" ? <p className="mb-3 text-sm text-faint">Your lesson will use the uploaded slide design. If its editable areas cannot hold the lesson, we&apos;ll ask you to choose a Layah template.</p> : null}
+                    {savedTemplate ? (
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-brand/30 bg-brand-subtle px-3 py-3">
+                        <div>
+                          <p className="text-sm font-semibold text-ink">Download with your uploaded template</p>
+                          <p className="mt-0.5 text-sm text-faint">Your generated lesson content will be placed into the PowerPoint design you uploaded.</p>
+                        </div>
+                        <Button type="button" size="sm" disabled={templateBusy || busy !== null} onClick={() => { setTemplateMode("uploaded"); void onDownloadPpt("uploaded"); }}>
+                          {busy === "ppt" ? "Preparing file…" : "Download using uploaded template"}
+                        </Button>
+                      </div>
+                    ) : null}
                     {templateMode === "layah" ? (
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                       {PPT_THEME_CARDS.map((t) => {
