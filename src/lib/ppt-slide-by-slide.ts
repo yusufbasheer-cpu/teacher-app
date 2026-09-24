@@ -148,6 +148,7 @@ export function assembleFullPptFromSlideBodies(
   bodies: readonly string[],
   useArabicTitles: boolean,
   uaeFrameworkSelected = false,
+  teacherNotes: readonly string[] = [],
 ): string {
   const titles = getStructuredLessonSlideTitles(useArabicTitles, uaeFrameworkSelected);
   const parts: string[] = [];
@@ -158,7 +159,25 @@ export function assembleFullPptFromSlideBodies(
     parts.push(body.length > 0 ? body : "(Content unavailable for this slide.)");
     parts.push("");
   }
-  return parts.join("\n").trim();
+  const outline = parts.join("\n").trim();
+  const notes = teacherNotes.slice(0, STRUCTURED_LESSON_DECK_SLIDE_COUNT).map((note) => note ?? "");
+  return notes.some(Boolean)
+    ? `${outline}\n\n<!--__LAYAH_TEACHER_NOTES__${JSON.stringify(notes)}-->`
+    : outline;
+}
+
+/** Extracts generation-time teacher notes from the private outline trailer. */
+export function parseTeacherNotesFromPptOutline(outline: string): string[] {
+  const marker = "__LAYAH_TEACHER_NOTES__";
+  const idx = outline.indexOf(marker);
+  if (idx < 0) return [];
+  try {
+    const tail = outline.slice(idx + marker.length).replace(/-->\s*$/, "").trim();
+    const parsed = JSON.parse(tail) as unknown;
+    return Array.isArray(parsed) ? parsed.map((item) => (typeof item === "string" ? item : "")) : [];
+  } catch {
+    return [];
+  }
 }
 
 /** Slide 1 body: grade + date only (subject lives in the slide title, not the body). */
@@ -347,7 +366,7 @@ export function parseDeckBodiesFromPptOutline(
   uaeFrameworkSelected = false,
 ): string[] | null {
   const titles = getStructuredLessonSlideTitles(useArabicTitles, uaeFrameworkSelected);
-  const text = ppt.replace(/\r\n/g, "\n").trim();
+  const text = ppt.replace(/\r\n/g, "\n").split("<!--__LAYAH_TEACHER_NOTES__", 1)[0].trim();
   if (text.length < 40) return null;
 
   const bodies: string[] = [];

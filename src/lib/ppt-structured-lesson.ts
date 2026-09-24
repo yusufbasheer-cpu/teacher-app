@@ -2,6 +2,7 @@ import {
   buildProgrammaticSlide1Body,
   buildTeacherObjectivesSlide4Body,
   parseDeckBodiesFromPptOutline,
+  parseTeacherNotesFromPptOutline,
   sanitizeEarlyPptSlideBody,
   sanitizeSlide10ExtendedBody,
   sanitizeSlide7DifferentiatedBody,
@@ -1201,6 +1202,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   const slides: StructuredLessonSlideModel[] = [];
   const parsedDeckBodies =
     ppt.length >= 40 ? parseDeckBodiesFromPptOutline(ppt, isAr, uaeFrameworkSelected) : null;
+  const parsedTeacherNotes = ppt.length >= 40 ? parseTeacherNotesFromPptOutline(ppt) : [];
   const earlyCtx: EarlySlideSanitizeContext = {
     subject: subj,
     grade: gr,
@@ -1419,6 +1421,13 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ),
     includeImageSlot: false,
   });
+
+  // Notes generated alongside the isolated student-facing bodies are authoritative. Older
+  // saved outlines have no trailer and keep the existing deterministic notes above.
+  for (let i = 0; i < slides.length; i++) {
+    const generated = parsedTeacherNotes[i]?.trim();
+    if (generated) slides[i]!.speakerNotes = generated;
+  }
 
   applyAflDeckInjections(slides, ctx.aflSelections, language);
   applyPptIsolationValidationToDeck(slides, topic, language);

@@ -479,7 +479,16 @@ export function TeacherPackageViewer({
   };
   const artifacts: WorkspaceArtifact[] = sectionKeys.map((key) => {
     const card = overviewCards.find((item) => item.key === exportKeys[key]);
-    return { id: key, title: card?.title ?? getSectionTabLabel(key), description: card?.description, icon: card?.icon, onDownload: card?.onDownload, downloadLabel: key === "PPT Slide Content" ? "Download PowerPoint" : "Download Word" };
+    return {
+      id: key,
+      title: card?.title ?? getSectionTabLabel(key),
+      description: key === "PPT Slide Content" && savedTemplate && templateMode === "uploaded"
+        ? "Uses your uploaded slide design · PowerPoint (.pptx)"
+        : card?.description,
+      icon: card?.icon,
+      onDownload: card?.onDownload,
+      downloadLabel: key === "PPT Slide Content" ? "Download PowerPoint" : "Download Word",
+    };
   });
 
   return (
@@ -537,6 +546,17 @@ export function TeacherPackageViewer({
                       </div>
                     ) : null}
                     {templateMode === "uploaded" ? <p className="mb-3 text-sm text-faint">Your lesson will use the uploaded slide design. If its editable areas cannot hold the lesson, we&apos;ll ask you to choose a Layah template.</p> : null}
+                    {savedTemplate ? (
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-brand/30 bg-brand-subtle px-3 py-3">
+                        <div>
+                          <p className="text-sm font-semibold text-ink">Download with your uploaded template</p>
+                          <p className="mt-0.5 text-sm text-faint">Your generated lesson content will be placed into the PowerPoint design you uploaded.</p>
+                        </div>
+                        <Button type="button" size="sm" disabled={templateBusy || busy !== null} onClick={() => { setTemplateMode("uploaded"); void onDownloadPpt("uploaded"); }}>
+                          {busy === "ppt" ? "Preparing file…" : "Download using uploaded template"}
+                        </Button>
+                      </div>
+                    ) : null}
                     {templateMode === "layah" ? (
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                       {PPT_THEME_CARDS.map((t) => {

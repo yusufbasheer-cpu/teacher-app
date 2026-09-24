@@ -34,12 +34,14 @@ class TemplateIncompatible(Exception):
 MAX_TEMPLATE_BYTES = 15 * 1024 * 1024
 MAX_ZIP_ENTRIES = 2500
 MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024
-MAX_PHYSICAL_SLIDES = 60
-MAX_PARTS_PER_SECTION = 3
+MAX_PHYSICAL_SLIDES = 240
+# Uploaded-template exports must never discard a generated section simply because the source
+# design has a small content area. Sections are split into continuation slides instead.
+MAX_PARTS_PER_SECTION = MAX_PHYSICAL_SLIDES
 # Design-only templates (background art, no text areas) get text areas added
 # for them. Their font size is chosen per section, so a longer section may
 # use a smaller size and, at the limit, a few more slides.
-MAX_PARTS_DESIGN_ONLY = 6
+MAX_PARTS_DESIGN_ONLY = MAX_PHYSICAL_SLIDES
 DESIGN_BODY_SIZES = (22, 20, 18, 16, 14)
 # Share of the content width kept for text when a lesson picture sits beside it.
 IMAGE_TEXT_FACTOR = 0.58
@@ -617,7 +619,10 @@ def render_template(data: bytes, slides: list[dict[str, Any]], images: dict[int,
                         _place_design_image(target, target_body, lesson_image, design[source.slide_id]["safe"])
                 else:
                     _replace_picture(target, lesson_image)
-                _set_notes(target, str(item.get("speakerNotes", "")) if part_index == 0 else "")
+                speaker_notes = str(item.get("speakerNotes", "")).strip()
+                if part_index > 0 and speaker_notes:
+                    speaker_notes = f"{speaker_notes}\n\nContinuation of this section."
+                _set_notes(target, speaker_notes)
                 generated += 1
         except TemplateIncompatible as exc:
             exc.slide = index + 1
