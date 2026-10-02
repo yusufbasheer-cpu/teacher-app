@@ -69,7 +69,9 @@ artwork and places lesson pictures next to the text. It duplicates source slide
 designs when the lesson needs more slides. Charts, grouped content, embedded
 objects, and ambiguous old text return an incompatibility warning with a Layah
 template fallback. Fit detection is conservative and is based on text geometry;
-PowerPoint rendering can vary by installed fonts.
+PowerPoint rendering can vary by installed fonts. Uploaded-template images are
+compressed for the renderer request. If the source deck or finished file exceeds
+the service's download limit, the export asks for a smaller source PPTX.
 
 ## Project structure
 

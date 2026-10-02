@@ -53,6 +53,11 @@ def render_uploaded_template():
             if key.startswith("image_") and key[6:].isdigit():
                 images[int(key[6:])] = file.read()
         output = render_template(uploaded.read(), slides, images)
+        if len(output) > 4 * 1024 * 1024:
+            raise TemplateIncompatible(
+                "TEMPLATE_TOO_LARGE_FOR_EXPORT",
+                "The finished PowerPoint is too large to download from this service. Please use a smaller source PPTX or a Layah design.",
+            )
         return send_file(
             io.BytesIO(output),
             as_attachment=True,

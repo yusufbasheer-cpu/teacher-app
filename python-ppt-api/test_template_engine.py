@@ -228,6 +228,23 @@ class UploadedTemplateTests(unittest.TestCase):
         self.assertTrue(any(shape.shape_type == 13 and shape.image.blob == png(0, 0, 255)
                             for shape in result.slides[0].shapes))
 
+    def test_service_reports_output_too_large_for_download(self):
+        from main import app
+
+        client = app.test_client()
+        with patch.dict(os.environ, {"PPT_TEMPLATE_SERVICE_SECRET": "test-secret"}), \
+             patch("main.render_template", return_value=b"PK" + b"x" * (4 * 1024 * 1024)):
+            response = client.post(
+                "/render-uploaded-template",
+                headers={"X-Template-Service-Secret": "test-secret"},
+                data={
+                    "template": (io.BytesIO(source_deck()), "example.pptx"),
+                    "slides": json.dumps([{"title": "New", "content": "Content"}]),
+                },
+            )
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json["code"], "TEMPLATE_TOO_LARGE_FOR_EXPORT")
+
 
 if __name__ == "__main__":
     unittest.main()

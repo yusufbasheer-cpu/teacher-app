@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderUploadedPpt } from "./uploaded-ppt-export";
 import { fetchExternalImageSafely } from "./upload-security";
+import sharp from "sharp";
 
 vi.mock("./upload-security", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./upload-security")>()),
@@ -62,8 +63,8 @@ describe("uploaded PowerPoint export", () => {
   });
 
   it("uploads Pexels and Fal images for their matching slides", async () => {
-    const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
-    const jpeg = Buffer.from([255, 216, 255, 224, 0]);
+    const png = await sharp({ create: { width: 1600, height: 900, channels: 3, background: "blue" } }).png().toBuffer();
+    const jpeg = await sharp({ create: { width: 1600, height: 900, channels: 3, background: "red" } }).jpeg().toBuffer();
     vi.mocked(fetchExternalImageSafely)
       .mockResolvedValueOnce(jpeg)
       .mockResolvedValueOnce(png);
@@ -78,8 +79,13 @@ describe("uploaded PowerPoint export", () => {
     });
     expect(fetchExternalImageSafely).toHaveBeenCalledWith(expect.any(String), { maxBytes: 20 * 1024 * 1024 });
     const form = (mock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
-    expect(Buffer.from(await (form.get("image_0") as Blob).arrayBuffer())).toEqual(jpeg);
-    expect(Buffer.from(await (form.get("image_1") as Blob).arrayBuffer())).toEqual(png);
+    for (const index of [0, 1]) {
+      const file = form.get(`image_${index}`) as Blob;
+      expect(file.type).toBe("image/jpeg");
+      const bytes = Buffer.from(await file.arrayBuffer());
+      expect(bytes.subarray(0, 3)).toEqual(Buffer.from([255, 216, 255]));
+      expect(await sharp(bytes).metadata()).toMatchObject({ width: 1280, height: 720 });
+    }
   });
 
   it("reports a failed image download instead of exporting a deck with a missing image", async () => {
@@ -94,5 +100,15 @@ describe("uploaded PowerPoint export", () => {
       serviceSecret: "secret",
     })).rejects.toMatchObject({ code: "IMAGE_UNAVAILABLE", slide: 1 });
     expect(mock).not.toHaveBeenCalled();
+  });
+
+  it("reports when the uploaded template is too large for the renderer request", async () => {
+    await expect(renderUploadedPpt({
+      template: Buffer.alloc(4 * 1024 * 1024),
+      slides: [slide],
+      slideImageUrls: [null],
+      serviceUrl: "https://ppt.example.com",
+      serviceSecret: "secret",
+    })).rejects.toMatchObject({ code: "TEMPLATE_TOO_LARGE_FOR_EXPORT", status: 422 });
   });
 });
