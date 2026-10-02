@@ -9,8 +9,8 @@ import {
   sanitizeSlide10ExtendedBody,
   stripSlideTitleEchoFromBody,
 } from "@/lib/ppt-slide-by-slide";
-import { resolveGenerationTopic } from "@/lib/lesson-plan";
-import { PPT_AFL_DRIVEN_SYSTEM_RULES, type MainActivityStructure } from "@/lib/afl-tools";
+import { getTeachingStrategyMechanism, resolveGenerationTopic } from "@/lib/lesson-plan";
+import { PPT_AFL_DRIVEN_SYSTEM_RULES, getAflToolById, type AflPhaseId, type AflSelectionsPayload, type MainActivityStructure } from "@/lib/afl-tools";
 import { buildPptSlideBodyLanguageHint } from "@/lib/deepseek-lesson-system-prompt";
 import {
   DEFAULT_PRESENTATION_LANGUAGE,
@@ -49,6 +49,8 @@ export type SlideGenParams = {
   mainActivity?: MainActivityStructure;
   /** Optional pedagogy selector (see `TEACHING_STRATEGIES`). */
   teachingStrategy?: string;
+  /** Validated teacher selections, used to reject label-only model responses. */
+  aflSelections?: AflSelectionsPayload;
   /** Language every generated field on the slide must be written in. */
   language?: PresentationLanguage;
   uaeFrameworkEnabled: boolean;
@@ -93,6 +95,7 @@ function buildIsolatedSystemPrompt(slideName: string, params: SlideGenParams): s
   const focus = resolveGenerationTopic(topic, chapter) || subject;
   const language = params.language ?? DEFAULT_PRESENTATION_LANGUAGE;
   const strategy = params.teachingStrategy?.trim();
+  const strategyMechanism = getTeachingStrategyMechanism(strategy);
   return `You are a professional teacher creating a PowerPoint presentation slide. You are generating content for ONE specific slide ONLY.
 
 SLIDE: ${slideName}
@@ -119,7 +122,9 @@ TOPIC LOCK (critical):
 ${buildLanguageDirective(language)}
 ${strategy ? `
 TEACHING STRATEGY (teacher-selected — shape the delivery around it):
-- ${strategy}` : ""}
+- ${strategy}
+- Required classroom mechanism: ${strategyMechanism ?? "Use the named strategy's established sequence with real student actions and topic-specific content."}
+- Show the mechanism through an actual problem, evidence, roles, product, or decisions on the slide. The strategy name alone is insufficient. Put facilitation and timing in teacher_notes.` : ""}
 ${PPT_AFL_DRIVEN_SYSTEM_RULES}
 ${studentFacingDirective()}`;
 }
@@ -131,6 +136,7 @@ VISIBLE SLIDE AUDIENCE (MANDATORY):
 - Never write narration about the teacher or directions to the teacher in the visible body. Keep phrases such as "ask students", "explain to the class", "give students", "circulate", and "cold call" out of the body.
 - Explain concepts directly to students, then give them a clear task. Address activity steps directly: "Think...", "Discuss...", "Write...".
 - Timing, AFL delivery, teacher moves, answer reveals, and differentiation support belong only in teacher_notes.
+- Never print a tool's catalogue purpose or a heading such as "Selected AFL". Display the actual student task, filled-in items, questions, and response format instead. A tool name may appear only alongside its fully implemented task.
 - Return JSON with exactly two keys: "body" (student-facing visible text) and "teacher_notes" (short teacher-only note with timing, AFL tool/reminder, and delivery/differentiation tip). Do not use markdown fences.
 `;
 }
@@ -142,7 +148,7 @@ function cleanBody(body: string, slideName: string): string {
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/`([^`]+)`/g, "$1")
-    .replace(/_{1,2}([^_]+)_{1,2}/g, "$1")
+    .replace(/(^|[\s(])_{1,2}([^\s_]+)_{1,2}(?=[\s).,!?:;]|$)/gm, "$1$2")
     .trim();
   s = stripSlideTitleEchoFromBody(s, slideName);
   return s.replace(/\n{4,}/g, "\n\n\n").trim();
@@ -188,15 +194,18 @@ async function generateWithRetries(
   slideName: string,
   systemPrompt: string,
   userPrompt: string,
+  selectedTools?: { phase: AflPhaseId; ids: string[]; language: PresentationLanguage },
 ): Promise<SlideGenResult> {
   const notices: string[] = [];
   let body = "";
   let teacherNotes = "";
+  let lastFailure = "";
+  const maxAttempts = selectedTools?.ids.length ? 4 : MAX_ATTEMPTS;
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const attemptHint =
       attempt > 1
-        ? `\n\n(Attempt ${attempt}: ensure the content is complete, specific to the topic, and strictly follows all isolation rules.)`
+        ? `\n\n(Attempt ${attempt}: correct this exact failure from the prior response: ${lastFailure}. Ensure the content is complete, topic-specific, and follows all isolation rules. If timing was on the slide, remove every duration from body and write it in teacher_notes.)`
         : "";
     const { content, error } = await callDeepSeek([
       { role: "system", content: systemPrompt },
@@ -211,17 +220,68 @@ async function generateWithRetries(
     const parsed = parseStudentSlideResponse(content);
     body = parsed.body;
     teacherNotes = parsed.teacherNotes;
-    if (body.length >= 30) break;
-
-    notices.push(`${slideName} attempt ${attempt}: response too short (${body.length} chars)`);
+    const failure = validateSelectedAflBody(body, selectedTools) ??
+      (selectedTools?.ids.length && teacherNotes.length < 35 ? "missing teacher guidance in speaker notes" : undefined) ??
+      (body.length < 30 ? `response too short (${body.length} chars)` : undefined);
+    if (!failure) break;
+    lastFailure = failure;
+    notices.push(`${slideName} attempt ${attempt}: ${failure}`);
     body = "";
   }
 
   if (!body) {
+    if (selectedTools?.ids.length) {
+      throw new Error(`${slideName}: selected AFL tool was not implemented after ${maxAttempts} attempts (${notices.join("; ")})`);
+    }
     body = `_(${slideName} could not be generated — please regenerate this slide.)_`;
   }
 
   return { body, teacherNotes: teacherNotes || defaultTeacherNotes(slideName), notices };
+}
+
+function selectedToolsFor(params: SlideGenParams, phase: AflPhaseId) {
+  const ids = params.aflSelections?.[phase] ?? [];
+  return ids.length ? { phase, ids, language: params.language ?? DEFAULT_PRESENTATION_LANGUAGE } : undefined;
+}
+
+/** Reject shallow selected-tool responses before they become exportable slides. */
+export function validateSelectedAflBody(
+  body: string,
+  selection: { phase: AflPhaseId; ids: string[]; language: PresentationLanguage } | undefined,
+): string | undefined {
+  if (!selection?.ids.length) return undefined;
+  const lineCount = body.split(/\n/).filter((line) => line.trim()).length;
+  if (body.length < 100 || lineCount < 2) return "selected tool needs a complete student task";
+  const lineCaps: Record<AflPhaseId, number> = {
+    starter: 22, main: 22, differentiation: 22, plenary: 22, exitTicket: 12, successCriteria: 18,
+  };
+  if (lineCount > lineCaps[selection.phase]) return `too many visible lines (${lineCount}); the exported slide would cut off the activity`;
+  const charCaps: Record<AflPhaseId, number> = {
+    starter: 3400, main: 4800, differentiation: 3600, plenary: 3400, exitTicket: 1200, successCriteria: 2600,
+  };
+  if (body.length > charCaps[selection.phase]) return `too much visible text (${body.length} characters); the exported slide would cut off the activity`;
+  if (/\[[^\]]*(?:task|question|prompt|example|insert|basic|standard|challenging)[^\]]*\]/i.test(body)) return "unfilled placeholder";
+  if (/selected afl|teacher instructions|ask students|tell students|circulate|debrief with/i.test(body)) return "teacher-facing or catalogue text on visible slide";
+  if (/\b\d+\s*(?:min|minutes)\b/i.test(body)) return "timing must be in speaker notes";
+  if (selection.language !== "en") return undefined;
+  if (selection.phase === "differentiation" && !/Higher Achievers task[\s\S]*Middle Achievers task[\s\S]*Lower Achievers task[\s\S]*Mini Plenary/i.test(body)) {
+    return "differentiated tiers or mini plenary are missing";
+  }
+  const concrete = /[?؟]|\b(?:write|solve|compare|explain|discuss|choose|list|predict|identify|create|decide|show|test|draw|read|mark|sort|share|teach|reflect|rate)\b/i.test(body);
+  if (!concrete) return "no concrete student action or question";
+  for (const id of selection.ids) {
+    const tool = getAflToolById(id);
+    if (!tool) continue;
+    const patterns: Record<string, RegExp[]> = {
+      "st-kwl-chart": [/\b(?:k|know)\b/i, /\b(?:w|want)\b/i, /\b(?:l|learn)\b/i],
+      "mn-jigsaw": [/\b(?:expert|group a)\b/i, /\bhome group\b/i, /\b(?:teach|share)\b/i],
+      "df-must-should-could": [/\bmust\b/i, /\bshould\b/i, /\bcould\b/i],
+      "pl-3-2-1-reflection": [/\b3\b/, /\b2\b/, /\b1\b/],
+      "sc-traffic-light": [/\bgreen\b/i, /\byellow|amber\b/i, /\bred\b/i],
+    };
+    if (patterns[id]?.some((pattern) => !pattern.test(body))) return `${tool.label} mechanism is incomplete`;
+  }
+  return undefined;
 }
 
 function parseStudentSlideResponse(content: string): { body: string; teacherNotes: string } {
@@ -273,17 +333,18 @@ export async function generateSlide2(params: SlideGenParams): Promise<SlideGenRe
   const user = `Generate a Starter Activity for a ${grade} ${subject} lesson.
 Topic: ${topic}
 ${starterAflBlock ? `AFL Starter Tool: ${starterAflBlock}` : "Choose an appropriate engaging starter AFL tool."}
+${params.aflSelections?.starter?.includes("st-kwl-chart") ? `KWL Chart is selected. The projected slide MUST show three labeled fields K, W, and L. Under K ask a real question about ${topic} that elicits prior knowledge. Under W ask a real curiosity or problem question about ${topic}. Under L give a topic-specific question students will answer after investigating; tell them to leave its answer blank for now. Do not omit L.` : ""}
 
 Requirements:
 - Engaging, interactive, and directly relevant to the topic: ${topic}
-- Step-by-step classroom instructions with timing for each step (total 5-10 minutes)
+- Fill in every prompt, item, or response field required by the selected tool; give students clear steps. Put the 5-10 minute timing and teacher delivery in teacher_notes only.
 - Hook students through prediction, curiosity, inquiry, or a surprising fact about ${topic}
 - Do NOT include learning objectives or outcomes
 - Do NOT reveal the full lesson structure
 - Do NOT mention differentiation, UAE content, homework, or plenary
 - Return only the starter activity content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "starter"));
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -362,9 +423,12 @@ function buildMainPhaseStructureBlock(
   activity: MainActivityStructure | undefined,
   topic: string,
   grade: string,
+  teachingStrategy?: string,
 ): string {
-  const teaching = `Core Teaching (always first):
-Full teaching content including key vocabulary, concepts, clear explanation, and worked examples specific to ${topic} at ${grade} level.`;
+  const exploratoryStrategy = /problem-based|inquiry-based|case study|discovery|design thinking|challenge-based|project-based|experiential/i.test(teachingStrategy ?? "");
+  const teaching = exploratoryStrategy
+    ? `Strategy opening (first): Give students a concrete ${topic} problem, case, observation, or challenge to investigate before revealing the method. Follow with one concise, accurate explanation or worked example that helps them resolve it. Keep one main idea on this slide.`
+    : `Core teaching: Explain one key concept and a short worked example specific to ${topic} at ${grade} level, directly to students.`;
 
   if (!activity) {
     // No selection and no recommendation resolved. Ask for a coherent structure rather than
@@ -396,9 +460,10 @@ Learning Activity — "${activity.label}"${activity.systemRecommended ? " (syste
 How this activity runs: ${activity.howTo}
 
 Implement "${activity.label}" fully for ${topic} at ${grade} level:
-- Write the concrete classroom steps for this activity, in order, with timings.
+- Write the concrete student steps for this activity, in order. Put timings and facilitation in teacher_notes.
 - Use this activity's own structure and vocabulary. Do NOT reorganise it into "I Do / We Do / You Do" and do NOT emit those headings — they belong to a different activity that the teacher did not select.
-- Every step must be specific to ${topic}, not a generic description of the activity.`;
+- Every step must be specific to ${topic}, not a generic description of the activity.
+- For Jigsaw, specify distinct real ${topic} subtopics for at least three expert groups, what each group must work out, and how students return to teach their home group.`;
 }
 
 /** Slide 6: Main Phase Core Teaching — structure driven by the teacher's selected activity. */
@@ -411,18 +476,19 @@ Topic: ${topic}
 ${curriculumType ? `Curriculum: ${curriculumType}` : ""}
 ${mainAflBlock ? `AFL Main Phase Tool: ${mainAflBlock}` : ""}
 
-${buildMainPhaseStructureBlock(mainActivity, topic, grade)}
+${buildMainPhaseStructureBlock(mainActivity, topic, grade, params.teachingStrategy)}
 
 Requirements:
 - Write every visible instruction directly to students using "you" and imperative verbs. Put all teacher directions in teacher_notes only.
 - Rich, detailed, classroom-ready content throughout
+- Keep the visible body within 22 non-empty lines so the exported slide includes the entire activity. For Jigsaw use three concise expert groups, then explicit home-group teaching steps and one short key idea; do not let extra examples displace the home-group exchange.
 - All content specific to ${topic}
 - Do NOT include differentiation tasks (separate slide)
 - Do NOT include plenary or reflection (separate slide)
 - Do NOT include UAE-specific real-world links (separate slide)
 - Do NOT include homework (separate slide)`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "main"));
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -438,24 +504,29 @@ ${differentiationAflBlock ? `AFL Differentiation Tool (teacher-selected - implem
 Write EXACTLY FOUR sections in this precise order:
 
 Higher Achievers task
-[A challenging extension task for ${topic} that requires analysis, evaluation, or creation — goes beyond the lesson objective]
+Write a concrete challenge about ${topic} that requires independent analysis, evaluation, or creation while staying within the SAME objective and procedure. Increase reasoning demand, not syllabus scope (for example, do not switch from one-step to two-step equations).
 
 Middle Achievers task
-[A standard task for ${topic} that directly practises the main learning objective — clear numbered instructions]
+Write a concrete core task about ${topic} that directly practises the main objective.
 
 Lower Achievers task
-[A scaffolded task for ${topic} with sentence starters, word banks, or guided step-by-step prompts]
+Write a concrete scaffolded version of the SAME objective, including a useful first step, example, or sentence starter.
 
 Mini Plenary
-[ONE brief question to check whole-class understanding of ${topic} — maximum one sentence]
+Write ONE filled-in question checking understanding of ${topic}; maximum one sentence.
 
 STRICT RULES:
 - Write ONLY the four sections above — nothing else
+- Replace every instruction above with finished topic-specific task text; do not copy these descriptions or use square-bracket placeholders.
+- If Must-Should-Could is selected, put a real Could task under Higher, a real Should task under Middle, and a real Must task under Lower. Make reasoning increasingly independent across the three tasks.
+- When Must-Should-Could is selected, start the first task line of each tier with the literal labels "Could:", "Should:", and "Must:" respectively. Include all three labels and complete tasks; each tier needs at most two short equations or one short reasoning challenge.
+- Keep the whole body under 20 non-empty lines, including the four section headings and mini plenary, so the entire task survives export.
+- If another differentiation tool is selected, express its actual choice, tiers, or menu mechanism inside the three sections.
 - Do NOT include UAE content, real-world connections, or cross-curricular links
 - Do NOT include a full plenary activity
 - Do NOT include homework or extended tasks`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "differentiation"));
   const cleaned = cleanBody(result.body, slideName);
   result.body = sanitizeSlide7DifferentiatedBody(
     cleaned,
@@ -514,17 +585,18 @@ export async function generateSlide9(params: SlideGenParams): Promise<SlideGenRe
   const system = buildIsolatedSystemPrompt(slideName, params);
   const user = `Generate a complete Plenary activity for a ${grade} ${subject} lesson on: ${topic}
 ${plenaryAflBlock ? `AFL Plenary Tool: ${plenaryAflBlock}` : "Choose the most appropriate plenary AFL tool."}
+${params.aflSelections?.plenary?.includes("pl-3-2-1-reflection") ? `The selected 3-2-1 Reflection needs exactly THREE visible response parts: 3 things learned, 2 interesting or important points, and 1 question still held. Give a ${topic}-specific framing prompt or sentence starter for each part. Put partner sharing, collection, and timing only in teacher_notes. Do not add extra solve, submit, or fourth-step tasks.` : ""}
 
 Include:
 1. Activity name (do NOT use "Plenary" as the first word)
 2. Clear activity objective linked to today's learning about ${topic}
-3. Step-by-step student instructions with timing for each step
-4. What you do at each step
-5. How students reflect on and summarise their learning about ${topic}
+3. Step-by-step student instructions that implement the selected tool's exact response format
+4. The exact topic-specific prompts or response fields students need to reflect on ${topic}
 
 Requirements:
 - Address students directly throughout: "Reflect...", "Answer...", "Write...". Do not narrate what the teacher should ask or explain.
-- Total duration: 8-10 minutes
+- Put the 8-10 minute duration and step timings only in teacher_notes
+- The body must contain zero durations: no "minutes", "min", or time counts. Put all duration details in teacher_notes.
 - Specific to ${topic} — not generic
 - Do NOT start the body with the word "Plenary"
 - Do NOT include differentiation tasks (separate slide)
@@ -532,7 +604,7 @@ Requirements:
 - Do NOT include homework (separate slide)
 - Do NOT include new teaching content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "plenary"));
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -565,24 +637,26 @@ Requirements:
   return result;
 }
 
-/** Slide 11: Exit Ticket — 2–3 focused comprehension questions. */
+/** Slide 11: Exit Ticket — format follows the selected tool. */
 export async function generateSlide11(params: SlideGenParams): Promise<SlideGenResult> {
   const { topic, subject, grade, exitTicketAflBlock } = params;
   const slideName = "Exit Ticket";
   const system = buildIsolatedSystemPrompt(slideName, params);
-  const user = `Generate 2-3 Exit Ticket questions for a ${grade} ${subject} lesson on: ${topic}
+  const user = `Generate an Exit Ticket for a ${grade} ${subject} lesson on: ${topic}
 ${exitTicketAflBlock ? `AFL Exit Ticket Tool (teacher-selected - implement it): ${exitTicketAflBlock}` : ""}
+${params.aflSelections?.exitTicket?.includes("et-exit-card") ? "The selected Exit Card calls for exactly ONE or TWO short topic-specific questions, with any response space students need. Do not add a third question." : ""}
 
 Requirements:
-- EXACTLY 2 to 3 questions — no more, no fewer
-- Each question checks understanding of a key concept from today's lesson on ${topic}
+- Use the selected tool's actual response format and number of prompts. A One Minute Paper needs its brief written response prompt; a Muddiest Point needs one precise confusion prompt; an Exit Card needs a concrete check; an Emoji Scale needs meaningful rating choices plus a topic-specific reason.
+- Fill in the exact question(s), choices, example, or sentence stem students need. Do not print a generic tool label or catalogue description.
+- Each item checks understanding of a key concept from today's lesson on ${topic}
 - Short and clear — answerable in 2-3 minutes total
-- Questions should progress from recall to application
+- If the tool calls for multiple questions, progress from recall to application
 - Do NOT include homework instructions
-- Do NOT include success criteria or self-evaluation prompts
+- Do NOT include a separate success-criteria checklist; if the selected exit tool is Emoji Scale, its rating choices and topic-specific reason belong here
 - Do NOT include new teaching content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "exitTicket"));
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -595,38 +669,36 @@ export async function generateSlide12(params: SlideGenParams): Promise<SlideGenR
   const user = `Generate Success Criteria and Self Evaluation for a ${grade} ${subject} lesson on: ${topic}
 ${successCriteriaAflBlock ? `AFL Success Criteria Tool (teacher-selected - implement it): ${successCriteriaAflBlock}` : ""}
 
-Section 1 — Success Criteria:
-Write 4-6 "I can..." statements that describe what a successful student can do after today's lesson on ${topic}. Each statement must be specific to ${topic} and measurable.
-
-Section 2 — Self Evaluation:
-Write 2-3 reflection prompts that help students honestly assess their own learning about ${topic} today.
+Use the selected success-criteria tool's exact structure. For Traffic Light, write exactly THREE short topic-specific "I can" criteria and one Green/Yellow/Red key at the top; students mark one colour beside each criterion. Do not repeat long colour descriptions under every criterion. For a Can-Do Checklist, give actual checkable "I can" statements. For a Rubric Scale, give level descriptors tied to quality of reasoning about ${topic}. Do not force an unrelated list of statements or reflection questions onto the selected format.
 
 Requirements:
 - All statements must be specific to ${topic} — not generic
+- Keep the complete projected response format under 12 non-empty lines so nothing is cut from the slide.
+- Put interpretation, next teaching move, and timing in teacher_notes only.
 - Do NOT repeat the slide title inside the content
 - Do NOT include exit ticket questions (separate slide)
 - Do NOT include new teaching content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "successCriteria"));
   result.body = cleanBody(result.body, slideName);
   return result;
 }
 
-/** Slide 13: Thank You — brief positive closing, no other content. */
+/** Slide 13: topic-specific lesson takeaway. */
 export function generateSlide13Body(params: SlideGenParams): SlideGenResult {
   const language = params.language ?? DEFAULT_PRESENTATION_LANGUAGE;
   if (language === "ar") {
     return {
       body: [
-        "شكراً لتركيزكم وجهدكم وحماسكم طوال حصة اليوم.",
-        "لقد عملتم بجد — واصلوا البناء على ما تعلمتموه اليوم.",
+        `تذكّر ما تعلمته اليوم عن ${params.topic}.`,
+        `اذكر مثالاً واحداً يوضّح فهمك، ثم حدّد سؤالاً تريد استكشافه عن ${params.topic}.`,
       ].join("\n"),
       teacherNotes: "Suggested timing: 1 minute\nAFL: Use the closing response as a final positive check-in.\nDelivery tip: Acknowledge effort and dismiss students calmly.",
       notices: [],
     };
   }
   return {
-    body: "Thank you for your focus, effort, and enthusiasm throughout today's lesson.\nYou have worked hard — keep building on what you have learned today.",
+    body: `Think back to ${params.topic}: which idea helped you most?\nGive one example that supports your answer, then write one question you want to explore next.`,
     teacherNotes: "Suggested timing: 1 minute\nAFL: Use the closing response as a final positive check-in.\nDelivery tip: Acknowledge effort and dismiss students calmly.",
     notices: [],
   };

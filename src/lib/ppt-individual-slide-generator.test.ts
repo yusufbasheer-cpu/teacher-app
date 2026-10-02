@@ -10,6 +10,7 @@ import {
   generateSlide10,
   generateSlide11,
   generateSlide12,
+  validateSelectedAflBody,
   type SlideGenParams,
 } from "./ppt-individual-slide-generator";
 
@@ -224,5 +225,55 @@ describe("PPT isolated slide generators — topic propagation (regression for cr
       await generateSlide6({ ...FRICTION_PARAMS, mainAflBlock: undefined });
       expect(calls[0]!.user).not.toContain("AFL Main Phase Tool:");
     });
+  });
+
+  it("puts the selected teaching strategy's real sequence into the main slide prompt", async () => {
+    const { calls } = mockDeepSeekFetch();
+    await generateSlide6({ ...FRICTION_PARAMS, teachingStrategy: "Problem-Based Learning" });
+    expect(calls[0]!.system).toMatch(/concrete, unsolved topic-specific problem before explaining/i);
+    expect(calls[0]!.user).toMatch(/Strategy opening \(first\)/);
+  });
+
+  it("retries a selected KWL response that only names the tool", async () => {
+    const completeBody = [
+      "K — What I Know: Write how friction slows a moving bicycle and give one example.",
+      "W — What I Want to Know: Why does a bicycle stop sooner on rough ground? Predict a reason.",
+      "L — What I Learned: After investigating, explain how surface texture changes friction.",
+    ].join("\n");
+    const responses = [
+      { body: "KWL Chart: Activates prior knowledge.", teacher_notes: "Timing: five minutes. Guide the class through the activity." },
+      { body: completeBody, teacher_notes: "Timing: five minutes. Ask learners to complete K and W now; revisit L after investigating." },
+    ];
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init: RequestInit) => {
+      calls.push(String(init.body));
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(responses[calls.length - 1]) } }] }), { status: 200 });
+    }));
+    const result = await generateSlide2({
+      ...FRICTION_PARAMS,
+      aflSelections: { starter: ["st-kwl-chart"] },
+    });
+    expect(calls).toHaveLength(2);
+    expect(result.body).toContain("W — What I Want to Know");
+    expect(result.teacherNotes).toContain("Timing:");
+    expect(result.notices[0]).toMatch(/selected tool needs a complete student task/);
+  });
+
+  it("requires Jigsaw home-group teaching and protects the slide's line limit", () => {
+    const selection = { phase: "main" as const, ids: ["mn-jigsaw"], language: "en" as const };
+    const expertOnly = "Expert Group A: Solve x + 5 = 12 and prepare to teach it.\nExpert Group B: Solve 4x = 20 and share your answer.";
+    expect(validateSelectedAflBody(expertOnly, selection)).toMatch(/mechanism is incomplete/i);
+    const tooLong = Array.from({ length: 24 }, (_, i) => `Line ${i + 1}: Write a different worked step about solving x + 5 = 12 in your notebook.`).join("\n");
+    expect(validateSelectedAflBody(tooLong, selection)).toMatch(/too many visible lines/);
+  });
+
+  it("accepts Arabic differentiated task headings without English-only validation", () => {
+    const arabicBody = [
+      "مهمة المتقدمين: حل معادلة من خطوة واحدة واشرح سبب اختيار العملية العكسية.",
+      "مهمة المستوى المتوسط: حل معادلة ثم تحقق بالتعويض في الطرفين.",
+      "مهمة الدعم: استخدم المثال المحلول ثم اكتب العملية العكسية المناسبة.",
+      "تحقق سريع: ما العملية العكسية التي تستخدمها لحل س + ٤ = ٩؟",
+    ].join("\n");
+    expect(validateSelectedAflBody(arabicBody, { phase: "differentiation", ids: ["df-tiered-tasks"], language: "ar" })).toBeUndefined();
   });
 });

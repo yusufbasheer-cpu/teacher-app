@@ -120,8 +120,8 @@ describe("PPT renderer student-facing cleanup", () => {
 
     const close = slides[12]!;
     expect(close.slideTitle).toBe("Lesson Takeaway");
-    expect(close.body).toContain("Remember:");
-    expect(close.body).toContain("Reflect:");
+    expect(close.body).toContain("Irrigation Methods");
+    expect(close.body).toContain("What would you try next");
     expect(close.body).not.toMatch(/^Thank you/i);
   });
 });

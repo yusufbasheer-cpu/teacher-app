@@ -114,22 +114,22 @@ The app builds **exactly 13 slides** in this **fixed order**. **Each slide has o
 3. **Chapter, Topic and SDG Goal** — Chapter name, topic name, and one SDG (number + title) — **each once**. Do **not** repeat the slide title inside the body. No objectives, outcomes, or explanations.
 4. **Learning Objectives** — **Only** the teacher’s form objectives, **verbatim** (same count, same wording). Do **not** generate, edit, paraphrase, or add objectives. Do **not** write “Learning Objectives” inside the body.
 5. **Learning Outcomes** — Measurable outcomes generated **only** from the teacher’s verbatim objectives; typically one per objective; Bloom verbs; **no** scope beyond those objectives. Do **not** write “Learning Outcomes” inside the body.
-6. **Main Phase Core Teaching** — **First** the **full core teaching content** (concepts, vocabulary, explanation, concise worked meaning). **After** that, **AFL-based** learning activities (I Do / We Do / You Do, stations, etc.) that **apply** the taught content — fully implemented classroom process, not a tool label. Activities must not replace the explanation. No plenary, differentiation, or exit ticket here.
-7. **Differentiated Activity and Mini Plenary** — **Differentiation** AFL tool: **exactly three** labeled sections only — **Higher Achievers task**, **Middle Achievers task**, **Lower Achievers task** (each fully implemented). **No** Quick Check, Mini Plenary, plenary, homework, success criteria, or exit ticket. No core teaching, UAE link (slide 8 only), or outcomes.
+6. **Main Phase Core Teaching** — Implement the selected teaching strategy's actual sequence. Exploratory approaches begin with a real topic-specific problem, question, case, or evidence before a concise explanation. Fully implement the selected main-phase AFL tool with real learner tasks. No plenary, differentiation, or exit ticket here.
+7. **Differentiated Activity and Mini Plenary** — **Differentiation** AFL tool: exactly four sections in order — **Higher Achievers task**, **Middle Achievers task**, **Lower Achievers task**, then **Mini Plenary** with one topic-specific check. Fill in three increasingly independent tasks for the same objective. No full plenary, homework, success criteria, or exit ticket.
 8. **Connection slide (slide 8 — UAE Framework conditional; see user message “Slide 8 mode”):**
    - **If UAE Framework selected:** title **UAE Real Life and Cross Curricular Connection** — UAE landmarks/values, UAE MOE alignment, KHDA/SPEA inspection connection, UAE National Identity, SDG in UAE context; inspection-ready; **no** non-UAE-only generic link.
    - **If UAE Framework NOT selected:** title **Real Life and Cross Curricular Connection** — choose **exactly ONE** of: cross-curricular link, real-life application, career connection, global/SDG link, or subject integration. **Must NOT** mention UAE, Emirates, Dubai, MOE UAE, KHDA, or SPEA anywhere on this slide.
 9. **Plenary** — One **real classroom plenary activity** using teacher-selected **or** AI-selected **Plenary** AFL tool — fully implemented (student tasks, prompts, interaction). No new teaching, homework, objectives, or future-slide references.
-10. **Extended Task** — Extended task or homework only (research, rubric task, creative, practice, investigation). Embed **Extended** AFL when selected or auto-selected. **Do not** repeat the slide title in the body. **No** success criteria, self-evaluation, exit ticket, or plenary.
+10. **Extended Task** — Extended task or homework only (research, creative work, practice, investigation). There is no AFL phase on this slide. **Do not** repeat the slide title in the body. **No** success criteria, self-evaluation, exit ticket, or plenary.
 11. **Exit Ticket** — **Exit ticket** AFL tool only: short, focused assessment — immediate understanding check (teacher-selected **or** AI-selected). No homework paragraph, success criteria, or lesson explanation.
 12. **Success Criteria and Self Evaluation** — **Success criteria** AFL tool: help students assess their own learning (traffic lights, checklist, two stars and a wish, rubric scale). No new teaching and no repeating the exit ticket.
-13. **Thank You** — Thank you plus one short positive closing line for students only. No recap, objectives, or activities.
+13. **Lesson Takeaway** — One concise, topic-specific reminder and a student-facing next-step reflection. No new teaching or activity.
 
 **Images (automatic):** up to **three** images on slides **2, 6, and 9** only (Starter, Main Phase Core Teaching, Plenary). Slide 1 has **no** image.
 
 **Formatting:** no markdown on slide text; avoid hyphen-led list markers (use plain lines or 1. 2. 3.).
 
-**AFL-driven PPT (mandatory for slides 2, 6, 7, 9, 10, 11, 12):** The deck is powered by AFL tools. Teacher-selected AFL tools **override** AI selection and must be **fully implemented** as classroom processes — not labels. When the teacher did not select a tool, **auto-select** the most suitable AFL tool per stage (subject, topic, grade, objectives, engagement). See the dedicated AFL system rules block in the system prompt for full requirements.
+**AFL-driven PPT (mandatory for slides 2, 6, 7, 9, 11, 12):** Teacher-selected AFL tools **override** AI selection and must be **fully implemented** through filled-in student prompts and response formats. Put teacher timing and facilitation in speaker notes. When the teacher did not select a tool, use the deterministic recommendation for that phase. See the dedicated AFL system rules block for full requirements.
 
 **CRITICAL — Slide boundary enforcement (mandatory; no exceptions):**
 1. **Strict content isolation (no cross-leakage):** Every slide contains **only** its assigned content type. No borrowing, repeating, or mixing from other slides or sections. Examples: **Learning Objectives** must not contain outcomes or extra explanations; **Differentiated Activity** must not contain UAE links or homework; **Exit Ticket** must not contain success criteria; **Plenary** must not contain extended homework. Each slide stays inside its correct boundary.
@@ -357,11 +357,11 @@ ${PPT_AFL_DRIVEN_SYSTEM_RULES}
               : n === 6
                 ? `
 
-**Slide 6 body rule:** **First** full core teaching content, **then** AFL-based activities — fully implemented, not labels. No plenary, differentiation, or exit ticket.`
+**Slide 6 body rule:** Use the selected teaching strategy's actual sequence and fully implement the selected AFL activity. Exploratory strategies open with a concrete problem or evidence before explaining the concept. No plenary, differentiation, or exit ticket.`
                 : n === 7
                   ? `
 
-**Slide 7 body rule:** Exactly three labeled sections only — **Higher Achievers task**, **Middle Achievers task**, **Lower Achievers task** (fully implemented). **Nothing else** on this slide. No Quick Check, Mini Plenary, plenary, homework, success criteria, or exit ticket. No UAE link (slide 8 only) or core re-teach.`
+**Slide 7 body rule:** Exactly four sections — **Higher Achievers task**, **Middle Achievers task**, **Lower Achievers task**, then **Mini Plenary** with one topic-specific checkpoint. Implement the selected differentiation tool within the three tasks. No full plenary, homework, success criteria, or exit ticket.`
                   : n === 8
                     ? uaeOn
                       ? `

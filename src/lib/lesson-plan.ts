@@ -281,6 +281,26 @@ export const TEACHING_STRATEGIES = [
   { id: "discovery",           name: "Discovery Learning",                  description: "Students explore and discover concepts through guided investigation" },
 ] as const;
 
+/** Classroom sequence used when a strategy is selected for slide generation. */
+export const TEACHING_STRATEGY_MECHANISMS: Record<typeof TEACHING_STRATEGIES[number]["id"], string> = {
+  "project-based": "Open with a driving question and an authentic product. Students plan, investigate, create, critique, and revise that product using the lesson concept.",
+  "problem-based": "Open with a concrete, unsolved topic-specific problem before explaining a method. Students identify what they know and need, test possible solutions, justify a choice, then compare it with the concept taught.",
+  "inquiry-based": "Open with an investigable question or observation. Students predict, gather or inspect evidence, explain a pattern, and revise their claim using that evidence.",
+  "design-thinking": "Present a specific user need. Students empathize, define the need, propose ideas, make a simple prototype, and test or improve it with evidence.",
+  "case-study": "Present a concrete case with relevant details and a decision to make. Students analyze the evidence, apply the lesson concept, defend a decision, and consider a consequence.",
+  "experiential": "Begin with a brief direct experience or simulation. Students observe, describe what happened, connect it to the concept, and apply it in a new situation.",
+  "cooperative": "Give group members distinct, necessary roles or information and a shared topic-specific task. Each learner contributes, explains their reasoning, and checks the group's conclusion.",
+  "flipped-classroom": "Start with a quick check of prior study, then use class time for a topic-specific application, peer explanation, feedback, and correction. Do not assume students completed unprovided homework.",
+  "challenge-based": "State a meaningful challenge and success constraints. Students investigate the topic, propose and test a response, then explain how evidence supports it.",
+  "discovery": "Provide a carefully sequenced set of topic-specific examples or data. Students notice a pattern, state a tentative rule, test it on a new example, and refine it.",
+};
+
+export function getTeachingStrategyMechanism(selection: string | undefined): string | undefined {
+  const selected = selection?.trim().toLowerCase();
+  const strategy = TEACHING_STRATEGIES.find((item) => item.id === selected || item.name.toLowerCase() === selected);
+  return strategy ? TEACHING_STRATEGY_MECHANISMS[strategy.id] : undefined;
+}
+
 export type TeachingStrategyId = typeof TEACHING_STRATEGIES[number]["id"];
 
 export type LessonPlanInput = {

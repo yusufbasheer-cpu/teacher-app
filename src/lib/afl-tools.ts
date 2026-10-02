@@ -773,7 +773,7 @@ The PPT generation system is **driven by AFL tools** from the **AFL tool catalog
 
 ### TEACHER CONTROL RULE (mandatory)
 - If the teacher **selected** an AFL tool for a phase, you **MUST** use **exactly** that tool — **do NOT** replace it.
-- Implement the selected tool as a **full classroom activity** with complete teacher facilitation steps and student tasks.
+- Implement the selected tool as a **full classroom activity**. Visible slide text contains filled-in student tasks and prompts; teacher facilitation and timing go in speaker notes only.
 - If the teacher **did NOT** select a tool for a phase, use the **system-recommended** tool given for that phase — a recommendation resolved deterministically from subject/grade/topic/learning objectives, shown to the teacher exactly as given. Implement it fully. Do **not** claim, imply, or narrate that the teacher chose it, and do **not** substitute a different tool.
 - Each phase is resolved **independently** — a teacher selection in one phase never affects whether another phase is treated as selected.
 
@@ -785,7 +785,7 @@ The PPT generation system is **driven by AFL tools** from the **AFL tool catalog
 | Slide | Stage | AFL rule |
 |-------|-------|----------|
 | 2 | Starter Activity | Teacher-selected **or** AI-selected **starter** AFL tool. Engaging, interactive, topic-related. **No** objectives, outcomes, or future-slide content. |
-| 6 | Main Phase | **First** full core teaching content. **Then** embed **main phase** AFL tool(s) as interactive activities. |
+| 6 | Main Phase | Use the selected teaching strategy's real sequence and embed the main-phase AFL tool as a complete activity. Exploratory strategies open with a concrete problem, case, or observation before explanation. |
 | 7 | Differentiated Activity | **Differentiation** AFL tool — tasks for lower, middle, and higher achievers aligned with lesson content. |
 | 8 | Connection (UAE Framework conditional) | **UAE Framework ON:** UAE Real Life and Cross Curricular Connection (landmarks/values, MOE, KHDA/SPEA, national identity, SDG UAE). **OFF:** Real Life and Cross Curricular Connection — **one** of cross-curricular, real life, career, global/SDG, or subject integration — **no UAE** mentions. **No** AFL tool on this slide. |
 | 9 | Plenary | **Plenary** AFL tool — real classroom activity, fully implemented. |
@@ -940,7 +940,7 @@ export function getAflPhaseForPptSlideNumber1Based(slideNumber1Based: number): A
 function formatTeacherSelectedAflBlock(binding: PptSlideAflBinding, ids: string[]): string {
   const lines: string[] = [
     `### AFL for THIS slide — ${binding.stageLabel} (MANDATORY — teacher selected)`,
-    "The teacher **selected** the AFL tool(s) below. You **MUST** use **exactly** these tools — **do NOT** replace them. Implement each as a **full classroom activity**: how it works, classroom use steps, student tasks, teacher facilitation, timing, and finished learner-facing prompts — **not** a label.",
+    "The teacher **selected** the AFL tool(s) below. You **MUST** use **exactly** these tools — **do NOT** replace them. Put its real steps, filled-in questions/items, and response format into student-facing body text. Put teacher facilitation and timing into speaker notes only. A name or purpose without the activity is a generation failure.",
     "",
   ];
   const group = AFL_PHASE_GROUPS.find((g) => g.phase === binding.selectionPhase);
@@ -982,7 +982,7 @@ function formatAutoSelectAflBlock(
   if (slideNumber1Based === 6) {
     lines.push(
       "",
-      "**Main Phase structure (mandatory):** Present **full core teaching content first**, then embed the recommended main-phase AFL tool as interactive activities.",
+      "**Main Phase structure (mandatory):** Use the teaching strategy's real sequence, including a problem or question first when the strategy is exploratory. Include one concise explanation and implement the recommended AFL activity with filled-in student tasks.",
     );
   }
   if (slideNumber1Based === 7) {
@@ -1037,7 +1037,7 @@ export function formatAflForAiPrompt(
     "### AFL per phase (resolved independently — a teacher selection in one phase does not affect any other)",
     "For each phase below: if the teacher selected tool(s), use **exactly** those — do **NOT** substitute or add others. If a phase has no teacher selection, use the **system-recommended** tool given for that phase exactly as written — it is a recommendation resolved deterministically from the lesson context, **not** a teacher choice; do not claim, imply, or narrate that the teacher chose it. Implement every phase as a **full classroom activity** with teacher instructions and student tasks for this topic, grade, and subject.",
     "",
-    "**PPT Slide Content:** Embed tools on slide **2** Starter, **6** Main Phase (after teaching), **7** Differentiation, **9** Plenary, **11** Exit Ticket, **12** Success Criteria. Slide **8** = one connection only (no AFL phase). Slide **10** = extended task only (no AFL phase).",
+    "**PPT Slide Content:** Embed tools on slide **2** Starter, **6** Main Phase (within the selected teaching strategy's sequence), **7** Differentiation, **9** Plenary, **11** Exit Ticket, **12** Success Criteria. Slide **8** = one connection only (no AFL phase). Slide **10** = extended task only (no AFL phase).",
     "",
     "**Picture Prompt Image Analysis (if selected):** Write the exact observation and prediction prompts for the starter image.",
     "",
@@ -1069,31 +1069,6 @@ export function formatAflForAiPrompt(
 
   if (!addedAny) return "";
   return lines.join("\n").trim();
-}
-
-/** One short classroom line for slide bullets (name + purpose). */
-export function briefHowToUseForSlide(howToUse: string, maxLen = 160): string {
-  const t = howToUse.replace(/\s+/g, " ").trim();
-  if (!t) return "";
-  const purposeIdx = t.toLowerCase().indexOf("purpose:");
-  const slice = purposeIdx > 0 ? t.slice(purposeIdx) : t;
-  return slice.length > maxLen ? `${slice.slice(0, maxLen - 1).trim()}…` : slice;
-}
-
-export function formatToolsBlockForSlide(
-  phase: AflPhaseId,
-  selectedIds: string[] | undefined,
-  /** Heading text; supplied localised by the deck builder so Arabic decks stay Arabic. */
-  heading = "Selected AFL for this part of the lesson",
-): string {
-  if (!selectedIds?.length) return "";
-  const parts: string[] = [`\n\n${heading}\n`];
-  for (const id of selectedIds) {
-    const t = getAflToolById(id);
-    if (!t) continue;
-    parts.push(`• ${t.label}: ${t.purpose}`);
-  }
-  return parts.length > 1 ? parts.join("\n") : "";
 }
 
 /** Split tool ids across N slides (round-robin). */

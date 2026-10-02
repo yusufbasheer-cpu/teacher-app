@@ -103,16 +103,16 @@ export function buildPptSlidePreflightChecklist(ctx: PptSlideValidationContext):
     3: "chapter name, topic name, and one SDG (number + title) only",
     4: "teacher learning objectives verbatim only",
     5: "exactly one measurable learning outcome per teacher objective, same order, same count",
-    6: "core teaching content first, then main-phase AFL activities only",
+    6: "selected teaching strategy sequence with a concrete opener, concise concept explanation, and fully implemented main-phase AFL activity",
     7: 'four sections in order: "Higher Achievers task" (challenging extension), "Middle Achievers task" (standard objective), "Lower Achievers task" (scaffolded with sentence starters or word bank), then "Mini Plenary" — one quick question to check understanding',
     8: ctx.uaeFrameworkSelected
       ? "UAE-specific real-life connection to the topic, cross-curricular link relevant to UAE schools, UAE MOE alignment, KHDA/SPEA inspection note, and SDG in UAE context — all specific to the actual topic"
       : "one specific connection (real-life application, cross-curricular link, career connection, or global/SDG link) fully developed for the actual topic — no UAE references at all",
-    9: "complete plenary activity with activity name (not starting with 'Plenary'), step-by-step instructions, student actions, timings, and connection to today's learning objectives — specific to the actual topic",
+    9: "complete plenary activity with the selected tool's exact student response format and topic-specific prompts; teacher timings belong in speaker notes",
     10: "complete extended task or homework with task name, numbered student instructions, expected output, and a challenge extension — specific to the actual topic; no success criteria or self-evaluation content",
     11: "exit ticket only",
     12: "success criteria and self-evaluation only",
-    13: "thank-you closing line only",
+    13: "concise topic-specific takeaway and student reflection only",
   };
   const mustNot: Record<number, string> = {
     2: "objectives, outcomes, chapter block, plenary, homework, UAE link",

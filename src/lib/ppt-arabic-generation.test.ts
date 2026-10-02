@@ -135,7 +135,7 @@ describe("programmatic slides follow the deck language", () => {
 
     expect(ar).toMatch(/[؀-ۿ]/);
     expect(ar).not.toContain("Thank you");
-    expect(en).toContain("Thank you");
+    expect(en).toContain("Think back to");
   });
 
   it("uses the Arabic placeholder when objectives are genuinely missing", () => {

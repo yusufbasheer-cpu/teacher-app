@@ -85,4 +85,15 @@ describe("dropRepeatedTail — cuts a body off where it starts repeating itself"
       "and every quadratic equation can be solved once the discriminant is known.";
     expect(dropRepeatedTail(text)).toBe(text);
   });
+
+  it("keeps a 3-2-1 activity when its topic phrase recurs in later steps", () => {
+    const text = [
+      "3-2-1 Equation Reflection",
+      "Explain how you solve one-step linear equations using inverse operations.",
+      "Step 1: Write 3 things you learned about solving one-step linear equations using inverse operations.",
+      "Step 2: Write 2 interesting examples of inverse operations.",
+      "Step 3: Write 1 question you still have about your solution.",
+    ].join("\n");
+    expect(dropRepeatedTail(text)).toBe(text);
+  });
 });

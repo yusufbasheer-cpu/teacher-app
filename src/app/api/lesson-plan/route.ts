@@ -159,9 +159,9 @@ The teacher has selected the following pedagogical strategy: **${s}**
 
 RULE 1: The selected teaching strategy must ONLY influence the activities and examples within each lesson phase. It must NOT change the lesson plan structure, add sections, or remove sections.
 RULE 2: The lesson plan must still contain ALL standard sections: Learning Objectives, Learning Outcomes, Starter Activity, Main Phase, Differentiated Activity, UAE Real Life Connection, Plenary, Extended Task, Exit Ticket, Success Criteria.
-RULE 3: Apply the strategy as follows for each section:
+RULE 3: Apply the strategy's real classroom sequence as follows for each section:
   - Starter Activity: Design the hook activity using the principles of ${s}.
-  - Main Phase: Structure the I Do / We Do / You Do activities according to ${s}.
+  - Main Phase: Use the actual steps of ${s} with a concrete problem, question, case, or challenge as appropriate. Use I Do / We Do / You Do only if that is the selected AFL activity.
   - Differentiated Activity: Create differentiated tasks that reflect the ${s} approach.
   - Plenary: Design the reflection activity using ${s} principles.
   - Extended Task: Create homework that extends the ${s} approach.
@@ -348,6 +348,7 @@ async function generatePptSlideContentSlideBySlide(params: {
       topic: resolveGenerationTopic(input.topic, input.chapter),
       learningObjectives: input.learningObjectives.trim(),
     }),
+    aflSelections,
     ...(input.teachingStrategy?.trim() ? { teachingStrategy: input.teachingStrategy.trim() } : {}),
     language,
     uaeFrameworkEnabled,
@@ -392,7 +393,20 @@ async function generatePptSlideContentSlideBySlide(params: {
     Promise.resolve(trackSync(generateSlide13Body(slideParams))),  // programmatic
   ]);
 
-  const bodies = [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13].map((result, i) => {
+  const slideResults = [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13];
+  const selectedSlidePhases: [number, keyof typeof aflSelections][] = [
+    [2, "starter"], [6, "main"], [7, "differentiation"], [9, "plenary"],
+    [11, "exitTicket"], [12, "successCriteria"],
+  ];
+  const failedSelected = selectedSlidePhases.find(([number, phase]) => {
+    if (!aflSelections[phase]?.length) return false;
+    const result = slideResults[number - 1];
+    return !result || result.status === "rejected" || result.value.body.includes("could not be generated");
+  });
+  if (failedSelected) {
+    throw new Error(`PPT Slide ${failedSelected[0]} could not implement the selected AFL tool. Please regenerate the presentation.`);
+  }
+  const bodies = slideResults.map((result, i) => {
     if (result.status === "fulfilled") return result.value;
     const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
     notices.push(`PPT Slide ${i + 1} rejected: ${reason}`);

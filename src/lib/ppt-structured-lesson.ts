@@ -12,12 +12,11 @@ import {
 import { isUaeCurriculumFramework } from "@/lib/curriculum-framework";
 import {
   DEFAULT_PRESENTATION_LANGUAGE,
-  pptString,
   resolvePresentationLanguage,
   localeTagFor,
   type PresentationLanguage,
 } from "@/lib/ppt-language";
-import { AFL_PHASE_IDS, formatToolsBlockForSlide, type AflPhaseId, type AflSelectionsPayload } from "@/lib/afl-tools";
+import { AFL_PHASE_IDS, type AflSelectionsPayload } from "@/lib/afl-tools";
 import {
   type LessonPlanResult,
   getPptSourceLessonText,
@@ -519,7 +518,7 @@ function stripMarkdownSymbolsForStudents(text: string): string {
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/`([^`]+)`/g, "$1")
-    .replace(/_{1,2}([^_]+)_{1,2}/g, "$1");
+    .replace(/(^|[\s(])_{1,2}([^\s_]+)_{1,2}(?=[\s).,!?:;]|$)/gm, "$1$2");
   s = s
     .split("\n")
     .map((line) =>
@@ -1013,48 +1012,12 @@ function aflPayloadHasTools(afl: AflSelectionsPayload | undefined): boolean {
   return AFL_PHASE_IDS.some((p) => (afl[p]?.length ?? 0) > 0);
 }
 
-function appendAflToSlideBody(
-  slide: StructuredLessonSlideModel,
-  phase: AflPhaseId,
-  language: PresentationLanguage,
-  ids?: string[],
-) {
-  const block = formatToolsBlockForSlide(phase, ids, pptString(language, "aflSelectedHeading"));
-  if (!block) return;
-  const merged = `${(slide.body ?? "").trim()}${block}`.trim();
-  const polished = polishBody(merged, SECTION_MAX_CHARS + 500, BULLET_MAX_LINES_WITH_AFL);
-  slide.body = stripMarkdownSymbolsForStudents(polished || merged);
-}
-
 /**
- * AFL on deck: starter →2, main →6, differentiation →7, plenary →9, exitTicket →11, successCriteria →12.
+ * Require a repeated passage, not a recurring topic phrase. A shorter window cut a real
+ * 3-2-1 plenary after its first sentence when "one-step linear equations using inverse
+ * operations" appeared twice.
  */
-function applyAflDeckInjections(
-  slides: StructuredLessonSlideModel[],
-  afl: AflSelectionsPayload | undefined,
-  language: PresentationLanguage,
-) {
-  if (!aflPayloadHasTools(afl) || !afl) return;
-  const go = (idx: number, phase: AflPhaseId, ids?: string[]) => {
-    const slide = slides[idx];
-    if (!slide || !ids?.length) return;
-    appendAflToSlideBody(slide, phase, language, ids);
-  };
-  go(1, "starter", afl.starter);
-  go(5, "main", afl.main);
-  go(6, "differentiation", afl.differentiation);
-  go(8, "plenary", afl.plenary);
-  go(10, "exitTicket", afl.exitTicket);
-  go(11, "successCriteria", afl.successCriteria);
-}
-
-/**
- * Minimum length of a repeated chunk that counts as duplication rather than coincidental
- * phrase reuse — long enough that ordinary domain vocabulary ("quadratic equation", "the
- * discriminant") recurring across a body never trips this, short enough to still catch a
- * repeated sentence or paragraph.
- */
-const DEDUP_MIN_CHARS = 60;
+const DEDUP_MIN_CHARS = 120;
 
 /**
  * Cuts a body off at the point where it starts repeating a chunk of text already seen
@@ -1412,7 +1375,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     body: stripMarkdownSymbolsForStudents(
       isAr
         ? `الفكرة الأساسية: اربط تعلم اليوم بدليل واضح وخطوة تطبيقية تالية.\n\nتذكّر:\n1. الفكرة المهمة في الدرس.\n2. المثال أو الدليل الذي يثبت فهمك.\n3. السؤال الذي ما زلت تريد استكشافه.\n\nفكّر: ما خطوة التحسن التالية بالنسبة لك؟`
-        : `Lesson Takeaway: use today's core idea with evidence, accuracy, and confidence.\n\nRemember:\n1. Name the key idea from the lesson.\n2. Support your answer with an example or check.\n3. Ask one question that would deepen your understanding.\n\nReflect: What is your next step for improvement?`,
+        : `Think back to ${topic}: which idea helped you make sense of it?\n\nGive one example or check that supports your answer.\n\nWhat would you try next to deepen your understanding of ${topic}?`,
     ),
     speakerNotes: buildTeacherSlideNotes(
       "1 minute",
@@ -1429,7 +1392,6 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     if (generated) slides[i]!.speakerNotes = generated;
   }
 
-  applyAflDeckInjections(slides, ctx.aflSelections, language);
   applyPptIsolationValidationToDeck(slides, topic, language);
   clampSlideBodyToDeckRules(slides);
 
