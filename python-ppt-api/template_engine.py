@@ -367,6 +367,27 @@ def _place_design_image(target, body_shape, image_bytes: bytes, safe) -> None:
     target.shapes.add_picture(io.BytesIO(image_bytes), x0 + (avail_w - w) // 2, body_shape.top + max(0, (avail_h - h) // 6), w, h)
 
 
+def _place_image_beside_body(target, body_shape, image_bytes: bytes) -> None:
+    """Use the existing editable content area when the source has no picture frame."""
+    from PIL import Image
+    original_width = body_shape.width
+    gap = int(original_width * 0.02)
+    body_shape.width = int(original_width * IMAGE_TEXT_FACTOR)
+    left = body_shape.left + body_shape.width + gap
+    available_width = original_width - body_shape.width - gap
+    if available_width < target.part.package.presentation_part.presentation.slide_width * 0.15:
+        raise TemplateIncompatible("REQUIRED_IMAGE_SLOT_MISSING", "The content area is too narrow to hold the lesson image.")
+    width, height = Image.open(io.BytesIO(image_bytes)).size
+    scale = min(available_width / width, body_shape.height / height)
+    picture_width, picture_height = int(width * scale), int(height * scale)
+    target.shapes.add_picture(
+        io.BytesIO(image_bytes),
+        left + (available_width - picture_width) // 2,
+        body_shape.top + (body_shape.height - picture_height) // 2,
+        picture_width, picture_height,
+    )
+
+
 def _font_size(shape, default: float) -> float:
     for paragraph in shape.text_frame.paragraphs:
         for run in paragraph.runs:
@@ -485,7 +506,7 @@ def _remove_slide(prs, index: int):
     prs.slides._sldIdLst.remove(slide_id)
 
 
-def _replace_picture(slide, image_bytes: bytes | None):
+def _replace_picture(slide, body_shape, image_bytes: bytes | None):
     slide_area = slide.part.package.presentation_part.presentation.slide_width * slide.part.package.presentation_part.presentation.slide_height
     pictures = [s for s in slide.shapes if s.shape_type == MSO_SHAPE_TYPE.PICTURE and 0.12 < s.width * s.height / slide_area < 0.75]
     if not pictures:
@@ -498,7 +519,8 @@ def _replace_picture(slide, image_bytes: bytes | None):
             if len(placeholders) == 1:
                 placeholders[0].insert_picture(io.BytesIO(image_bytes))
                 return True
-            raise TemplateIncompatible("REQUIRED_IMAGE_SLOT_MISSING", "The lesson includes an image, but this slide design has no clear place for it.")
+            _place_image_beside_body(slide, body_shape, image_bytes)
+            return True
         return False
     if len(pictures) > 1:
         raise TemplateIncompatible("AMBIGUOUS_MAPPING", "This slide has multiple large pictures, so the lesson image destination is unclear.")
@@ -506,6 +528,20 @@ def _replace_picture(slide, image_bytes: bytes | None):
     if image_bytes:
         part, rid = slide.part.get_or_add_image_part(io.BytesIO(image_bytes))
         picture._element.blipFill.blip.set(qn("r:embed"), rid)
+        # Keep the source frame and its styling, but crop the new image to cover
+        # the frame without stretching it when the aspect ratios differ.
+        from PIL import Image
+        image_width, image_height = Image.open(io.BytesIO(image_bytes)).size
+        image_ratio = image_width / image_height
+        frame_ratio = picture.width / picture.height
+        picture.crop_left = picture.crop_right = 0
+        picture.crop_top = picture.crop_bottom = 0
+        if image_ratio > frame_ratio:
+            crop = (1 - frame_ratio / image_ratio) / 2
+            picture.crop_left = picture.crop_right = crop
+        else:
+            crop = (1 - image_ratio / frame_ratio) / 2
+            picture.crop_top = picture.crop_bottom = crop
     else:
         picture._element.getparent().remove(picture._element)
     return True
@@ -537,7 +573,13 @@ def _choose_source(sources, index: int, total: int, title: str, body: str, desig
             title_capacity = _capacity(title_shape, 30)
             if not title_capacity or len(title) > title_capacity[0]:
                 raise TemplateIncompatible("TEXT_OVERFLOW", "The title or content area is too small.")
-            factor = IMAGE_TEXT_FACTOR if lenient and has_image else 1.0
+            slide_area = candidate.part.package.presentation_part.presentation.slide_width * candidate.part.package.presentation_part.presentation.slide_height
+            picture_frames = [s for s in candidate.shapes if s.shape_type == MSO_SHAPE_TYPE.PICTURE and 0.12 < s.width * s.height / slide_area < 0.75]
+            picture_placeholders = [s for s in candidate.placeholders if "PICTURE" in str(s.placeholder_format.type).upper() and s.width * s.height > slide_area * 0.12]
+            if has_image and not lenient and (len(picture_frames) > 1 or len(picture_placeholders) > 1):
+                raise TemplateIncompatible("AMBIGUOUS_MAPPING", "This slide has multiple picture areas, so the lesson image destination is unclear.")
+            image_beside_body = has_image and not picture_frames and not picture_placeholders
+            factor = IMAGE_TEXT_FACTOR if lenient and has_image or image_beside_body else 1.0
             body_size = None
             if lenient:
                 # Use the largest size that keeps the section on one or two slides.
@@ -590,6 +632,7 @@ def render_template(data: bytes, slides: list[dict[str, Any]], images: dict[int,
     design = _prepare_design_slides(sources)
     generated = 0
     expected_bodies: list[tuple[int, str]] = []
+    expected_images: list[tuple[int, bytes]] = []
     for index, item in enumerate(slides):
         try:
             title = str(item.get("title", "")).strip()
@@ -618,7 +661,9 @@ def render_template(data: bytes, slides: list[dict[str, Any]], images: dict[int,
                     if lesson_image:
                         _place_design_image(target, target_body, lesson_image, design[source.slide_id]["safe"])
                 else:
-                    _replace_picture(target, lesson_image)
+                    _replace_picture(target, target_body, lesson_image)
+                if lesson_image:
+                    expected_images.append((generated, lesson_image))
                 speaker_notes = str(item.get("speakerNotes", "")).strip()
                 if part_index > 0 and speaker_notes:
                     speaker_notes = f"{speaker_notes}\n\nContinuation of this section."
@@ -640,4 +685,8 @@ def render_template(data: bytes, slides: list[dict[str, Any]], images: dict[int,
         actual = next((shape.text for shape in slide.shapes if shape.shape_id == shape_id), None)
         if actual != expected_text:
             raise TemplateIncompatible("VALIDATION_FAILED", "Some lesson content is missing from the exported PowerPoint.")
+    for slide_index, expected_image in expected_images:
+        if not any(shape.shape_type == MSO_SHAPE_TYPE.PICTURE and shape.image.blob == expected_image
+                   for shape in check.slides[slide_index].shapes):
+            raise TemplateIncompatible("VALIDATION_FAILED", "A lesson image is missing from the exported PowerPoint.")
     return output

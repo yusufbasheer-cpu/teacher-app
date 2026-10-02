@@ -84,7 +84,7 @@ class UploadedTemplateTests(unittest.TestCase):
 
     def test_very_dense_content_returns_fit_warning(self):
         with self.assertRaises(TemplateIncompatible) as raised:
-            render_template(source_deck(), [{"title": "Dense lesson", "content": "example " * 5000}])
+            render_template(source_deck(), [{"title": "Dense lesson", "content": "example " * 30000}])
         self.assertEqual(raised.exception.code, "TEXT_OVERFLOW")
         self.assertEqual(raised.exception.slide, 1)
 
@@ -106,10 +106,32 @@ class UploadedTemplateTests(unittest.TestCase):
         self.assertEqual(result.slides[0].shapes[-1].image.blob, png(0, 0, 255))
         self.assertEqual(result.slides[0].shapes[-2].fill.fore_color.rgb, RGBColor(20, 90, 150))
 
-    def test_generated_image_without_template_frame_returns_warning(self):
-        with self.assertRaises(TemplateIncompatible) as raised:
-            render_template(source_deck(), [{"title": "New", "content": "Content"}], {0: png(0, 0, 255)})
-        self.assertEqual(raised.exception.code, "REQUIRED_IMAGE_SLOT_MISSING")
+    def test_generated_image_without_template_frame_sits_beside_content(self):
+        result = Presentation(io.BytesIO(render_template(
+            source_deck(), [{"title": "New", "content": "Content"}], {0: png(0, 0, 255)},
+        )))
+        slide = result.slides[0]
+        body = slide.placeholders[1]
+        picture = next(s for s in slide.shapes if s.shape_type == 13)
+        self.assertEqual(picture.image.blob, png(0, 0, 255))
+        self.assertGreaterEqual(picture.left, body.left + body.width)
+        self.assertLessEqual(picture.left + picture.width, result.slide_width)
+
+    def test_replaced_image_uses_source_frame_without_stretching(self):
+        from PIL import Image
+        deck = Presentation(io.BytesIO(source_deck()))
+        tall_image = io.BytesIO()
+        Image.new("RGB", (10, 20), (0, 0, 255)).save(tall_image, "PNG")
+        deck.slides[0].shapes.add_picture(io.BytesIO(png(255, 0, 0)), Inches(7), Inches(1.5), width=Inches(4), height=Inches(3))
+        source = io.BytesIO()
+        deck.save(source)
+        result = Presentation(io.BytesIO(render_template(
+            source.getvalue(), [{"title": "New", "content": "Content"}], {0: tall_image.getvalue()},
+        )))
+        picture = next(s for s in result.slides[0].shapes if s.shape_type == 13)
+        self.assertEqual(picture.image.blob, tall_image.getvalue())
+        self.assertGreater(picture.crop_top, 0)
+        self.assertGreater(picture.crop_bottom, 0)
 
     def test_uses_another_source_slide_when_first_design_is_ambiguous(self):
         deck = Presentation(io.BytesIO(source_deck()))
@@ -180,12 +202,31 @@ class UploadedTemplateTests(unittest.TestCase):
                 headers={"X-Template-Service-Secret": "test-secret"},
                 data={
                     "template": (io.BytesIO(source_deck()), "example.pptx"),
-                    "slides": json.dumps([{"title": "Dense", "content": "many words " * 5000}]),
+                    "slides": json.dumps([{"title": "Dense", "content": "many words " * 30000}]),
                 },
             )
             self.assertEqual(response.status_code, 422)
             self.assertEqual(response.json["code"], "TEXT_OVERFLOW")
             self.assertEqual(response.json["slide"], 1)
+
+    def test_service_embeds_uploaded_lesson_image(self):
+        from main import app
+
+        client = app.test_client()
+        with patch.dict(os.environ, {"PPT_TEMPLATE_SERVICE_SECRET": "test-secret"}):
+            response = client.post(
+                "/render-uploaded-template",
+                headers={"X-Template-Service-Secret": "test-secret"},
+                data={
+                    "template": (io.BytesIO(source_deck()), "example.pptx"),
+                    "slides": json.dumps([{"title": "New", "content": "Content"}]),
+                    "image_0": (io.BytesIO(png(0, 0, 255)), "fal.png"),
+                },
+            )
+        self.assertEqual(response.status_code, 200)
+        result = Presentation(io.BytesIO(response.data))
+        self.assertTrue(any(shape.shape_type == 13 and shape.image.blob == png(0, 0, 255)
+                            for shape in result.slides[0].shapes))
 
 
 if __name__ == "__main__":

@@ -61,8 +61,11 @@ unavailable message until it is configured.
 Teachers can upload a completed editable `.pptx` in the lesson's PPT template
 selector. The uploaded deck is reused as the visual source. The renderer
 supports slides with identifiable title and body text areas, ordinary shapes,
-and one large replaceable lesson picture per slide. A slide that is artwork only (no text areas) is also accepted: Layah adds a title and content area in the clear space beside the artwork and places lesson pictures next to the text. Slides with generated images
-need a clear picture area in the uploaded design. It duplicates source slide
+and one large replaceable lesson picture per slide. If a slide has no picture
+frame, Layah places the generated lesson image beside its editable body text
+when there is enough space. A slide that is artwork only (no text areas) is also
+accepted: Layah adds a title and content area in the clear space beside the
+artwork and places lesson pictures next to the text. It duplicates source slide
 designs when the lesson needs more slides. Charts, grouped content, embedded
 objects, and ambiguous old text return an incompatibility warning with a Layah
 template fallback. Fit detection is conservative and is based on text geometry;

@@ -32,15 +32,19 @@ export async function renderUploadedPpt(params: {
   await Promise.all(params.slideImageUrls.map(async (url, index) => {
     if (!url) return;
     try {
-      const bytes = await fetchExternalImageSafely(url, { timeoutMs: 8000, maxBytes: 3 * 1024 * 1024 });
+      // Match the built-in PPT renderer's image limit. Fal PNGs can exceed 3 MB.
+      const bytes = await fetchExternalImageSafely(url, { maxBytes: 20 * 1024 * 1024 });
       const signature = sniffFileSignature(bytes);
       if (signature === "png" || signature === "jpeg") {
         form.append(`image_${index}`, new Blob([new Uint8Array(bytes)], {
           type: `image/${signature}`,
         }), `slide-${index}.${signature === "jpeg" ? "jpg" : "png"}`);
+      } else {
+        throw new Error(`Unsupported image format: ${signature ?? "unknown"}`);
       }
     } catch (error) {
       console.warn("[uploaded ppt] image unavailable", index, error);
+      throw new UploadedTemplateError(503, "IMAGE_UNAVAILABLE", `The image for slide ${index + 1} could not be added. Please retry the download.`, index + 1);
     }
   }));
 
