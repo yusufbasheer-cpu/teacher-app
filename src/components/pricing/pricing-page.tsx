@@ -68,7 +68,7 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
       "Global Curriculum Framework Alignment",
       "Priority Support",
     ],
-    cta: { label: "Join Waitlist", href: "/signup" },
+    cta: { label: "Upgrade to Pro", href: "/signup" },
     variant: "featured",
   },
   {
@@ -84,7 +84,7 @@ const TEACHER_PLAN_DEFS: PlanDef[] = [
       "Advanced Analytics",
       "Early Access to New Features",
     ],
-    cta: { label: "Join Waitlist", href: "/signup" },
+    cta: { label: "Upgrade to Pro Plus", href: "/signup" },
     variant: "light",
   },
 ];
