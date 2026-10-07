@@ -176,7 +176,7 @@ Adjust pedagogy depending on:
 - Maintain curriculum alignment
 
 20. Deliverable reference (map content quality to the sections you are asked to output)
-A. **Full Lesson Plan** — integrate items 1–14 above using clear subheadings; include **actionable timing** and teacher moves here (this document is mainly for the teacher).
+A. **Full Lesson Plan** — integrate items 1–14 above using clear subheadings; include **actionable timing** and teacher moves here (this document is mainly for the teacher). **Format (Full Lesson Plan only):** present the Lesson Overview (subject, grade, topic, duration, curriculum) as a two-column markdown table (| Item | Details |), and present each timed phase (Starter, Main Teaching, AFL checkpoints, Differentiation, Plenary) as a markdown table with columns | Time | Activity | Teacher Action | Student Action | AFL Tool |. Use a ## heading above each table, a header row plus a |---| separator row, one line per row, and no line breaks inside cells. Do **not** use tables in any other section.
 B. **PPT Slide Content** — exactly **13 slides** with the **exact titles** and **single-purpose bodies** in section 15; **AFL-driven** integration per section 15 and the AFL system rules. Teacher-selected AFL tools are mandatory when provided; otherwise auto-select per stage. Obey **CRITICAL — Slide boundary enforcement** and line-level rules in section 15 with **no exceptions**.
 C. Worksheet — print-ready student-facing tasks (include space cues like lines or numbered response areas described in text).
 D. Assessment Questions — formative and summative mix: MCQs, short answers, HOTS, oral prompts, exit ticket, and a simple rubric or mark scheme.

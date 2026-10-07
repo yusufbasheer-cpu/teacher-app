@@ -1,6 +1,21 @@
 import { readFile } from "fs/promises";
 import path from "path";
-import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+import {
+  AlignmentType,
+  BorderStyle,
+  Document,
+  HeadingLevel,
+  Packer,
+  Paragraph,
+  ShadingType,
+  Table,
+  TableCell,
+  TableLayoutType,
+  TableRow,
+  TextRun,
+  VerticalAlign,
+  WidthType,
+} from "docx";
 import JSZip from "jszip";
 import PptxGenJS from "pptxgenjs";
 import {
@@ -234,13 +249,116 @@ function parseInlineMarkdown(text: string, baseSizePt = 24): TextRun[] {
   return runs.length > 0 ? runs : [new TextRun({ text: cleaned.replace(/[*#_`~|\\]/g, ""), size: baseSizePt })];
 }
 
-/** Convert markdown content string into a list of docx Paragraph objects with proper formatting. */
-function parseMarkdownContentToDocxParagraphs(content: string): Paragraph[] {
-  const paragraphs: Paragraph[] = [];
+// ── Markdown tables → bordered Word tables ───────────────────────────────────
+const TABLE_BORDER = { style: BorderStyle.SINGLE, size: 4, color: "555555" } as const;
+const TABLE_CELL_BORDERS = {
+  top: TABLE_BORDER,
+  bottom: TABLE_BORDER,
+  left: TABLE_BORDER,
+  right: TABLE_BORDER,
+};
+const TABLE_HEADER_FILL = "E8ECF4";
+/** Printable width in twips: A4 11906 minus the 900 left/right page margins. */
+const TABLE_TOTAL_TWIPS = 11906 - 2 * 900;
+const TABLE_NARROW_HEADER = /^(time|duration|mins?|minutes|marks?|no\.?|#|slide|step)$/i;
+const TABLE_CELL_MARGINS = { top: 80, bottom: 80, left: 120, right: 120 };
+
+function isTableRow(line: string): boolean {
+  return /^\|.*\|$/.test(line.trim());
+}
+
+function isTableSeparator(line: string): boolean {
+  return /^\|[\s:|-]+\|$/.test(line.trim()) && line.includes("-");
+}
+
+function splitTableRow(line: string): string[] {
+  return line.trim().slice(1, -1).split("|").map((c) => c.trim());
+}
+
+/** Narrow columns (Time, Marks…) get a fixed share; the rest split what remains by text length. */
+function computeColumnWidths(header: string[], rows: string[][]): number[] {
+  // Fixed shares for the schemas the prompt asks for, so every phase table lines up identically.
+  const key = header.map((h) => h.replace(/[*_`]/g, "").trim().toLowerCase()).join("|");
+  const preset =
+    key === "time|activity|teacher action|student action|afl tool"
+      ? [0.1, 0.22, 0.28, 0.24, 0.16]
+      : header.length === 2
+        ? [0.3, 0.7]
+        : null;
+  if (preset) {
+    const w = preset.map((p) => Math.floor(p * TABLE_TOTAL_TWIPS));
+    w[w.length - 1]! += TABLE_TOTAL_TWIPS - w.reduce((a, b) => a + b, 0);
+    return w;
+  }
+  const narrow = header.map((h) => TABLE_NARROW_HEADER.test(h.replace(/[*_`]/g, "").trim()));
+  const narrowTwips = 1200;
+  const weights = header.map((_, i) =>
+    Math.min(60, Math.max(8, ...rows.map((r) => (r[i] ?? "").length), (header[i] ?? "").length)),
+  );
+  const flexTotal = weights.reduce((s, w, i) => (narrow[i] ? s : s + w), 0) || 1;
+  const flexSpace = TABLE_TOTAL_TWIPS - narrow.filter(Boolean).length * narrowTwips;
+  const widths = weights.map((w, i) => (narrow[i] ? narrowTwips : Math.floor((w / flexTotal) * flexSpace)));
+  widths[widths.length - 1]! += TABLE_TOTAL_TWIPS - widths.reduce((a, b) => a + b, 0);
+  return widths;
+}
+
+function buildMarkdownTable(header: string[], rows: string[][]): Table {
+  const cols = header.length;
+  const widths = computeColumnWidths(header, rows);
+  const makeCell = (text: string, i: number, isHeader: boolean) =>
+    new TableCell({
+      width: { size: widths[i]!, type: WidthType.DXA },
+      borders: TABLE_CELL_BORDERS,
+      margins: TABLE_CELL_MARGINS,
+      verticalAlign: VerticalAlign.CENTER,
+      shading: isHeader ? { fill: TABLE_HEADER_FILL, type: ShadingType.CLEAR, color: "auto" } : undefined,
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.LEFT,
+          children: isHeader
+            ? [new TextRun({ text: text.replace(/[*_`]/g, ""), bold: true, size: 22 })]
+            : parseInlineMarkdown(text, 22),
+        }),
+      ],
+    });
+  const toRow = (cells: string[], isHeader: boolean) =>
+    new TableRow({
+      tableHeader: isHeader,
+      cantSplit: true,
+      children: Array.from({ length: cols }, (_, i) => makeCell(cells[i] ?? "", i, isHeader)),
+    });
+  return new Table({
+    width: { size: TABLE_TOTAL_TWIPS, type: WidthType.DXA },
+    columnWidths: widths,
+    layout: TableLayoutType.FIXED,
+    rows: [toRow(header, true), ...rows.map((r) => toRow(r, false))],
+  });
+}
+
+/** Convert markdown content string into docx Paragraph / Table blocks with proper formatting. */
+function parseMarkdownContentToDocxParagraphs(content: string): (Paragraph | Table)[] {
+  const paragraphs: (Paragraph | Table)[] = [];
   const rawLines = content.replace(/\r\n/g, "\n").split("\n");
   let inCodeBlock = false;
 
-  for (const rawLine of rawLines) {
+  for (let li = 0; li < rawLines.length; li++) {
+    const rawLine = rawLines[li]!;
+    // Markdown table: header row immediately followed by a |---| separator row.
+    if (!inCodeBlock && isTableRow(rawLine) && isTableSeparator(rawLines[li + 1] ?? "")) {
+      const header = splitTableRow(rawLine);
+      const rows: string[][] = [];
+      let j = li + 2;
+      while (j < rawLines.length && isTableRow(rawLines[j]!)) {
+        rows.push(splitTableRow(rawLines[j]!));
+        j++;
+      }
+      paragraphs.push(buildMarkdownTable(header, rows));
+      // Word merges adjacent tables, so a spacer paragraph always follows.
+      paragraphs.push(new Paragraph({ spacing: { after: 240 } }));
+      li = j - 1;
+      continue;
+    }
+
     // Code fence toggle — skip rendering code fence lines
     if (rawLine.trim().startsWith("```")) {
       inCodeBlock = !inCodeBlock;
@@ -384,7 +502,7 @@ function parseMarkdownContentToDocxParagraphs(content: string): Paragraph[] {
 }
 
 /** Shared markdown → docx paragraphs (lesson plans, question papers, etc.). */
-export function markdownToDocxParagraphs(content: string): Paragraph[] {
+export function markdownToDocxParagraphs(content: string): (Paragraph | Table)[] {
   return parseMarkdownContentToDocxParagraphs(content);
 }
 
