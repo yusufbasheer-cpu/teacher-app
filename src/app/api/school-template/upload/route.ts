@@ -2,7 +2,15 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { extractPptxTemplate } from "@/lib/pptx-template";
 import { sniffFileSignature, scanBufferForMalware } from "@/lib/upload-security";
-import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp, HOUR_MS } from "@/lib/rate-limit";
+import {
+  TEMPLATE_MAX_BYTES,
+  TEMPLATE_MAX_MB,
+  checkTemplateFile,
+  formatFileSize,
+  templateUploadIssue,
+  type TemplateUploadIssueCode,
+} from "@/lib/school-template-upload";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -28,47 +36,66 @@ function getSupabaseForUser(accessToken: string) {
   );
 }
 
+/**
+ * Every failure carries a stable `code`, a one-sentence `error`, and the `steps` a teacher can
+ * follow to fix it, plus the accepted type and size limit, so the UI never has to guess.
+ */
+function fail(code: TemplateUploadIssueCode, status: number, message?: string, headers?: Record<string, string>) {
+  const issue = templateUploadIssue(code, message);
+  return NextResponse.json(
+    {
+      error: issue.message,
+      code: issue.code,
+      steps: issue.steps,
+      accepted: ".pptx",
+      maxMb: TEMPLATE_MAX_MB,
+    },
+    { status, headers },
+  );
+}
+
+/** Legacy binary Office files (.ppt, and every password-protected Office file) start with this. */
+function isLegacyOfficeContainer(bytes: Buffer): boolean {
+  return bytes.length >= 4 && bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0;
+}
+
 export async function POST(req: Request) {
   const ipLimit = checkRateLimit(`school-template-upload:ip:${getClientIp(req)}`, 10, HOUR_MS);
-  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  if (!ipLimit.ok) {
+    const minutes = Math.max(1, Math.ceil(ipLimit.resetInSeconds / 60));
+    return fail(
+      "RATE_LIMITED",
+      429,
+      `You've uploaded several templates in a short time. Please try again in about ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+      { "Retry-After": String(ipLimit.resetInSeconds) },
+    );
+  }
 
   const authHeader = req.headers.get("Authorization");
   const token = authHeader?.replace("Bearer ", "").trim();
-  if (!token) {
-    return NextResponse.json({ error: "Your session has expired. Please log in again and re-upload your template." }, { status: 401 });
-  }
+  if (!token) return fail("SESSION_EXPIRED", 401);
 
   const supabase = getSupabaseForUser(token);
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) {
-    return NextResponse.json({ error: "Your session has expired. Please log in again and re-upload your template." }, { status: 401 });
-  }
+  if (authErr || !user) return fail("SESSION_EXPIRED", 401);
 
   let formData: FormData;
   try {
     formData = await req.formData();
   } catch {
-    return NextResponse.json({ error: "We couldn't read the upload. Please choose your .pptx file again." }, { status: 400 });
+    // Almost always a dropped connection or a body the platform refused to accept.
+    return fail("NETWORK", 400, "We couldn't receive your file. The upload may have been interrupted.");
   }
 
   const file = formData.get("template");
-  if (!file || !(file instanceof File)) {
-    return NextResponse.json({ error: "No file was selected. Choose a .pptx PowerPoint file to upload." }, { status: 400 });
-  }
+  if (!file || !(file instanceof File)) return fail("NO_FILE", 400);
 
-  if (!file.name.toLowerCase().endsWith(".pptx")) {
-    return NextResponse.json({ error: "Only .pptx PowerPoint files can be used as a template. Older .ppt files need to be re-saved as .pptx first." }, { status: 400 });
-  }
+  // Same checks the browser runs first; repeated here because the browser can't be trusted.
+  const precheck = checkTemplateFile(file);
+  if (precheck) return fail(precheck.code, precheck.code === "TOO_LARGE" ? 413 : 400, precheck.message);
+  if (file.size > TEMPLATE_MAX_BYTES) return fail("TOO_LARGE", 413);
 
-  const MAX_SIZE = 15 * 1024 * 1024; // 15 MB
-  if (file.size > MAX_SIZE) {
-    return NextResponse.json(
-      { error: "Template file is too large (max 15 MB). Please use a smaller template." },
-      { status: 400 },
-    );
-  }
-
-  console.log(`[school-template/upload] Processing: "${file.name}" (${(file.size / 1024).toFixed(1)} KB) for user ${user.id}`);
+  console.log(`[school-template/upload] Processing: "${file.name}" (${formatFileSize(file.size)}) for user ${user.id}`);
 
   const buffer = await file.arrayBuffer();
   const bytes = Buffer.from(buffer);
@@ -77,16 +104,17 @@ export async function POST(req: Request) {
   // zip container, so confirm the actual leading bytes are a zip signature
   // before we ever hand it to JSZip.
   if (sniffFileSignature(bytes) !== "zip") {
-    return NextResponse.json(
-      { error: "This doesn't look like a valid .pptx file (unexpected file signature)." },
-      { status: 400 },
-    );
+    if (isLegacyOfficeContainer(bytes)) return fail("OLD_PPT_FORMAT", 400);
+    return fail("NOT_A_PRESENTATION", 400);
   }
+  // A zip is not necessarily a presentation (a renamed Word file, say). The entry names sit
+  // unencrypted in the zip directory, so this finds a real .pptx without unpacking anything.
+  if (!bytes.includes("ppt/presentation.xml")) return fail("NOT_A_PRESENTATION", 400);
 
   const scan = await scanBufferForMalware(bytes, `school-template:${user.id}:${file.name}`);
   if (scan.scanned && !scan.clean) {
     console.error(`[school-template/upload] BLOCKED — malware scan flagged upload for user ${user.id}`);
-    return NextResponse.json({ error: "This file was blocked by our security scan, so it can't be used. Try exporting a fresh copy from PowerPoint." }, { status: 422 });
+    return fail("BLOCKED_BY_SCAN", 422);
   }
   if (!scan.scanned) {
     // No scanner is provisioned for this project (see scanBufferForMalware).
@@ -107,12 +135,9 @@ export async function POST(req: Request) {
     thumbnailBase64 = result.thumbnailBase64;
     logoBase64   = result.logoBase64;
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("[school-template/upload] Extraction error:", msg);
-    return NextResponse.json(
-      { error: "We couldn't read this PowerPoint. Open it in PowerPoint, use Save As → .pptx, and upload that copy. Files from Google Slides or Keynote should be downloaded as .pptx first." },
-      { status: 400 },
-    );
+    // The raw reason (zip limits, parse errors) is for the server log, not the teacher.
+    console.error("[school-template/upload] Extraction error:", e instanceof Error ? e.message : String(e));
+    return fail("UNREADABLE", 400);
   }
 
   // ── Encode the full .pptx file as base64 so we can re-use it later ─────────
@@ -142,29 +167,10 @@ export async function POST(req: Request) {
     );
 
   if (upsertErr) {
+    // Includes a missing-column migration problem: that is for us to fix, never a teacher's
+    // task, so it is logged in full and not shown.
     console.error("[school-template/upload] DB upsert error:", upsertErr);
-
-    // If the error is about missing columns, give a clear migration message
-    const isMissingColumn =
-      upsertErr.message?.includes("column") &&
-      (upsertErr.message.includes("logo_base64") || upsertErr.message.includes("file_data"));
-
-    if (isMissingColumn) {
-      return NextResponse.json(
-        {
-          error:
-            "Database migration required. Please run the following SQL in your Supabase SQL editor:\n" +
-            "ALTER TABLE school_templates ADD COLUMN IF NOT EXISTS logo_base64 TEXT;\n" +
-            "ALTER TABLE school_templates ADD COLUMN IF NOT EXISTS file_data TEXT;",
-        },
-        { status: 500 },
-      );
-    }
-
-    return NextResponse.json(
-      { error: "Your template was read but couldn't be saved to your account. Please try again in a minute, and contact info@layah.in if it keeps happening." },
-      { status: 500 },
-    );
+    return fail("SAVE_FAILED", 500);
   }
 
   console.log("[school-template/upload] Template saved successfully.");
