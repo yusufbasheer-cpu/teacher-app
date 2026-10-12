@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Confirm your Layah account</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f4f7f6;font-family:Arial,Helvetica,sans-serif;color:#20302f;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f4f7f6;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border:1px solid #e1e9e6;border-radius:12px;">
+            <tr>
+              <td style="padding:28px 32px;border-bottom:1px solid #e1e9e6;">
+                <span style="font-size:22px;font-weight:700;letter-spacing:-0.5px;color:#176b57;">Layah</span>
+                <span style="display:block;margin-top:4px;font-size:12px;color:#697875;">Prep less. Teach more.</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:36px 32px 32px;">
+                <h1 style="margin:0 0 16px;font-size:25px;line-height:1.25;color:#20302f;">Confirm your email</h1>
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#465653;">
+                  Thanks for creating a Layah account. Confirm your email address to finish setting up your account and start planning lessons, presentations, worksheets, and assessments.
+                </p>
+                <p style="margin:0 0 28px;font-size:14px;line-height:1.5;color:#697875;">
+                  This confirmation is for <strong style="color:#20302f;">{{ .Email }}</strong>.
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="border-radius:8px;background:#176b57;">
+                      <a href="https://www.layah.in/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;padding:14px 24px;border-radius:8px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">Confirm email address</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:28px 0 0;font-size:13px;line-height:1.6;color:#697875;">
+                  If the button does not open, copy this link into your browser:<br>
+                  <a href="https://www.layah.in/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email" style="color:#176b57;word-break:break-all;">https://www.layah.in/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email</a>
+                </p>
+                <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#697875;">
+                  If you did not create this account, you can safely ignore this email.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;border-top:1px solid #e1e9e6;font-size:12px;line-height:1.6;color:#697875;">
+                Need help? <a href="mailto:info@layah.in" style="color:#176b57;text-decoration:none;">info@layah.in</a><br>
+                &copy; Layah
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

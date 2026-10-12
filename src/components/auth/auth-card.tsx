@@ -13,7 +13,6 @@ import { sanitizeUserMessage, toUserFacingError } from "@/lib/user-facing-errors
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
-const MIN_SIGNUP_MS = 3000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Signup password rules, shown live under the field. If Supabase's dashboard
@@ -124,7 +123,6 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   // Bot protection
   const [honeypot, setHoneypot] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const formLoadTime = useRef(Date.now());
 
   const onTurnstileVerify = useCallback((token: string) => setTurnstileToken(token), []);
   const onTurnstileExpire = useCallback(() => setTurnstileToken(null), []);
@@ -144,7 +142,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       setError(sanitizeUserMessage(decodeURIComponent(authError), "auth-query-param"));
       router.replace(pathname, { scroll: false });
     }
-  }, [searchParams, router, pathname]);
+  }, [searchParams, router, pathname, setError]);
 
   const onGoogleSignIn = async () => {
     setError(null);
@@ -181,9 +179,10 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       const { error: resendError } = await supabase.auth.resend({
         type: "signup",
         email: email.trim(),
+        options: { emailRedirectTo: window.location.origin + "/auth/callback" },
       });
       if (resendError) throw resendError;
-      setMessage("Confirmation email sent. Check your inbox (and spam folder).");
+      setMessage("If this address has an unconfirmed account, check your inbox and spam folder for the confirmation link.");
     } catch (err) {
       setError(toUserFacingError(err, "auth-resend-confirmation"));
     } finally {
@@ -218,19 +217,14 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           return;
         }
 
-        // 1. Honeypot — bots fill hidden fields, humans never see it
+        // Honeypot — bots fill hidden fields, humans never see it
         if (honeypot) {
+          setError("We couldn't submit your form. Please refresh and try again.");
           setLoading(false);
           return;
         }
 
-        // 2. Time check — < 3 s means automated submission
-        if (Date.now() - formLoadTime.current < MIN_SIGNUP_MS) {
-          setLoading(false);
-          return;
-        }
-
-        // 3. Turnstile — only if the site key is configured
+        // Turnstile — only if the site key is configured
         if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
           if (!turnstileToken) {
             setError("Please complete the verification before signing up.");
@@ -255,6 +249,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           email: trimmedEmail,
           password,
           options: {
+            emailRedirectTo: window.location.origin + "/auth/callback",
             data: {
               full_name: fullName.trim(),
               profile_completed: false,
@@ -263,6 +258,11 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
         });
 
         if (signUpError) throw signUpError;
+
+        if (!data.user) {
+          setError("We couldn't create your account. Please try again.");
+          return;
+        }
 
         if (data.session?.user) {
           const postAuth = await completeEmailPostAuthLogin(data.session.user.id);
@@ -275,19 +275,16 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           return;
         }
 
-        setMessage(
-          "Account created. If email confirmation is enabled, check your inbox before logging in.",
-        );
+        setMessage("If this address is new, check your inbox for a confirmation link. If you already have an account, sign in using your original method, such as Google.");
+        setShowResend(true);
         setMode("login");
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: trimmedEmail,
           password,
         });
         if (signInError) throw signInError;
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const session = signInData.session;
         if (session?.user) {
           const postAuth = await completeEmailPostAuthLogin(session.user.id);
           if (!postAuth.ok) {
@@ -298,6 +295,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           router.refresh();
           return;
         }
+        setError("We couldn't start your session. Please try logging in again.");
       }
     } catch (err) {
       const code = typeof err === "object" && err !== null ? (err as { code?: string }).code : undefined;
@@ -527,7 +525,6 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
             onClick={() => {
               setMode((prev) => {
                 if (prev === "login") {
-                  formLoadTime.current = Date.now();
                   setTurnstileToken(null);
                 }
                 return prev === "login" ? "signup" : "login";

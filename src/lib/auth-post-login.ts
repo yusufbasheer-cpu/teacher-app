@@ -42,7 +42,11 @@ export async function completeGooglePostAuthLogin(
 export async function completeEmailPostAuthLogin(userId: string): Promise<PostAuthLoginResult> {
   await registerSession(userId);
   await ensureUserUsageOnClient();
-  fetch("/api/welcome-email", { method: "POST" }).catch(() => {});
+  void fetch("/api/welcome-email", { method: "POST", keepalive: true })
+    .then((response) => {
+      if (!response.ok) console.error("[welcome-email] Request failed:", response.status);
+    })
+    .catch((error) => console.error("[welcome-email] Request failed:", error));
   return { ok: true };
 }
 

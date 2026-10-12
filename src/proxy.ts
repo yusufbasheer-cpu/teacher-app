@@ -132,7 +132,7 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isAuthPage =
-    (pathname.startsWith("/auth") && pathname !== "/auth/callback") ||
+    (pathname.startsWith("/auth") && pathname !== "/auth/callback" && pathname !== "/auth/confirm") ||
     pathname === "/login" ||
     pathname === "/signup";
 

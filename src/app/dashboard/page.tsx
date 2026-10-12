@@ -67,7 +67,11 @@ function DashboardContent() {
 
       await registerActiveSession(session.user.id);
 
-      fetch("/api/welcome-email", { method: "POST" }).catch(() => {});
+      void fetch("/api/welcome-email", { method: "POST", keepalive: true })
+        .then((response) => {
+          if (!response.ok) console.error("[welcome-email] Request failed:", response.status);
+        })
+        .catch((error) => console.error("[welcome-email] Request failed:", error));
 
       if (denied) {
         setAdminDenied(true);

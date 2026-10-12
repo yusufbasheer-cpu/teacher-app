@@ -22,9 +22,13 @@ export async function POST(req: Request) {
     }
 
     console.log("[welcome-email API] Triggering welcome email for:", user.email);
-    await sendWelcomeEmailIfNew(user.id, user.email, user.user_metadata?.full_name);
+    const result = await sendWelcomeEmailIfNew(user.id, user.email, user.user_metadata?.full_name);
 
-    return NextResponse.json({ ok: true });
+    if (result === "failed") {
+      return NextResponse.json({ ok: false }, { status: 502 });
+    }
+
+    return NextResponse.json({ ok: true, status: result });
   } catch (err) {
     console.error("[welcome-email API] error:", err);
     return NextResponse.json({ ok: false }, { status: 500 });

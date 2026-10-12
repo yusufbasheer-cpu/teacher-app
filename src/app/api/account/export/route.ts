@@ -4,7 +4,7 @@ import { authenticateRequest, getSupabaseForUser } from "@/lib/user-usage-server
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
-export const ACCOUNT_EXPORT_PYTHON_PROXY_TIMEOUT_MS = 10000;
+const ACCOUNT_EXPORT_PYTHON_PROXY_TIMEOUT_MS = 10000;
 
 function buildAccountExportProxyHeaders(incoming: Headers): Headers {
   const headers = new Headers({ Accept: "application/json" });

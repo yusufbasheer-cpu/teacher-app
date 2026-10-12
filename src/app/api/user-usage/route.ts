@@ -4,7 +4,7 @@ import { defaultFreeUsageSnapshot, getUpgradePitch } from "@/lib/user-usage";
 import { authenticateRequest, getOrCreateUserUsage } from "@/lib/user-usage-server";
 
 export const runtime = "nodejs";
-export const USER_USAGE_PYTHON_PROXY_TIMEOUT_MS = 10000;
+const USER_USAGE_PYTHON_PROXY_TIMEOUT_MS = 10000;
 
 function buildUserUsageProxyHeaders(incoming: Headers): Headers {
   const headers = new Headers({ Accept: "application/json" });

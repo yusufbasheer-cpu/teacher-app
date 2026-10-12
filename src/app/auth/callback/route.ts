@@ -17,7 +17,8 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const origin = requestUrl.origin;
 
-  console.log("[auth/callback] URL:", requestUrl.toString());
+  // Do not put the one-time auth code in production logs.
+  console.log("[auth/callback] Path:", requestUrl.pathname);
   console.log("[auth/callback] code present:", Boolean(code));
 
   if (!code) {
@@ -30,7 +31,9 @@ export async function GET(request: Request) {
 
   if (exchangeError) {
     console.error("[auth/callback] exchangeCodeForSession failed:", exchangeError.message);
-    const safeMessage = sanitizeUserMessage(exchangeError.message, "auth-callback-exchange");
+    const safeMessage = exchangeError.message.includes("PKCE code verifier not found")
+      ? "We couldn't complete this sign-in link in this browser. If you just confirmed your email, log in with your password."
+      : sanitizeUserMessage(exchangeError.message, "auth-callback-exchange");
     return NextResponse.redirect(`${origin}/auth?error=${encodeURIComponent(safeMessage)}`);
   }
 

@@ -106,14 +106,14 @@ export async function sendWelcomeEmailIfNew(
   userId: string,
   email: string,
   displayName?: string,
-): Promise<void> {
+): Promise<"sent" | "already_sent" | "failed"> {
   console.log(`[welcome-email] Checking welcome email for: ${email} (userId: ${userId})`);
 
   try {
     const admin = getSupabaseServiceRole();
     if (!admin) {
       console.error("[welcome-email] Supabase service role not configured");
-      return;
+      return "failed";
     }
 
     const { data: row, error: readErr } = await admin
@@ -129,12 +129,12 @@ export async function sendWelcomeEmailIfNew(
       // email in production — the welcome_email_sent column was missing, so
       // this read always errored and fell through to the "new user" path.
       console.error("[welcome-email] Failed to read user_usage, skipping send:", readErr.message);
-      return;
+      return "failed";
     }
 
     if (row?.welcome_email_sent) {
       console.log(`[welcome-email] Already sent to ${email}, skipping`);
-      return;
+      return "already_sent";
     }
 
     if (!row) {
@@ -155,6 +155,7 @@ export async function sendWelcomeEmailIfNew(
       );
       if (insertErr) {
         console.error("[welcome-email] Failed to upsert user_usage:", insertErr.message);
+        return "failed";
       }
     }
 
@@ -198,10 +199,13 @@ export async function sendWelcomeEmailIfNew(
       if (updateErr) {
         console.error("[welcome-email] Failed to update welcome_email_sent flag:", updateErr.message);
       }
+      return "sent";
     } else {
       console.error(`[welcome-email] Welcome email failed for ${email}: ${result.error}`);
+      return "failed";
     }
   } catch (err) {
     console.error("[welcome-email] Unexpected error:", err);
+    return "failed";
   }
 }
