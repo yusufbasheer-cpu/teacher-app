@@ -273,6 +273,11 @@ export function DifferentiatedWorksheetPack() {
       }
       if (!data.extractedText?.trim()) throw new Error(USER_FACING_ERROR);
       setLessonSourceText(data.extractedText);
+      if (/\.pptx$/i.test(file.name)) {
+        // Slide decks: fill topic/subject/grade/objectives straight away.
+        setExtracting(false);
+        await onInferMeta(data.extractedText);
+      }
     } catch (e) {
       setError(toUserFacingError(e, "diff-pack-extract"));
     } finally {
@@ -280,8 +285,9 @@ export function DifferentiatedWorksheetPack() {
     }
   };
 
-  const onInferMeta = async () => {
-    if (!lessonSourceText.trim()) {
+  const onInferMeta = async (textOverride?: string) => {
+    const sourceText = textOverride ?? lessonSourceText;
+    if (!sourceText.trim()) {
       setError("Upload or paste lesson content first.");
       return;
     }
@@ -292,7 +298,7 @@ export function DifferentiatedWorksheetPack() {
       const res = await fetch("/api/differentiated-pack/infer-meta", {
         method: "POST",
         headers: await getAuthHeaders(),
-        body: JSON.stringify({ rawText: lessonSourceText.trim() }),
+        body: JSON.stringify({ rawText: sourceText.trim() }),
       });
       const raw = await res.text();
       console.log("[infer-meta client] HTTP", res.status, "len", raw.length);
@@ -476,7 +482,7 @@ export function DifferentiatedWorksheetPack() {
           it; it now sits as a quiet note above the form it describes. */}
       <Notice>
         Start from a lesson you already made — use <strong>Send to worksheet pack</strong> on a
-        generated lesson — or upload a PDF or Word lesson plan below and auto-fill the form from it.
+        generated lesson — or upload a PDF, Word or PowerPoint lesson below and auto-fill the form from it.
       </Notice>
 
       {fromLessonNotice ? (
@@ -496,11 +502,11 @@ export function DifferentiatedWorksheetPack() {
         </section>
         <section className="rounded-2xl border-2 border-[color-mix(in_oklch,var(--brand)_30%,transparent)] bg-[color-mix(in_oklch,var(--brand)_5%,transparent)] p-5 shadow-sm">
           <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--text)]">Way 2</h3>
-          <p className="mt-1 text-sm text-muted">Upload an existing lesson plan (PDF or .docx).</p>
+          <p className="mt-1 text-sm text-muted">Upload an existing lesson plan or slides (PDF, Word or PowerPoint). PowerPoint slide text and speaker notes are read and the form fills in automatically.</p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <input
               type="file"
-              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".pdf,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation"
               disabled={extracting}
               onChange={(e) => void onExtractUpload(e.target.files)}
               className="block w-full min-w-0 text-sm text-ink file:mr-2 file:rounded-lg file:border-0 file:bg-[var(--brand)] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white"
@@ -586,7 +592,7 @@ export function DifferentiatedWorksheetPack() {
               rows={14}
               spellCheck={false}
               className="max-h-96 w-full resize-y rounded-xl border border-line-strong bg-surface px-3 py-2 font-mono text-xs leading-relaxed shadow-sm"
-              placeholder="Paste lesson plan text, or upload a PDF / Word file (Way 2)."
+              placeholder="Paste lesson plan text, or upload a PDF / Word / PowerPoint file (Way 2)."
             />
           </div>
         </div>

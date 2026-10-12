@@ -73,6 +73,8 @@ type TeacherPackageViewerProps = {
   /** Resets the wizard so the teacher can change inputs and generate again. */
   onRegenerate?: () => void;
   /** Persists this package to My Lessons. */
+  /** When provided, teachers can edit section text in the preview; receives the updated plan. */
+  onLessonPlanChange?: (plan: LessonPlanResult) => void;
   onSave?: () => void;
   saving?: boolean;
   saved?: boolean;
@@ -129,6 +131,7 @@ export function TeacherPackageViewer({
   pptSlideImageUrls,
   parseNotice,
   onRegenerate,
+  onLessonPlanChange,
   onSave,
   saving,
   saved,
@@ -142,6 +145,8 @@ export function TeacherPackageViewer({
   const [exportError, setExportError] = useErrorToast();
   const [templateMode, setTemplateMode] = useState<"layah" | "uploaded">("layah");
   const [savedTemplate, setSavedTemplate] = useState<{ original_filename: string; thumbnail_base64: string | null } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
   const [templateBusy, setTemplateBusy] = useState(false);
   const [templateWarning, setTemplateWarning] = useState<{ code: string; error: string; slide: number | null } | null>(null);
 
@@ -211,6 +216,15 @@ export function TeacherPackageViewer({
     const keys = getLessonPlanDisplayOrder(lessonPlan);
     setActiveKey((prev) => (keys.includes(prev) ? prev : keys[0] ?? ""));
   }, [lessonPlan]);
+
+  const startEditing = () => {
+    setDraft(typeof lessonPlan[activeKey] === "string" ? lessonPlan[activeKey] : "");
+    setEditing(true);
+  };
+  const saveEdit = () => {
+    onLessonPlanChange?.({ ...lessonPlan, [activeKey]: draft });
+    setEditing(false);
+  };
 
   const activeContent = activeKey ? (lessonPlan[activeKey] ?? "") : "";
   // Memoized so flipping back to a previously-viewed tab reuses the parsed
@@ -491,51 +505,24 @@ export function TeacherPackageViewer({
     };
   });
 
-  return (
-    <div className="workspace-page">
-      <input id="uploaded-ppt-input" className="sr-only" tabIndex={-1} type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" disabled={templateBusy || busy !== null} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadTemplate(file); event.target.value = ""; }} />
-      <header className="page-header">
-        <div className="min-w-0">
-          <p className="page-kicker flex items-center gap-2"><CheckCircle2 className="size-4" aria-hidden />Lesson package</p>
-          <h1 className="page-title break-words">{topic}</h1>
-          <p className="page-description">{[subject, grade, curriculumFramework].filter(Boolean).join(" / ")}</p>
-        </div>
-        {onRegenerate ? <Button variant="outline" onClick={onRegenerate} disabled={busy !== null}>Edit lesson details</Button> : null}
-      </header>
-      {exportError ? <Notice tone="danger" className="mb-5">{exportError}</Notice> : null}
-      {templateWarning ? (
-        <Notice tone="danger" className="mb-5">
-          <p className="font-semibold">This PowerPoint could not fit your lesson.</p>
-          <p className="mt-1">{templateWarning.slide ? `Slide ${templateWarning.slide}: ` : ""}{templateWarning.error}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button disabled={busy !== null} onClick={() => { setTemplateMode("layah"); setTemplateWarning(null); void onDownloadPpt("layah"); }}>Use a Layah template</Button>
-            <Button variant="outline" disabled={templateBusy || busy !== null} onClick={() => { setTemplateWarning(null); document.getElementById("uploaded-ppt-input")?.click(); }}>Upload another PowerPoint</Button>
-            <Button variant="ghost" onClick={() => setTemplateWarning(null)}>Cancel</Button>
-          </div>
-        </Notice>
-      ) : null}
-      {parseNotice ? <Notice tone="generated" className="mb-5">{parseNotice}</Notice> : null}
-      {!showTeacherDownloads ? <Notice className="mb-5">This lesson uses an older format. Generate a new lesson to create downloadable materials.</Notice> : null}
-      {busy === "ppt" ? <Notice tone="brand" className="mb-5"><p role="status" aria-live="polite">Preparing your PowerPoint. The download will start when the file is ready.</p></Notice> : null}
-      <ArtifactWorkspace artifacts={artifacts} activeId={activeKey} onSelect={setActiveKey} busy={busy !== null || templateBusy} downloading={busy === exportKeys[activeKey]}
-        sidebarFooter={(onSave || saved || onSendToDifferentiatedPack) ? <div className="space-y-2">{saved ? <p className="flex items-center gap-2 px-1 py-2 text-sm text-muted"><CheckCircle2 className="size-4 text-brand-text" aria-hidden />Saved to My lessons</p> : null}{onSave ? <Button variant="outline" block onClick={onSave} disabled={saving}>{saving ? "Saving..." : "Save to my lessons"}</Button> : null}{onSendToDifferentiatedPack ? <Button variant="outline" block onClick={onSendToDifferentiatedPack}>Create worksheet pack</Button> : null}<p className="px-1 text-sm leading-relaxed text-faint">Review each document before sharing it with your class.</p></div> : null}
-      >
-                {activeKey === "PPT Slide Content" && hasPpt ? (
-                  <div className="mb-4 border-b border-line-subtle pb-4">
+  const templateCard = (
+                hasPpt ? (
+                  <div className="rounded-xl border border-line bg-surface p-3">
                     <p className="mb-2 text-sm font-medium text-faint">
                       Slide template
                     </p>
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <p className="mb-3 text-sm text-faint">Upload your school&apos;s PowerPoint and Layah will put your lesson inside your own slide design, with your logo and colours.</p>
+<div className="mb-3 flex flex-wrap items-center gap-2">
                       <Button type="button" size="sm" variant={templateMode === "layah" ? "default" : "outline"} onClick={() => { setTemplateMode("layah"); setTemplateWarning(null); }}>
                         Layah templates
                       </Button>
                       {savedTemplate ? (
                         <Button type="button" size="sm" variant={templateMode === "uploaded" ? "default" : "outline"} onClick={() => { setTemplateMode("uploaded"); setTemplateWarning(null); }}>
-                          My PowerPoint
+                          My school template
                         </Button>
                       ) : null}
                       <Button type="button" variant="outline" size="sm" disabled={templateBusy || busy !== null} onClick={() => document.getElementById("uploaded-ppt-input")?.click()}>
-                        {templateBusy ? "Uploading…" : savedTemplate ? "Replace PowerPoint" : "Upload PowerPoint"}
+                        {templateBusy ? "Uploading…" : savedTemplate ? "Replace school template" : "Upload your school template"}
                       </Button>
                     </div>
                     {savedTemplate ? (
@@ -558,7 +545,7 @@ export function TeacherPackageViewer({
                       </div>
                     ) : null}
                     {templateMode === "layah" ? (
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
                       {PPT_THEME_CARDS.map((t) => {
                         const selected = selectedThemeId === t.id;
                         return (
@@ -588,10 +575,64 @@ export function TeacherPackageViewer({
                     </div>
                     ) : null}
                   </div>
-                ) : null}
+                ) : null
+  );
 
+  return (
+    <div className="workspace-page">
+      <input id="uploaded-ppt-input" className="sr-only" tabIndex={-1} type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" disabled={templateBusy || busy !== null} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadTemplate(file); event.target.value = ""; }} />
+      <header className="page-header">
+        <div className="min-w-0">
+          <p className="page-kicker flex items-center gap-2"><CheckCircle2 className="size-4" aria-hidden />Lesson package</p>
+          <h1 className="page-title break-words">{topic}</h1>
+          <p className="page-description">{[subject, grade, curriculumFramework].filter(Boolean).join(" / ")}</p>
+        </div>
+        {onRegenerate ? <Button variant="outline" onClick={onRegenerate} disabled={busy !== null}>Edit lesson details</Button> : null}
+      </header>
+      {exportError ? <Notice tone="danger" className="mb-5">{exportError}</Notice> : null}
+      {templateWarning ? (
+        <Notice tone="danger" className="mb-5">
+          <p className="font-semibold">This PowerPoint could not fit your lesson.</p>
+          <p className="mt-1">{templateWarning.slide ? `Slide ${templateWarning.slide}: ` : ""}{templateWarning.error}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button disabled={busy !== null} onClick={() => { setTemplateMode("layah"); setTemplateWarning(null); void onDownloadPpt("layah"); }}>Use a Layah template</Button>
+            <Button variant="outline" disabled={templateBusy || busy !== null} onClick={() => { setTemplateWarning(null); document.getElementById("uploaded-ppt-input")?.click(); }}>Upload another PowerPoint</Button>
+            <Button variant="ghost" onClick={() => setTemplateWarning(null)}>Cancel</Button>
+          </div>
+        </Notice>
+      ) : null}
+      {parseNotice ? <Notice tone="generated" className="mb-5">{parseNotice}</Notice> : null}
+      {!showTeacherDownloads ? <Notice className="mb-5">This lesson uses an older format. Generate a new lesson to create downloadable materials.</Notice> : null}
+      {busy === "ppt" ? <Notice tone="brand" className="mb-5"><p role="status" aria-live="polite">Preparing your PowerPoint. The download will start when the file is ready.</p></Notice> : null}
+      <ArtifactWorkspace artifacts={artifacts} activeId={activeKey} onSelect={(key) => { setActiveKey(key); setEditing(false); }} busy={busy !== null || templateBusy} downloading={busy === exportKeys[activeKey]}
+        sidebarFooter={<>{templateCard}{(onSave || saved || onSendToDifferentiatedPack) ? <div className="space-y-2">{saved ? <p className="flex items-center gap-2 px-1 py-2 text-sm text-muted"><CheckCircle2 className="size-4 text-brand-text" aria-hidden />Saved to My lessons</p> : null}{onSave ? <Button variant="outline" block onClick={onSave} disabled={saving}>{saving ? "Saving..." : "Save to my lessons"}</Button> : null}{onSendToDifferentiatedPack ? <Button variant="outline" block onClick={onSendToDifferentiatedPack}>Create worksheet pack</Button> : null}<p className="px-1 text-sm leading-relaxed text-faint">Review each document before sharing it with your class.</p></div> : null}</>}
+      >
         <div className={activeImageList.length ? "grid gap-6 xl:grid-cols-[minmax(0,1fr)_220px]" : ""}>
-          <div className="artifact min-w-0">{renderedActiveContent}</div>
+          <div className="min-w-0">
+            {onLessonPlanChange && activeKey ? (
+              <div className="mb-3 flex items-center justify-end gap-2">
+                {editing ? (
+                  <>
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+                    <Button size="sm" onClick={saveEdit}>Save changes</Button>
+                  </>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={startEditing}><PencilLine />Edit text</Button>
+                )}
+              </div>
+            ) : null}
+            {editing ? (
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                aria-label={`Edit ${getSectionTabLabel(activeKey)}`}
+                spellCheck
+                className="min-h-[50vh] w-full resize-y rounded-md border border-line bg-surface p-3 font-mono text-sm leading-relaxed text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25"
+              />
+            ) : (
+              <div className="artifact">{renderedActiveContent}</div>
+            )}
+          </div>
           {activeImageList.length > 0 ? <aside className="space-y-3 border-t border-line pt-4 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0"><p className="text-sm font-medium text-faint">Illustrations</p>{activeImageList.map((src) => <a key={src} href={src} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-line bg-sunken"><img src={src} alt="Educational illustration for this section" className="h-auto w-full object-contain" loading="lazy" /></a>)}</aside> : null}
         </div>
       </ArtifactWorkspace>

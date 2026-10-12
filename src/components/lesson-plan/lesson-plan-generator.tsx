@@ -1513,6 +1513,7 @@ export function LessonPlanGenerator() {
                 : user?.email?.split("@")[0]
             }
             parseNotice={parseNotice}
+            onLessonPlanChange={setLessonPlan}
             onRegenerate={() => {
               // Back to the composer with every input still in place, so
               // "regenerate" means adjust-and-rerun rather than start over.
