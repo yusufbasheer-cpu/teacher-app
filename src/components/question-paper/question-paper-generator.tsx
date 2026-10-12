@@ -70,7 +70,7 @@ type ExtractPayload = {
 };
 
 const inputClass =
-  "w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-sm shadow-sm outline-none ring-[var(--brand)] focus:ring-2";
+  "w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-sm shadow-sm outline-none ring-[var(--brand)] focus:ring-2 aria-[invalid=true]:border-danger aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-danger/20";
 
 const sectionClass =
   "rounded-2xl border bg-[var(--surface)] p-4 shadow-sm sm:p-5";
@@ -99,7 +99,8 @@ export function QuestionPaperGenerator() {
   const [grade, setGrade] = useState("Grade 8");
   const [subject, setSubject] = useState("Science");
   const [topic, setTopic] = useState("");
-  const [totalMarks, setTotalMarks] = useState(50);
+  const [totalMarksInput, setTotalMarksInput] = useState("50");
+  const totalMarks = Number(totalMarksInput);
   const [timeAllowed, setTimeAllowed] = useState<(typeof QUESTION_PAPER_TIME_OPTIONS)[number]>("1 hour");
   const [difficulty, setDifficulty] = useState<(typeof QUESTION_PAPER_DIFFICULTY_OPTIONS)[number]>("Medium");
   const [questionCounts, setQuestionCounts] = useState<QuestionCounts>(emptyQuestionCounts);
@@ -128,6 +129,12 @@ export function QuestionPaperGenerator() {
   const wizardRef = useRef<HTMLDivElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [stepOneValidationAttempted, setStepOneValidationAttempted] = useState(false);
+  const curriculumTypeRef = useRef<HTMLSelectElement | null>(null);
+  const gradeRef = useRef<HTMLSelectElement | null>(null);
+  const subjectRef = useRef<HTMLSelectElement | null>(null);
+  const topicInputRef = useRef<HTMLInputElement | null>(null);
+  const totalMarksInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -160,6 +167,15 @@ export function QuestionPaperGenerator() {
   );
 
   const totalQuestions = useMemo(() => countSelectedQuestions(questionCounts), [questionCounts]);
+  const missingStepOneFields = [
+    { label: "Curriculum type", value: curriculumType, field: "curriculumType" },
+    { label: "Grade", value: grade, field: "grade" },
+    { label: "Subject", value: subject, field: "subject" },
+    { label: "Topic or chapter name", value: topic, field: "topic" },
+    { label: "Total marks", value: totalMarksInput, field: "totalMarks" },
+  ].filter((field) => !field.value.trim());
+  const invalidTotalMarks =
+    !Number.isFinite(totalMarks) || totalMarks < 1 || totalMarks > 500 || !Number.isInteger(totalMarks);
 
   const previewText = useMemo(() => {
     if (!result) return "";
@@ -504,7 +520,25 @@ export function QuestionPaperGenerator() {
   };
 
   const goToNextStep = () => {
-    if (formRef.current && !formRef.current.reportValidity()) return;
+    if (step === 1) {
+      setStepOneValidationAttempted(true);
+      if (missingStepOneFields.length > 0 || invalidTotalMarks) {
+        // Refs are only read here, in an event handler — never while rendering.
+        const fieldRefs: Record<string, { current: HTMLElement | null }> = {
+          curriculumType: curriculumTypeRef,
+          grade: gradeRef,
+          subject: subjectRef,
+          topic: topicInputRef,
+          totalMarks: totalMarksInputRef,
+        };
+        const firstInvalidRef = fieldRefs[missingStepOneFields[0]?.field ?? "totalMarks"] ?? totalMarksInputRef;
+        window.setTimeout(() => {
+          firstInvalidRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+          firstInvalidRef.current?.focus({ preventScroll: true });
+        }, 0);
+        return;
+      }
+    }
     setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
     scrollToWizard();
   };
@@ -599,13 +633,24 @@ export function QuestionPaperGenerator() {
           <legend className="block w-full border-b border-line pb-3 text-lg font-semibold text-ink">
             Basic details
           </legend>
+          {stepOneValidationAttempted && (missingStepOneFields.length > 0 || invalidTotalMarks) ? (
+            <p role="alert" aria-live="polite" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+              {missingStepOneFields.length > 0
+                ? `Please fill in: ${missingStepOneFields.map((field) => field.label).join(", ")}`
+                : "Please enter a value from 1 to 500 for Total marks."}
+            </p>
+          ) : null}
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-muted">Curriculum type</label>
+              <label htmlFor="question-paper-curriculum" className="mb-1 block text-sm font-medium text-muted">Curriculum type</label>
               <select
+                id="question-paper-curriculum"
+                ref={curriculumTypeRef}
                 value={curriculumType}
                 onChange={(e) => setCurriculumType(e.target.value)}
                 className={inputClass}
+                aria-invalid={stepOneValidationAttempted && !curriculumType.trim()}
+                aria-describedby={stepOneValidationAttempted && !curriculumType.trim() ? "question-paper-curriculum-error" : undefined}
                 required
               >
                 {CURRICULUM_TYPE_GROUPS.map((g) => (
@@ -618,20 +663,44 @@ export function QuestionPaperGenerator() {
                   </optgroup>
                 ))}
               </select>
+              {stepOneValidationAttempted && !curriculumType.trim() ? (
+                <p id="question-paper-curriculum-error" className="mt-1 text-xs text-danger-text">Required</p>
+              ) : null}
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-muted">Grade</label>
-              <select value={grade} onChange={(e) => setGrade(e.target.value)} className={inputClass} required>
+              <label htmlFor="question-paper-grade" className="mb-1 block text-sm font-medium text-muted">Grade</label>
+              <select
+                id="question-paper-grade"
+                ref={gradeRef}
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                className={inputClass}
+                aria-invalid={stepOneValidationAttempted && !grade.trim()}
+                aria-describedby={stepOneValidationAttempted && !grade.trim() ? "question-paper-grade-error" : undefined}
+                required
+              >
                 {GRADE_YEAR_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
                   </option>
                 ))}
               </select>
+              {stepOneValidationAttempted && !grade.trim() ? (
+                <p id="question-paper-grade-error" className="mt-1 text-xs text-danger-text">Required</p>
+              ) : null}
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-muted">Subject</label>
-              <select value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} required>
+              <label htmlFor="question-paper-subject" className="mb-1 block text-sm font-medium text-muted">Subject</label>
+              <select
+                id="question-paper-subject"
+                ref={subjectRef}
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className={inputClass}
+                aria-invalid={stepOneValidationAttempted && !subject.trim()}
+                aria-describedby={stepOneValidationAttempted && !subject.trim() ? "question-paper-subject-error" : undefined}
+                required
+              >
                 <optgroup label="Subjects">
                   {CORE_SUBJECT_OPTIONS.filter(
                     (opt) => !(STEM_SUBJECT_OPTIONS as readonly string[]).includes(opt),
@@ -656,29 +725,50 @@ export function QuestionPaperGenerator() {
                   ))}
                 </optgroup>
               </select>
+              {stepOneValidationAttempted && !subject.trim() ? (
+                <p id="question-paper-subject-error" className="mt-1 text-xs text-danger-text">Required</p>
+              ) : null}
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-muted">Topic or chapter name</label>
+              <label htmlFor="question-paper-topic" className="mb-1 block text-sm font-medium text-muted">Topic or chapter name</label>
               <input
+                id="question-paper-topic"
+                ref={topicInputRef}
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 className={inputClass}
+                aria-invalid={stepOneValidationAttempted && !topic.trim()}
+                aria-describedby={stepOneValidationAttempted && !topic.trim() ? "question-paper-topic-error" : undefined}
                 placeholder="e.g. Photosynthesis"
                 required
               />
+              {stepOneValidationAttempted && !topic.trim() ? (
+                <p id="question-paper-topic-error" className="mt-1 text-xs text-danger-text">Required</p>
+              ) : null}
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-muted">Total marks</label>
+              <label htmlFor="question-paper-total-marks" className="mb-1 block text-sm font-medium text-muted">Total marks</label>
               <input
+                id="question-paper-total-marks"
+                ref={totalMarksInputRef}
                 type="number"
                 min={1}
                 max={500}
-                value={totalMarks}
-                onChange={(e) => setTotalMarks(Number(e.target.value))}
+                value={totalMarksInput}
+                onChange={(e) => setTotalMarksInput(e.target.value)}
                 className={inputClass}
+                aria-invalid={stepOneValidationAttempted && invalidTotalMarks}
+                aria-describedby={stepOneValidationAttempted && invalidTotalMarks ? "question-paper-total-marks-error" : undefined}
                 required
               />
+              {stepOneValidationAttempted && invalidTotalMarks ? (
+                <p id="question-paper-total-marks-error" className="mt-1 text-xs text-danger-text">
+                  {!totalMarksInput.trim()
+                    ? "Required"
+                    : "Enter a whole number from 1 to 500"}
+                </p>
+              ) : null}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-muted">Time allowed</label>

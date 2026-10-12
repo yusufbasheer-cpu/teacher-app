@@ -96,13 +96,14 @@ export function Field({
   );
 }
 
-export function TextInput({
-  className,
-  ...props
-}: React.ComponentPropsWithoutRef<"input">) {
+export const TextInput = React.forwardRef<
+  HTMLInputElement,
+  React.ComponentPropsWithoutRef<"input">
+>(function TextInput({ className, ...props }, ref) {
   const f = useField();
   return (
     <input
+      ref={ref}
       id={props.id ?? f?.id}
       aria-describedby={props["aria-describedby"] ?? f?.describedBy}
       aria-invalid={props["aria-invalid"] ?? f?.invalid}
@@ -110,16 +111,16 @@ export function TextInput({
       {...props}
     />
   );
-}
+});
 
-export function TextArea({
-  className,
-  rows = 3,
-  ...props
-}: React.ComponentPropsWithoutRef<"textarea">) {
+export const TextArea = React.forwardRef<
+  HTMLTextAreaElement,
+  React.ComponentPropsWithoutRef<"textarea">
+>(function TextArea({ className, rows = 3, ...props }, ref) {
   const f = useField();
   return (
     <textarea
+      ref={ref}
       id={props.id ?? f?.id}
       rows={rows}
       aria-describedby={props["aria-describedby"] ?? f?.describedBy}
@@ -128,7 +129,7 @@ export function TextArea({
       {...props}
     />
   );
-}
+});
 
 /**
  * Native `<select>`, restyled. Native is deliberate: these lists run to 40+

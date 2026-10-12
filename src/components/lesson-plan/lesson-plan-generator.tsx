@@ -189,6 +189,8 @@ export function LessonPlanGenerator() {
   const resultsRef = useRef<HTMLElement | null>(null);
   const wizardRef = useRef<HTMLDivElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+  const topicInputRef = useRef<HTMLInputElement | null>(null);
+  const learningObjectivesInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [sectionSelection, setSectionSelection] =
     useState<Record<TeacherPackageSectionKey, boolean>>(initialSectionSelection);
@@ -210,6 +212,7 @@ export function LessonPlanGenerator() {
   const [aflSelected, setAflSelected] = useState<Record<AflPhaseId, string[]>>(() => emptyAflSelected());
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [composerStep, setComposerStep] = useState<ComposerStep>("details");
+  const [detailsValidationAttempted, setDetailsValidationAttempted] = useState(false);
 
   /** Fail-closed to Free's entitlements while usage is still loading, so
    * nothing flashes unlocked before the real plan is known. */
@@ -905,6 +908,10 @@ export function LessonPlanGenerator() {
   const selectedGenerationCount = Object.values(sectionSelection).filter(Boolean).length;
 
   const detailsComplete = Boolean(form.topic.trim() && form.learningObjectives.trim());
+  const missingLessonDetails = [
+    !form.topic.trim() ? "Topic" : null,
+    !form.learningObjectives.trim() ? "Learning objectives" : null,
+  ].filter((field): field is string => field !== null);
   const canGenerate =
     detailsComplete &&
     selectedGenerationCount > 0 &&
@@ -915,6 +922,23 @@ export function LessonPlanGenerator() {
   const hasSource = uploadedChunks.length > 0 || pastedContent.trim().length > 0;
   const aflCount = Object.values(aflSelected).reduce((n, list) => n + list.length, 0);
   const hasApproach = aflCount > 0 || Boolean(teachingStrategy);
+
+  const goToOutputs = () => {
+    setDetailsValidationAttempted(true);
+    if (missingLessonDetails.length > 0) {
+      const firstMissingRef = !form.topic.trim()
+        ? topicInputRef
+        : learningObjectivesInputRef;
+      window.setTimeout(() => {
+        firstMissingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstMissingRef.current?.focus({ preventScroll: true });
+      }, 0);
+      return;
+    }
+
+    setError(null);
+    setComposerStep("outputs");
+  };
 
   return (
     <div className="w-full" ref={wizardRef}>
@@ -944,6 +968,14 @@ export function LessonPlanGenerator() {
           >
             {composerStep === "details" ? (
             <RuleRail className="min-w-0 space-y-5">
+              {detailsValidationAttempted && missingLessonDetails.length > 0 ? (
+                <div role="alert" aria-live="polite">
+                  <Notice tone="danger">
+                    Please fill in: {missingLessonDetails.join(", ")}
+                  </Notice>
+                </div>
+              ) : null}
+
               {/* ── 1. Class ─────────────────────────────────────────── */}
               <RuleItem num={1} state={classComplete ? "done" : "active"}>
                 <h2 className="text-[13px] font-semibold text-ink">Class</h2>
@@ -1060,8 +1092,10 @@ export function LessonPlanGenerator() {
                       label="Topic"
                       hint="Narrow the lesson to one part of the chapter."
                       className="sm:col-span-2"
+                      error={detailsValidationAttempted && !form.topic.trim() ? "Required" : null}
                     >
                       <TextInput
+                        ref={topicInputRef}
                         value={form.topic}
                         onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
                         placeholder="Light-dependent reactions"
@@ -1073,8 +1107,14 @@ export function LessonPlanGenerator() {
                       label="Learning objectives"
                       hint="What students should be able to do by the end. One per line."
                       className="sm:col-span-2"
+                      error={
+                        detailsValidationAttempted && !form.learningObjectives.trim()
+                          ? "Required"
+                          : null
+                      }
                     >
                       <TextArea
+                        ref={learningObjectivesInputRef}
                         value={form.learningObjectives}
                         onChange={(e) =>
                           setForm((prev) => ({ ...prev, learningObjectives: e.target.value }))
@@ -1374,18 +1414,9 @@ export function LessonPlanGenerator() {
                 </div>
               </RuleItem>
               <div className="flex justify-end">
-                {detailsComplete ? (
-                  <Button
-                    type="button"
-                    size="lg"
-                    onClick={() => {
-                      setError(null);
-                      setComposerStep("outputs");
-                    }}
-                  >
-                    Next
-                  </Button>
-                ) : null}
+                <Button type="button" size="lg" onClick={goToOutputs}>
+                  Next
+                </Button>
               </div>
 
               {error ? (

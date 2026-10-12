@@ -41,3 +41,11 @@ eng.traineddata
 
 # vercel CLI project link (local machine state, not shared)
 .vercel
+
+# Local tooling state (recreated automatically)
+.reticle/
+.reticle-setup-crash.log
+supabase/.temp/
+supabase/.branches/
+.pytest_cache/
+.ruff_cache/

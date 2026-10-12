@@ -1,0 +1,14 @@
+# Local QA output and notes are not part of the deployed Next.js app.
+artifacts/
+.playwright-mcp/
+obsidian-vault/
+.reticle/
+.reticle-setup-crash.log
+
+# Other services and local assistant tooling are deployed or used separately.
+backend-python/
+python-ppt-api/
+.agents/
+.claude/
+docs/
+ppt-quality-and-image-provider-evaluation.md

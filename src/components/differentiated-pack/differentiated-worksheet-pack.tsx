@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Lock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useErrorToast } from "@/hooks/use-error-toast";
@@ -59,11 +59,26 @@ export function DifferentiatedWorksheetPack() {
   const [extracting, setExtracting] = useState(false);
   const [inferring, setInferring] = useState(false);
   const [error, setError] = useErrorToast();
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [busyDownload, setBusyDownload] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const { usage, loading: usageLoading } = useUserUsage(Boolean(user));
+  const topicInputRef = useRef<HTMLInputElement | null>(null);
+  const subjectInputRef = useRef<HTMLInputElement | null>(null);
+  const gradeInputRef = useRef<HTMLInputElement | null>(null);
+  const objectivesInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const lessonSourceInputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const getMissingRequiredFields = () =>
+    [
+      { label: "Topic", value: topic, field: "topic" },
+      { label: "Subject", value: subject, field: "subject" },
+      { label: "Grade / year", value: grade, field: "grade" },
+      { label: "Learning objectives", value: learningObjectives, field: "objectives" },
+      { label: "Lesson source", value: lessonSourceText, field: "lessonSource" },
+    ].filter((field) => !field.value.trim());
 
   const mergeLevelResult = (
     current: DifferentiatedPackContent,
@@ -146,12 +161,22 @@ export function DifferentiatedWorksheetPack() {
     setParseNotice(null);
     setPack(null);
     setLevelProgress({ foundation: "idle", core: "idle", extension: "idle" });
-    if (!topic.trim() || !subject.trim() || !grade.trim() || !learningObjectives.trim()) {
-      setError("Please fill topic, subject, grade, and learning objectives.");
-      return;
-    }
-    if (!lessonSourceText.trim()) {
-      setError("Add lesson source text (from your plan or an uploaded document).");
+    setValidationAttempted(true);
+    const missingFields = getMissingRequiredFields();
+    if (missingFields.length > 0) {
+      // Refs are only read here, in an event handler — never while rendering.
+      const fieldRefs: Record<string, { current: HTMLElement | null }> = {
+        topic: topicInputRef,
+        subject: subjectInputRef,
+        grade: gradeInputRef,
+        objectives: objectivesInputRef,
+        lessonSource: lessonSourceInputRef,
+      };
+      const firstMissingRef = fieldRefs[missingFields[0]!.field];
+      window.setTimeout(() => {
+        firstMissingRef?.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstMissingRef?.current?.focus({ preventScroll: true });
+      }, 0);
       return;
     }
     setLoading(true);
@@ -403,6 +428,7 @@ export function DifferentiatedWorksheetPack() {
   };
 
   const base = safeFilePart(topic);
+  const missingRequiredFields = getMissingRequiredFields();
 
   if (checkingAuth) {
     return (
@@ -530,39 +556,102 @@ export function DifferentiatedWorksheetPack() {
         <h3 className="block w-full border-b border-line pb-3 text-lg font-semibold text-ink">
           Class details &amp; lesson source
         </h3>
+        {validationAttempted && missingRequiredFields.length > 0 ? (
+          <p
+            role="alert"
+            aria-live="polite"
+            className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+          >
+            Please fill in: {missingRequiredFields.map((field) => field.label).join(", ")}
+          </p>
+        ) : null}
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-muted">Topic</label>
+            <label htmlFor="diff-pack-topic" className="mb-1 block text-xs font-medium text-muted">
+              Topic
+            </label>
             <input
+              id="diff-pack-topic"
+              ref={topicInputRef}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              className="w-full rounded-xl border border-line-strong bg-surface px-3 py-2 text-sm shadow-sm"
+              aria-invalid={validationAttempted && !topic.trim()}
+              aria-describedby={
+                validationAttempted && !topic.trim() ? "diff-pack-topic-error" : undefined
+              }
+              className="w-full rounded-xl border border-line-strong bg-surface px-3 py-2 text-sm shadow-sm aria-[invalid=true]:border-danger aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-danger/20"
             />
+            {validationAttempted && !topic.trim() ? (
+              <p id="diff-pack-topic-error" className="mt-1 text-xs text-danger-text">
+                Required
+              </p>
+            ) : null}
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Subject</label>
+            <label htmlFor="diff-pack-subject" className="mb-1 block text-xs font-medium text-muted">
+              Subject
+            </label>
             <input
+              id="diff-pack-subject"
+              ref={subjectInputRef}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full rounded-xl border border-line-strong bg-surface px-3 py-2 text-sm shadow-sm"
+              aria-invalid={validationAttempted && !subject.trim()}
+              aria-describedby={
+                validationAttempted && !subject.trim() ? "diff-pack-subject-error" : undefined
+              }
+              className="w-full rounded-xl border border-line-strong bg-surface px-3 py-2 text-sm shadow-sm aria-[invalid=true]:border-danger aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-danger/20"
             />
+            {validationAttempted && !subject.trim() ? (
+              <p id="diff-pack-subject-error" className="mt-1 text-xs text-danger-text">
+                Required
+              </p>
+            ) : null}
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted">Grade / year</label>
+            <label htmlFor="diff-pack-grade" className="mb-1 block text-xs font-medium text-muted">
+              Grade / year
+            </label>
             <input
+              id="diff-pack-grade"
+              ref={gradeInputRef}
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
-              className="w-full rounded-xl border border-line-strong bg-surface px-3 py-2 text-sm shadow-sm"
+              aria-invalid={validationAttempted && !grade.trim()}
+              aria-describedby={
+                validationAttempted && !grade.trim() ? "diff-pack-grade-error" : undefined
+              }
+              className="w-full rounded-xl border border-line-strong bg-surface px-3 py-2 text-sm shadow-sm aria-[invalid=true]:border-danger aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-danger/20"
             />
+            {validationAttempted && !grade.trim() ? (
+              <p id="diff-pack-grade-error" className="mt-1 text-xs text-danger-text">
+                Required
+              </p>
+            ) : null}
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-muted">Learning objectives</label>
+            <label htmlFor="diff-pack-objectives" className="mb-1 block text-xs font-medium text-muted">
+              Learning objectives
+            </label>
             <textarea
+              id="diff-pack-objectives"
+              ref={objectivesInputRef}
               value={learningObjectives}
               onChange={(e) => setLearningObjectives(e.target.value)}
               rows={3}
-              className="w-full rounded-xl border border-line-strong bg-surface px-3 py-2 text-sm shadow-sm"
+              aria-invalid={validationAttempted && !learningObjectives.trim()}
+              aria-describedby={
+                validationAttempted && !learningObjectives.trim()
+                  ? "diff-pack-objectives-error"
+                  : undefined
+              }
+              className="w-full rounded-xl border border-line-strong bg-surface px-3 py-2 text-sm shadow-sm aria-[invalid=true]:border-danger aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-danger/20"
             />
+            {validationAttempted && !learningObjectives.trim() ? (
+              <p id="diff-pack-objectives-error" className="mt-1 text-xs text-danger-text">
+                Required
+              </p>
+            ) : null}
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-muted">Curriculum type (optional)</label>
@@ -583,17 +672,30 @@ export function DifferentiatedWorksheetPack() {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-muted">
+            <label htmlFor="diff-pack-source" className="mb-1 block text-xs font-medium text-muted">
               Lesson source (full lesson plan text)
             </label>
             <textarea
+              id="diff-pack-source"
+              ref={lessonSourceInputRef}
               value={lessonSourceText}
               onChange={(e) => setLessonSourceText(e.target.value)}
               rows={14}
               spellCheck={false}
-              className="max-h-96 w-full resize-y rounded-xl border border-line-strong bg-surface px-3 py-2 font-mono text-xs leading-relaxed shadow-sm"
+              aria-invalid={validationAttempted && !lessonSourceText.trim()}
+              aria-describedby={
+                validationAttempted && !lessonSourceText.trim()
+                  ? "diff-pack-source-error"
+                  : undefined
+              }
+              className="max-h-96 w-full resize-y rounded-xl border border-line-strong bg-surface px-3 py-2 font-mono text-xs leading-relaxed shadow-sm aria-[invalid=true]:border-danger aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-danger/20"
               placeholder="Paste lesson plan text, or upload a PDF / Word / PowerPoint file (Way 2)."
             />
+            {validationAttempted && !lessonSourceText.trim() ? (
+              <p id="diff-pack-source-error" className="mt-1 text-xs text-danger-text">
+                Required
+              </p>
+            ) : null}
           </div>
         </div>
 
