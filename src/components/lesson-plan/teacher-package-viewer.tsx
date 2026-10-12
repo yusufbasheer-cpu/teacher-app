@@ -37,6 +37,15 @@ import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson"
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
 import type { PresentationLanguage } from "@/lib/ppt-language";
+import { TemplateUploadIssuePanel } from "@/components/lesson-plan/template-upload-issue";
+import {
+  TEMPLATE_ACCEPT_ATTRIBUTE,
+  TEMPLATE_REQUIREMENTS_LINE,
+  checkTemplateFile,
+  isTemplateUploadIssueCode,
+  templateUploadIssue,
+  type TemplateUploadIssue,
+} from "@/lib/school-template-upload";
 import { toUserFacingError, USER_FACING_ERROR, sanitizeUserMessage } from "@/lib/user-facing-errors";
 
 function hasAflSelections(s: AflSelectionsPayload | undefined): boolean {
@@ -149,6 +158,7 @@ export function TeacherPackageViewer({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [templateBusy, setTemplateBusy] = useState(false);
+  const [uploadIssue, setUploadIssue] = useState<TemplateUploadIssue | null>(null);
   const [templateWarning, setTemplateWarning] = useState<{ code: string; error: string; slide: number | null } | null>(null);
 
   useEffect(() => {
@@ -167,9 +177,18 @@ export function TeacherPackageViewer({
   }, []);
 
   const uploadTemplate = async (file: File) => {
-    setTemplateBusy(true);
     setTemplateWarning(null);
     setExportError(null);
+    setUploadIssue(null);
+
+    // Catch the obvious problems (wrong type, empty, too big) before uploading megabytes.
+    const problem = checkTemplateFile(file);
+    if (problem) {
+      setUploadIssue(problem);
+      return;
+    }
+
+    setTemplateBusy(true);
     try {
       const form = new FormData();
       form.append("template", file);
@@ -178,18 +197,36 @@ export function TeacherPackageViewer({
         headers: await getAuthOnlyHeaders(),
         body: form,
       });
-      const result = await response.json() as { error?: string; originalFilename?: string; thumbnailBase64?: string | null };
-      // The upload route returns teacher-readable messages; show them as-is rather than
-      // letting the generic sanitizer replace them.
+      let result: {
+        error?: string;
+        code?: string;
+        steps?: string[];
+        originalFilename?: string;
+        thumbnailBase64?: string | null;
+      } = {};
+      try {
+        result = await response.json();
+      } catch {
+        // The platform answered with something that isn't ours (an HTML error page, say).
+      }
       if (!response.ok) {
-        setExportError(result.error?.trim() || "Your PowerPoint couldn't be uploaded. Check that it is a .pptx file under 15 MB and try again.");
+        // The route's messages are written for teachers; show them as-is, with the steps.
+        const code = isTemplateUploadIssueCode(result.code)
+          ? result.code
+          : response.status === 413
+            ? "TOO_LARGE"
+            : response.status === 429
+              ? "RATE_LIMITED"
+              : "UNKNOWN";
+        const issue = templateUploadIssue(code, result.error);
+        setUploadIssue(Array.isArray(result.steps) && result.steps.length > 0 ? { ...issue, steps: result.steps } : issue);
         return;
       }
       setSavedTemplate({ original_filename: result.originalFilename || file.name, thumbnail_base64: result.thumbnailBase64 ?? null });
       setTemplateMode("uploaded");
       toast.success("School PowerPoint template saved.");
-    } catch (error) {
-      setExportError(sanitizeUserMessage(null, "teacher-package-upload", "We couldn't reach Layah to upload your PowerPoint. Check your internet connection and try again."));
+    } catch {
+      setUploadIssue(templateUploadIssue("NETWORK"));
     } finally {
       setTemplateBusy(false);
     }
@@ -520,6 +557,7 @@ export function TeacherPackageViewer({
                       Slide template
                     </p>
                     <p className="mb-3 text-sm text-faint">Upload your school&apos;s PowerPoint and Layah will put your lesson inside your own slide design, with your logo and colours.</p>
+                    <p className="mb-3 text-sm font-medium text-muted">{TEMPLATE_REQUIREMENTS_LINE}</p>
 <div className="mb-3 flex flex-wrap items-center gap-2">
                       <Button type="button" size="sm" variant={templateMode === "layah" ? "default" : "outline"} onClick={() => { setTemplateMode("layah"); setTemplateWarning(null); }}>
                         Layah templates
@@ -533,6 +571,13 @@ export function TeacherPackageViewer({
                         {templateBusy ? "Uploading…" : savedTemplate ? "Replace school template" : "Upload your school template"}
                       </Button>
                     </div>
+                    {uploadIssue ? (
+                      <TemplateUploadIssuePanel
+                        issue={uploadIssue}
+                        onChooseAnother={() => { setUploadIssue(null); document.getElementById("uploaded-ppt-input")?.click(); }}
+                        onDismiss={() => setUploadIssue(null)}
+                      />
+                    ) : null}
                     {savedTemplate ? (
                       <div className="mb-3 flex items-center gap-3 rounded-md border border-line-subtle bg-surface p-2 text-sm">
                         {savedTemplate.thumbnail_base64?.startsWith("data:image/") ? <img src={savedTemplate.thumbnail_base64} alt="PowerPoint preview" className="h-12 w-20 object-contain" /> : null}
@@ -588,7 +633,7 @@ export function TeacherPackageViewer({
 
   return (
     <div className="workspace-page">
-      <input id="uploaded-ppt-input" className="sr-only" tabIndex={-1} type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" disabled={templateBusy || busy !== null} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadTemplate(file); event.target.value = ""; }} />
+      <input id="uploaded-ppt-input" className="sr-only" tabIndex={-1} type="file" accept={TEMPLATE_ACCEPT_ATTRIBUTE} disabled={templateBusy || busy !== null} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadTemplate(file); event.target.value = ""; }} />
       <header className="page-header">
         <div className="min-w-0">
           <p className="page-kicker flex items-center gap-2"><CheckCircle2 className="size-4" aria-hidden />Lesson package</p>
