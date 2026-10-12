@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, type Variants } from "motion/react";
+import { Check, Circle, Eye, EyeOff } from "lucide-react";
 import { SESSION_REVOKED_MESSAGE } from "@/lib/active-session";
 import { completeEmailPostAuthLogin } from "@/lib/auth-post-login";
 import { hasCompletedTeacherProfile } from "@/lib/user-profile";
@@ -14,6 +15,15 @@ import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 const MIN_SIGNUP_MS = 3000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Signup password rules, shown live under the field. If Supabase's dashboard
+// password policy changes, update this list to match.
+const PASSWORD_RULES = [
+  { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
+  { label: "One uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
+  { label: "One lowercase letter", test: (p: string) => /[a-z]/.test(p) },
+  { label: "One number", test: (p: string) => /\d/.test(p) },
+];
 
 type AuthMode = "login" | "signup";
 
@@ -101,6 +111,9 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useErrorToast();
@@ -183,6 +196,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
     setError(null);
     setMessage(null);
     setShowResend(false);
+    setPasswordError(null);
     setLoading(true);
 
     try {
@@ -194,6 +208,16 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       }
 
       if (mode === "signup") {
+        const missing = PASSWORD_RULES.filter((r) => !r.test(password));
+        if (missing.length > 0) {
+          setPasswordError(
+            `Password needs: ${missing.map((r) => r.label.toLowerCase()).join(", ")}.`,
+          );
+          passwordRef.current?.focus();
+          setLoading(false);
+          return;
+        }
+
         // 1. Honeypot — bots fill hidden fields, humans never see it
         if (honeypot) {
           setLoading(false);
@@ -277,7 +301,13 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
       }
     } catch (err) {
       const code = typeof err === "object" && err !== null ? (err as { code?: string }).code : undefined;
-      if (mode === "login" && code === "invalid_credentials") {
+      if (mode === "signup" && code === "weak_password") {
+        // Supabase's own message is long and gets masked as "Something went wrong".
+        setPasswordError(
+          "That password is too weak. Use at least 8 characters with uppercase, lowercase and a number.",
+        );
+        passwordRef.current?.focus();
+      } else if (mode === "login" && code === "invalid_credentials") {
         setError(
           "Invalid email or password. If you just signed up, you'll need to confirm your email first.",
         );
@@ -392,17 +422,54 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
           <label htmlFor="password" className="text-sm font-medium" style={{ color: "var(--text)" }}>
             Password
           </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete={mode === "login" ? "current-password" : "new-password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            minLength={6}
-            className={inputClass}
-            required
-          />
+          <div className="relative">
+            <input
+              id="password"
+              ref={passwordRef}
+              type={showPassword ? "text" : "password"}
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setPasswordError(null);
+              }}
+              placeholder="Enter your password"
+              aria-invalid={passwordError ? true : undefined}
+              aria-describedby={mode === "signup" ? "password-rules" : undefined}
+              className={`${inputClass} pr-10${passwordError ? " border-red-600" : ""}`}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-faint hover:text-ink"
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
+          {mode === "signup" && (
+            <ul id="password-rules" className="flex flex-col gap-1 text-xs">
+              {PASSWORD_RULES.map((rule) => {
+                const ok = rule.test(password);
+                return (
+                  <li
+                    key={rule.label}
+                    className="flex items-center gap-1.5"
+                    style={{ color: ok ? "var(--brand-active)" : "var(--text-secondary)" }}
+                  >
+                    {ok ? <Check className="size-3.5" /> : <Circle className="size-3.5" />}
+                    {rule.label}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {passwordError ? (
+            <p role="alert" className="text-sm text-red-600">
+              {passwordError}
+            </p>
+          ) : null}
         </motion.div>
 
         {mode === "signup" && (
@@ -466,6 +533,7 @@ export function AuthCard({ defaultMode = "login", linkMode = false }: AuthCardPr
                 return prev === "login" ? "signup" : "login";
               });
               setError(null);
+              setPasswordError(null);
               setMessage(null);
               setShowResend(false);
             }}
