@@ -179,12 +179,17 @@ export function TeacherPackageViewer({
         body: form,
       });
       const result = await response.json() as { error?: string; originalFilename?: string; thumbnailBase64?: string | null };
-      if (!response.ok) throw new Error(result.error || "PowerPoint upload failed.");
+      // The upload route returns teacher-readable messages; show them as-is rather than
+      // letting the generic sanitizer replace them.
+      if (!response.ok) {
+        setExportError(result.error?.trim() || "Your PowerPoint couldn't be uploaded. Check that it is a .pptx file under 15 MB and try again.");
+        return;
+      }
       setSavedTemplate({ original_filename: result.originalFilename || file.name, thumbnail_base64: result.thumbnailBase64 ?? null });
       setTemplateMode("uploaded");
       toast.success("School PowerPoint template saved.");
     } catch (error) {
-      setExportError(sanitizeUserMessage(error instanceof Error ? error.message : null, "teacher-package-viewer"));
+      setExportError(sanitizeUserMessage(null, "teacher-package-upload", "We couldn't reach Layah to upload your PowerPoint. Check your internet connection and try again."));
     } finally {
       setTemplateBusy(false);
     }
@@ -200,7 +205,7 @@ export function TeacherPackageViewer({
       setTemplateWarning(null);
       toast.success("Saved PowerPoint template removed.");
     } catch (error) {
-      setExportError(sanitizeUserMessage(error instanceof Error ? error.message : null, "teacher-package-viewer"));
+      setExportError(sanitizeUserMessage(null, "teacher-package-remove-template", "We couldn't remove your saved PowerPoint template. Please try again."));
     } finally {
       setTemplateBusy(false);
     }

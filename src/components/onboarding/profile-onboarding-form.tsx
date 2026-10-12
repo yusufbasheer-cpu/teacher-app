@@ -112,7 +112,7 @@ export function ProfileOnboardingForm() {
       router.replace(getSafeAuthNext(new URLSearchParams(window.location.search).get("next")));
       router.refresh();
     } catch (err) {
-      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "profile-onboarding-form"));
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "profile-onboarding-form", "We couldn't save your profile. Please check your connection and try again."));
       setSaving(false);
     }
   };

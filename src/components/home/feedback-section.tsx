@@ -43,7 +43,7 @@ export function FeedbackSection() {
       }
       setSubmitted(true);
     } catch (err) {
-      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "feedback-section"));
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "feedback-section", "We couldn't send your feedback. Please check your connection and try again."));
     } finally {
       setSubmitting(false);
     }
