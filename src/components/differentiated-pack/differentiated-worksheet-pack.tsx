@@ -488,7 +488,7 @@ export function DifferentiatedWorksheetPack() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/30 p-5 shadow-sm">
           <h3 className="text-sm font-bold uppercase tracking-wide text-emerald-900">Way 1</h3>
-          <p className="mt-1 text-sm text-muted">Generate from the lesson you just built in EduPlan.</p>
+          <p className="mt-1 text-sm text-muted">Generate from the lesson you just built in Layah.</p>
           <p className="mt-3 text-xs text-muted">
             Use the <strong>Generate Differentiated Worksheet Pack</strong> button on the lesson
             generator page after a successful run. It fills this page automatically.
