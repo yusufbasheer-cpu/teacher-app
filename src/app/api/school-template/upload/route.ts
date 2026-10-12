@@ -35,29 +35,29 @@ export async function POST(req: Request) {
   const authHeader = req.headers.get("Authorization");
   const token = authHeader?.replace("Bearer ", "").trim();
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    return NextResponse.json({ error: "Your session has expired. Please log in again and re-upload your template." }, { status: 401 });
   }
 
   const supabase = getSupabaseForUser(token);
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
   if (authErr || !user) {
-    return NextResponse.json({ error: "Invalid session." }, { status: 401 });
+    return NextResponse.json({ error: "Your session has expired. Please log in again and re-upload your template." }, { status: 401 });
   }
 
   let formData: FormData;
   try {
     formData = await req.formData();
   } catch {
-    return NextResponse.json({ error: "Failed to parse form data." }, { status: 400 });
+    return NextResponse.json({ error: "We couldn't read the upload. Please choose your .pptx file again." }, { status: 400 });
   }
 
   const file = formData.get("template");
   if (!file || !(file instanceof File)) {
-    return NextResponse.json({ error: "No template file provided." }, { status: 400 });
+    return NextResponse.json({ error: "No file was selected. Choose a .pptx PowerPoint file to upload." }, { status: 400 });
   }
 
   if (!file.name.toLowerCase().endsWith(".pptx")) {
-    return NextResponse.json({ error: "Only .pptx files are accepted." }, { status: 400 });
+    return NextResponse.json({ error: "Only .pptx PowerPoint files can be used as a template. Older .ppt files need to be re-saved as .pptx first." }, { status: 400 });
   }
 
   const MAX_SIZE = 15 * 1024 * 1024; // 15 MB
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
   const scan = await scanBufferForMalware(bytes, `school-template:${user.id}:${file.name}`);
   if (scan.scanned && !scan.clean) {
     console.error(`[school-template/upload] BLOCKED — malware scan flagged upload for user ${user.id}`);
-    return NextResponse.json({ error: "This file failed a security scan and was rejected." }, { status: 422 });
+    return NextResponse.json({ error: "This file was blocked by our security scan, so it can't be used. Try exporting a fresh copy from PowerPoint." }, { status: 422 });
   }
   if (!scan.scanned) {
     // No scanner is provisioned for this project (see scanBufferForMalware).
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[school-template/upload] Extraction error:", msg);
     return NextResponse.json(
-      { error: `Could not read the .pptx file: ${msg}. Please ensure it is a valid PowerPoint (.pptx) file.` },
+      { error: "We couldn't read this PowerPoint. Open it in PowerPoint, use Save As → .pptx, and upload that copy. Files from Google Slides or Keynote should be downloaded as .pptx first." },
       { status: 400 },
     );
   }
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { error: "Failed to save template to your account. Please try again." },
+      { error: "Your template was read but couldn't be saved to your account. Please try again in a minute, and contact info@layah.in if it keeps happening." },
       { status: 500 },
     );
   }

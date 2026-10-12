@@ -111,7 +111,7 @@ export function ProfileOnboardingForm() {
       router.replace("/overview");
       router.refresh();
     } catch (err) {
-      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "profile-onboarding-form"));
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "profile-onboarding-form", "We couldn't save your profile. Please check your connection and try again."));
       setSaving(false);
     }
   };

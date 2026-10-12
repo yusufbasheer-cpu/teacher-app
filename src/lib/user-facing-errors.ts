@@ -105,12 +105,17 @@ export function toUserFacingError(err: unknown, logContext?: string): string {
 }
 
 /** Sanitize API `error` fields before displaying in the UI. */
-export function sanitizeUserMessage(message: string | undefined | null, logContext?: string): string {
+export function sanitizeUserMessage(
+  message: string | undefined | null,
+  logContext?: string,
+  /** What to say when the message is empty or technical — say what failed, not just "something". */
+  fallback: string = USER_FACING_ERROR,
+): string {
   const trimmed = message?.trim() ?? "";
-  if (!trimmed) return USER_FACING_ERROR;
+  if (!trimmed) return fallback;
   if (!isTechnicalUserMessage(trimmed)) return trimmed;
   if (logContext) {
     console.error(`[${logContext}] suppressed technical UI message:`, trimmed);
   }
-  return USER_FACING_ERROR;
+  return fallback;
 }

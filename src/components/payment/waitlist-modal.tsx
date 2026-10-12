@@ -51,7 +51,7 @@ export function WaitlistModal({ open, onClose, plan, initialEmail = "" }: Waitli
       }
       setDone(true);
     } catch (err) {
-      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "waitlist-modal"));
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "waitlist-modal", "We couldn't add you to the waitlist. Please try again."));
     } finally {
       setSubmitting(false);
     }

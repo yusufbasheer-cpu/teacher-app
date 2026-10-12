@@ -317,7 +317,7 @@ export function SchoolRegisterForm() {
       });
       if (oauthError) throw oauthError;
     } catch (err) {
-      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "school-register-form"));
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "school-register-form", "Google sign-in didn't complete. Please try again, or sign up with email instead."));
       setGoogleLoading(false);
     }
   };
@@ -398,7 +398,7 @@ export function SchoolRegisterForm() {
 
       setStep("done");
     } catch (err) {
-      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "school-register-form"));
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "school-register-form", "We couldn't submit your school registration. Please check your details and try again."));
     } finally {
       setSubmitting(false);
     }
