@@ -118,7 +118,7 @@ export const PRICING_REGIONS: Record<PricingRegionId, PricingRegion> = {
     flag: "🇮🇳",
     decimals: 0,
     prices: p(
-      { monthly: 279, annual: 2790 },
+      { monthly: 349, annual: 3490 },
       { monthly: 469, annual: 4690 },
       { monthly: 2829, annual: 28290 },
       { monthly: 6629, annual: 66290 },

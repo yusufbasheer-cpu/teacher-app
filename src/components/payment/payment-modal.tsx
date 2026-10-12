@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { getAuthHeaders } from "@/lib/auth-headers";
-import { usePricingRegion } from "@/hooks/use-pricing-region";
-import { PRICING_REGIONS, formatRegionalPrice, type PaidPlanKey } from "@/lib/pricing-regions";
+import {
+  PRICING_REGIONS,
+  formatRegionalPrice,
+  isPricingRegionId,
+  type PaidPlanKey,
+  type PricingRegionId,
+} from "@/lib/pricing-regions";
 import { PLANS } from "@/lib/plans";
 import { useErrorToast } from "@/hooks/use-error-toast";
 
@@ -51,9 +57,12 @@ const PLAN_INFO: Record<UpgradePlanKey, { name: string; priceKey: PaidPlanKey; g
   },
 };
 
-// Razorpay checkout only supports charging in INR today, so this modal always prices and
-// charges off the India region regardless of the visitor's own (now geo-detected) pricing region.
+// The Pro Monthly auto-pay subscription is a Razorpay Plan, which is fixed in INR, so it always
+// prices off the India region. Every other purchase is priced in the region the server says it
+// will charge (see /api/razorpay/checkout-region), which is INR unless multi-currency is enabled.
 const INR_REGION = PRICING_REGIONS.india;
+
+type CheckoutRegion = { regionId: PricingRegionId; countryCode: string | null };
 
 const RAZORPAY_PLAN_TYPE: Record<UpgradePlanKey, "pro" | "pro_plus"> = {
   pro: "pro",
@@ -65,6 +74,10 @@ type RazorpayResponse = {
   razorpay_subscription_id?: string;
   razorpay_payment_id: string;
   razorpay_signature: string;
+};
+
+type RazorpayFailure = {
+  error?: { code?: string; description?: string; reason?: string; source?: string; step?: string };
 };
 
 type RazorpayOptions = {
@@ -86,8 +99,20 @@ const LAYAH_LOGO_URL = "https://layah.in/Logo.png";
 
 declare global {
   interface Window {
-    Razorpay?: new (options: RazorpayOptions) => { open: () => void };
+    Razorpay?: new (options: RazorpayOptions) => {
+      open: () => void;
+      on: (event: "payment.failed", callback: (response: RazorpayFailure) => void) => void;
+    };
   }
+}
+
+/** Plain-language message for a payment Razorpay reported as failed, with a hint for UPI. */
+function describePaymentFailure(failure: RazorpayFailure, method: "card" | "upi"): string {
+  const reason = failure.error?.description?.trim();
+  const base = reason || "The payment didn't go through.";
+  return method === "upi"
+    ? `${base} UPI can fail if your bank or app doesn't allow it — please try "Pay with Card" instead.`
+    : `${base} Please try again or use a different card.`;
 }
 
 function CheckIcon() {
@@ -119,19 +144,48 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
   const [billing, setBilling] = useState<Billing>(initialBilling);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useErrorToast();
-  const { regionId } = usePricingRegion();
+  const [checkoutRegion, setCheckoutRegion] = useState<CheckoutRegion>({ regionId: "india", countryCode: null });
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetch("/api/razorpay/checkout-region", { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`the server answered with status ${res.status}`);
+        return res.json() as Promise<{ regionId?: string; countryCode?: string | null }>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        if (data.regionId && isPricingRegionId(data.regionId)) {
+          setCheckoutRegion({ regionId: data.regionId, countryCode: data.countryCode ?? null });
+        }
+      })
+      .catch((err) => {
+        // Not fatal: we stay on INR, which is always chargeable, and the server decides the real currency anyway.
+        console.warn(
+          `[payment] Could not look up which currency to charge in (${err instanceof Error ? err.message : String(err)}). Showing INR prices instead.`,
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   if (!open) return null;
 
   const plan = PLAN_INFO[planKey];
-  const prices = INR_REGION.prices[plan.priceKey];
+  const isProMonthlySubscription = planKey === "pro" && billing === "monthly";
+  const priceRegion = isProMonthlySubscription ? INR_REGION : PRICING_REGIONS[checkoutRegion.regionId];
+  const prices = priceRegion.prices[plan.priceKey];
   const amount = billing === "annual" ? prices.annual : prices.monthly;
   const period = billing === "annual" ? "year" : "month";
-  const isIndia = regionId === "india";
-  const isProMonthlySubscription = planKey === "pro" && billing === "monthly";
+  const chargedInInr = priceRegion.currency === "INR";
+  // UPI only exists for INR payments made from India.
+  const showUpi = chargedInInr && checkoutRegion.countryCode === "IN";
 
   const handlePayClick = async (method: "card" | "upi") => {
     if (typeof window === "undefined" || !window.Razorpay) {
+      console.error("[payment] The Razorpay checkout script hasn't loaded yet, so checkout can't open. Check the page's network tab for checkout.razorpay.com.");
       setStatus("error");
       setErrorMessage("Payment is still loading. Please try again in a moment.");
       return;
@@ -154,6 +208,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
         });
         const subData = await subRes.json();
         if (!subRes.ok) {
+          console.error(`[payment] Couldn't start the Pro Monthly subscription: the server answered ${subRes.status} "${subData.error ?? "no message"}".`);
           throw new Error(subData.error ?? "Could not start checkout.");
         }
 
@@ -180,6 +235,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
               setStatus("success");
               onSuccess?.();
             } catch (err) {
+              console.error(`[payment] The subscription was paid but we couldn't confirm it with our server: ${err instanceof Error ? err.message : String(err)}. Payment id ${response.razorpay_payment_id}.`);
               setStatus("error");
               setErrorMessage(err instanceof Error ? err.message : "Subscription verification failed.");
             }
@@ -187,6 +243,14 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
           modal: {
             ondismiss: () => setStatus("idle"),
           },
+        });
+
+        razorpay.on("payment.failed", (failure) => {
+          console.error(
+            `[payment] Razorpay reported the Pro Monthly payment failed (${method}): ${failure.error?.description ?? "no reason given"} [code ${failure.error?.code ?? "?"}, reason ${failure.error?.reason ?? "?"}, step ${failure.error?.step ?? "?"}].`,
+          );
+          setStatus("error");
+          setErrorMessage(describePaymentFailure(failure, method));
         });
 
         razorpay.open();
@@ -204,7 +268,12 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
       });
       const orderData = await orderRes.json();
       if (!orderRes.ok) {
+        console.error(`[payment] Couldn't create the order: the server answered ${orderRes.status} "${orderData.error ?? "no message"}".`);
         throw new Error(orderData.error ?? "Could not start checkout.");
+      }
+      if (orderData.fellBackToInr) {
+        console.warn(`[payment] ${priceRegion.currency} isn't available for payment yet, so this order is in INR instead.`);
+        toast.info(`${priceRegion.currency} payments aren't available yet, so this purchase will be charged in Indian Rupees (INR).`);
       }
 
       const razorpay = new window.Razorpay({
@@ -232,6 +301,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
             setStatus("success");
             onSuccess?.();
           } catch (err) {
+            console.error(`[payment] The payment went through but we couldn't confirm it with our server: ${err instanceof Error ? err.message : String(err)}. Payment id ${response.razorpay_payment_id}.`);
             setStatus("error");
             setErrorMessage(err instanceof Error ? err.message : "Payment verification failed.");
           }
@@ -241,9 +311,18 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
         },
       });
 
+      razorpay.on("payment.failed", (failure) => {
+        console.error(
+          `[payment] Razorpay reported the ${orderData.currency} payment failed (${method}): ${failure.error?.description ?? "no reason given"} [code ${failure.error?.code ?? "?"}, reason ${failure.error?.reason ?? "?"}, step ${failure.error?.step ?? "?"}].`,
+        );
+        setStatus("error");
+        setErrorMessage(describePaymentFailure(failure, method));
+      });
+
       razorpay.open();
       setStatus("idle");
     } catch (err) {
+      console.error(`[payment] Checkout stopped before it could open: ${err instanceof Error ? err.message : String(err)}`);
       setStatus("error");
       setErrorMessage(err instanceof Error ? err.message : "Could not start checkout.");
     }
@@ -339,7 +418,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
             <div className="flex items-end justify-between">
               <div>
                 <p className="text-3xl font-extrabold tracking-tight" style={{ color: NAVY }}>
-                  {formatRegionalPrice(INR_REGION, amount, period)}
+                  {formatRegionalPrice(priceRegion, amount, period)}
                 </p>
                 <p className="mt-1 text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
                   {plan.generations}
@@ -351,9 +430,11 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
                 </p>
               )}
             </div>
-            {!isIndia && (
+            {chargedInInr && checkoutRegion.countryCode !== "IN" && (
               <p className="mt-2 text-[11px]" style={{ color: "var(--text-disabled)" }}>
-                Billed in Indian Rupees (INR) via Razorpay, regardless of your local currency shown elsewhere.
+                {isProMonthlySubscription
+                  ? "Auto-renewing subscriptions are billed in Indian Rupees (INR) via Razorpay. Your bank may convert this to your local currency."
+                  : "Billed in Indian Rupees (INR) via Razorpay. Your bank may convert this to your local currency."}
               </p>
             )}
             {isProMonthlySubscription && (
@@ -418,7 +499,7 @@ export function PaymentModal({ open, planKey, initialBilling = "monthly", onClos
                 {status === "loading" ? "Starting checkout…" : "Pay with Card"}
               </button>
 
-              {isIndia && (
+              {showUpi && (
                 <button
                   type="button"
                   onClick={() => handlePayClick("upi")}
