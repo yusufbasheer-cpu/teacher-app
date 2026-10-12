@@ -29,6 +29,7 @@ type FailedOrder = {
   userEmail: string;
   razorpay_order_id: string;
   amount_paise: number;
+  currency?: string;
   plan_type: string;
   updated_at: string;
 };
@@ -127,7 +128,7 @@ export function BillingPanel() {
                     <div>
                       <p className="break-all font-semibold" style={{ color: INK }}>{o.userEmail}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs" style={{ color: INK_MUTED }}>
-                        <span>₹{(o.amount_paise / 100).toFixed(2)} — {o.plan_type}</span>
+                        <span>{o.currency ?? "INR"} {(o.amount_paise / 100).toFixed(2)} — {o.plan_type}</span>
                         <span>{o.razorpay_order_id}</span>
                         <span>Updated {formatAdminDate(o.updated_at)}</span>
                       </div>

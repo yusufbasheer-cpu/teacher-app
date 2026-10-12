@@ -79,8 +79,11 @@ export default function TermsPage() {
 
       <LegalSection title="6. Subscriptions and payments">
         <p>
-          Payments are processed by Razorpay, our third-party payment provider, and are charged in
-          Indian Rupees (INR) regardless of what currency is displayed to you elsewhere on the Service.
+          Payments are processed by Razorpay, our third-party payment provider. One-time purchases are
+          charged in the currency shown at checkout, which is based on your region where available and
+          otherwise Indian Rupees (INR). The Pro Monthly auto-renewing subscription is currently charged
+          in INR for all customers; your bank may convert this to your own currency and apply its own
+          foreign-exchange fees.
           We do not store your full card, UPI, or bank details — Razorpay handles this in accordance
           with its own security standards and applicable payment regulations.
         </p>
