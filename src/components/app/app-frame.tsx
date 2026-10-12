@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -192,7 +193,7 @@ function QuotaPill() {
 function Brand({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <Link href="/overview" aria-label="Layah dashboard" className={cn("flex items-center gap-3", collapsed && "justify-center")}>
-      <img src="/logo-mark.png" alt="" aria-hidden className="size-9 rounded-md object-cover" />
+      <Image src="/logo-mark.png" alt="" aria-hidden width={36} height={36} className="size-9 rounded-md object-cover" />
       {!collapsed && <span><span className="block text-xl font-semibold tracking-[-0.04em] text-ink">Layah</span><span className="block text-[11px] text-faint">Teacher workspace</span></span>}
     </Link>
   );

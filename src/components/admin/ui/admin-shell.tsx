@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   Building2,
@@ -53,7 +54,7 @@ export function AdminShell({
           {/* Same plain <img> the public navbar/footer and app frame use for the
               logo mark, so all five sites stay on one pattern. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-mark.png" alt="" aria-hidden className="size-9 rounded-lg object-cover" />
+          <Image src="/logo-mark.png" alt="" aria-hidden width={36} height={36} className="size-9 rounded-lg object-cover" />
           Layah <span className="text-sm font-normal text-muted">Console</span>
         </Link>
         <p className="mb-3 mt-10 px-3 text-sm font-medium text-faint">Administration</p>

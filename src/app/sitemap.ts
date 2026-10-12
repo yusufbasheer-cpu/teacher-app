@@ -7,9 +7,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
     // Core product pages
     { url: `${BASE}/`,                        lastModified: new Date(), changeFrequency: "weekly",  priority: 1.0 },
-    { url: `${BASE}/lesson-plan`,             lastModified: new Date(), changeFrequency: "weekly",  priority: 0.9 },
-    { url: `${BASE}/question-paper`,          lastModified: new Date(), changeFrequency: "weekly",  priority: 0.9 },
-    { url: `${BASE}/differentiated-worksheets`, lastModified: new Date(), changeFrequency: "weekly",  priority: 0.9 },
     // Marketing & discovery
     { url: `${BASE}/pricing`,                 lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE}/about`,                   lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
@@ -18,7 +15,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // redirects to `/`, so listing both is duplicate content for search engines.
     { url: `${BASE}/faq`,                     lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/contact`,                 lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    { url: `${BASE}/auth`,                    lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     // Legal
     { url: `${BASE}/privacy`,                 lastModified: new Date(), changeFrequency: "yearly",  priority: 0.4 },
     { url: `${BASE}/terms`,                   lastModified: new Date(), changeFrequency: "yearly",  priority: 0.4 },

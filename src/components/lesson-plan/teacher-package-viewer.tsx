@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/panel";
@@ -36,7 +37,7 @@ import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson"
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
 import type { PresentationLanguage } from "@/lib/ppt-language";
-import { toUserFacingError, USER_FACING_ERROR } from "@/lib/user-facing-errors";
+import { toUserFacingError, USER_FACING_ERROR, sanitizeUserMessage } from "@/lib/user-facing-errors";
 
 function hasAflSelections(s: AflSelectionsPayload | undefined): boolean {
   if (!s) return false;
@@ -181,8 +182,9 @@ export function TeacherPackageViewer({
       if (!response.ok) throw new Error(result.error || "PowerPoint upload failed.");
       setSavedTemplate({ original_filename: result.originalFilename || file.name, thumbnail_base64: result.thumbnailBase64 ?? null });
       setTemplateMode("uploaded");
+      toast.success("School PowerPoint template saved.");
     } catch (error) {
-      setExportError(error instanceof Error ? error.message : "PowerPoint upload failed.");
+      setExportError(sanitizeUserMessage(error instanceof Error ? error.message : null, "teacher-package-viewer"));
     } finally {
       setTemplateBusy(false);
     }
@@ -196,8 +198,9 @@ export function TeacherPackageViewer({
       setSavedTemplate(null);
       setTemplateMode("layah");
       setTemplateWarning(null);
+      toast.success("Saved PowerPoint template removed.");
     } catch (error) {
-      setExportError(error instanceof Error ? error.message : "Could not remove the saved PowerPoint.");
+      setExportError(sanitizeUserMessage(error instanceof Error ? error.message : null, "teacher-package-viewer"));
     } finally {
       setTemplateBusy(false);
     }

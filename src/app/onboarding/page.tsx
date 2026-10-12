@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ProfileOnboardingForm } from "@/components/onboarding/profile-onboarding-form";
 
 export const metadata: Metadata = {
-  title: "Finish Setup | Layah.ai",
+  title: "Finish Setup",
   description: "Complete your teacher profile to finish account setup.",
 };
 

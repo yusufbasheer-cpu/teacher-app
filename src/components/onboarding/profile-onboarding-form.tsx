@@ -6,6 +6,7 @@ import { getSafeAuthNext } from "@/lib/auth-redirect";
 import { supabase } from "@/lib/supabase";
 import { getTeacherProfile, hasCompletedTeacherProfile } from "@/lib/user-profile";
 import { useErrorToast } from "@/hooks/use-error-toast";
+import { sanitizeUserMessage } from "@/lib/user-facing-errors";
 
 const inputClass = [
   "w-full min-h-11 rounded-lg border border-line bg-surface px-3 py-2.5 text-sm text-ink",
@@ -111,7 +112,7 @@ export function ProfileOnboardingForm() {
       router.replace(getSafeAuthNext(new URLSearchParams(window.location.search).get("next")));
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "profile-onboarding-form"));
       setSaving(false);
     }
   };

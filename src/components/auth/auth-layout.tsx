@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BookOpen, FileCheck2, Layers3 } from "lucide-react";
@@ -15,7 +16,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         <aside className="flex flex-col justify-between border-b border-line bg-sunken p-6 sm:p-10 lg:border-b-0 lg:border-r">
           <div>
             <Link href="/" className="inline-flex items-center gap-3 text-lg font-semibold text-ink">
-              <img src="/logo-mark.png" alt="" aria-hidden className="size-10 rounded-xl object-cover" />
+              <Image src="/logo-mark.png" alt="" aria-hidden width={40} height={40} className="size-10 rounded-xl object-cover" />
               Layah
             </Link>
             <p className="page-kicker mt-10">Your teaching workspace</p>

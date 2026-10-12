@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { LegalPageLayout, LegalSection } from "@/components/legal/legal-page-layout";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | Layah.ai",
+  title: "Terms of Service",
   description:
-    "Terms of Service for Layah.ai — AI lesson planning and classroom tools for teachers and schools.",
+    "The terms of service for Layah, the AI lesson planning platform for teachers and schools. Read about accounts, subscriptions, acceptable use and your rights.",
 };
 
 export default function TermsPage() {

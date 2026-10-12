@@ -519,7 +519,7 @@ export function DifferentiatedWorksheetPack() {
             type="button"
             disabled={inferring || !lessonSourceText.trim()}
             onClick={() => void onInferMeta()}
-            className="mt-4 rounded-lg border border-[color-mix(in_oklch,var(--brand)_40%,transparent)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text)] shadow-sm hover:bg-[color-mix(in_oklch,var(--brand)_10%,transparent)] disabled:opacity-50"
+            className="mt-4 rounded-lg border border-[color-mix(in_oklch,var(--brand)_40%,transparent)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold max-md:min-h-11 max-md:text-sm text-[var(--text)] shadow-sm hover:bg-[color-mix(in_oklch,var(--brand)_10%,transparent)] disabled:opacity-50"
           >
             {inferring ? "Inferring…" : "Auto-fill form from document"}
           </button>
@@ -612,7 +612,7 @@ export function DifferentiatedWorksheetPack() {
               clearDiffPackSession();
               setFromLessonNotice(null);
             }}
-            className="rounded-lg border border-line bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-muted hover:bg-hover"
+            className="rounded-lg border border-line bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-muted hover:bg-hover max-md:min-h-11 max-md:text-sm"
           >
             Clear “from lesson” session
           </button>

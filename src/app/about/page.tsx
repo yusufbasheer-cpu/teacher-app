@@ -5,8 +5,9 @@ import { PublicPage } from "@/components/marketing/public-page";
 import { buttonVariants } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "About Layah — Built by a teacher, for teachers",
-  description: "Meet the people behind Layah and our mission to give teachers more time for their students.",
+  title: "About Us",
+  description:
+    "Layah was built by a teacher, for teachers. Meet the team and see how our AI tools save hours on lesson plans, PPTs, worksheets and assessments every week."
 };
 
 const TEAM = [

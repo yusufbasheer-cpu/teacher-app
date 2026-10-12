@@ -7,9 +7,9 @@ import { SectionLabel } from "@/components/marketing/section-label";
 import { posts, formatDate } from "@/content/blog/posts";
 
 export const metadata: Metadata = {
-  title: "Blog – Teaching Tips & AI Resources | Layah",
+  title: "Teaching Tips & AI Resources",
   description:
-    "Practical articles for teachers on lesson planning, AI tools, KHDA frameworks, and saving time in the classroom. Written by educators, for educators.",
+    "Practical articles for teachers on lesson planning, AI tools, KHDA frameworks and saving time in the classroom. Written by educators, for educators.",
 };
 
 function ClockIcon() {

@@ -5,8 +5,9 @@ import { AuthLayout } from "@/components/auth/auth-layout";
 import { PageLoader } from "@/components/ui/animate";
 
 export const metadata: Metadata = {
-  title: "Sign Up | Layah.ai",
-  description: "Create a Layah account to start generating lesson plans, PPTs, worksheets, and assessments with AI.",
+  title: "Sign Up",
+  description:
+    "Create a free Layah account and start generating AI lesson plans, PPTs, worksheets, question papers and assessments for your classes in minutes.",
 };
 
 export default function SignupPage() {

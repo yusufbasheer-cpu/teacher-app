@@ -9,6 +9,19 @@ import { Input } from "@/components/ui/input";
 import { PLANS } from "@/lib/plans";
 
 type FaqItem = { q: string; a: string };
+
+/** Turns any @layah.in address in an answer into a mailto: link. */
+function withEmailLinks(text: string) {
+  return text.split(/([\w.-]+@layah\.in)/).map((part, i) =>
+    i % 2 ? (
+      <a key={i} href={`mailto:${part}`} className="font-medium text-brand underline underline-offset-2">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
 type FaqCategory = { title: string; items: FaqItem[] };
 const FAQ_DATA: FaqCategory[] = [
   {
@@ -116,7 +129,7 @@ export default function FaqPage() {
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-5 text-sm font-medium marker:content-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand">
                       {item.q}<Plus className="size-4 shrink-0 text-faint transition-transform duration-150 group-open:rotate-45 motion-reduce:transition-none" aria-hidden />
                     </summary>
-                    <p className="max-w-2xl pb-5 text-sm leading-relaxed text-muted">{item.a}</p>
+                    <p className="max-w-2xl pb-5 text-sm leading-relaxed text-muted">{withEmailLinks(item.a)}</p>
                   </details>
                 ))}
               </div>

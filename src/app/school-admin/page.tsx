@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SchoolAdminDashboard } from "@/components/school/school-admin-dashboard";
 import {
@@ -33,6 +34,11 @@ function bypassPlaceholderDashboard(email: string): SchoolAdminDashboardData {
     },
   };
 }
+
+export const metadata: Metadata = {
+  title: "School Admin",
+  robots: { index: false, follow: false },
+};
 
 export default async function SchoolAdminPage() {
   const user = await getVerifiedUser();

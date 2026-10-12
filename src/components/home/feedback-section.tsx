@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/marketing/section-label";
 import { useErrorToast } from "@/hooks/use-error-toast";
+import { sanitizeUserMessage } from "@/lib/user-facing-errors";
 
 const ROLES = ["Teacher", "Head of Department", "Principal", "School Admin", "Other"];
 
@@ -42,7 +43,7 @@ export function FeedbackSection() {
       }
       setSubmitted(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "feedback-section"));
     } finally {
       setSubmitting(false);
     }

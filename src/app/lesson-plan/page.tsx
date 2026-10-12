@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getVerifiedUser } from "@/lib/verified-user";
 import { LessonPlanGenerator } from "@/components/lesson-plan/lesson-plan-generator";
@@ -6,6 +7,11 @@ import { ComposerSkeleton } from "@/components/app/route-skeletons";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+export const metadata: Metadata = {
+  title: "Lesson Plan Generator",
+  robots: { index: false, follow: false },
+};
 
 export default async function LessonPlanPage() {
   await getVerifiedUser();

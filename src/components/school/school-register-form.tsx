@@ -11,6 +11,7 @@ import {
   type PricingRegion,
   type PricingRegionId,
 } from "@/lib/pricing-regions";
+import { sanitizeUserMessage } from "@/lib/user-facing-errors";
 
 const NAVY = "var(--text)";
 const TEAL = "var(--brand)";
@@ -316,7 +317,7 @@ export function SchoolRegisterForm() {
       });
       if (oauthError) throw oauthError;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Google sign-in failed.");
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "school-register-form"));
       setGoogleLoading(false);
     }
   };
@@ -397,7 +398,7 @@ export function SchoolRegisterForm() {
 
       setStep("done");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "school-register-form"));
     } finally {
       setSubmitting(false);
     }

@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { getVerifiedUser } from "@/lib/verified-user";
 import { QuestionPaperGenerator } from "@/components/question-paper/question-paper-generator";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+export const metadata: Metadata = {
+  title: "Question Paper Generator",
+  robots: { index: false, follow: false },
+};
 
 export default async function QuestionPaperPage() {
   await getVerifiedUser();

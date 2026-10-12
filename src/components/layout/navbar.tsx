@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -44,7 +45,7 @@ export function Navbar() {
       <header className="sticky top-0 z-40 border-b border-line-subtle bg-surface/95 backdrop-blur-md">
         <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
           <Link href="/" aria-label="Layah home" className="flex shrink-0 items-center gap-2.5">
-            <img src="/logo-mark.png" alt="" aria-hidden className="size-9 rounded-md object-cover" />
+            <Image src="/logo-mark.png" alt="" aria-hidden width={36} height={36} className="size-9 rounded-md object-cover" />
             <span className="text-[23px] font-semibold tracking-[-0.04em] text-ink">Layah</span>
           </Link>
           <nav aria-label="Main navigation" className="hidden items-center gap-0.5 lg:flex">{links()}</nav>

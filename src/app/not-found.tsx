@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
+
+export const metadata: Metadata = { title: "Page Not Found" };
 
 export default function NotFound() {
   return (

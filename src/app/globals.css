@@ -532,6 +532,21 @@
    the rule appears to pass through a hole. */
 .on-surface .rule-item::before { background: var(--surface); }
 
+/* Mobile form controls: 16px stops iOS Safari zooming the page on focus, and
+   44px meets the minimum tap target. Unlayered on purpose — it has to beat the
+   per-component text-xs/text-sm utilities rather than be a default they override. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]),
+  select {
+    min-height: 44px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

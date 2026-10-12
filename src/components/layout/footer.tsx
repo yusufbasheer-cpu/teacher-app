@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
@@ -20,10 +21,11 @@ export function Footer() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
           <div>
             <Link href="/" aria-label="Layah home" className="inline-flex items-center gap-2.5">
-              <img src="/logo-mark.png" alt="" aria-hidden className="size-9 rounded-md object-cover" />
+              <Image src="/logo-mark.png" alt="" aria-hidden width={36} height={36} className="size-9 rounded-md object-cover" />
               <span className="text-[23px] font-semibold tracking-[-0.04em] text-ink">Layah</span>
             </Link>
             <p className="mt-4 max-w-[270px] text-sm leading-relaxed text-muted">A thoughtful workspace for lesson planning, classroom resources, and the teachers behind them.</p>
+            <ul className="mt-3 space-y-0.5 text-sm text-muted"><li><a href="mailto:info@layah.in" className="inline-flex min-h-11 items-center hover:text-brand-text">info@layah.in</a></li><li><a href="tel:+919427398825" className="inline-flex min-h-11 items-center hover:text-brand-text">+91 94273 98825</a></li></ul>
             <div className="mt-5 flex items-center gap-2">
               <a href="https://www.instagram.com/layah.teachers" target="_blank" rel="noopener noreferrer" aria-label="Layah on Instagram" className="flex size-10 items-center justify-center rounded-md border border-line-subtle text-faint transition-colors hover:bg-hover hover:text-ink"><svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.7" fill="currentColor" /></svg></a>
               <a href="https://www.linkedin.com/company/layah-ai/" target="_blank" rel="noopener noreferrer" aria-label="Layah on LinkedIn" className="flex size-10 items-center justify-center rounded-md border border-line-subtle text-faint transition-colors hover:bg-hover hover:text-ink"><svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6Z" /><path d="M2 9h4v12H2z" /><circle cx="4" cy="4" r="2" /></svg></a>
