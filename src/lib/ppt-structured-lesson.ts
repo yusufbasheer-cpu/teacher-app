@@ -44,22 +44,9 @@ export type StructuredLessonSlideModel = {
   includeImageSlot: boolean;
 };
 
-const BULLET_MAX_LINES = 16;
-const BULLET_MAX_LINES_WITH_AFL = 22;
-const SECTION_MAX_CHARS = 4000;
-
 /**
- * Per-slide safety ceilings, not a "must fit on one physical slide" budget — the PPT export's
- * chunker (`chunkLinesByHeight` in ppt-template-engine.ts) already spills any slide onto as many
- * "Continued" physical slides as it needs, so these exist only to bound a pathological/runaway
- * model response, not to force brevity. Index 7 (UAE / Real-Life Connection) was previously capped
- * at 1600 chars — far too small for its own UAE-mode content (4 sub-sections: real-life connection,
- * cross-curricular link, MOE alignment, SDG context), so a real UAE-framework generation was
- * silently cut mid-sentence with an ellipsis, dropping the alignment and SDG paragraphs entirely
- * from the exported deck. Raised to match the deck's densest slides rather than staying an outlier.
- * Index 9 (Extended Task) hit the same failure mode for the same reason: a genuinely elaborate
- * task (a multi-step design challenge with a diagram requirement and a "connection to future
- * learning" section) exceeded its 2800-char cap and got cut mid-sentence — raised alongside it.
+ * Historical size guidance retained for compatibility with existing diagnostics. These values
+ * are no longer applied as text limits: the layout engine paginates content instead of truncating it.
  */
 export const SLIDE_BODY_LIMIT: readonly { chars: number; lines: number }[] = [
   { chars: 220, lines: 4 },
@@ -77,17 +64,9 @@ export const SLIDE_BODY_LIMIT: readonly { chars: number; lines: number }[] = [
   { chars: 420, lines: 6 },
 ];
 
-function truncateBody(s: string, maxLines: number): string {
-  const lines = s.replace(/\r\n/g, "\n").split("\n").filter((l) => l.trim().length > 0);
-  if (lines.length <= maxLines) return lines.join("\n").trim();
-  return lines.slice(0, maxLines).join("\n").trim();
-}
-
-function polishBody(raw: string, maxChars: number, maxLines: number = BULLET_MAX_LINES): string {
+function polishBody(raw: string): string {
   const t = raw.replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ").trim();
-  if (!t) return "";
-  const cap = t.length > maxChars ? `${t.slice(0, maxChars).trim()}…` : t;
-  return truncateBody(cap, maxLines);
+  return t;
 }
 
 function linesOfPlan(plan: string): string[] {
@@ -134,7 +113,7 @@ function captureBlockFrom(lines: string[], startLine: number, stopNeedles: strin
     if (boundary) break;
     body.push(raw);
   }
-  return polishBody(body.join("\n"), SECTION_MAX_CHARS);
+  return polishBody(body.join("\n"));
 }
 
 function extractByHints(fullPlan: string, hints: string[], stopNeedles: string[]): string {
@@ -485,7 +464,23 @@ function extractFromPptContent(ppt: string, needles: string[]): string {
     const needle = h.toLowerCase();
     const pos = lower.indexOf(needle);
     if (pos === -1) continue;
-    return polishBody(ppt.slice(pos, pos + 3200), SECTION_MAX_CHARS);
+    const knownTitles = [
+      ...STRUCTURED_LESSON_SLIDE_TITLES_EN,
+      ...STRUCTURED_LESSON_SLIDE_TITLES_AR,
+      ...SLIDE_8_TITLE_LEGACY_EN,
+    ].map((title) => title.toLowerCase());
+    const remainder = ppt.slice(pos);
+    let end = remainder.length;
+    let offset = 0;
+    for (const line of remainder.split(/(?<=\n)/)) {
+      const candidate = line.trim().replace(/^#+\s*/, "").toLowerCase();
+      if (offset > 0 && knownTitles.includes(candidate)) {
+        end = offset;
+        break;
+      }
+      offset += line.length;
+    }
+    return polishBody(remainder.slice(0, end));
   }
   return "";
 }
@@ -501,13 +496,13 @@ export function mergeBodies(primary: string, secondary: string, topicLine: strin
   // of a short source string. Concatenating them then repeats that whole shared tail verbatim.
   // Treat full containment as the same content, not two things to join.
   if (a && b) {
-    if (a === b || a.includes(b)) return polishBody(a, SECTION_MAX_CHARS);
-    if (b.includes(a)) return polishBody(b, SECTION_MAX_CHARS);
-    return polishBody(`${a}\n\n${b}`, SECTION_MAX_CHARS);
+    if (a === b || a.includes(b)) return polishBody(a);
+    if (b.includes(a)) return polishBody(b);
+    return polishBody(`${a}\n\n${b}`);
   }
   if (a) return a;
   if (b) return b;
-  return polishBody(topicLine, 800);
+  return polishBody(topicLine);
 }
 
 function stripMarkdownSymbolsForStudents(text: string): string {
@@ -1077,13 +1072,10 @@ export function dropRepeatedTail(s: string): string {
 }
 
 function clampSlideBodyToDeckRules(slides: StructuredLessonSlideModel[]): void {
-  const aflHeavy = new Set([1, 5, 6, 7, 8, 9, 10, 11]);
   for (let i = 0; i < slides.length; i++) {
-    const lim = SLIDE_BODY_LIMIT[i] ?? { chars: 2200, lines: 16 };
-    const maxLines = aflHeavy.has(i) ? BULLET_MAX_LINES_WITH_AFL : BULLET_MAX_LINES;
     const deduped = dropRepeatedTail((slides[i]!.body ?? "").trim());
     slides[i]!.body = stripMarkdownSymbolsForStudents(
-      polishBody(deduped, lim.chars, Math.min(maxLines, lim.lines)),
+      polishBody(deduped),
     );
   }
 }

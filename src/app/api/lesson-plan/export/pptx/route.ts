@@ -15,7 +15,7 @@ import { resolvePresentationLanguage } from "@/lib/ppt-language";
 import { authenticateRequest } from "@/lib/user-usage-server";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 import { renderUploadedPpt, UploadedTemplateError } from "@/lib/uploaded-ppt-export";
-import { moveTeacherFacingLinesToNotes } from "@/lib/ppt-template-engine";
+import { moveTeacherFacingLinesToNotes, PptContentError } from "@/lib/ppt-template-engine";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -233,6 +233,9 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof UploadedTemplateError) {
       return NextResponse.json({ code: e.code, error: e.message, slide: e.slide }, { status: e.status });
+    }
+    if (e instanceof PptContentError) {
+      return NextResponse.json({ code: e.code, error: e.message }, { status: 422 });
     }
     const message = e instanceof Error ? e.message : String(e);
     console.error("[pptx export]", message, e);

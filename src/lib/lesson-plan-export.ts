@@ -37,7 +37,9 @@ import {
   type PptThemeId,
   getPptRenderTheme,
 } from "@/lib/ppt-themes";
-import { buildPptxFromTemplateEngine } from "@/lib/ppt-template-engine";
+import { buildPptxFromDeckSpec } from "@/lib/ppt-template-engine";
+import { adaptStructuredLessonSlidesToDeck } from "@/lib/slide-deck-legacy-adapter";
+import type { DeckSpec } from "@/lib/slide-schema";
 import { resolvePresentationLanguage, type PresentationLanguage } from "@/lib/ppt-language";
 import { fetchExternalImageSafely, sniffFileSignature } from "@/lib/upload-security";
 
@@ -1006,6 +1008,8 @@ export async function buildPptxFromPptContent(params: {
   homeworkTask?: string;
   /** When set, skips rebuilding slide models from text fields. */
   structuredSlides?: StructuredLessonSlideModel[];
+  /** Schema-native educational deck input for callers that already have structured blocks. */
+  deckSpec?: DeckSpec;
   /** Parallel to structured deck (before chunking): URL per deck index for slides that use images. */
   slideImageUrls?: (string | null)[] | null;
   themeId?: PptThemeId;
@@ -1042,19 +1046,34 @@ export async function buildPptxFromPptContent(params: {
     ...(Object.keys(afl).length > 0 ? { aflSelections: afl } : {}),
     language,
   };
-  const deck = params.structuredSlides ?? buildStructuredLessonSlides(ctx);
-
-  // Delegate all rendering to the template engine — it handles layout, images, overflow, and footer.
-  return buildPptxFromTemplateEngine({
-    templateId: params.themeId ?? DEFAULT_PPT_THEME_ID,
-    slides: deck,
+  if (params.deckSpec) {
+    return buildPptxFromDeckSpec({
+      templateId: params.themeId ?? params.deckSpec.theme.id,
+      deck: params.deckSpec,
+      schoolLogo: params.schoolLogo,
+      slideImageUrls: params.slideImageUrls,
+    });
+  }
+  const structuredSlides = params.structuredSlides ?? buildStructuredLessonSlides(ctx);
+  const normalized = adaptStructuredLessonSlidesToDeck({
+    slides: structuredSlides,
     subject: params.subject.trim(),
     grade: params.grade.trim(),
     topic: params.topic.trim(),
-    teacherName: params.teacherName,
-    slideImageUrls: params.slideImageUrls,
-    schoolLogo: params.schoolLogo,
     language,
+    themeId: params.themeId ?? DEFAULT_PPT_THEME_ID,
+    slideImageUrls: params.slideImageUrls,
+  });
+  if (!normalized.ok) {
+    throw new Error(`Could not normalize generated lesson slides: ${normalized.issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`);
+  }
+
+  // The existing public API now renders the versioned education schema through the composition engine.
+  return buildPptxFromDeckSpec({
+    templateId: params.themeId ?? DEFAULT_PPT_THEME_ID,
+    deck: normalized.deck,
+    schoolLogo: params.schoolLogo,
+    slideImageUrls: params.slideImageUrls,
   });
 }
 
