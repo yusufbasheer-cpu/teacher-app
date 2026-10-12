@@ -3,9 +3,9 @@ import { Container } from "@/components/ui/container";
 import { SchoolRegisterForm } from "@/components/school/school-register-form";
 
 export const metadata: Metadata = {
-  title: "Register Your School | Layah.ai",
+  title: "Register Your School",
   description:
-    "Get unlimited AI lesson plans for every teacher. Register your school for a Layah School Plan.",
+    "Register your school for a Layah School Plan and give every teacher unlimited AI lesson plans, PPTs, worksheets and question papers. Set up takes minutes.",
 };
 
 export default function SchoolRegisterPage() {

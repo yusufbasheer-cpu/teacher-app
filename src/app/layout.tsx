@@ -38,7 +38,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Layah – AI Lesson Planning for Teachers",
+  // Pages set a bare name ("Pricing"); the template adds the brand.
+  title: { default: "Layah – AI Lesson Planning for Teachers", template: "%s | Layah" },
   description:
     "Layah helps teachers create complete lesson plans, PPTs, worksheets and assessments using AI. Save hours every week. KHDA and SPEA aligned for UAE schools. Try free.",
   metadataBase: new URL("https://layah.in"),
@@ -64,13 +65,6 @@ export const metadata: Metadata = {
     description:
       "Layah helps teachers create complete lesson plans, PPTs, worksheets and assessments using AI. Save hours every week. KHDA and SPEA aligned for UAE schools. Try free.",
     images: ["/Logo.png"],
-  },
-  icons: {
-    icon: [
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-    ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 

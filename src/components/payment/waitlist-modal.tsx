@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useErrorToast } from "@/hooks/use-error-toast";
+import { sanitizeUserMessage } from "@/lib/user-facing-errors";
 
 const NAVY = "var(--text)";
 const TEAL = "var(--brand)";
@@ -50,7 +51,7 @@ export function WaitlistModal({ open, onClose, plan, initialEmail = "" }: Waitli
       }
       setDone(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "waitlist-modal"));
     } finally {
       setSubmitting(false);
     }

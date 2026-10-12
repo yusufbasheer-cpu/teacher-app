@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 
@@ -42,9 +43,8 @@ const COMPANY_LINKS = [
 
 const FEATURE_LINKS = [
   { label: "Lesson Plan Generator", href: "/lesson-plan" },
-  { label: "PPT Generator", href: "/lesson-plan" },
   { label: "Question Paper Generator", href: "/question-paper" },
-  { label: "Activity Sheet AFL", href: "/lesson-plan" },
+  { label: "Differentiated Worksheets", href: "/differentiated-worksheets" },
 ];
 
 const SUPPORT_LINKS = [
@@ -102,19 +102,31 @@ export function Footer() {
       <Container className="pb-8 pt-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div className="sm:col-span-2 lg:col-span-1">
-            <Link href="/" className="inline-flex items-center">
-              <img
+            <Link href="/" aria-label="Layah home" className="inline-flex min-h-11 items-center">
+              <Image
                 src="/Logo.png"
                 alt="Layah"
+                width={99}
                 height={36}
                 className="h-9 w-auto"
-                style={{ height: 36, width: "auto" }}
               />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed" style={{ color: "color-mix(in oklch, var(--text-inverse) 55%, transparent)" }}>
               AI-powered lesson planning for teachers worldwide. Generate complete lesson plans, PPTs, worksheets, and more in minutes.
             </p>
-            <div className="mt-5 flex gap-3">
+            <ul className="mt-4 space-y-1 text-sm" style={{ color: "color-mix(in oklch, var(--text-inverse) 65%, transparent)" }}>
+              <li>
+                <a href="mailto:info@layah.in" className="inline-flex min-h-11 items-center hover:opacity-100">
+                  info@layah.in
+                </a>
+              </li>
+              <li>
+                <a href="tel:+919427398825" className="inline-flex min-h-11 items-center hover:opacity-100">
+                  +91 94273 98825
+                </a>
+              </li>
+            </ul>
+            <div className="mt-2 flex gap-3">
               {SOCIAL_LINKS.map((social) => (
                 <a
                   key={social.label}
@@ -166,7 +178,7 @@ export function Footer() {
           style={{ borderColor: "color-mix(in oklch, var(--text-inverse) 8%, transparent)" }}
         >
           <p className="text-xs" style={{ color: "color-mix(in oklch, var(--text-inverse) 40%, transparent)" }}>
-            &copy; 2026 Layah. All rights reserved.
+            &copy; {new Date().getFullYear()} Layah. All rights reserved.
           </p>
           <p className="text-xs" style={{ color: "color-mix(in oklch, var(--text-inverse) 35%, transparent)" }}>
             Made with love for teachers worldwide

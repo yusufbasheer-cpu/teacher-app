@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 
@@ -196,12 +197,12 @@ function fireConfetti() {
 function LayahLogo() {
   return (
     <div className="flex items-center justify-center">
-      <img
+      <Image
         src="/Logo.png"
         alt="Layah"
+        width={110}
         height={40}
         className="h-10 w-auto"
-        style={{ height: 40, width: "auto" }}
       />
     </div>
   );

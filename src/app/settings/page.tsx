@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -128,7 +129,7 @@ export default function SettingsPage() {
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 5000);
     } catch {
-      /* silent - browser already shows network errors */
+      toast.error("We couldn't download your data. Check your connection and try again.");
     } finally {
       setDownloading(false);
     }

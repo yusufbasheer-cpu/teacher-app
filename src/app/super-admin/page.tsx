@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SuperAdminDashboard } from "@/components/admin/super-admin-dashboard";
 import { SuperAdminPinGate } from "@/components/admin/super-admin-pin-gate";
@@ -6,6 +7,11 @@ import { getVerifiedUser } from "@/lib/verified-user";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+export const metadata: Metadata = {
+  title: "Super Admin",
+  robots: { index: false, follow: false },
+};
 
 export default async function SuperAdminPage() {
   const user = await getVerifiedUser();

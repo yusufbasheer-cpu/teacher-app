@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -94,6 +95,7 @@ function FilterChips({
             onClick={() => onChange(active ? null : opt)}
             className={cn(
               "rounded-sm border px-1.5 py-0.5 text-[11px] font-medium transition-colors duration-[110ms]",
+              "max-md:min-h-11 max-md:px-3 max-md:text-sm",
               active
                 ? "border-brand bg-brand-subtle text-brand-text"
                 : "border-line-subtle bg-surface text-faint hover:border-line hover:text-muted",
@@ -243,6 +245,7 @@ export function MyLessonPlansList() {
     }
     setPlans((prev) => (prev ?? []).filter((p) => p.id !== pendingDelete.id));
     setPendingDelete(null);
+    toast.success("Lesson plan deleted.");
   };
 
   const filtersActive = Boolean(query.trim() || subject || grade);
@@ -264,7 +267,7 @@ export function MyLessonPlansList() {
             : undefined
         }
         actions={
-          <Button size="lg" onClick={() => router.push("/lesson-plan")}>
+          <Button size="lg" className="max-md:h-11" onClick={() => router.push("/lesson-plan")}>
             <Plus />
             New lesson
           </Button>
@@ -440,6 +443,7 @@ export function MyLessonPlansList() {
                       <Button
                         variant="ghost"
                         size="icon-sm"
+                        className="max-md:size-11"
                         aria-label={`Regenerate ${title}`}
                         title="Regenerate with these details"
                         onClick={() => router.push(regenerateHref)}
@@ -452,7 +456,7 @@ export function MyLessonPlansList() {
                       size="icon-sm"
                       aria-label={`Delete ${title}`}
                       title="Delete"
-                      className="hover:text-danger-text"
+                      className="hover:text-danger-text max-md:size-11"
                       onClick={() => setPendingDelete(plan)}
                     >
                       <Trash2 />

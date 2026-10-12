@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTeacherProfile, hasCompletedTeacherProfile } from "@/lib/user-profile";
 import { useErrorToast } from "@/hooks/use-error-toast";
+import { sanitizeUserMessage } from "@/lib/user-facing-errors";
 
 const inputClass = [
   "w-full rounded-md border border-line bg-surface px-3 py-2.5 text-[13px] text-ink",
@@ -110,7 +111,7 @@ export function ProfileOnboardingForm() {
       router.replace("/overview");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(sanitizeUserMessage(err instanceof Error ? err.message : null, "profile-onboarding-form"));
       setSaving(false);
     }
   };

@@ -87,7 +87,7 @@ function buildWelcomeHtml(name: string): string {
         <a href="${LAYAH_URL}" style="color:var(--brand);text-decoration:none;">layah.in</a>
       </p>
       <p style="color:rgba(255,255,255,0.3);font-size:11px;margin:0;">
-        &copy; 2026 Layah. All rights reserved.
+        &copy; ${new Date().getFullYear()} Layah. All rights reserved.
       </p>
     </div>
 

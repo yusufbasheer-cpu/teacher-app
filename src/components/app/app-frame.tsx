@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import * as React from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
@@ -316,7 +317,8 @@ function AccountMenu({ user }: { user: User }) {
         aria-expanded={open}
         aria-label="Account"
         className={cn(
-          "flex size-7 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-brand-on",
+          "relative flex size-7 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-brand-on",
+          "before:absolute before:-inset-2 before:content-['']",
           "transition-opacity duration-[110ms] hover:opacity-90",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
         )}
@@ -514,7 +516,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
             aria-label="Layah — dashboard"
             className="flex items-center gap-2"
           >
-            <img src="/logo-mark.png" alt="" aria-hidden className="size-6 rounded-sm object-cover" />
+            <Image src="/logo-mark.png" alt="" aria-hidden width={24} height={24} className="size-6 rounded-sm object-cover" />
             {!collapsed ? (
               <span className="text-[13px] font-semibold tracking-[-0.01em] text-ink">Layah</span>
             ) : null}
@@ -556,10 +558,10 @@ export function AppFrame({ user, children }: { user: User; children: React.React
           <div className="animate-rise absolute inset-y-0 left-0 flex w-[264px] max-w-[82vw] flex-col border-r border-line bg-surface shadow-overlay">
             <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-line-subtle px-3">
               <span className="flex items-center gap-2">
-                <img src="/logo-mark.png" alt="" aria-hidden className="size-6 rounded-sm object-cover" />
+                <Image src="/logo-mark.png" alt="" aria-hidden width={24} height={24} className="size-6 rounded-sm object-cover" />
                 <span className="text-[13px] font-semibold text-ink">Layah</span>
               </span>
-              <Button variant="ghost" size="icon-sm" onClick={() => setDrawer(false)} aria-label="Close navigation">
+              <Button variant="ghost" size="icon-sm" className="size-11" onClick={() => setDrawer(false)} aria-label="Close navigation">
                 <X />
               </Button>
             </div>
@@ -592,7 +594,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
           <Button
             variant="ghost"
             size="icon-sm"
-            className="lg:hidden"
+            className="size-11 lg:hidden"
             onClick={() => setDrawer(true)}
             aria-label="Open navigation"
           >
@@ -618,7 +620,9 @@ export function AppFrame({ user, children }: { user: User; children: React.React
               }
               aria-label="Search lessons or run a command"
               className={cn(
-                "flex items-center gap-2 rounded-md border border-line-subtle bg-surface py-1 pl-2 pr-1.5",
+                "relative flex items-center gap-2 rounded-md border border-line-subtle bg-surface py-1 pl-2 pr-1.5",
+                // Invisible extension so the touch target is ≥44px without changing the look.
+                "before:absolute before:-inset-x-2 before:-inset-y-3 before:content-['']",
                 "text-[12px] text-faint transition-colors hover:border-line hover:text-muted",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
               )}

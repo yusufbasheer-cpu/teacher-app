@@ -1,10 +1,11 @@
+import Image from "next/image";
 import type { Metadata } from "next";
 import { HeroBackdrop } from "@/components/marketing/hero-backdrop";
 import { ProfileOnboardingForm } from "@/components/onboarding/profile-onboarding-form";
 
 export const metadata: Metadata = {
-  title: "Finish Setup | Layah.ai",
-  description: "Complete your teacher profile to finish account setup.",
+  title: "Finish Setup",
+  robots: { index: false, follow: false },
 };
 
 export default function OnboardingPage() {
@@ -15,7 +16,7 @@ export default function OnboardingPage() {
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid w-full gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
           <section className="rounded-2xl border border-line bg-surface/80 p-6 shadow-sm backdrop-blur">
-            <img src="/logo-mark.png" alt="" aria-hidden className="size-11 rounded-xl object-cover" />
+            <Image src="/logo-mark.png" alt="" aria-hidden width={44} height={44} className="size-11 rounded-xl object-cover" />
             <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--brand)" }}>
               One-time setup
             </p>

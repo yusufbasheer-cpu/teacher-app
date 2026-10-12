@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { HeroBackdrop } from "@/components/marketing/hero-backdrop";
@@ -25,10 +26,12 @@ export function AuthLayout({ children }: { children: ReactNode }) {
 
       <div className="flex w-full max-w-[400px] flex-col items-center">
         <Link href="/" className="mb-7 flex flex-col items-center gap-2.5">
-          <img
+          <Image
             src="/logo-mark.png"
             alt=""
             aria-hidden
+            width={40}
+            height={40}
             className="size-10 rounded-lg object-cover"
           />
           <span className="text-center">

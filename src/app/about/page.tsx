@@ -7,9 +7,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { SectionLabel } from "@/components/marketing/section-label";
 
 export const metadata: Metadata = {
-  title: "About Layah — Our Story & Mission",
+  title: "About Us",
   description:
-    "Layah was built by a teacher for teachers. Learn about our mission to save teachers time with AI-powered lesson planning tools.",
+    "Layah was built by a teacher, for teachers. Meet the team and see how our AI tools save hours on lesson plans, PPTs, worksheets and assessments every week.",
 };
 
 const OFFERINGS = [

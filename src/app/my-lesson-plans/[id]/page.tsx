@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getVerifiedUser } from "@/lib/verified-user";
 import { LessonView } from "@/components/lesson-plan/lesson-view";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+export const metadata: Metadata = {
+  title: "Lesson Plan",
+  robots: { index: false, follow: false },
+};
 
 export default async function LessonViewPage({
   params,

@@ -28,6 +28,14 @@ function ClockIcon() {
   );
 }
 
+function PhoneIcon() {
+  return (
+    <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106a1.125 1.125 0 00-1.173.417l-.97 1.293a1.125 1.125 0 01-1.21.38 12.035 12.035 0 01-7.143-7.143 1.125 1.125 0 01.38-1.21l1.293-.97c.363-.272.527-.739.417-1.173L6.963 3.102A1.125 1.125 0 005.872 2.25H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+    </svg>
+  );
+}
+
 function CalendarIcon() {
   return (
     <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
@@ -38,6 +46,7 @@ function CalendarIcon() {
 
 const CONTACT_INFO = [
   { icon: MailIcon, label: "Email", value: "info@layah.in", href: "mailto:info@layah.in" },
+  { icon: PhoneIcon, label: "Phone", value: "+91 94273 98825", href: "tel:+919427398825" },
   { icon: ClockIcon, label: "Response Time", value: "Within 24 hours" },
   { icon: CalendarIcon, label: "Support Hours", value: "Mon – Fri, 9 AM – 6 PM GST" },
 ];
@@ -101,7 +110,7 @@ export default function ContactPage() {
         <Container>
           <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-5">
             {/* Details card */}
-            <div className="lg:col-span-2">
+            <div className="min-w-0 lg:col-span-2">
               <div className="rounded-2xl border bg-[var(--surface)] p-6 shadow-sm sm:p-8" style={{ borderColor: "color-mix(in oklch, var(--brand) 15%, transparent)" }}>
                 <h2 className="text-lg font-bold" style={{ color: NAVY }}>Get in Touch</h2>
                 <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
@@ -113,10 +122,10 @@ export default function ContactPage() {
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-xl" style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL }}>
                         <item.icon />
                       </div>
-                      <div>
+                      <div className="min-w-0 break-words">
                         <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-disabled)" }}>{item.label}</p>
                         {item.href ? (
-                          <a href={item.href} className="text-sm font-medium transition hover:opacity-80" style={{ color: TEAL }}>{item.value}</a>
+                          <a href={item.href} className="inline-flex min-h-11 items-center text-sm font-medium transition hover:opacity-80" style={{ color: TEAL }}>{item.value}</a>
                         ) : (
                           <p className="text-sm font-medium" style={{ color: NAVY }}>{item.value}</p>
                         )}
@@ -127,14 +136,14 @@ export default function ContactPage() {
 
                 <div className="mt-8 border-t pt-6" style={{ borderColor: "var(--border)" }}>
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-disabled)" }}>Follow Us</p>
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     {SOCIAL_LINKS.map((link) => (
                       <a
                         key={link.label}
                         href={link.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-lg px-3 py-1.5 text-xs font-medium transition hover:opacity-80"
+                        className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium transition hover:opacity-80"
                         style={{ background: "color-mix(in oklch, var(--brand) 10%, transparent)", color: TEAL }}
                       >
                         {link.label}
@@ -146,7 +155,7 @@ export default function ContactPage() {
             </div>
 
             {/* Form */}
-            <div className="lg:col-span-3">
+            <div className="min-w-0 lg:col-span-3">
               <div className="rounded-2xl border bg-[var(--surface)] p-6 shadow-sm sm:p-8" style={{ borderColor: "color-mix(in oklch, var(--brand) 15%, transparent)" }}>
                 {sent ? (
                   <div className="py-12 text-center">

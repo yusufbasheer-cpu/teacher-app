@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { LegalPageLayout, LegalSection } from "@/components/legal/legal-page-layout";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Layah.ai",
+  title: "Privacy Policy",
   description:
-    "How Layah.ai collects, uses, and protects your data when you use our AI lesson planning tools for teachers.",
+    "How Layah collects, uses and protects your data when you use our AI lesson planning tools. Read about your rights, cookies, data retention and contacting us.",
 };
 
 export default function PrivacyPage() {

@@ -22,7 +22,7 @@ const FADE_UP = {
 export const metadata: Metadata = {
   title: "Layah — AI Lesson Planning for Teachers",
   description:
-    "Layah generates complete lesson plans, PowerPoint presentations, worksheets, and assessments in seconds. Built specifically for teachers.",
+    "Layah generates complete lesson plans, PowerPoint presentations, worksheets and assessments in seconds. Built by a teacher, for teachers. Try it free.",
 };
 
 const TRUST_BADGES = ["CBSE", "ICSE", "IB", "Cambridge"] as const;
@@ -220,7 +220,7 @@ export default function Home() {
             </div>
           </div>
           <p className="mt-12 text-xs" style={{ color: TEXT_MUTED }}>
-            © 2026 Layah. Built for teachers.
+            © {new Date().getFullYear()} Layah. Built for teachers.
           </p>
         </div>
       </footer>

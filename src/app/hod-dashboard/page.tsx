@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getVerifiedUser } from "@/lib/verified-user";
 import { getHodTeacherRow, getHodDashboard } from "@/lib/hod-server";
@@ -7,6 +8,11 @@ import { FadeIn } from "@/components/ui/animate";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+export const metadata: Metadata = {
+  title: "HOD Dashboard",
+  robots: { index: false, follow: false },
+};
 
 export default async function HodDashboardPage() {
   const user = await getVerifiedUser();

@@ -13,13 +13,21 @@ export async function generateStaticParams() {
   return posts.map((p) => ({ slug: p.slug }));
 }
 
+/** Search snippets read best at 140–160 characters; excerpts vary, so clamp here only. */
+function toMetaDescription(excerpt: string): string {
+  const text = excerpt.replace(/\s+/g, " ").trim();
+  if (text.length > 160) return `${text.slice(0, 159).replace(/\s+\S*$/, "")}…`;
+  if (text.length < 140) return `${text} Read more on Layah.`;
+  return text;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = getPostBySlug(slug);
   if (!post) return {};
   return {
-    title: `${post.title} | Layah Blog`,
-    description: post.excerpt,
+    title: post.title,
+    description: toMetaDescription(post.excerpt),
     openGraph: {
       title: post.title,
       description: post.excerpt,

@@ -10,6 +10,19 @@ import { SectionLabel } from "@/components/marketing/section-label";
 import { PLANS } from "@/lib/plans";
 
 type FaqItem = { q: string; a: string };
+
+/** Turns any @layah.in address in an answer into a mailto: link. */
+function withEmailLinks(text: string) {
+  return text.split(/([\w.-]+@layah\.in)/).map((part, i) =>
+    i % 2 ? (
+      <a key={i} href={`mailto:${part}`} className="font-medium text-brand underline underline-offset-2">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
 type FaqCategory = { title: string; items: FaqItem[] };
 
 const FAQ_DATA: FaqCategory[] = [
@@ -103,7 +116,7 @@ function AccordionItem({ item, isOpen, onToggle }: { item: FaqItem; isOpen: bool
         className="overflow-hidden transition-all duration-300"
         style={{ maxHeight: isOpen ? 300 : 0, opacity: isOpen ? 1 : 0 }}
       >
-        <p className="pb-5 text-sm leading-relaxed text-muted-foreground">{item.a}</p>
+        <p className="pb-5 text-sm leading-relaxed text-muted-foreground">{withEmailLinks(item.a)}</p>
       </div>
     </div>
   );
