@@ -46,6 +46,16 @@ DESIGN_BODY_SIZES = (22, 20, 18, 16, 14)
 # Share of the content width kept for text when a lesson picture sits beside it.
 IMAGE_TEXT_FACTOR = 0.58
 REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+P14_NS = "http://schemas.microsoft.com/office/powerpoint/2010/main"
+
+# Characters XML 1.0 forbids. python-pptx raises ValueError on them, and anything that
+# slips past would make PowerPoint report the file as corrupt. They show up in text
+# copied from PDFs/OCR (form feeds, vertical tabs, NULs).
+_ILLEGAL_XML_CHARS = re.compile("[" + chr(0) + "-" + chr(8) + chr(11) + chr(12) + chr(14) + "-" + chr(31) + chr(0xFFFE) + chr(0xFFFF) + "]")
+
+
+def _clean(text: Any) -> str:
+    return _ILLEGAL_XML_CHARS.sub("", str(text if text is not None else ""))
 
 
 def validate_source(data: bytes) -> None:
@@ -485,6 +495,46 @@ def _remove_slide(prs, index: int):
     prs.slides._sldIdLst.remove(slide_id)
 
 
+def _repair_presentation_references(prs) -> None:
+    """Point presentation-level lists at the slides that now exist.
+
+    Cloning the template's example slides and deleting the originals leaves two lists
+    pointing at slides that are gone: the section list (`p14:sectionLst`, written by any
+    PowerPoint deck that uses sections) and custom shows. PowerPoint answers a section list
+    that names deleted slides, or leaves new slides outside every section, with "found a
+    problem with content ... repair".
+    """
+    pres = prs.part._element
+    live_ids = [sid.get("id") for sid in prs.slides._sldIdLst]
+    live_rids = {sid.get(qn("r:id")) for sid in prs.slides._sldIdLst}
+
+    for section_list in pres.iter("{%s}sectionLst" % P14_NS):
+        sections = section_list.findall("{%s}section" % P14_NS)
+        if not sections:
+            continue
+        first = sections[0]
+        for extra in sections[1:]:
+            section_list.remove(extra)
+        id_list = first.find("{%s}sldIdLst" % P14_NS)
+        if id_list is None:
+            id_list = etree.SubElement(first, "{%s}sldIdLst" % P14_NS)
+        for child in list(id_list):
+            id_list.remove(child)
+        for slide_id in live_ids:
+            etree.SubElement(id_list, "{%s}sldId" % P14_NS).set("id", slide_id)
+
+    show_list = pres.find(qn("p:custShowLst"))
+    if show_list is not None:
+        for show in list(show_list):
+            for ref in list(show.iter(qn("p:sldId"))):
+                if ref.get(qn("r:id")) not in live_rids:
+                    ref.getparent().remove(ref)
+            if next(show.iter(qn("p:sldId")), None) is None:
+                show_list.remove(show)
+        if len(show_list) == 0:
+            pres.remove(show_list)
+
+
 def _replace_picture(slide, image_bytes: bytes | None):
     slide_area = slide.part.package.presentation_part.presentation.slide_width * slide.part.package.presentation_part.presentation.slide_height
     pictures = [s for s in slide.shapes if s.shape_type == MSO_SHAPE_TYPE.PICTURE and 0.12 < s.width * s.height / slide_area < 0.75]
@@ -587,6 +637,10 @@ def render_template(data: bytes, slides: list[dict[str, Any]], images: dict[int,
     if len(sources) > 30:
         raise TemplateIncompatible("INVALID_TEMPLATE", "Use a PowerPoint with at most 30 example slides.")
     images = images or {}
+    slides = [
+        {**item, "title": _clean(item.get("title", "")), "content": _clean(item.get("content", "")), "speakerNotes": _clean(item.get("speakerNotes", ""))}
+        for item in slides
+    ]
     design = _prepare_design_slides(sources)
     generated = 0
     expected_bodies: list[tuple[int, str]] = []
@@ -629,6 +683,7 @@ def render_template(data: bytes, slides: list[dict[str, Any]], images: dict[int,
             raise
     for index in range(len(sources) - 1, -1, -1):
         _remove_slide(prs, index)
+    _repair_presentation_references(prs)
     result = io.BytesIO()
     prs.save(result)
     output = result.getvalue()

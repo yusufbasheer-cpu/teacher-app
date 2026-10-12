@@ -57,6 +57,7 @@ import {
   type PresentationLanguage,
 } from "@/lib/ppt-language";
 import { validatePptContentSafety } from "@/lib/ppt-content-safety";
+import { repairPptxPackage } from "@/lib/pptx-repair";
 
 // ─── Slide icons (0-based deck index) ────────────────────────────────────────
 
@@ -807,5 +808,7 @@ export async function buildPptxFromTemplateEngine(params: {
     }
   }
 
-  return (await pptx.write({ outputType: "nodebuffer" })) as Buffer;
+  // PowerPoint repairs (or refuses) packages with illegal XML characters or negative shape sizes;
+  // normalise whatever the slide content contained before it reaches the teacher.
+  return repairPptxPackage((await pptx.write({ outputType: "nodebuffer" })) as Buffer);
 }

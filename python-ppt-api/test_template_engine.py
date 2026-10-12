@@ -65,7 +65,58 @@ def artwork_only_deck(slide_count: int = 1):
     return output.getvalue()
 
 
+def sectioned_deck():
+    """A template the way PowerPoint saves one that uses sections: the presentation part
+    carries a p14:sectionLst naming every slide."""
+    from lxml import etree
+
+    p14 = "http://schemas.microsoft.com/office/powerpoint/2010/main"
+    pml = "http://schemas.openxmlformats.org/presentationml/2006/main"
+    deck = Presentation()
+    for n in range(3):
+        slide = deck.slides.add_slide(deck.slide_layouts[1])
+        slide.shapes.title.text = f"Old title {n}"
+        slide.placeholders[1].text = f"Old body {n}"
+    root = deck.part._element
+    ids = [e.get("id") for e in root.iter("{%s}sldId" % pml)]
+    root.append(etree.fromstring(
+        f'<p:extLst xmlns:p="{pml}"><p:ext uri="{{521415D9-36F7-43E2-AB2F-B90AF26B5E84}}">'
+        f'<p14:sectionLst xmlns:p14="{p14}"><p14:section name="Default Section" id="{{11111111-2222-3333-4444-555555555555}}">'
+        "<p14:sldIdLst>" + "".join(f'<p14:sldId id="{i}"/>' for i in ids) + "</p14:sldIdLst>"
+        "</p14:section></p14:sectionLst></p:ext></p:extLst>"
+    ))
+    output = io.BytesIO()
+    deck.save(output)
+    return output.getvalue()
+
+
 class UploadedTemplateTests(unittest.TestCase):
+    def test_section_list_follows_the_new_slides(self):
+        # Regression: the section list kept naming the deleted template slides and left every
+        # generated slide outside any section, which makes PowerPoint offer to "repair" the file.
+        from lxml import etree
+
+        p14 = "http://schemas.microsoft.com/office/powerpoint/2010/main"
+        pml = "http://schemas.openxmlformats.org/presentationml/2006/main"
+        slides = [{"title": f"Lesson {n}", "content": f"Content {n}", "speakerNotes": ""} for n in range(5)]
+        rendered = render_template(sectioned_deck(), slides)
+        with ZipFile(io.BytesIO(rendered)) as archive:
+            root = etree.fromstring(archive.read("ppt/presentation.xml"))
+        live = [e.get("id") for e in root.iter("{%s}sldId" % pml)]
+        in_sections = [e.get("id") for e in root.iter("{%s}sldId" % p14)]
+        self.assertEqual(len(live), 5)
+        self.assertEqual(sorted(in_sections), sorted(live))
+
+    def test_control_characters_in_lesson_text_are_stripped(self):
+        # Regression: text copied from PDFs carries form feeds/NULs; python-pptx raised
+        # ValueError and anything that got through made the XML invalid.
+        slides = [{"title": "Ti\x0ctle", "content": "Body \x00 with \x0b control \x1f chars", "speakerNotes": "no\x01tes"}]
+        rendered = render_template(source_deck(), slides)
+        result = Presentation(io.BytesIO(rendered))
+        self.assertEqual(result.slides[0].shapes.title.text, "Title")
+        self.assertEqual(result.slides[0].placeholders[1].text, "Body  with  control  chars")
+        self.assertEqual(result.slides[0].notes_slide.notes_text_frame.text, "notes")
+
     def test_completed_source_reused_for_full_lesson_without_old_text(self):
         slides = [{"title": f"Lesson {n}", "content": f"New content {n}", "speakerNotes": "Teacher note"} for n in range(13)]
         source = source_deck()

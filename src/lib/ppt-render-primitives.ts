@@ -197,9 +197,13 @@ function drawStableIcon(
   const cx = x + size / 2;
   const cy = y + size / 2;
   const pt = Math.max(0.8, size * 1.8);
+  // A shape's width/height must be >= 0 in OOXML (PowerPoint offers to "repair" the file
+  // otherwise). A stroke that runs right-to-left or bottom-to-top is the same box with a flip.
   const line = (x1: number, y1: number, x2: number, y2: number, width = pt) =>
     slide.addShape(pptx.ShapeType.line, {
-      x: x1, y: y1, w: x2 - x1, h: y2 - y1,
+      x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1),
+      flipH: x2 < x1,
+      flipV: y2 < y1,
       line: { color, pt: width },
     });
   const rect = (rx: number, ry: number, rw: number, rh: number, transparency = 0) =>
