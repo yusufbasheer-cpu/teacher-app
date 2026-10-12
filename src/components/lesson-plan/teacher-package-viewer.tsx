@@ -74,6 +74,8 @@ type TeacherPackageViewerProps = {
   parseNotice?: string | null;
   /** Resets the wizard so the teacher can change inputs and generate again. */
   onRegenerate?: () => void;
+  /** When provided, teachers can edit section text in the preview; receives the updated plan. */
+  onLessonPlanChange?: (plan: LessonPlanResult) => void;
   /** Persists this package to My Lessons. */
   onSave?: () => void;
   saving?: boolean;
@@ -278,6 +280,7 @@ export function TeacherPackageViewer({
   pptSlideImageUrls,
   parseNotice,
   onRegenerate,
+  onLessonPlanChange,
   onSave,
   saving,
   onSendToDifferentiatedPack,
@@ -288,6 +291,8 @@ export function TeacherPackageViewer({
   const [exportError, setExportError] = useErrorToast();
   const [templateMode, setTemplateMode] = useState<"layah" | "uploaded">("layah");
   const [savedTemplate, setSavedTemplate] = useState<{ original_filename: string; thumbnail_base64: string | null } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
   const [templateBusy, setTemplateBusy] = useState(false);
   const [templateWarning, setTemplateWarning] = useState<{ code: string; error: string; slide: number | null } | null>(null);
 
@@ -359,6 +364,14 @@ export function TeacherPackageViewer({
   }, [lessonPlan]);
 
   const activeContent = activeKey ? (lessonPlan[activeKey] ?? "") : "";
+  const startEditing = () => {
+    setDraft(typeof activeContent === "string" ? activeContent : "");
+    setEditing(true);
+  };
+  const saveEdit = () => {
+    onLessonPlanChange?.({ ...lessonPlan, [activeKey]: draft });
+    setEditing(false);
+  };
   // Memoized so flipping back to a previously-viewed tab reuses the parsed
   // markdown instead of re-parsing on every click.
   const renderedActiveContent = useMemo(
@@ -713,6 +726,77 @@ export function TeacherPackageViewer({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* ══════════ SIDEBAR ══════════ */}
         <aside className="space-y-6 lg:col-span-4">
+        {hasPpt ? (
+          <div className="rounded-md border border-line-subtle bg-surface p-3">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-disabled">
+              Slide template
+            </p>
+            <p className="mb-3 text-[12px] text-faint">Upload your school&apos;s PowerPoint and Layah will put your lesson inside your own slide design, with your logo and colours.</p>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <Button type="button" size="sm" variant={templateMode === "layah" ? "default" : "outline"} onClick={() => { setTemplateMode("layah"); setTemplateWarning(null); }}>
+                Layah templates
+              </Button>
+              {savedTemplate ? (
+                <Button type="button" size="sm" variant={templateMode === "uploaded" ? "default" : "outline"} onClick={() => { setTemplateMode("uploaded"); setTemplateWarning(null); }}>
+                  My PowerPoint
+                </Button>
+              ) : null}
+              <label htmlFor="uploaded-ppt-input" className="cursor-pointer rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:bg-hover">
+                {templateBusy ? "Uploading…" : savedTemplate ? "Replace school template" : "Upload your school template"}
+              </label>
+            </div>
+            {savedTemplate ? (
+              <div className="mb-3 flex items-center gap-3 rounded-md border border-line-subtle bg-surface p-2 text-xs">
+                {savedTemplate.thumbnail_base64?.startsWith("data:image/") ? <img src={savedTemplate.thumbnail_base64} alt="PowerPoint preview" className="h-12 w-20 object-contain" /> : null}
+                <span className="min-w-0 flex-1 truncate">{savedTemplate.original_filename}</span>
+                <Button type="button" variant="ghost" size="xs" disabled={templateBusy} onClick={() => void removeTemplate()}>Remove</Button>
+              </div>
+            ) : null}
+            {templateMode === "uploaded" ? <p className="mb-3 text-sm text-faint">Your lesson will use the uploaded slide design. If its editable areas cannot hold the lesson, we&apos;ll ask you to choose a Layah template.</p> : null}
+            {savedTemplate ? (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-brand/30 bg-brand-subtle px-3 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-ink">Download with your uploaded template</p>
+                  <p className="mt-0.5 text-sm text-faint">Your generated lesson content will be placed into the PowerPoint design you uploaded.</p>
+                </div>
+                <Button type="button" size="sm" disabled={templateBusy || busy !== null} onClick={() => { setTemplateMode("uploaded"); void onDownloadPpt("uploaded"); }}>
+                  {busy === "ppt" ? "Preparing file…" : "Download using uploaded template"}
+                </Button>
+              </div>
+            ) : null}
+            {templateMode === "layah" ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
+              {PPT_THEME_CARDS.map((t) => {
+                const selected = pptThemeId === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => onPptThemeChange?.(t.id)}
+                    aria-pressed={selected}
+                    className={`rounded-md border bg-surface p-2 text-left transition-colors duration-[110ms] ${
+                      selected
+                        ? "border-brand bg-brand-subtle"
+                        : "border-line-subtle hover:border-line-strong"
+                    }`}
+                  >
+                    <div className="mb-1.5 flex h-10 gap-0.5 overflow-hidden rounded-sm" aria-hidden>
+                      {t.preview.map((hex) => (
+                        <span key={hex} className="h-full min-w-0 flex-1" style={{ backgroundColor: `#${hex}` }} />
+                      ))}
+                    </div>
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-disabled">
+                      {t.themeNumber}
+                    </p>
+                    <p className="truncate text-[12px] font-medium text-ink">{t.name}</p>
+                  </button>
+                );
+              })}
+            </div>
+            ) : null}
+          </div>
+        ) : null}
+
           {overviewCards.length > 0 ? (
             <div>
               <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-disabled">
@@ -791,7 +875,10 @@ export function TeacherPackageViewer({
                   type="button"
                   role="tab"
                   aria-selected={selected}
-                  onClick={() => setActiveKey(key)}
+                  onClick={() => {
+                    setActiveKey(key);
+                    setEditing(false); // leaving a section discards any unsaved draft
+                  }}
                   className={`relative shrink-0 px-3 py-2 text-[13px] transition-colors duration-[110ms] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand ${
                     selected
                       ? "font-medium text-ink"
@@ -822,79 +909,38 @@ export function TeacherPackageViewer({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.12 }}
               >
-                {activeKey === "PPT Slide Content" && hasPpt ? (
-                  <div className="mb-4 border-b border-line-subtle pb-4">
-                    <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-disabled">
-                      Slide template
-                    </p>
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <Button type="button" size="sm" variant={templateMode === "layah" ? "default" : "outline"} onClick={() => { setTemplateMode("layah"); setTemplateWarning(null); }}>
-                        Layah templates
-                      </Button>
-                      {savedTemplate ? (
-                        <Button type="button" size="sm" variant={templateMode === "uploaded" ? "default" : "outline"} onClick={() => { setTemplateMode("uploaded"); setTemplateWarning(null); }}>
-                          My PowerPoint
-                        </Button>
-                      ) : null}
-                      <label htmlFor="uploaded-ppt-input" className="cursor-pointer rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:bg-hover">
-                        {templateBusy ? "Uploading…" : savedTemplate ? "Replace PowerPoint" : "Upload PowerPoint"}
-                      </label>
-                    </div>
-                    {savedTemplate ? (
-                      <div className="mb-3 flex items-center gap-3 rounded-md border border-line-subtle bg-surface p-2 text-xs">
-                        {savedTemplate.thumbnail_base64?.startsWith("data:image/") ? <img src={savedTemplate.thumbnail_base64} alt="PowerPoint preview" className="h-12 w-20 object-contain" /> : null}
-                        <span className="min-w-0 flex-1 truncate">{savedTemplate.original_filename}</span>
-                        <Button type="button" variant="ghost" size="xs" disabled={templateBusy} onClick={() => void removeTemplate()}>Remove</Button>
-                      </div>
-                    ) : null}
-                    {templateMode === "uploaded" ? <p className="mb-3 text-sm text-faint">Your lesson will use the uploaded slide design. If its editable areas cannot hold the lesson, we&apos;ll ask you to choose a Layah template.</p> : null}
-                    {savedTemplate ? (
-                      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-brand/30 bg-brand-subtle px-3 py-3">
-                        <div>
-                          <p className="text-sm font-semibold text-ink">Download with your uploaded template</p>
-                          <p className="mt-0.5 text-sm text-faint">Your generated lesson content will be placed into the PowerPoint design you uploaded.</p>
-                        </div>
-                        <Button type="button" size="sm" disabled={templateBusy || busy !== null} onClick={() => { setTemplateMode("uploaded"); void onDownloadPpt("uploaded"); }}>
-                          {busy === "ppt" ? "Preparing file…" : "Download using uploaded template"}
-                        </Button>
-                      </div>
-                    ) : null}
-                    {templateMode === "layah" ? (
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                      {PPT_THEME_CARDS.map((t) => {
-                        const selected = pptThemeId === t.id;
-                        return (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => onPptThemeChange?.(t.id)}
-                            aria-pressed={selected}
-                            className={`rounded-md border bg-surface p-2 text-left transition-colors duration-[110ms] ${
-                              selected
-                                ? "border-brand bg-brand-subtle"
-                                : "border-line-subtle hover:border-line-strong"
-                            }`}
-                          >
-                            <div className="mb-1.5 flex h-10 gap-0.5 overflow-hidden rounded-sm" aria-hidden>
-                              {t.preview.map((hex) => (
-                                <span key={hex} className="h-full min-w-0 flex-1" style={{ backgroundColor: `#${hex}` }} />
-                              ))}
-                            </div>
-                            <p className="font-mono text-[10px] uppercase tracking-wider text-disabled">
-                              {t.themeNumber}
-                            </p>
-                            <p className="truncate text-[12px] font-medium text-ink">{t.name}</p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
                 <div className="mt-4 grid max-h-[min(70vh,780px)] gap-4 overflow-y-auto lg:grid-cols-[1fr_min(280px,32%)]">
                   <div className="min-h-0 min-w-0 overflow-y-auto">
-                    <div className="artifact">{renderedActiveContent}</div>
+                    {onLessonPlanChange && activeKey ? (
+                      <div className="mb-3 flex items-center justify-end gap-2">
+                        {editing ? (
+                          <>
+                            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                              Cancel
+                            </Button>
+                            <Button size="sm" onClick={saveEdit}>
+                              Save changes
+                            </Button>
+                          </>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={startEditing}>
+                            <PencilLine />
+                            Edit text
+                          </Button>
+                        )}
+                      </div>
+                    ) : null}
+                    {editing ? (
+                      <textarea
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        aria-label={`Edit ${getSectionTabLabel(activeKey)}`}
+                        spellCheck
+                        className="min-h-[50vh] w-full resize-y rounded-md border border-line bg-surface p-3 font-mono text-[13px] leading-relaxed text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25"
+                      />
+                    ) : (
+                      <div className="artifact">{renderedActiveContent}</div>
+                    )}
                   </div>
                   {activeImageList.length > 0 ? (
                     <aside className="flex min-h-0 flex-col gap-3 border-t border-line-subtle pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">

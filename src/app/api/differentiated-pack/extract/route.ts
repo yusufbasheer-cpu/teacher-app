@@ -16,6 +16,45 @@ const pdfParse: PdfParseFn = requireFromHere("pdf-parse") as PdfParseFn;
 
 const MAX_BYTES = 12 * 1024 * 1024;
 
+function decodeXml(t: string): string {
+  return t
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+const SLIDE_PART_RE = /^ppt\/slides\/slide\d+\.xml$/;
+
+/** Text of each <a:p> paragraph in a slide/notes XML part, one per line. */
+function paragraphsFromXml(xml: string): string[] {
+  const out: string[] = [];
+  for (const p of xml.match(/<a:p[ >][\s\S]*?<\/a:p>/g) ?? []) {
+    const line = [...p.matchAll(/<a:t[^>]*>([\s\S]*?)<\/a:t>/g)].map((m) => decodeXml(m[1])).join("");
+    if (line.trim()) out.push(line.trim());
+  }
+  return out;
+}
+
+/** Slide text + speaker notes from an already-safety-checked .pptx zip. */
+async function extractPptxText(zip: JSZip): Promise<string> {
+  const num = (name: string) => Number(name.match(/(\d+)\.xml$/)?.[1] ?? 0);
+  const slideNames = Object.keys(zip.files).filter((n) => SLIDE_PART_RE.test(n)).sort((a, b) => num(a) - num(b));
+  const parts: string[] = [];
+  for (const name of slideNames) {
+    const n = num(name);
+    const slide = paragraphsFromXml(await zip.files[name].async("string"));
+    const notesFile = zip.file(`ppt/notesSlides/notesSlide${n}.xml`);
+    // Notes parts also carry the slide-number field; drop bare-digit lines.
+    const notes = notesFile
+      ? paragraphsFromXml(await notesFile.async("string")).filter((l) => !/^\d+$/.test(l))
+      : [];
+    parts.push([`Slide ${n}:`, ...slide, ...(notes.length ? ["Notes:", ...notes] : [])].join("\n"));
+  }
+  return parts.join("\n\n");
+}
+
 function sniff(buf: Buffer): "pdf" | "docx" | null {
   if (buf.includes(Buffer.from("%PDF"))) return "pdf";
   if (
@@ -60,7 +99,7 @@ export async function POST(req: Request) {
   const kind = sniff(buf);
   if (!kind) {
     return NextResponse.json(
-      { error: "Unsupported file type. Upload a PDF (.pdf) or Word document (.docx)." },
+      { error: "Unsupported file type. Upload a PDF (.pdf), Word (.docx) or PowerPoint (.pptx) file." },
       { status: 400 },
     );
   }
@@ -70,8 +109,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "This file failed a security scan and was rejected." }, { status: 422 });
   }
 
+  let pptxZip: JSZip | null = null;
   if (kind === "docx") {
-    // .docx is a zip container — mammoth has no built-in decompression-bomb
+    // .docx and .pptx are zip containers — mammoth has no built-in decompression-bomb
     // guard, so open it with JSZip first (parses the central directory only,
     // no inflate) purely to check entry count / declared sizes before
     // mammoth ever unzips it for real.
@@ -80,13 +120,14 @@ export async function POST(req: Request) {
       const safety = inspectZipSafety(zip);
       if (!safety.ok) {
         return NextResponse.json(
-          { error: `This .docx file was rejected: ${safety.reason}` },
+          { error: `This file was rejected: ${safety.reason}` },
           { status: 400 },
         );
       }
+      if (Object.keys(zip.files).some((n) => SLIDE_PART_RE.test(n))) pptxZip = zip;
     } catch {
       return NextResponse.json(
-        { error: "This doesn't look like a valid .docx file (could not read it as a ZIP)." },
+        { error: "This doesn't look like a valid .docx or .pptx file (could not read it as a ZIP)." },
         { status: 400 },
       );
     }
@@ -94,7 +135,9 @@ export async function POST(req: Request) {
 
   try {
     let text = "";
-    if (kind === "pdf") {
+    if (pptxZip) {
+      text = (await extractPptxText(pptxZip)).trim();
+    } else if (kind === "pdf") {
       const data = await pdfParse(buf);
       text = (data.text ?? "").trim();
     } else {

@@ -287,6 +287,7 @@ export function LessonView({ id }: { id: string }) {
         pptThemeId={pptThemeId}
         onPptThemeChange={setPptThemeId}
         teacherName={user.email?.split("@")[0]}
+        onLessonPlanChange={setLessonPlan}
         onSave={onSaveLessonPlan}
         saving={saving}
         onSendToDifferentiatedPack={onSendToDifferentiatedPack}
