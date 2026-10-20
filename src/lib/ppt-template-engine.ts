@@ -75,6 +75,12 @@ import {
   textFitsRegion,
   estimateTextHeight,
 } from "@/lib/ppt-design-system";
+import {
+  getProvisionalLearningObjectiveLayout,
+  PROVISIONAL_LEARNING_OBJECTIVE_FLAG,
+  resolveLearningObjectiveLayoutChoice,
+  type LearningObjectiveLayoutChoice,
+} from "@/lib/ppt-layouts/learning-objective-provisional";
 
 // ─── Slide icons (0-based deck index) ────────────────────────────────────────
 
@@ -1937,6 +1943,8 @@ export async function buildPptxFromDeckSpec(params: {
   templateId?: TemplateId | string;
   schoolLogo?: string | null;
   slideImageUrls?: (string | null)[] | null;
+  /** Internal verification override; ordinary teacher-facing requests never set this. */
+  learningObjectiveLayout?: LearningObjectiveLayoutChoice;
 }): Promise<Buffer> {
   const inputValidation = parseDeckSpec(params.deck);
   if (!inputValidation.ok) {
@@ -2012,11 +2020,29 @@ export async function buildPptxFromDeckSpec(params: {
   preparedPages.forEach(({ spec, isContinuation }, index) => {
     const slide = pptx.addSlide();
     const image = imageBySlide[index] ?? null;
+    const learningObjectiveContent = {
+      label: spec.title,
+      objective: spec.contentBlocks.flatMap(blockText).join("\n").trim() || spec.centralTakeaway?.trim() || "",
+    };
+    const learningObjectiveLayout = spec.pedagogicalPurpose === "learning-objectives" && !isContinuation
+      ? resolveLearningObjectiveLayoutChoice({
+        content: learningObjectiveContent,
+        enabled: process.env[PROVISIONAL_LEARNING_OBJECTIVE_FLAG] === "true",
+        requested: params.learningObjectiveLayout,
+      })
+      : "existing";
     if (index === 0 && !isContinuation && isSimpleOpeningCover(spec)) {
       slide.background = { color: tokens.colors.background };
       renderOpeningComposition(pptx, slide, spec, deck, image, tpl, tokens);
       addFooter(pptx, slide, tpl, tokens.fontFace, deck.subject, index + 1, total, layahLogo);
       if (schoolLogo) addSchoolLogo(pptx, slide, schoolLogo);
+    } else if (learningObjectiveLayout !== "existing") {
+      getProvisionalLearningObjectiveLayout(learningObjectiveLayout).render(pptx, slide, learningObjectiveContent, {
+        slideWidth: 13.333,
+        slideHeight: 7.5,
+        textDirection: deck.textDirection,
+      });
+      console.info(`[pptx educational render] learning-objective layout=${learningObjectiveLayout} slide=${spec.id}`);
     } else {
       addEducationalHeader(pptx, slide, spec, tpl, tokens, deck.subject, index + 1, total, layahLogo, schoolLogo);
       renderEducationalComposition(pptx, slide, spec, image, tpl, tokens);

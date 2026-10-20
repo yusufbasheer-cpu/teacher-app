@@ -26,6 +26,10 @@ describe("learning-objective layout contract", () => {
     expect(validateLearningObjectiveLayout(value).map((issue) => issue.path)).toEqual(expect.arrayContaining(["id", "backgroundAsset", "slots[0].box"]));
   });
 
+  it("accepts a native-shape background without a raster asset", () => {
+    expect(validateLearningObjectiveLayout(fixture({ backgroundAsset: null }))).toEqual([]);
+  });
+
   it("accepts short and boundary-length objectives but rejects overflow", () => {
     const layout = fixture();
     expect(learningObjectiveFits(layout, { objective: "Explain evaporation." })).toBe(true);

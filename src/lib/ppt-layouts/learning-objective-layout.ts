@@ -27,10 +27,10 @@ export type LearningObjectiveLayoutDefinition = {
   id: string;
   slideType: "learning-objective";
   aspectRatio: number;
-  /** Repository-relative path to the approved text-free PNG. */
-  backgroundAsset: string;
+  /** Repository-relative text-free PNG, or null when the background is drawn with native shapes. */
+  backgroundAsset: string | null;
   slots: readonly LearningObjectiveSlot[];
-  render: (slide: PptxGenJS.Slide, content: LearningObjectiveContent, context: LearningObjectiveRenderContext) => void;
+  render: (pptx: PptxGenJS, slide: PptxGenJS.Slide, content: LearningObjectiveContent, context: LearningObjectiveRenderContext) => void;
 };
 
 export type LayoutValidationIssue = { path: string; message: string };
@@ -44,7 +44,7 @@ export function validateLearningObjectiveLayout(definition: LearningObjectiveLay
   if (!definition.id.trim()) issues.push({ path: "id", message: "An approved layout ID is required." });
   if (definition.slideType !== "learning-objective") issues.push({ path: "slideType", message: "Phase 1 layouts must target learning-objective only." });
   if (Math.abs(definition.aspectRatio - LAYAH_WIDESCREEN.aspectRatio) > 0.001) issues.push({ path: "aspectRatio", message: "The approved design must use a 16:9 canvas." });
-  if (!definition.backgroundAsset.trim().toLowerCase().endsWith(".png")) issues.push({ path: "backgroundAsset", message: "The approved text-free background must be a PNG." });
+  if (definition.backgroundAsset !== null && !definition.backgroundAsset.trim().toLowerCase().endsWith(".png")) issues.push({ path: "backgroundAsset", message: "A supplied text-free background must be a PNG." });
 
   const names = new Set<LearningObjectiveSlotName>();
   definition.slots.forEach((slot, index) => {
@@ -57,7 +57,8 @@ export function validateLearningObjectiveLayout(definition: LearningObjectiveLay
     }
     if (!Number.isInteger(slot.maxCharacters) || slot.maxCharacters <= 0) issues.push({ path: `${path}.maxCharacters`, message: "Each slot needs a positive character limit." });
     if (!Number.isInteger(slot.maxLines) || slot.maxLines <= 0) issues.push({ path: `${path}.maxLines`, message: "Each slot needs a positive line limit." });
-    if (!Number.isFinite(slot.minimumFontPoints) || slot.minimumFontPoints < 17) issues.push({ path: `${path}.minimumFontPoints`, message: "Body text must remain at least 17 pt." });
+    const minimumAllowed = slot.name === "objective" ? 17 : 10;
+    if (!Number.isFinite(slot.minimumFontPoints) || slot.minimumFontPoints < minimumAllowed) issues.push({ path: `${path}.minimumFontPoints`, message: `${slot.name === "objective" ? "Objective" : "Label"} text must remain at least ${minimumAllowed} pt.` });
     if (slot.fontFallbacks.length === 0 || slot.fontFallbacks.some((font) => !font.trim())) issues.push({ path: `${path}.fontFallbacks`, message: "Each slot needs at least one usable font fallback." });
   });
   if (!names.has("objective")) issues.push({ path: "slots", message: "An objective slot is required." });
