@@ -220,5 +220,3 @@ describe("legacy lesson-plan slide adapter", () => {
     expect(schemaPptx.byteLength).toBeGreaterThan(0);
   });
 });
-
-\n

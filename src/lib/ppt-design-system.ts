@@ -120,5 +120,3 @@ export function textFitsRegion(text: string, region: { w: number; h: number }, f
 export function mirrorRegion(region: { x: number; y: number; w: number; h: number }, rtl: boolean): typeof region {
   return rtl ? { ...region, x: PPT_GRID.width - region.x - region.w } : region;
 }
-
-\n

@@ -1017,7 +1017,7 @@ function appendAflToSlideBody(
   const block = formatToolsBlockForSlide(phase, ids, pptString(language, "aflSelectedHeading"));
   if (!block) return;
   const merged = `${(slide.body ?? "").trim()}${block}`.trim();
-  const polished = polishBody(merged, SECTION_MAX_CHARS + 500, BULLET_MAX_LINES_WITH_AFL);
+  const polished = polishBody(merged);
   slide.body = stripMarkdownSymbolsForStudents(polished || merged);
 }
 
@@ -1063,8 +1063,9 @@ const DEDUP_MIN_CHARS = 60;
 export function dropRepeatedTail(s: string): string {
   if (s.length < DEDUP_MIN_CHARS * 2) return s;
   for (let i = DEDUP_MIN_CHARS; i <= s.length - DEDUP_MIN_CHARS; i++) {
-    const window = s.slice(i, i + DEDUP_MIN_CHARS);
-    if (s.slice(0, i).includes(window)) {
+    if (i > 0 && /[\p{L}\p{N}]/u.test(s[i - 1] ?? "")) continue;
+    const repeatedTail = s.slice(i).trim();
+    if (repeatedTail.length >= DEDUP_MIN_CHARS && s.slice(0, i).includes(repeatedTail)) {
       return s.slice(0, i).trim();
     }
   }

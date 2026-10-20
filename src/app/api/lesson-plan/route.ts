@@ -438,6 +438,16 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
   const parseNotices: string[] = [];
 
   for (const section of orderedSections) {
+    if (section !== "PPT Slide Content" && section !== "AFL Activity Sheets") {
+      const friendlySectionName: Partial<Record<TeacherPackageSectionKey, string>> = {
+        "Full Lesson Plan": "lesson plan",
+        Worksheet: "worksheet",
+        "Assessment Questions": "assessment questions",
+        "Homework Task": "homework task",
+        "Teacher Notes": "teacher notes",
+      };
+      onProgress?.(`Creating your ${friendlySectionName[section] ?? "teaching material"}…`);
+    }
     if (section === "PPT Slide Content") {
       const fullLesson = (mergedPlan["Full Lesson Plan"] ?? "").trim();
       const { text, notices } = await generatePptSlideContentSlideBySlide({
@@ -455,7 +465,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
     }
 
     if (section === "AFL Activity Sheets") {
-      onProgress?.("Generating AFL Activity Sheets");
+      onProgress?.("Creating assessment activity sheets…");
       const sourceMaterialBlock = sourceMaterial
         ? `### Source material\n${sourceMaterial.slice(0, 6_000)}`
         : undefined;
@@ -611,6 +621,7 @@ async function runFluxAndBuildResponsePayload(
   mergedPlan: LessonPlanResult,
   parseNotices: string[],
   sourceMaterial?: string,
+  onProgress?: (message: string) => void,
 ): Promise<{
   lessonPlan: LessonPlanResult;
   parseNotice?: string;
@@ -623,6 +634,7 @@ async function runFluxAndBuildResponsePayload(
 
   if (sections.includes("PPT Slide Content")) {
     try {
+      onProgress?.("Finding and creating presentation visuals…");
       // Feed each slide's own generated text into its image prompt so the four Fal-required
       // slides get contextually specific artwork rather than generic subject-level imagery.
       const deckLanguage = resolvePresentationLanguage({
@@ -674,6 +686,7 @@ async function runFluxAndBuildResponsePayload(
 
   let sectionImages: SectionImageMap = {};
   try {
+    onProgress?.("Adding illustrations to your lesson materials…");
     const fluxResult = await generateFluxSectionImages({
       input,
       plan: workingPlan,
@@ -857,7 +870,15 @@ export async function POST(req: Request) {
             strategyBlock,
             onProgress: (message) => send({ type: "progress", message }),
           });
-          const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices, sourceMaterial);
+          const payload = await runFluxAndBuildResponsePayload(
+            input,
+            sections,
+            mergedPlan,
+            parseNotices,
+            sourceMaterial,
+            (message) => send({ type: "progress", message }),
+          );
+          send({ type: "progress", message: "Finalizing your lesson package…" });
           send({ type: "complete", ...payload, usage: gate.usage });
           void logGenerationEvent({
             userId: auth.userId,

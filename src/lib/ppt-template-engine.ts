@@ -359,7 +359,9 @@ function addFooter(
 ): void {
   const c = tpl.colors;
   const f = { ...tpl.fonts, face: fontFace };
-  const progY = FOOTER_Y + (FOOTER_H - PROGRESS_H) / 2 - 0.02;
+  // Keep the progress track above the footer copy. Centering it vertically made the
+  // final shape paint over the subject, logo and slide number in PowerPoint/LibreOffice.
+  const progY = FOOTER_Y + 0.02;
 
   // footer background
   slide.addShape(pptx.ShapeType.rect, {

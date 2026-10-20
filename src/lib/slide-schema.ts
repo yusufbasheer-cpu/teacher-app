@@ -598,5 +598,3 @@ export function parseDeckSpec(value: unknown): DeckValidationResult {
 export function isDeckSpec(value: unknown): value is DeckSpec {
   return parseDeckSpec(value).ok;
 }
-
-\n
