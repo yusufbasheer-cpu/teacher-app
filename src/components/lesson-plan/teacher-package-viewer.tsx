@@ -547,6 +547,7 @@ export function TeacherPackageViewer({
       icon: card?.icon,
       onDownload: card?.onDownload,
       downloadLabel: key === "PPT Slide Content" ? "Download PowerPoint" : "Download Word",
+      kind: key === "PPT Slide Content" ? "presentation" : "document",
     };
   });
 
@@ -683,7 +684,10 @@ export function TeacherPackageViewer({
                 className="min-h-[50vh] w-full resize-y rounded-md border border-line bg-surface p-3 font-mono text-sm leading-relaxed text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25"
               />
             ) : (
-              <div className="artifact">{renderedActiveContent}</div>
+              <div className={activeKey === "PPT Slide Content" ? "mx-auto aspect-video max-w-4xl overflow-auto rounded-lg border border-line bg-surface p-6 shadow-pop sm:p-8" : "artifact"}>
+                {activeKey === "PPT Slide Content" ? <p className="mb-5 border-b border-line-subtle pb-3 text-xs font-semibold uppercase tracking-[0.12em] text-brand-text">Presentation content preview</p> : null}
+                <div className="artifact">{renderedActiveContent}</div>
+              </div>
             )}
           </div>
           {activeImageList.length > 0 ? <aside className="space-y-3 border-t border-line pt-4 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0"><p className="text-sm font-medium text-faint">Illustrations</p>{activeImageList.map((src) => <a key={src} href={src} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-line bg-sunken"><img src={src} alt="Educational illustration for this section" className="h-auto w-full object-contain" loading="lazy" /></a>)}</aside> : null}

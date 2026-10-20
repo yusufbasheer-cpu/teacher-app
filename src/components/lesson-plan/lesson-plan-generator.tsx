@@ -1432,6 +1432,7 @@ export function LessonPlanGenerator() {
                           setSectionSelection((prev) => ({ ...prev, [key]: !prev[key] }))
                         }
                         label={key === "PPT Slide Content" ? "Editable PowerPoint presentation" : GENERATION_CHECKBOX_LABELS[key]}
+                        description={key === "PPT Slide Content" ? "A 13-slide editable PowerPoint using your selected theme." : undefined}
                       />
                     );
                   })}
