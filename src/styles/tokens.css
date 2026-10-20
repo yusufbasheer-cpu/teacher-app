@@ -14,15 +14,15 @@
   --l-gray-12: #18243b;
   /* Historical ramp names retained for consumers. Brand is indigo;
      success now has separate semantic tokens. */
-  --l-green-2: #f5f5ff;
-  --l-green-3: #eef0ff;
-  --l-green-4: #e2e7ff;
-  --l-green-6: #c7cefa;
-  --l-green-8: #818cf8;
-  --l-green-9: #4f46e5;
-  --l-green-10: #4338ca;
-  --l-green-11: #3730a3;
-  --l-green-12: #25215e;
+  --l-green-2: #f0fdf9;
+  --l-green-3: #dcf9f1;
+  --l-green-4: #c5f2e7;
+  --l-green-6: #86d9c6;
+  --l-green-8: #28a98e;
+  --l-green-9: #0f8f78;
+  --l-green-10: #0b7563;
+  --l-green-11: #075e50;
+  --l-green-12: #063f37;
   --l-amber-2: #fffdf5;
   --l-amber-3: #fff7e5;
   --l-amber-6: #edd29a;
@@ -33,7 +33,7 @@
   --l-red-6: #f4c2c6;
   --l-red-9: #c9364f;
   --l-red-11: #ab263f;
-  --canvas: var(--l-gray-3);
+  --canvas: #f8f7f2;
   --surface: var(--l-gray-2);
   --surface-raised: var(--l-gray-1);
   --surface-sunken: var(--l-gray-4);
@@ -54,7 +54,7 @@
   --brand-subtle: var(--l-green-3);
   --brand-subtle-hover: var(--l-green-4);
   --brand-border: var(--l-green-6);
-  --brand-ring: #4f46e52e;
+  --brand-ring: #0f8f7838;
   --generated: var(--l-amber-9);
   --generated-text: var(--l-amber-11);
   --generated-subtle: var(--l-amber-3);
@@ -77,6 +77,15 @@
   --r-lg: 14px;
   --r-xl: 20px;
   --r-pill: 999px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
   --shadow-pop: 0 2px 5px #18243b08, 0 8px 28px #18243b12;
   --shadow-overlay: 0 8px 24px #18243b12, 0 24px 72px #18243b26;
   --ease: cubic-bezier(0.23, 1, 0.32, 1);
@@ -90,6 +99,10 @@
   --rail-w-collapsed: 76px;
   --topbar-h: 72px;
   --measure: 72ch;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
 }
 .dark {
   --l-gray-1: #202e46;
@@ -104,15 +117,15 @@
   --l-gray-10: #a5b3c8;
   --l-gray-11: #c0ccdd;
   --l-gray-12: #f1f5fc;
-  --l-green-2: #1d2544;
-  --l-green-3: #262f53;
-  --l-green-4: #323e68;
-  --l-green-6: #4a5891;
-  --l-green-8: #8998e7;
-  --l-green-9: #a5b4fc;
-  --l-green-10: #bec9ff;
-  --l-green-11: #d5dcff;
-  --l-green-12: #e8ecff;
+  --l-green-2: #102f2c;
+  --l-green-3: #123a35;
+  --l-green-4: #184b43;
+  --l-green-6: #287264;
+  --l-green-8: #55bca5;
+  --l-green-9: #72d2bc;
+  --l-green-10: #8de0cc;
+  --l-green-11: #b4ecdf;
+  --l-green-12: #d9f7ef;
   --l-amber-2: #302b24;
   --l-amber-3: #382f23;
   --l-amber-6: #6e5730;
@@ -125,7 +138,7 @@
   --l-red-11: #ffb4bf;
   --text-inverse: #101a2c;
   --brand-on: #172044;
-  --brand-ring: #a5b4fc40;
+  --brand-ring: #72d2bc45;
   --danger-on: #391723;
   --success: #8dd9b4;
   --success-subtle: #1b352f;

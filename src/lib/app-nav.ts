@@ -44,9 +44,9 @@ export type NavGroup = { id: string; label: string; items: NavItem[] };
 export const CREATE_ITEMS: NavItem[] = [
   {
     href: "/lesson-plan",
-    label: "Lesson plan",
+    label: "Lesson + presentation",
     icon: Sparkles,
-    hint: "Plan, slides, worksheet, homework and notes",
+    hint: "Create an editable PowerPoint with the full lesson package",
     key: "n",
   },
   {

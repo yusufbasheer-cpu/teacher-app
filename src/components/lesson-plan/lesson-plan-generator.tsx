@@ -883,8 +883,8 @@ export function LessonPlanGenerator() {
       {!lessonPlan ? (
         <div className="workspace-page">
           <PageTitle
-            title="Create a lesson"
-            description="Choose the materials your class needs. One generation creates your package — plan, slides, worksheet, homework, assessment and teacher notes."
+            title="Create a lesson and presentation"
+            description="Build an editable PowerPoint first, then add the plan, worksheet, homework, assessment, or teacher notes your class needs."
           />
 
           <form
@@ -1431,7 +1431,7 @@ export function LessonPlanGenerator() {
                         onChange={() =>
                           setSectionSelection((prev) => ({ ...prev, [key]: !prev[key] }))
                         }
-                        label={GENERATION_CHECKBOX_LABELS[key]}
+                        label={key === "PPT Slide Content" ? "Editable PowerPoint presentation" : GENERATION_CHECKBOX_LABELS[key]}
                       />
                     );
                   })}
@@ -1453,7 +1453,7 @@ export function LessonPlanGenerator() {
                     block
                     disabled={!canGenerate}
                   >
-                    {loading ? "Generating…" : "Generate lesson"}
+                    {loading ? "Generating…" : sectionSelection["PPT Slide Content"] ? "Create presentation" : "Generate materials"}
                   </Button>
 
                   <p className="mt-2 text-center text-xs text-faint">

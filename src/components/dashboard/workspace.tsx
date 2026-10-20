@@ -119,9 +119,9 @@ export function Workspace({ user }: { user: User }) {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,1fr)]">
         <Panel className="overflow-hidden">
           <div className="border-b border-line bg-brand-subtle/40 px-6 py-5">
-            <div className="mb-2 flex items-center gap-2 text-brand-text"><Sparkles className="size-5" aria-hidden /><span className="text-sm font-medium">Lesson planner</span></div>
-            <h2 className="text-xl font-semibold tracking-tight text-ink">What are you teaching next?</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">Start with your class. Add your objectives and choose the materials you need in the next step.</p>
+            <div className="mb-2 flex items-center gap-2 text-brand-text"><Sparkles className="size-5" aria-hidden /><span className="text-sm font-medium">Lesson and presentation builder</span></div>
+            <h2 className="text-xl font-semibold tracking-tight text-ink">Create your next lesson and PowerPoint</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">Start with your class, then choose an editable presentation and any supporting materials you need.</p>
           </div>
           <form onSubmit={start} className="space-y-5 p-6">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -132,7 +132,7 @@ export function Workspace({ user }: { user: User }) {
             </div>
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line-subtle pt-5">
               <p className="text-sm text-faint">{seeded ? "Class details from your last lesson." : "Your materials stay together in My lessons."}</p>
-              <Button type="submit" size="lg">Continue to lesson <ArrowRight aria-hidden /></Button>
+              <Button type="submit" size="xl">Create lesson + presentation <ArrowRight aria-hidden /></Button>
             </div>
           </form>
         </Panel>

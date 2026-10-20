@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { IBM_Plex_Mono, Instrument_Sans, Source_Serif_4 } from "next/font/google";
+import { IBM_Plex_Mono, Poppins, Source_Serif_4 } from "next/font/google";
 import { ActiveSessionGuard } from "@/components/auth/active-session-guard";
 import { CookieBanner } from "@/components/layout/cookie-banner";
 import { AppShell } from "@/components/layout/app-shell";
@@ -14,9 +14,9 @@ import "./globals.css";
    This replaces five families (Plus Jakarta, Poppins, Caveat, Space Grotesk,
    Plex Mono) that were all loading on every route while only ever being used
    on a subset of them. */
-const instrumentSans = Instrument_Sans({
+const poppins = Poppins({
   subsets: ["latin"],
-  variable: "--font-instrument",
+  variable: "--font-poppins",
   weight: ["400", "500", "600", "700"],
   display: "swap",
 });
@@ -124,7 +124,7 @@ export default function RootLayout({
       lang="en"
       data-scroll-behavior="smooth"
       suppressHydrationWarning
-      className={`${instrumentSans.variable} ${sourceSerif.variable} ${plexMono.variable}`}
+      className={`${poppins.variable} ${sourceSerif.variable} ${plexMono.variable}`}
     >
       <head>
         <script

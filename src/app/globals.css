@@ -20,16 +20,16 @@
          dates, IDs, keyboard shortcuts. Never body copy.
    ========================================================================= */
 @theme {
-  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, -apple-system,
+  --font-sans: ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-serif: var(--font-source-serif), ui-serif, Georgia, "Times New Roman", serif;
   --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", "Cascadia Mono",
     monospace;
   /* Legacy aliases — marketing pages still name these roles. Pointed at the
      new faces so nothing renders in a font that is no longer loaded. */
-  --font-display: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-mono-editorial: var(--font-plex-mono), ui-monospace, monospace;
-  --font-heading: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ===========================================================================
@@ -214,6 +214,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
     font-weight: 600;
     letter-spacing: -0.011em;
     text-wrap: balance;

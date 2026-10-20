@@ -23,7 +23,7 @@ const buttonVariants = cva(
   [
     "group/button relative inline-flex shrink-0 select-none items-center justify-center gap-2",
     "whitespace-nowrap rounded-md border border-transparent font-medium",
-    "transition-[background-color,border-color,color,box-shadow,opacity] duration-[140ms] ease-[var(--ease)]",
+    "transition-[background-color,border-color,color,box-shadow,opacity,transform] duration-[140ms] ease-[var(--ease)] active:scale-[0.97]",
     "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
     "disabled:pointer-events-none disabled:opacity-45",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
