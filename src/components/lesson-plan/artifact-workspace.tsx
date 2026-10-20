@@ -61,7 +61,11 @@ export function ArtifactWorkspace({ artifacts, activeId, onSelect, busy = false,
       </aside>
       <section id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab-${selectedIndex}`} tabIndex={0} className={cn("min-w-0 overflow-hidden rounded-xl border bg-surface focus-visible:outline-2 focus-visible:outline-brand", active?.kind === "presentation" ? "border-brand-border shadow-pop" : "border-line")}>
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
-          <div><h2 className="section-heading">{active?.title ?? "Preview"}</h2>{active?.description ? <p className="mt-1 text-sm text-faint">{active.description}</p> : null}</div>
+          <div className="min-w-0">
+            {active?.kind === "presentation" ? <span className="mb-2 inline-flex rounded-full bg-brand-subtle px-2.5 py-1 text-xs font-semibold text-brand-text">Editable PowerPoint</span> : null}
+            <h2 className="section-heading">{active?.title ?? "Preview"}</h2>
+            {active?.description ? <p className="mt-1 text-sm text-faint">{active.description}</p> : null}
+          </div>
           {active?.onDownload ? <Button size={active.kind === "presentation" ? "lg" : "default"} disabled={busy} onClick={active.onDownload}><Download aria-hidden />{downloading ? "Preparing file…" : active.downloadLabel ?? "Download Word"}</Button> : null}
         </div>
         <div className={cn("p-5 sm:p-6", active?.kind === "presentation" && "bg-sunken")}>{children}</div>
