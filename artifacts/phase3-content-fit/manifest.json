@@ -1,0 +1,44 @@
+{
+  "featureFlag": "PPT_LEARNING_OBJECTIVE_LAYOUTS_ENABLED",
+  "defaultEnabled": false,
+  "cases": [
+    {
+      "name": "short",
+      "inputCharacters": 37,
+      "renderedCharacters": 37,
+      "selection": "lo_target_01",
+      "durationMs": 258,
+      "optionalImage": false
+    },
+    {
+      "name": "near-target-limit",
+      "inputCharacters": 113,
+      "renderedCharacters": 113,
+      "selection": "lo_target_01",
+      "durationMs": 1294,
+      "optionalImage": true
+    },
+    {
+      "name": "long-statement",
+      "inputCharacters": 208,
+      "renderedCharacters": 208,
+      "selection": "lo_statement_01",
+      "durationMs": 218,
+      "optionalImage": false
+    },
+    {
+      "name": "oversized-legacy",
+      "inputCharacters": 348,
+      "renderedCharacters": 348,
+      "selection": "legacy:no-compatible-layout",
+      "durationMs": 296,
+      "optionalImage": false
+    }
+  ],
+  "performance": {
+    "legacyMs": 299,
+    "registeredMs": 290,
+    "deltaMs": -9,
+    "note": "Single local runs; operational comparison only, not a statistical benchmark."
+  }
+}
