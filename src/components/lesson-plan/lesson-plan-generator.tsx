@@ -189,6 +189,7 @@ export function LessonPlanGenerator() {
   const resultsRef = useRef<HTMLElement | null>(null);
   const wizardRef = useRef<HTMLDivElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+  const generationInFlightRef = useRef(false);
 
   const [sectionSelection, setSectionSelection] =
     useState<Record<TeacherPackageSectionKey, boolean>>(initialSectionSelection);
@@ -519,6 +520,7 @@ export function LessonPlanGenerator() {
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (generationInFlightRef.current) return;
     if (composerStep === "details") {
       if (form.topic.trim() && form.learningObjectives.trim()) setComposerStep("outputs");
       else setError("Add a topic and learning objectives to continue.");
@@ -559,6 +561,8 @@ export function LessonPlanGenerator() {
       return;
     }
 
+    // Close the same-render double-click gap before React can apply `loading`.
+    generationInFlightRef.current = true;
     // State updates before any await so the loading screen renders with them
     setLoading(true);
     setGenerationProgress("Initializing...");
@@ -762,6 +766,7 @@ export function LessonPlanGenerator() {
       setError(isGenericOrTechnical ? GENERATION_FAILED_ERROR : msg);
       setParseNotice(null);
     } finally {
+      generationInFlightRef.current = false;
       setLoading(false);
       setGenerationProgress(null);
     }

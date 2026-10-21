@@ -643,7 +643,7 @@ export function TeacherPackageViewer({
         </div>
         {onRegenerate ? <Button variant="outline" onClick={onRegenerate} disabled={busy !== null}>Edit lesson details</Button> : null}
       </header>
-      {exportError ? <Notice tone="danger" className="mb-5">{exportError}</Notice> : null}
+      {exportError ? <Notice tone="danger" className="mb-5"><p role="alert">{exportError}</p><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" disabled={busy !== null} onClick={() => { setExportError(null); if (activeKey === "PPT Slide Content") void onDownloadPpt(); else artifacts.find((item) => item.id === activeKey)?.onDownload?.(); }}>Retry download</Button><Button size="sm" variant="ghost" onClick={() => setExportError(null)}>Dismiss</Button></div></Notice> : null}
       {templateWarning ? (
         <Notice tone="danger" className="mb-5">
           <p className="font-semibold">This PowerPoint could not fit your lesson.</p>
@@ -657,7 +657,7 @@ export function TeacherPackageViewer({
       ) : null}
       {parseNotice ? <Notice tone="generated" className="mb-5">{parseNotice}</Notice> : null}
       {!showTeacherDownloads ? <Notice className="mb-5">This lesson uses an older format. Generate a new lesson to create downloadable materials.</Notice> : null}
-      {busy === "ppt" ? <Notice tone="brand" className="mb-5"><p role="status" aria-live="polite">Preparing your PowerPoint. The download will start when the file is ready.</p></Notice> : null}
+      {busy === "ppt" ? <Notice tone="brand" className="mb-5"><p role="status" aria-live="polite" className="font-semibold">Building and checking your slides…</p><p className="mt-1 text-sm">This is an indeterminate step. Your download will start as soon as the editable PowerPoint is ready.</p></Notice> : null}
       <ArtifactWorkspace artifacts={artifacts} activeId={activeKey} onSelect={(key) => { setActiveKey(key); setEditing(false); }} busy={busy !== null || templateBusy} downloading={busy === exportKeys[activeKey]}
         sidebarFooter={<>{templateCard}{(onSave || saved || onSendToDifferentiatedPack) ? <div className="space-y-2">{saved ? <p className="flex items-center gap-2 px-1 py-2 text-sm text-muted"><CheckCircle2 className="size-4 text-brand-text" aria-hidden />Saved to My lessons</p> : null}{onSave ? <Button variant="outline" block onClick={onSave} disabled={saving}>{saving ? "Saving..." : "Save to my lessons"}</Button> : null}{onSendToDifferentiatedPack ? <Button variant="outline" block onClick={onSendToDifferentiatedPack}>Create worksheet pack</Button> : null}<p className="px-1 text-sm leading-relaxed text-faint">Review each document before sharing it with your class.</p></div> : null}</>}
       >
