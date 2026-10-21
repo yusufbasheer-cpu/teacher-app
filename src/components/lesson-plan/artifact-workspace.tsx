@@ -66,7 +66,7 @@ export function ArtifactWorkspace({ artifacts, activeId, onSelect, busy = false,
             <h2 className="section-heading">{active?.title ?? "Preview"}</h2>
             {active?.description ? <p className="mt-1 text-sm text-faint">{active.description}</p> : null}
           </div>
-          {active?.onDownload ? <Button size={active.kind === "presentation" ? "lg" : "default"} disabled={busy} onClick={active.onDownload}><Download aria-hidden />{downloading ? "Preparing file…" : active.downloadLabel ?? "Download Word"}</Button> : null}
+          {active?.onDownload ? <Button className={cn(active.kind === "presentation" && "w-full sm:w-auto")} size={active.kind === "presentation" ? "lg" : "default"} disabled={busy} aria-busy={downloading} onClick={active.onDownload}><Download aria-hidden />{downloading ? "Preparing file…" : active.downloadLabel ?? "Download Word"}</Button> : null}
         </div>
         <div className={cn("p-5 sm:p-6", active?.kind === "presentation" && "bg-sunken")}>{children}</div>
       </section>
