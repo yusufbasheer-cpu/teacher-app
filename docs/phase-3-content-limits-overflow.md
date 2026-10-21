@@ -89,7 +89,7 @@ These are single local operational measurements, not a statistical benchmark. Th
 
 - TypeScript: passed.
 - ESLint: passed with 0 errors and 72 repository warnings.
-- Vitest: 51 files passed, 3 opt-in artifact suites skipped by default; 484 tests passed, 3 skipped.
+- Vitest: 51 files passed, 3 opt-in artifact suites skipped by default; 485 tests passed, 3 skipped.
 - Phase 3 artifact test: passed when enabled with `GENERATE_PHASE3_ARTIFACTS=1`.
 - Next.js production build: passed.
 - PPTX package integrity: five of five passed, zero findings.
