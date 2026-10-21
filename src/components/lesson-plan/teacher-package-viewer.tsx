@@ -684,9 +684,9 @@ export function TeacherPackageViewer({
                 className="min-h-[50vh] w-full resize-y rounded-md border border-line bg-surface p-3 font-mono text-sm leading-relaxed text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25"
               />
             ) : (
-              <div className={activeKey === "PPT Slide Content" ? "mx-auto aspect-video max-w-4xl overflow-auto rounded-lg border border-line bg-surface p-6 shadow-pop sm:p-8" : "artifact"}>
-                {activeKey === "PPT Slide Content" ? <p className="mb-5 border-b border-line-subtle pb-3 text-xs font-semibold uppercase tracking-[0.12em] text-brand-text">Presentation content preview</p> : null}
-                <div className="artifact">{renderedActiveContent}</div>
+              <div className={activeKey === "PPT Slide Content" ? "mx-auto max-w-5xl" : "artifact"}>
+                {activeKey === "PPT Slide Content" ? <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-brand-text">Presentation content preview</p> : null}
+                <div className={activeKey === "PPT Slide Content" ? "aspect-video overflow-auto rounded-xl border border-line bg-surface p-6 shadow-pop sm:p-8" : "artifact"}>{renderedActiveContent}</div>
               </div>
             )}
           </div>
