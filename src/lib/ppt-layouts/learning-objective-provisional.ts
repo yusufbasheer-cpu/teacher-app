@@ -1,7 +1,6 @@
 import PptxGenJS from "pptxgenjs";
 import {
   LAYAH_WIDESCREEN,
-  learningObjectiveFits,
   resolveLearningObjectiveSlot,
   type LearningObjectiveContent,
   type LearningObjectiveLayoutDefinition,
@@ -130,23 +129,3 @@ export const TARGET_LAYOUT: LearningObjectiveLayoutDefinition = {
 };
 
 export const PROVISIONAL_LEARNING_OBJECTIVE_LAYOUTS = [STATEMENT_LAYOUT, TARGET_LAYOUT] as const;
-
-export function getProvisionalLearningObjectiveLayout(id: ProvisionalLearningObjectiveLayoutId): LearningObjectiveLayoutDefinition {
-  return id === "lo_statement_01" ? STATEMENT_LAYOUT : TARGET_LAYOUT;
-}
-
-export function resolveLearningObjectiveLayoutChoice(input: {
-  content: LearningObjectiveContent;
-  enabled: boolean;
-  requested?: LearningObjectiveLayoutChoice;
-}): LearningObjectiveLayoutChoice {
-  if (input.requested === "existing") return "existing";
-  if (input.requested) {
-    const layout = getProvisionalLearningObjectiveLayout(input.requested);
-    return learningObjectiveFits(layout, input.content) ? input.requested : "existing";
-  }
-  if (!input.enabled) return "existing";
-  if (learningObjectiveFits(TARGET_LAYOUT, input.content)) return "lo_target_01";
-  if (learningObjectiveFits(STATEMENT_LAYOUT, input.content)) return "lo_statement_01";
-  return "existing";
-}

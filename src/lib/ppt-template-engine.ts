@@ -76,11 +76,10 @@ import {
   estimateTextHeight,
 } from "@/lib/ppt-design-system";
 import {
-  getProvisionalLearningObjectiveLayout,
   PROVISIONAL_LEARNING_OBJECTIVE_FLAG,
-  resolveLearningObjectiveLayoutChoice,
   type LearningObjectiveLayoutChoice,
 } from "@/lib/ppt-layouts/learning-objective-provisional";
+import { selectLearningObjectiveLayout } from "@/lib/presentation/layout-selector";
 
 // ─── Slide icons (0-based deck index) ────────────────────────────────────────
 
@@ -2017,6 +2016,8 @@ export async function buildPptxFromDeckSpec(params: {
   const warnings = validatePptContentSafety(safetyModels);
   if (warnings.length) console.warn("[pptx educational render] content safety warnings:", JSON.stringify(warnings.map((warning) => ({ slide: warning.slideNumber1Based, kind: warning.kind, message: warning.message }))));
   const total = preparedPages.length;
+  const learningObjectiveLayoutsEnabled = params.learningObjectiveLayout !== "existing"
+    && (process.env[PROVISIONAL_LEARNING_OBJECTIVE_FLAG] === "true" || params.learningObjectiveLayout !== undefined);
   preparedPages.forEach(({ spec, isContinuation }, index) => {
     const slide = pptx.addSlide();
     const image = imageBySlide[index] ?? null;
@@ -2024,26 +2025,31 @@ export async function buildPptxFromDeckSpec(params: {
       label: spec.title,
       objective: spec.contentBlocks.flatMap(blockText).join("\n").trim() || spec.centralTakeaway?.trim() || "",
     };
-    const learningObjectiveLayout = spec.pedagogicalPurpose === "learning-objectives" && !isContinuation
-      ? resolveLearningObjectiveLayoutChoice({
+    const learningObjectiveSelection = spec.pedagogicalPurpose === "learning-objectives" && !isContinuation
+      ? selectLearningObjectiveLayout({
         content: learningObjectiveContent,
-        enabled: process.env[PROVISIONAL_LEARNING_OBJECTIVE_FLAG] === "true",
-        requested: params.learningObjectiveLayout,
+        lessonId: deck.id,
+        slideId: spec.id,
+        enabled: learningObjectiveLayoutsEnabled,
+        requestedLayoutId: params.learningObjectiveLayout && params.learningObjectiveLayout !== "existing" ? params.learningObjectiveLayout : undefined,
       })
-      : "existing";
+      : null;
     if (index === 0 && !isContinuation && isSimpleOpeningCover(spec)) {
       slide.background = { color: tokens.colors.background };
       renderOpeningComposition(pptx, slide, spec, deck, image, tpl, tokens);
       addFooter(pptx, slide, tpl, tokens.fontFace, deck.subject, index + 1, total, layahLogo);
       if (schoolLogo) addSchoolLogo(pptx, slide, schoolLogo);
-    } else if (learningObjectiveLayout !== "existing") {
-      getProvisionalLearningObjectiveLayout(learningObjectiveLayout).render(pptx, slide, learningObjectiveContent, {
+    } else if (learningObjectiveSelection?.kind === "registered") {
+      learningObjectiveSelection.layout.render(pptx, slide, learningObjectiveContent, {
         slideWidth: 13.333,
         slideHeight: 7.5,
         textDirection: deck.textDirection,
       });
-      console.info(`[pptx educational render] learning-objective layout=${learningObjectiveLayout} slide=${spec.id}`);
+      if (process.env.NODE_ENV !== "production") console.info(`[pptx educational render] learning-objective layout=${learningObjectiveSelection.layout.id} lesson=${deck.id} slide=${spec.id}`);
     } else {
+      if (learningObjectiveSelection && learningObjectiveSelection.reason !== "feature-disabled") {
+        if (process.env.NODE_ENV !== "production") console.info(`[pptx educational render] learning-objective layout=legacy reason=${learningObjectiveSelection.reason} lesson=${deck.id} slide=${spec.id}`);
+      }
       addEducationalHeader(pptx, slide, spec, tpl, tokens, deck.subject, index + 1, total, layahLogo, schoolLogo);
       renderEducationalComposition(pptx, slide, spec, image, tpl, tokens);
     }
