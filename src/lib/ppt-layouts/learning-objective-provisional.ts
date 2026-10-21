@@ -43,61 +43,66 @@ function renderStatement(pptx: PptxGenJS, slide: PptxGenJS.Slide, content: Learn
   const label = resolveLearningObjectiveSlot(STATEMENT_LAYOUT.slots[0]!.box, context);
   const objective = resolveLearningObjectiveSlot(STATEMENT_LAYOUT.slots[1]!.box, context);
   slide.background = { color: COLORS.offWhite };
-  slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 0.34, h: 7.5, line: { transparency: 100 }, fill: { color: COLORS.teal } });
-  slide.addShape(pptx.ShapeType.rect, { x: 10.72, y: 0, w: 2.613, h: 7.5, line: { transparency: 100 }, fill: { color: COLORS.navy } });
-  slide.addShape(pptx.ShapeType.line, { x: 0.92, y: 1.87, w: 0.82, h: 0, line: { color: COLORS.teal, pt: 4 } });
+  slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 0.13, line: { transparency: 100 }, fill: { color: COLORS.teal } });
+  slide.addShape(pptx.ShapeType.line, { x: 0.92, y: 1.73, w: 1.08, h: 0, line: { color: COLORS.teal, pt: 3.2 } });
   addText(slide, (content.label || "LEARNING OBJECTIVE").toUpperCase(), label, {
-    fontFace: HEADING_FONTS[0], fontSize: 14, bold: true, charSpacing: 2.2, color: COLORS.teal,
+    fontFace: HEADING_FONTS[0], fontSize: 15, bold: true, charSpacing: 2.1, color: COLORS.teal,
   });
   addText(slide, content.objective, objective, {
-    fontFace: BODY_FONTS[0], fontSize: objectiveFontSize(content.objective.length, [39, 34, 29]), bold: true,
+    fontFace: BODY_FONTS[0], fontSize: objectiveFontSize(content.objective.length, [42, 36, 30]), bold: true,
     color: COLORS.navy, breakLine: false, valign: "middle", paraSpaceAfter: 0,
   });
-  addText(slide, "01", { x: 11.35, y: 0.72, w: 1.05, h: 0.55 }, {
-    fontFace: HEADING_FONTS[0], fontSize: 16, bold: true, color: COLORS.mint, align: "center",
+  // A single rising path gives the editorial composition a purposeful learning-goal motif.
+  const path = [
+    { x: 8.55, y: 6.18 }, { x: 9.42, y: 5.28 }, { x: 10.25, y: 5.52 }, { x: 11.52, y: 3.18 }, { x: 12.28, y: 3.18 },
+  ];
+  path.slice(0, -1).forEach((point, index) => {
+    const next = path[index + 1]!;
+    slide.addShape(pptx.ShapeType.line, {
+      x: point.x, y: point.y, w: next.x - point.x, h: next.y - point.y,
+      line: { color: index === path.length - 2 ? COLORS.teal : COLORS.navy, pt: 3, endArrowType: index === path.length - 2 ? "triangle" : undefined },
+    });
   });
-  slide.addShape(pptx.ShapeType.line, { x: 11.3, y: 1.35, w: 1.15, h: 0, line: { color: COLORS.teal, pt: 1.5 } });
-  addText(slide, "TODAY\nWE WILL", { x: 11.22, y: 5.36, w: 1.32, h: 0.9 }, {
-    fontFace: HEADING_FONTS[0], fontSize: 12, bold: true, color: COLORS.white, align: "center", breakLine: true,
+  path.slice(0, -1).forEach((point, index) => {
+    const diameter = index === 3 ? 0.48 : 0.28;
+    slide.addShape(pptx.ShapeType.ellipse, {
+      x: point.x - diameter / 2, y: point.y - diameter / 2, w: diameter, h: diameter,
+      line: { color: index === 3 ? COLORS.teal : COLORS.navy, pt: 2 },
+      fill: { color: index === 3 ? COLORS.mint : COLORS.offWhite },
+    });
   });
-  slide.addShape(pptx.ShapeType.ellipse, { x: 11.64, y: 6.46, w: 0.48, h: 0.48, line: { color: COLORS.mint, pt: 2 }, fill: { color: COLORS.navy, transparency: 100 } });
-  slide.addShape(pptx.ShapeType.ellipse, { x: 11.78, y: 6.6, w: 0.2, h: 0.2, line: { transparency: 100 }, fill: { color: COLORS.teal } });
+  slide.addShape(pptx.ShapeType.line, { x: 8.52, y: 6.78, w: 3.73, h: 0, line: { color: COLORS.mint, pt: 5 } });
 }
 
 function renderTarget(pptx: PptxGenJS, slide: PptxGenJS.Slide, content: LearningObjectiveContent, context: LearningObjectiveRenderContext): void {
   const label = resolveLearningObjectiveSlot(TARGET_LAYOUT.slots[0]!.box, context);
   const objective = resolveLearningObjectiveSlot(TARGET_LAYOUT.slots[1]!.box, context);
   slide.background = { color: COLORS.navy };
-  slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 0.28, h: 7.5, line: { transparency: 100 }, fill: { color: COLORS.mint } });
-  slide.addShape(pptx.ShapeType.roundRect, { x: 0.82, y: 0.72, w: 7.22, h: 6.05, rectRadius: 0.08, line: { color: "DDE8E5", transparency: 30, pt: 0.8 }, fill: { color: COLORS.offWhite } });
-  slide.addShape(pptx.ShapeType.rect, { x: 0.82, y: 0.72, w: 0.12, h: 6.05, line: { transparency: 100 }, fill: { color: COLORS.teal } });
+  slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 0.14, h: 7.5, line: { transparency: 100 }, fill: { color: COLORS.mint } });
+  slide.addShape(pptx.ShapeType.ellipse, { x: 8.46, y: 1.13, w: 4.35, h: 4.35, line: { transparency: 100 }, fill: { color: "173B58", transparency: 8 } });
   addText(slide, (content.label || "LEARNING OBJECTIVE").toUpperCase(), label, {
-    fontFace: HEADING_FONTS[0], fontSize: 13, bold: true, charSpacing: 2, color: COLORS.teal,
+    fontFace: HEADING_FONTS[0], fontSize: 16, bold: true, charSpacing: 2, color: COLORS.mint,
   });
   addText(slide, content.objective, objective, {
-    fontFace: BODY_FONTS[0], fontSize: objectiveFontSize(content.objective.length, [36, 31, 27]), bold: true,
-    color: COLORS.navy, valign: "middle",
+    fontFace: BODY_FONTS[0], fontSize: objectiveFontSize(content.objective.length, [40, 35, 30]), bold: true,
+    color: COLORS.offWhite, valign: "middle",
   });
-  addText(slide, "OUR TARGET", { x: 8.72, y: 0.74, w: 3.65, h: 0.46 }, {
-    fontFace: HEADING_FONTS[0], fontSize: 12, bold: true, charSpacing: 2.4, color: COLORS.mint, align: "center",
-  });
-  const rings = [3.55, 2.7, 1.84, 0.94];
-  const fills = [COLORS.mint, COLORS.navy, COLORS.teal, COLORS.offWhite];
+  slide.addShape(pptx.ShapeType.line, { x: 0.92, y: 1.77, w: 1.22, h: 0, line: { color: COLORS.teal, pt: 3.2 } });
+  const center = { x: 10.63, y: 3.31 };
+  const rings = [3.16, 2.38, 1.58, 0.76];
+  const fills = [COLORS.navy, COLORS.teal, COLORS.navy, COLORS.mint];
   rings.forEach((diameter, index) => {
     slide.addShape(pptx.ShapeType.ellipse, {
-      x: 10.545 - diameter / 2, y: 3.92 - diameter / 2, w: diameter, h: diameter,
-      line: { color: index % 2 === 0 ? COLORS.mint : COLORS.teal, pt: index === 0 ? 2.2 : 1.3 },
-      fill: { color: fills[index]!, transparency: index < 2 ? 100 : 0 },
+      x: center.x - diameter / 2, y: center.y - diameter / 2, w: diameter, h: diameter,
+      line: { color: index % 2 === 0 ? COLORS.mint : COLORS.teal, pt: index === 0 ? 3 : 2 },
+      fill: { color: fills[index]!, transparency: index === 0 || index === 2 ? 100 : 0 },
     });
   });
-  slide.addShape(pptx.ShapeType.line, { x: 10.56, y: 1.55, w: 0, h: 4.75, line: { color: COLORS.mint, transparency: 48, pt: 0.75 } });
-  slide.addShape(pptx.ShapeType.line, { x: 8.18, y: 3.92, w: 4.75, h: 0, line: { color: COLORS.mint, transparency: 48, pt: 0.75 } });
-  addText(slide, "FOCUS", { x: 9.72, y: 3.63, w: 1.68, h: 0.58 }, {
-    fontFace: HEADING_FONTS[0], fontSize: 13, bold: true, color: COLORS.navy, align: "center",
+  slide.addShape(pptx.ShapeType.line, {
+    x: 7.62, y: 5.72, w: center.x - 7.62, h: center.y - 5.72,
+    line: { color: COLORS.offWhite, pt: 3.2, endArrowType: "triangle" },
   });
-  addText(slide, "Clear purpose. Confident progress.", { x: 8.43, y: 6.62, w: 4.26, h: 0.34 }, {
-    fontFace: BODY_FONTS[1], fontSize: 10.5, color: COLORS.mint, align: "center",
-  });
+  slide.addShape(pptx.ShapeType.line, { x: 0.92, y: 6.68, w: 6.3, h: 0, line: { color: COLORS.teal, transparency: 18, pt: 1.2 } });
 }
 
 export const STATEMENT_LAYOUT: LearningObjectiveLayoutDefinition = {
@@ -106,8 +111,8 @@ export const STATEMENT_LAYOUT: LearningObjectiveLayoutDefinition = {
   aspectRatio: LAYAH_WIDESCREEN.aspectRatio,
   backgroundAsset: null,
   slots: [
-    { name: "label", box: { x: 0.069, y: 0.207, width: 0.67, height: 0.055 }, required: false, maxCharacters: 32, maxLines: 1, minimumFontPoints: 14, fontFallbacks: HEADING_FONTS },
-    { name: "objective", box: { x: 0.069, y: 0.285, width: 0.686, height: 0.47 }, required: true, maxCharacters: 280, maxLines: 6, minimumFontPoints: 28, fontFallbacks: BODY_FONTS },
+    { name: "label", box: { x: 0.069, y: 0.178, width: 0.57, height: 0.06 }, required: false, maxCharacters: 32, maxLines: 1, minimumFontPoints: 15, fontFallbacks: HEADING_FONTS },
+    { name: "objective", box: { x: 0.069, y: 0.275, width: 0.59, height: 0.49 }, required: true, maxCharacters: 280, maxLines: 6, minimumFontPoints: 28, fontFallbacks: BODY_FONTS },
   ],
   render: renderStatement,
 };
@@ -118,8 +123,8 @@ export const TARGET_LAYOUT: LearningObjectiveLayoutDefinition = {
   aspectRatio: LAYAH_WIDESCREEN.aspectRatio,
   backgroundAsset: null,
   slots: [
-    { name: "label", box: { x: 0.086, y: 0.205, width: 0.45, height: 0.055 }, required: false, maxCharacters: 32, maxLines: 1, minimumFontPoints: 13, fontFallbacks: HEADING_FONTS },
-    { name: "objective", box: { x: 0.086, y: 0.292, width: 0.462, height: 0.46 }, required: true, maxCharacters: 140, maxLines: 4, minimumFontPoints: 26, fontFallbacks: BODY_FONTS },
+    { name: "label", box: { x: 0.069, y: 0.184, width: 0.48, height: 0.06 }, required: false, maxCharacters: 32, maxLines: 1, minimumFontPoints: 16, fontFallbacks: HEADING_FONTS },
+    { name: "objective", box: { x: 0.069, y: 0.278, width: 0.51, height: 0.45 }, required: true, maxCharacters: 140, maxLines: 4, minimumFontPoints: 26, fontFallbacks: BODY_FONTS },
   ],
   render: renderTarget,
 };
