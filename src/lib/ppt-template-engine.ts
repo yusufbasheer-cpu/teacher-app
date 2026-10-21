@@ -79,7 +79,13 @@ import {
   PROVISIONAL_LEARNING_OBJECTIVE_FLAG,
   type LearningObjectiveLayoutChoice,
 } from "@/lib/ppt-layouts/learning-objective-provisional";
-import { selectLearningObjectiveLayout } from "@/lib/presentation/layout-selector";
+import {
+  classifyStarterActivity,
+  type Phase4ALayoutId,
+  type StarterLayoutContent,
+  type TitleLayoutContent,
+} from "@/lib/ppt-layouts/title-starter-provisional";
+import { selectLearningObjectiveLayout, selectStarterLayout, selectTitleLayout } from "@/lib/presentation/layout-selector";
 
 // ─── Slide icons (0-based deck index) ────────────────────────────────────────
 
@@ -1894,6 +1900,27 @@ const FIT_TRIAL_IMAGE: ImageAsset = {
   height: 600,
 };
 
+function titleLayoutContent(spec: SlideSpec, deck: DeckSpec, hasImage: boolean): TitleLayoutContent {
+  return {
+    topic: deck.topic?.trim() || spec.title.trim(),
+    subject: deck.subject.trim(),
+    grade: deck.grade.trim(),
+    hasImage,
+  };
+}
+
+function starterLayoutContent(spec: SlideSpec, hasImage: boolean): StarterLayoutContent {
+  const body = spec.contentBlocks.flatMap(blockText).join("\n").trim();
+  const selectedToolIds = spec.afl?.selectedToolIds ?? [];
+  return {
+    title: spec.title,
+    body,
+    selectedToolIds,
+    activityKind: classifyStarterActivity(body, selectedToolIds),
+    hasImage,
+  };
+}
+
 /**
  * Renders a candidate page into a throwaway deck to learn whether its content fits at the minimum
  * font sizes. Tries the slide's own composition first, then registry fallbacks that support every
@@ -1959,6 +1986,8 @@ export async function buildPptxFromDeckSpec(params: {
   slideImageUrls?: (string | null)[] | null;
   /** Internal verification override; ordinary teacher-facing requests never set this. */
   learningObjectiveLayout?: LearningObjectiveLayoutChoice;
+  /** Internal Phase 4A verification override; ordinary teacher-facing requests never set this. */
+  phase4aLayout?: "existing" | Phase4ALayoutId;
 }): Promise<Buffer> {
   const inputValidation = parseDeckSpec(params.deck);
   if (!inputValidation.ok) {
@@ -1987,7 +2016,37 @@ export async function buildPptxFromDeckSpec(params: {
   const fitChecker = createFitChecker(tpl, tokens, deck);
   const learningObjectiveLayoutsEnabled = params.learningObjectiveLayout !== "existing"
     && (process.env[PROVISIONAL_LEARNING_OBJECTIVE_FLAG] === "true" || params.learningObjectiveLayout !== undefined);
+  const phase4aLayoutsEnabled = params.phase4aLayout !== "existing"
+    && deck.textDirection === "ltr"
+    && (process.env[PROVISIONAL_LEARNING_OBJECTIVE_FLAG] === "true" || params.phase4aLayout !== undefined);
   for (const [sourceIndex, spec] of deck.slides.entries()) {
+    const hasImageSource = Boolean(spec.image?.url ?? params.slideImageUrls?.[sourceIndex]);
+    if (spec.pedagogicalPurpose === "opening") {
+      const registered = selectTitleLayout({
+        content: titleLayoutContent(spec, deck, hasImageSource),
+        lessonId: deck.id,
+        slideId: spec.id,
+        enabled: phase4aLayoutsEnabled,
+        requestedLayoutId: params.phase4aLayout?.startsWith("title_") ? params.phase4aLayout : undefined,
+      });
+      if (registered.kind === "registered") {
+        preparedPages.push({ spec: { ...spec, order: preparedPages.length }, sourceIndex, isContinuation: false });
+        continue;
+      }
+    }
+    if (sourceIndex === 1 && spec.pedagogicalPurpose === "classroom-activity") {
+      const registered = selectStarterLayout({
+        content: starterLayoutContent(spec, hasImageSource),
+        lessonId: deck.id,
+        slideId: spec.id,
+        enabled: phase4aLayoutsEnabled,
+        requestedLayoutId: params.phase4aLayout?.startsWith("starter_") ? params.phase4aLayout : undefined,
+      });
+      if (registered.kind === "registered") {
+        preparedPages.push({ spec: { ...spec, order: preparedPages.length }, sourceIndex, isContinuation: false });
+        continue;
+      }
+    }
     if (spec.pedagogicalPurpose === "learning-objectives") {
       const content = {
         label: spec.title,
@@ -2053,9 +2112,28 @@ export async function buildPptxFromDeckSpec(params: {
   const warnings = validatePptContentSafety(safetyModels);
   if (warnings.length) console.warn("[pptx educational render] content safety warnings:", JSON.stringify(warnings.map((warning) => ({ slide: warning.slideNumber1Based, kind: warning.kind, message: warning.message }))));
   const total = preparedPages.length;
-  preparedPages.forEach(({ spec, isContinuation }, index) => {
+  preparedPages.forEach(({ spec, sourceIndex, isContinuation }, index) => {
     const slide = pptx.addSlide();
     const image = imageBySlide[index] ?? null;
+    const titleSelection = spec.pedagogicalPurpose === "opening" && !isContinuation
+      ? selectTitleLayout({
+        content: titleLayoutContent(spec, deck, Boolean(image)),
+        lessonId: deck.id,
+        slideId: spec.id,
+        enabled: phase4aLayoutsEnabled,
+        requestedLayoutId: params.phase4aLayout?.startsWith("title_") ? params.phase4aLayout : undefined,
+      })
+      : null;
+    const starterContent = starterLayoutContent(spec, Boolean(image));
+    const starterSelection = sourceIndex === 1 && spec.pedagogicalPurpose === "classroom-activity" && !isContinuation
+      ? selectStarterLayout({
+        content: starterContent,
+        lessonId: deck.id,
+        slideId: spec.id,
+        enabled: phase4aLayoutsEnabled,
+        requestedLayoutId: params.phase4aLayout?.startsWith("starter_") ? params.phase4aLayout : undefined,
+      })
+      : null;
     const learningObjectiveContent = {
       label: spec.title,
       objective: spec.contentBlocks.flatMap(blockText).join("\n").trim() || spec.centralTakeaway?.trim() || "",
@@ -2069,7 +2147,24 @@ export async function buildPptxFromDeckSpec(params: {
         requestedLayoutId: params.learningObjectiveLayout && params.learningObjectiveLayout !== "existing" ? params.learningObjectiveLayout : undefined,
       })
       : null;
-    if (index === 0 && !isContinuation && isSimpleOpeningCover(spec)) {
+    if (titleSelection?.kind === "registered") {
+      titleSelection.layout.render(pptx, slide, titleLayoutContent(spec, deck, Boolean(image)), {
+        template: tpl,
+        image,
+        textDirection: deck.textDirection,
+      });
+      if (schoolLogo) addSchoolLogo(pptx, slide, schoolLogo);
+      if (process.env.NODE_ENV !== "production") console.info(`[pptx educational render] title layout=${titleSelection.layout.id} lesson=${deck.id} slide=${spec.id}`);
+    } else if (starterSelection?.kind === "registered") {
+      starterSelection.layout.render(pptx, slide, starterContent, {
+        template: tpl,
+        image,
+        textDirection: deck.textDirection,
+      });
+      addFooter(pptx, slide, tpl, tokens.fontFace, deck.subject, index + 1, total, layahLogo);
+      if (schoolLogo) addSchoolLogo(pptx, slide, schoolLogo);
+      if (process.env.NODE_ENV !== "production") console.info(`[pptx educational render] starter layout=${starterSelection.layout.id} activity=${starterContent.activityKind} lesson=${deck.id} slide=${spec.id}`);
+    } else if (index === 0 && !isContinuation && isSimpleOpeningCover(spec)) {
       slide.background = { color: tokens.colors.background };
       renderOpeningComposition(pptx, slide, spec, deck, image, tpl, tokens);
       addFooter(pptx, slide, tpl, tokens.fontFace, deck.subject, index + 1, total, layahLogo);

@@ -18,8 +18,9 @@ describe("presentation layout registry", () => {
     }
   });
 
-  it("does not register layouts for any other slide type yet", () => {
-    expect(getRegisteredLayoutsForSlideType("title")).toEqual([]);
-    expect(new Set(LAYOUT_REGISTRY.map((layout) => layout.slideType))).toEqual(new Set(["learning-objective"]));
+  it("registers exactly the provisional Phase 4A title and starter layouts", () => {
+    expect(getRegisteredLayoutsForSlideType("title").map((layout) => layout.id)).toEqual(["title_hero_01", "title_typography_01"]);
+    expect(getRegisteredLayoutsForSlideType("starter").map((layout) => layout.id)).toEqual(["starter_activity_brief_01", "starter_visual_prompt_01"]);
+    expect(new Set(LAYOUT_REGISTRY.map((layout) => layout.slideType))).toEqual(new Set(["learning-objective", "title", "starter"]));
   });
 });

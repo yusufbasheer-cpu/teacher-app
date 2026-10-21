@@ -1,8 +1,15 @@
-import type { RegisteredLayoutDefinition } from "@/lib/presentation/layout-registry";
-
 export type LayoutRegistryIssue = { layoutId: string; field: string; message: string };
 
-export function validateLayoutRegistry<TContent, TContext, TLimits extends { slots: readonly unknown[] }>(layouts: readonly RegisteredLayoutDefinition<TContent, TContext, TLimits>[]): LayoutRegistryIssue[] {
+type RegistryValidationShape = {
+  id: string;
+  slideType: string;
+  family: string;
+  contentLimits: { slots: readonly unknown[] };
+  fits: (...args: never[]) => unknown;
+  render: (...args: never[]) => unknown;
+};
+
+export function validateLayoutRegistry(layouts: readonly RegistryValidationShape[]): LayoutRegistryIssue[] {
   const issues: LayoutRegistryIssue[] = [];
   const ids = new Set<string>();
   for (const layout of layouts) {
