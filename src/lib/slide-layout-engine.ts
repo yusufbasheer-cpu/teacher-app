@@ -306,18 +306,18 @@ function splitParagraphSemantically(text: string, maximum: number): string[] {
   return semanticTextUnits(text).flatMap((unit) => splitTextPreservingCharacters(unit, maximum));
 }
 
-function splitBlock(block: EducationalContentBlock, maximum: number): EducationalContentBlock[] | null {
+function splitBlock(block: EducationalContentBlock, maximum: number, preserveListItems = false): EducationalContentBlock[] | null {
   switch (block.type) {
     case "paragraph":
       return splitParagraphSemantically(block.text, maximum).map((text) => ({ type: "paragraph", text }));
     case "keyIdea":
       return splitParagraphSemantically(block.text, maximum).map((text, index) => ({ type: "keyIdea", text, ...(index === 0 && block.label ? { label: block.label } : {}) }));
     case "bulletList":
-      return block.items.flatMap((item) => splitTextPreservingCharacters(item, maximum).map((part) => ({ type: "bulletList" as const, items: [part] })));
+      return block.items.flatMap((item) => (preserveListItems ? [item] : splitTextPreservingCharacters(item, maximum)).map((part) => ({ type: "bulletList" as const, items: [part] })));
     case "orderedSteps":
-      return block.items.flatMap((item) => splitTextPreservingCharacters(item, maximum).map((part) => ({ type: "orderedSteps" as const, items: [part] })));
+      return block.items.flatMap((item) => (preserveListItems ? [item] : splitTextPreservingCharacters(item, maximum)).map((part) => ({ type: "orderedSteps" as const, items: [part] })));
     case "task":
-      return block.instructions.flatMap((item, index) => splitTextPreservingCharacters(item, maximum).map((part, partIndex) => ({
+      return block.instructions.flatMap((item, index) => (preserveListItems ? [item] : splitTextPreservingCharacters(item, maximum)).map((part, partIndex) => ({
         type: "task" as const,
         instructions: [part],
         ...(index === 0 && partIndex === 0 && block.materials ? { materials: block.materials } : {}),
@@ -454,7 +454,9 @@ function chunkCharacters(blocks: readonly EducationalContentBlock[]): number {
 function halveBlocks(blocks: EducationalContentBlock[]): [EducationalContentBlock[], EducationalContentBlock[]] | null {
   const total = chunkCharacters(blocks);
   const cap = Math.max(40, Math.ceil(total / 2));
-  const pieces = blocks.flatMap((block) => splitBlock(block, cap) ?? [block]);
+  // Fit-driven halving must not cut an ordered instruction merely to balance page sizes.
+  // The initial capacity pass has already split a genuinely oversized instruction safely.
+  const pieces = blocks.flatMap((block) => splitBlock(block, cap, true) ?? [block]);
   if (pieces.length < 2) return null;
   let cut = 1;
   let running = chunkCharacters([pieces[0]!]);

@@ -1771,12 +1771,27 @@ function renderRetrievalPractice(
   spec: SlideSpec,
   tokens: ReturnType<typeof getPptDesignTokens>,
 ): void {
-  const rows = educationalRows(spec.contentBlocks);
-  const bodyY = addTopTakeaway(pptx, slide, spec.centralTakeaway, tokens);
+  const firstOrdered = spec.contentBlocks.findIndex((block) => block.type === "orderedSteps");
+  const orderedBlocks = spec.contentBlocks.filter((block) => block.type === "orderedSteps");
+  const numberedRows = educationalRows(orderedBlocks);
+  const leadingRows = firstOrdered >= 0 ? educationalRows(spec.contentBlocks.slice(0, firstOrdered)) : [];
+  const trailingRows = firstOrdered >= 0 ? educationalRows(spec.contentBlocks.slice(firstOrdered + orderedBlocks.length)) : [];
+  const supportingRows = educationalRows(spec.contentBlocks.filter((block) => block.type !== "orderedSteps"));
+  const rows = numberedRows.length ? numberedRows : supportingRows;
+  let bodyY = addTopTakeaway(pptx, slide, spec.centralTakeaway, tokens);
+  if (numberedRows.length && leadingRows.length) {
+    const introduction = leadingRows.map((row) => row.text).join("\n");
+    const introH = Math.min(0.72, Math.max(0.42, estimateTextHeight(introduction, 11.5, 18)));
+    addEducationalText(slide, introduction, { x: 0.96, y: bodyY, w: 11.5, h: introH }, tokens, { fontSize: 18, bold: true });
+    bodyY += introH + 0.12;
+  }
+  const trailingText = trailingRows.map((row) => row.text).join("\n");
+  const trailingH = trailingText ? Math.min(0.7, Math.max(0.4, estimateTextHeight(trailingText, 11.5, 17))) : 0;
   // Each cue is a band: large numeral, big prompt, and open space beneath for the learner's answer.
-  addEducationalRows(pptx, slide, rows, { x: 0.96, y: bodyY + 0.1, w: 11.5, h: BODY_BOTTOM - bodyY - 0.1 }, tokens, {
+  addEducationalRows(pptx, slide, rows, { x: 0.96, y: bodyY + 0.1, w: 11.5, h: BODY_BOTTOM - bodyY - trailingH - (trailingText ? 0.24 : 0.1) }, tokens, {
     fonts: [28, 26, 24, 22, 20, 18], numbered: true, gap: 0.3, spread: { maxGap: 0.9, center: !spec.centralTakeaway }, rules: true,
   });
+  if (trailingText) addEducationalText(slide, trailingText, { x: 0.96, y: BODY_BOTTOM - trailingH, w: 11.5, h: trailingH }, tokens, { fontSize: 17, bold: true });
 }
 
 function renderReflection(

@@ -1242,7 +1242,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ["starter", "hook", "warm up", "predict", "guess", "التمهيد", "استهلال"],
     isAr
       ? `تمهيد: «${topic}»\n\nخذ لحظة للتفكير فيما تعرفه بالفعل.\n\nشارك فكرة أو سؤالاً أو تخميناً حول موضوع اليوم مع زميلك.`
-      : `Warm-Up: "${topic}"\n\nTake a moment to think about what you already know.\n\nShare one idea, question, or guess about today's topic with a partner.`,
+      : `Incomplete starter content for "${topic}". Regenerate this lesson to create a topic-specific student question and activity.`,
     "5–10 minutes",
     isAr,
     plan,
@@ -1257,7 +1257,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ["chapter", "unit", "sdg", "الفصل", "الوحدة"],
     isAr
       ? `نظرة عامة على الفصل\n\nالموضوع: «${topic}»\n\nيرتبط هذا الموضوع بأهداف التنمية المستدامة للأمم المتحدة.`
-      : `Chapter Overview\n\nTopic: "${topic}"\n\nSDG Connection: this topic links to the UN Sustainable Development Goals.`,
+      : `Incomplete SDG connection for "${topic}". Regenerate this lesson to identify and explain a relevant Sustainable Development Goal.`,
     "2 minutes",
     isAr,
     plan,
@@ -1288,7 +1288,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ["learning outcomes", "students will", "النواتج"],
     isAr
       ? `بنهاية هذا الدرس، سيكون الطلاب قادرين على إظهار فهم واضح وقابل للقياس لموضوع «${topic}».`
-      : `By the end of this lesson, students will be able to demonstrate a clear, measurable understanding of "${topic}".`,
+      : `Incomplete learning outcomes for "${topic}". Regenerate this lesson to create measurable, objective-aligned outcomes.`,
     "3 minutes",
     isAr,
     plan,
@@ -1303,7 +1303,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ["main phase", "main teaching", "core teaching", "المرحلة الأساسية", "شرح"],
     isAr
       ? `الشرح الأساسي: «${topic}»\n\nالمفاهيم والمصطلحات والشرح الأساسي لدرس اليوم، يليها أنشطة تطبيقية موجهة لترسيخ الفهم.`
-      : `Core Teaching: "${topic}"\n\nKey concepts, terms, and explanations for today's lesson, followed by guided practice activities to apply what students have learned.`,
+      : `Incomplete core teaching for "${topic}". Regenerate this lesson before presenting or downloading it.`,
     "25–35 minutes",
     isAr,
     plan,
@@ -1375,7 +1375,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ["exit ticket", "ticket to leave", "بطاقة الخروج"],
     isAr
       ? `تحقق سريع: «${topic}»\n\nسؤال قصير للتحقق من فهمك قبل مغادرة درس اليوم.`
-      : `Quick Check: "${topic}"\n\nA short question to check your understanding before you leave today's lesson.`,
+      : `Incomplete exit ticket for "${topic}". Regenerate this lesson to create two or three assessment questions.`,
     "3–4 minutes",
     isAr,
     plan,
@@ -1390,7 +1390,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     ["success criteria", "self-evaluation", "i can", "معايير النجاح"],
     isAr
       ? `معايير النجاح\n\nتأمل فيما تعلمته عن «${topic}» اليوم وقيّم مدى ثقتك بفهمك له.`
-      : `Success Criteria\n\nReflect on what you have learned about "${topic}" today and rate your own confidence.`,
+      : `Incomplete success criteria for "${topic}". Regenerate this lesson to create measurable criteria and self-evaluation prompts.`,
     "3–4 minutes",
     isAr,
     plan,

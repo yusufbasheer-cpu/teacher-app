@@ -160,6 +160,10 @@ export function TeacherPackageViewer({
   const [templateBusy, setTemplateBusy] = useState(false);
   const [uploadIssue, setUploadIssue] = useState<TemplateUploadIssue | null>(null);
   const [templateWarning, setTemplateWarning] = useState<{ code: string; error: string; slide: number | null } | null>(null);
+  const hasIncompletePptContent = useMemo(() => {
+    const content = lessonPlan["PPT Slide Content"];
+    return typeof content === "string" && /(?:^|\n)Incomplete\s+(?:starter|SDG|learning outcomes|core teaching|differentiated|exit ticket|success criteria)\b/i.test(content);
+  }, [lessonPlan]);
 
   useEffect(() => {
     let live = true;
@@ -545,7 +549,7 @@ export function TeacherPackageViewer({
         ? "Uses your uploaded slide design · PowerPoint (.pptx)"
         : card?.description,
       icon: card?.icon,
-      onDownload: card?.onDownload,
+      onDownload: key === "PPT Slide Content" && hasIncompletePptContent ? undefined : card?.onDownload,
       downloadLabel: key === "PPT Slide Content" ? "Download PowerPoint" : "Download Word",
       kind: key === "PPT Slide Content" ? "presentation" : "document",
     };
@@ -656,6 +660,7 @@ export function TeacherPackageViewer({
         </Notice>
       ) : null}
       {parseNotice ? <Notice tone="generated" className="mb-5">{parseNotice}</Notice> : null}
+      {hasIncompletePptContent ? <Notice tone="danger" className="mb-5"><p role="alert" className="font-semibold">This presentation is incomplete, so its PowerPoint download is unavailable.</p><p className="mt-1 text-sm">Regenerate the lesson to recover the affected sections. Your lesson details and activity choices will remain available.</p>{onRegenerate ? <Button className="mt-3" size="sm" onClick={onRegenerate} disabled={busy !== null}>Review and regenerate</Button> : null}</Notice> : null}
       {!showTeacherDownloads ? <Notice className="mb-5">This lesson uses an older format. Generate a new lesson to create downloadable materials.</Notice> : null}
       {busy === "ppt" ? <Notice tone="brand" className="mb-5"><p role="status" aria-live="polite" className="font-semibold">Building and checking your slides…</p><p className="mt-1 text-sm">This is an indeterminate step. Your download will start as soon as the editable PowerPoint is ready.</p></Notice> : null}
       <ArtifactWorkspace artifacts={artifacts} activeId={activeKey} onSelect={(key) => { setActiveKey(key); setEditing(false); }} busy={busy !== null || templateBusy} downloading={busy === exportKeys[activeKey]}

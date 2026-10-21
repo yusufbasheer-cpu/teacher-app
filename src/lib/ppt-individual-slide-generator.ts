@@ -19,6 +19,7 @@ import {
   type PresentationLanguage,
 } from "@/lib/ppt-language";
 import { buildRegisteredLayoutContentGuidance } from "@/lib/presentation/content-budgets";
+import { validateGeneratedSlideBody } from "@/lib/ppt-semantic-quality";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const MAX_ATTEMPTS = 3;
@@ -190,6 +191,7 @@ async function generateWithRetries(
   slideName: string,
   systemPrompt: string,
   userPrompt: string,
+  topic: string,
 ): Promise<SlideGenResult> {
   const notices: string[] = [];
   let body = "";
@@ -213,9 +215,10 @@ async function generateWithRetries(
     const parsed = parseStudentSlideResponse(content);
     body = parsed.body;
     teacherNotes = parsed.teacherNotes;
-    if (body.length >= 30) break;
+    const blocking = validateGeneratedSlideBody(slideName, body, topic).filter((issue) => issue.severity === "error");
+    if (body.length >= 30 && blocking.length === 0) break;
 
-    notices.push(`${slideName} attempt ${attempt}: response too short (${body.length} chars)`);
+    notices.push(`${slideName} attempt ${attempt}: quality checks failed (${blocking.map((issue) => issue.code).join(", ") || `response too short: ${body.length}`})`);
     body = "";
   }
 
@@ -285,7 +288,7 @@ Requirements:
 - Do NOT mention differentiation, UAE content, homework, or plenary
 - Return only the starter activity content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, topic);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -306,7 +309,7 @@ Rules:
 - Do NOT add explanations, descriptions, objectives, or activities
 - Do NOT add any other content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, topic);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -346,7 +349,7 @@ Requirements:
 - Do NOT copy objectives verbatim — paraphrase into student learning outcomes
 - Do NOT include activities or teaching instructions`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, topic);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -424,7 +427,7 @@ Requirements:
 - Do NOT include UAE-specific real-world links (separate slide)
 - Do NOT include homework (separate slide)`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, topic);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -457,7 +460,7 @@ STRICT RULES:
 - Do NOT include a full plenary activity
 - Do NOT include homework or extended tasks`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, topic);
   const cleaned = cleanBody(result.body, slideName);
   result.body = sanitizeSlide7DifferentiatedBody(
     cleaned,
@@ -504,7 +507,7 @@ Requirements:
 - Do NOT include plenary activities
 - Do NOT include homework`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, topic);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -534,7 +537,7 @@ Requirements:
 - Do NOT include homework (separate slide)
 - Do NOT include new teaching content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, topic);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -561,7 +564,7 @@ Requirements:
 - Do NOT include plenary activities
 - Do NOT repeat the slide title inside the content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, topic);
   const cleaned = cleanBody(result.body, slideName);
   result.body = sanitizeSlide10ExtendedBody(cleaned, slideName);
   return result;
@@ -584,7 +587,7 @@ Requirements:
 - Do NOT include success criteria or self-evaluation prompts
 - Do NOT include new teaching content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, topic);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -609,7 +612,7 @@ Requirements:
 - Do NOT include exit ticket questions (separate slide)
 - Do NOT include new teaching content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, topic);
   result.body = cleanBody(result.body, slideName);
   return result;
 }

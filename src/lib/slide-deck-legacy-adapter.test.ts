@@ -6,6 +6,7 @@ import { assembleFullPptFromSlideBodies } from "@/lib/ppt-slide-by-slide";
 import {
   adaptLegacyLessonPlanToDeck,
   projectDeckToLegacyExport,
+  structuredBlocksFromLegacyBody,
 } from "@/lib/slide-deck-legacy-adapter";
 
 function legacyFixture(options: { arabic?: boolean; images?: (string | null)[] } = {}) {
@@ -27,6 +28,19 @@ function legacyFixture(options: { arabic?: boolean; images?: (string | null)[] }
 }
 
 describe("legacy lesson-plan slide adapter", () => {
+  it("keeps numbered markers attached to their instruction text", () => {
+    expect(structuredBlocksFromLegacyBody("Investigation\n\n1. Observe the sample.\n2) Record two changes.\n\nExplain your evidence.")).toEqual([
+      { type: "paragraph", text: "Investigation" },
+      { type: "orderedSteps", items: ["Observe the sample.", "Record two changes."] },
+      { type: "paragraph", text: "Explain your evidence." },
+    ]);
+  });
+
+  it("keeps differentiation labels attached to their tasks", () => {
+    expect(structuredBlocksFromLegacyBody("Higher Achievers task\nEvaluate the evidence.\n\nMiddle Achievers task\nExplain the pattern.")).toEqual([
+      { type: "paragraph", text: "Higher Achievers task: Evaluate the evidence.\n\nMiddle Achievers task: Explain the pattern." },
+    ]);
+  });
   it("converts all 13 canonical slides without rewriting their titles or student-facing text", () => {
     const fixture = legacyFixture();
     const result = adaptLegacyLessonPlanToDeck({
@@ -43,9 +57,7 @@ describe("legacy lesson-plan slide adapter", () => {
     expect(result.deck.slides).toHaveLength(13);
     expect(result.deck.slides.map((slide) => slide.order)).toEqual(Array.from({ length: 13 }, (_, index) => index));
     expect(result.deck.slides.map((slide) => slide.title)).toEqual(fixture.titles);
-    expect(result.deck.slides[5]!.contentBlocks).toEqual([
-      { type: "paragraph", text: fixture.bodies[5] },
-    ]);
+    expect(result.deck.slides[5]!.contentBlocks).toEqual([{ type: "paragraph", text: fixture.bodies[5] }]);
     expect(result.deck.slides[5]!.speakerNotes).toBe(fixture.notes[5]);
     expect(result.deck.slides[5]!.centralTakeaway).toBeNull();
 

@@ -7,6 +7,7 @@
  */
 import { PPT_IMAGE_SLIDE_INDEX_SET, type StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
 import { computeDeckLayoutStats, type SlideLayoutStat } from "@/lib/ppt-template-engine";
+import { validateStructuredLessonQuality } from "@/lib/ppt-semantic-quality";
 
 export type DeckQualityReport = {
   content_quality: number;
@@ -14,6 +15,7 @@ export type DeckQualityReport = {
   image_coverage: number;
   overflow_risk: number;
   warnings: string[];
+  errors: string[];
 };
 
 /** Residual-leakage regression guard — same phrases fixed in the content-quality pass. If any
@@ -34,6 +36,7 @@ const MIN_WORDS_PER_SLIDE = 6;
 /** Generic fallback language is useful as a last-resort safety net, but it must never be
  * mistaken for release-quality lesson content. These warnings are diagnostic only. */
 const GENERIC_CONTENT_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
+  { pattern: /^Incomplete\b/i, message: "explicit incomplete-content marker" },
   { pattern: /take a moment to think about what you already know/i, message: "generic starter prompt" },
   { pattern: /this topic links to the UN Sustainable Development Goals/i, message: "unexplained SDG connection" },
   { pattern: /demonstrate a clear, measurable understanding/i, message: "non-measurable learning outcome" },
@@ -56,11 +59,13 @@ export function computeDeckQualityReport(
   slideImageUrls?: (string | null)[] | null,
 ): DeckQualityReport {
   const warnings: string[] = [];
+  const errors: string[] = [];
   const stats: SlideLayoutStat[] = computeDeckLayoutStats(slides, slideImageUrls);
 
   // ── content_quality: leakage regression guard + minimum body length + consecutive-duplicate check ──
   let contentPenalty = 0;
   let prevNorm = "";
+  const firstSeen = new Map<string, number>();
   for (let i = 0; i < slides.length; i++) {
     const slide = slides[i]!;
     const label = `Slide ${i + 1} (${slide.slideTitle})`;
@@ -87,6 +92,18 @@ export function computeDeckQualityReport(
       warnings.push(`${label}: body is identical to the previous slide.`);
     }
     prevNorm = norm;
+    if (norm && firstSeen.has(norm) && firstSeen.get(norm) !== i - 1) {
+      contentPenalty += 10;
+      warnings.push(`${label}: body duplicates slide ${firstSeen.get(norm)! + 1}.`);
+    } else if (norm) firstSeen.set(norm, i);
+    if (slide.body.split(/\r?\n/).some((line) => /^\s*\d{1,2}[.)]\s*$/u.test(line))) {
+      errors.push(`${label}: fragmented numbered-list marker detected.`);
+    }
+  }
+  for (const issue of validateStructuredLessonQuality(slides, "")) {
+    const message = `Slide ${issue.slideIndex + 1}: ${issue.code} — ${issue.message}`;
+    if (issue.severity === "error") errors.push(message);
+    else warnings.push(message);
   }
   const content_quality = Math.max(0, 100 - contentPenalty);
 
@@ -129,5 +146,6 @@ export function computeDeckQualityReport(
     image_coverage,
     overflow_risk,
     warnings,
+    errors,
   };
 }

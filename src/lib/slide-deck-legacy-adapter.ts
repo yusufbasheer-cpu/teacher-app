@@ -280,6 +280,55 @@ function stableHash(value: string): string {
 }
 
 /**
+ * Recover the small amount of structure that survives in the fixed 13-slide text contract.
+ * A numbered instruction remains one schema item, so renderers never see a number-only row.
+ * Unnumbered prose is preserved verbatim in paragraph blocks.
+ */
+export function structuredBlocksFromLegacyBody(body: string): EducationalContentBlock[] {
+  const sourceLines = body.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const lines: string[] = [];
+  const sectionLabel = /^(?:Higher Achievers task|Middle Achievers task|Lower Achievers task|Mini Plenary|Support|Core|Challenge)$/i;
+  for (let index = 0; index < sourceLines.length; index += 1) {
+    const line = sourceLines[index]!.trim();
+    if (sectionLabel.test(line)) {
+      let next = index + 1;
+      while (next < sourceLines.length && !sourceLines[next]!.trim()) next += 1;
+      if (next < sourceLines.length && !/^\s*(?:\d{1,2}[.)]|[①②③④⑤⑥⑦⑧⑨⑩])\s*/u.test(sourceLines[next]!)) {
+        lines.push(`${line}: ${sourceLines[next]!.trim()}`);
+        index = next;
+        continue;
+      }
+    }
+    lines.push(sourceLines[index]!);
+  }
+  const blocks: EducationalContentBlock[] = [];
+  let prose: string[] = [];
+  let steps: string[] = [];
+  const flushProse = () => {
+    const text = prose.join("\n").trim();
+    if (text) blocks.push({ type: "paragraph", text });
+    prose = [];
+  };
+  const flushSteps = () => {
+    if (steps.length) blocks.push({ type: "orderedSteps", items: steps });
+    steps = [];
+  };
+  for (const line of lines) {
+    const match = line.match(/^\s*(?:\d{1,2}[.)]|[①②③④⑤⑥⑦⑧⑨⑩])\s*(.+\S)\s*$/u);
+    if (match) {
+      flushProse();
+      steps.push(match[1]!.trim());
+      continue;
+    }
+    flushSteps();
+    prose.push(line);
+  }
+  flushSteps();
+  flushProse();
+  return blocks.length ? blocks : [{ type: "paragraph", text: body }];
+}
+
+/**
  * Lossless bridge from the app's fixed 13-role lesson model into the richer, versioned schema.
  * It preserves each learner-facing body as a paragraph and keeps notes and image URLs separate.
  */
@@ -294,7 +343,7 @@ export function adaptStructuredLessonSlidesToDeck(options: StructuredSlidesToDec
   const deckId = options.deckId?.trim() || `generated-deck-${stableHash(`${options.subject}|${options.grade}|${options.topic}`)}`;
   const slides: SlideSpec[] = options.slides.map((model, order) => {
     const imageUrl = options.slideImageUrls?.[order] ?? null;
-    const contentBlocks: EducationalContentBlock[] = [{ type: "paragraph", text: model.body }];
+    const contentBlocks = structuredBlocksFromLegacyBody(model.body);
     if (model.aflCallout?.trim()) contentBlocks.push({ type: "keyIdea", label: "Check for understanding", text: model.aflCallout.trim() });
     return {
       id: `slide-${stableHash(deckId)}-${String(order + 1).padStart(2, "0")}`,
@@ -444,17 +493,13 @@ export function adaptLegacyLessonPlanToDeck(options: LegacyDeckAdapterOptions): 
     const selectedToolIds = phase ? afl.selections[phase] : undefined;
     const imageUrl = imageUrls.urls[roleIndex] ?? null;
     const legacyImageSlot = PPT_IMAGE_SLIDE_INDEX_SET.has(roleIndex);
-    const contentBlock: EducationalContentBlock = {
-      type: "paragraph",
-      text: parsedSlides.bodiesByRole[roleIndex]!,
-    };
     return {
       id: `slide-${stableHash(deckId)}-${String(roleIndex + 1).padStart(2, "0")}`,
       order,
       title: header.title,
       pedagogicalPurpose: purposeForRole(roleIndex),
       centralTakeaway: null,
-      contentBlocks: [contentBlock],
+      contentBlocks: structuredBlocksFromLegacyBody(parsedSlides.bodiesByRole[roleIndex]!),
       layoutIntent: { image: imageUrl || legacyImageSlot ? "optional" : "avoid" },
       ...(imageUrl ? { image: { url: imageUrl } } : {}),
       ...(phase && selectedToolIds?.length

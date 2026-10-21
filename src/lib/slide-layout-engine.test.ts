@@ -156,6 +156,27 @@ describe("density and semantic continuation", () => {
     expect(result).toMatchObject({ ok: false, code: "maximum_slide_count_exceeded" });
   });
 
+  it("keeps each numbered instruction atomic across fit-driven continuations", () => {
+    const instructions = [
+      "Observe the sample and record the temperature before heating.",
+      "Heat the sample for two minutes and record one visible change.",
+      "Compare both observations and explain the difference using particles.",
+    ];
+    const value = slide("process", { type: "orderedSteps", items: instructions });
+    const result = paginateToFit(
+      value,
+      false,
+      (page) => page.contentBlocks.flatMap((block) => block.type === "orderedSteps" ? block.items : []).length <= 1 ? "process-flow" : null,
+      () => "test capacity",
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.slides).toHaveLength(3);
+    expect(result.slides.flatMap((page) => page.contentBlocks).flatMap((block) => block.type === "orderedSteps" ? block.items : [])).toEqual(instructions);
+    expect(result.slides[0]!.speakerNotes).toBe("Use one response to check understanding.");
+    expect(result.slides.slice(1).every((page) => page.speakerNotes.includes("See the teacher notes"))).toBe(true);
+  });
+
   it("returns an explicit error for oversized indivisible diagrams", () => {
     const oversized = slide("diagram", {
       type: "diagram",
