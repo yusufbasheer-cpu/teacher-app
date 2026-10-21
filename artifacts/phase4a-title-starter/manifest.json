@@ -1,0 +1,54 @@
+{
+  "provisional": true,
+  "featureFlagDefaultEnabled": false,
+  "decks": [
+    {
+      "slug": "water-cycle",
+      "legacy": {
+        "slideCount": 13,
+        "notesCount": 13
+      },
+      "phase4a": {
+        "slideCount": 13,
+        "notesCount": 13
+      },
+      "typographyActivity": {
+        "slideCount": 13,
+        "notesCount": 13
+      },
+      "imageSource": "Pexels API search results embedded into PPTX"
+    },
+    {
+      "slug": "linear-equations",
+      "legacy": {
+        "slideCount": 13,
+        "notesCount": 13
+      },
+      "phase4a": {
+        "slideCount": 13,
+        "notesCount": 13
+      },
+      "typographyActivity": {
+        "slideCount": 13,
+        "notesCount": 13
+      },
+      "imageSource": "Pexels API search results embedded into PPTX"
+    },
+    {
+      "slug": "industrial-revolution",
+      "legacy": {
+        "slideCount": 13,
+        "notesCount": 13
+      },
+      "phase4a": {
+        "slideCount": 13,
+        "notesCount": 13
+      },
+      "typographyActivity": {
+        "slideCount": 13,
+        "notesCount": 13
+      },
+      "imageSource": "Pexels API search results embedded into PPTX"
+    }
+  ]
+}
