@@ -102,11 +102,15 @@ Before deployment, Playwright opened `https://staging.layah.in/dashboard` at 144
 - `artifacts/phase3-browser/before/desktop-dashboard.png`
 - `artifacts/phase3-browser/before/mobile-dashboard.png`
 
-The authenticated PPT generation journey could not be exercised without a test account or an existing browser session. No credentials were invented and no user account was accessed. Post-deployment public smoke evidence is recorded in `artifacts/phase3-browser/after/`.
+The authenticated PPT generation journey could not be exercised without a test account or an existing browser session. No credentials were invented and no user account was accessed. Post-deployment public smoke evidence is recorded in `artifacts/phase3-browser/after/`. It produced the same HTTP 200 `/login` redirect and zero console/page errors at both viewports. The before and after screenshots are byte-identical, as expected because Phase 3 changed authenticated screens only.
 
 ## Git and deployment
 
-Commits and the staging deployment URL are recorded after deployment in the final handoff.
+- `d33dba7` `feat(ppt): enforce registered layout budgets`
+- `ee66d27` `fix(ui): harden presentation generation states`
+- `b07f6d2` `docs(ppt): add Phase 3 verification evidence`
+
+Vercel preview deployment `dpl_F9vdBcxuKizWEb1Dw4uYA4UsWogF` reached Ready and is aliased to `https://staging.layah.in`. The staging login returned HTTP 200 after deployment. The feature flag is absent from the Preview environment and therefore remains disabled by default.
 
 ## Remaining issues
 
