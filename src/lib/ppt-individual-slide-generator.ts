@@ -18,6 +18,7 @@ import {
   pptString,
   type PresentationLanguage,
 } from "@/lib/ppt-language";
+import { buildRegisteredLayoutContentGuidance } from "@/lib/presentation/content-budgets";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const MAX_ATTEMPTS = 3;
@@ -121,6 +122,7 @@ ${strategy ? `
 TEACHING STRATEGY (teacher-selected — shape the delivery around it):
 - ${strategy}` : ""}
 ${PPT_AFL_DRIVEN_SYSTEM_RULES}
+${buildRegisteredLayoutContentGuidance()}
 ${studentFacingDirective()}`;
 }
 

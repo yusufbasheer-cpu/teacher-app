@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { LAYAH_WIDESCREEN, learningObjectiveFits, resolveLearningObjectiveSlot, validateLearningObjectiveLayout, type LearningObjectiveLayoutDefinition } from "@/lib/ppt-layouts/learning-objective-layout";
+import { LAYAH_WIDESCREEN, learningObjectiveFits, resolveLearningObjectiveSlot, validateLearningObjectiveFit, validateLearningObjectiveLayout, type LearningObjectiveLayoutDefinition } from "@/lib/ppt-layouts/learning-objective-layout";
 
 function fixture(overrides: Partial<LearningObjectiveLayoutDefinition> = {}): LearningObjectiveLayoutDefinition {
   return {
@@ -30,11 +30,25 @@ describe("learning-objective layout contract", () => {
     expect(validateLearningObjectiveLayout(fixture({ backgroundAsset: null }))).toEqual([]);
   });
 
+  it("rejects text slots that overlap protected visual geometry", () => {
+    const layout = fixture({ protectedRegions: [{ x: 0.5, y: 0.3, width: 0.2, height: 0.2 }] });
+    expect(validateLearningObjectiveLayout(layout)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: expect.stringContaining("overlaps protected visual region") }),
+    ]));
+  });
+
   it("accepts short and boundary-length objectives but rejects overflow", () => {
     const layout = fixture();
     expect(learningObjectiveFits(layout, { objective: "Explain evaporation." })).toBe(true);
     expect(learningObjectiveFits(layout, { objective: "x".repeat(140) })).toBe(true);
     expect(learningObjectiveFits(layout, { objective: "x".repeat(141) })).toBe(false);
+  });
+
+  it("returns safe diagnostic codes without including lesson text", () => {
+    const secret = `private-${"x".repeat(145)}`;
+    const issues = validateLearningObjectiveFit(fixture(), { objective: secret });
+    expect(issues.map((issue) => issue.code)).toContain("character_limit_exceeded");
+    expect(JSON.stringify(issues)).not.toContain(secret);
   });
 
   it("scales normalized slots to the existing widescreen dimensions", () => {

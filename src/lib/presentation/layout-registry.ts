@@ -5,6 +5,7 @@ import {
 } from "@/lib/ppt-layouts/learning-objective-provisional";
 import {
   learningObjectiveFits,
+  validateLearningObjectiveFit,
   type LearningObjectiveContent,
   type LearningObjectiveRenderContext,
   type LearningObjectiveSlot,
@@ -45,6 +46,20 @@ export type LearningObjectiveRegistryEntry = RegisteredLayoutDefinition<
   LearningObjectiveRenderContext,
   { slots: readonly LearningObjectiveSlot[] }
 >;
+
+/** The approved Phase 3 budget is derived from registered layout slots, never duplicated in prompts. */
+export function getLearningObjectiveContentBudget(): { preferredMaximumCharacters: number; absoluteRegisteredMaximumCharacters: number } {
+  const limits = LEARNING_OBJECTIVE_LAYOUTS.map((layout) => layout.contentLimits.slots.find((slot) => slot.name === "objective")?.maxCharacters ?? 0);
+  return {
+    preferredMaximumCharacters: Math.min(...limits.filter((limit) => limit > 0)),
+    absoluteRegisteredMaximumCharacters: Math.max(...limits),
+  };
+}
+
+export function getLearningObjectiveFitFailures(layout: LearningObjectiveRegistryEntry, content: LearningObjectiveContent) {
+  const definition = layout.id === STATEMENT_LAYOUT.id ? STATEMENT_LAYOUT : TARGET_LAYOUT;
+  return validateLearningObjectiveFit(definition, content);
+}
 
 const LEARNING_OBJECTIVE_LAYOUTS: readonly LearningObjectiveRegistryEntry[] = [
   {

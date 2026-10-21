@@ -31,7 +31,14 @@ describe("deterministic presentation layout selector", () => {
 
   it("uses the legacy renderer when disabled or when no layout fits", () => {
     expect(selectLearningObjectiveLayout({ enabled: false, lessonId: "lesson", slideId: "slide-4", content: shortContent })).toMatchObject({ kind: "legacy", reason: "feature-disabled" });
-    expect(selectLearningObjectiveLayout({ enabled: true, lessonId: "lesson", slideId: "slide-4", content: { objective: "x".repeat(281) } })).toMatchObject({ kind: "legacy", reason: "no-compatible-layout" });
+    const oversized = selectLearningObjectiveLayout({ enabled: true, lessonId: "lesson", slideId: "slide-4", content: { objective: "x".repeat(281) } });
+    expect(oversized).toMatchObject({ kind: "legacy", reason: "no-compatible-layout" });
+    if (oversized.kind === "legacy") {
+      expect(oversized.validationFailures).toMatchObject({
+        lo_statement_01: expect.arrayContaining(["character_limit_exceeded:objective"]),
+        lo_target_01: expect.arrayContaining(["character_limit_exceeded:objective"]),
+      });
+    }
   });
 
   it("honours compatible internal overrides and rejects incompatible ones", () => {

@@ -1970,7 +1970,29 @@ export async function buildPptxFromDeckSpec(params: {
   const tokens = getPptDesignTokens(tpl, language);
   const preparedPages: { spec: SlideSpec; sourceIndex: number; isContinuation: boolean }[] = [];
   const fitChecker = createFitChecker(tpl, tokens, deck);
+  const learningObjectiveLayoutsEnabled = params.learningObjectiveLayout !== "existing"
+    && (process.env[PROVISIONAL_LEARNING_OBJECTIVE_FLAG] === "true" || params.learningObjectiveLayout !== undefined);
   for (const [sourceIndex, spec] of deck.slides.entries()) {
+    if (spec.pedagogicalPurpose === "learning-objectives") {
+      const content = {
+        label: spec.title,
+        objective: spec.contentBlocks.flatMap(blockText).join("\n").trim() || spec.centralTakeaway?.trim() || "",
+      };
+      const registered = selectLearningObjectiveLayout({
+        content,
+        lessonId: deck.id,
+        slideId: spec.id,
+        enabled: learningObjectiveLayoutsEnabled,
+        requestedLayoutId: params.learningObjectiveLayout && params.learningObjectiveLayout !== "existing" ? params.learningObjectiveLayout : undefined,
+      });
+      // Registered-layout fit is evaluated before legacy shrinking/pagination. A compatible
+      // approved layout gets one native-text slide; only an incompatible objective reaches the
+      // established legacy and continuation machinery below.
+      if (registered.kind === "registered") {
+        preparedPages.push({ spec: { ...spec, order: preparedPages.length }, sourceIndex, isContinuation: false });
+        continue;
+      }
+    }
     const remainingPages = MAX_PHYSICAL_SLIDES - preparedPages.length;
     const pagination = paginateToFit(spec, deck.textDirection === "rtl", fitChecker.fit, fitChecker.lastError, remainingPages);
     if (!pagination.ok) {
@@ -2016,8 +2038,6 @@ export async function buildPptxFromDeckSpec(params: {
   const warnings = validatePptContentSafety(safetyModels);
   if (warnings.length) console.warn("[pptx educational render] content safety warnings:", JSON.stringify(warnings.map((warning) => ({ slide: warning.slideNumber1Based, kind: warning.kind, message: warning.message }))));
   const total = preparedPages.length;
-  const learningObjectiveLayoutsEnabled = params.learningObjectiveLayout !== "existing"
-    && (process.env[PROVISIONAL_LEARNING_OBJECTIVE_FLAG] === "true" || params.learningObjectiveLayout !== undefined);
   preparedPages.forEach(({ spec, isContinuation }, index) => {
     const slide = pptx.addSlide();
     const image = imageBySlide[index] ?? null;
@@ -2048,7 +2068,12 @@ export async function buildPptxFromDeckSpec(params: {
       if (process.env.NODE_ENV !== "production") console.info(`[pptx educational render] learning-objective layout=${learningObjectiveSelection.layout.id} lesson=${deck.id} slide=${spec.id}`);
     } else {
       if (learningObjectiveSelection && learningObjectiveSelection.reason !== "feature-disabled") {
-        if (process.env.NODE_ENV !== "production") console.info(`[pptx educational render] learning-objective layout=legacy reason=${learningObjectiveSelection.reason} lesson=${deck.id} slide=${spec.id}`);
+        if (process.env.NODE_ENV !== "production") {
+          const failures = learningObjectiveSelection.validationFailures
+            ? Object.entries(learningObjectiveSelection.validationFailures).map(([id, reasons]) => `${id}=${reasons.join(",") || "none"}`).join(";")
+            : "none";
+          console.info(`[pptx educational render] learning-objective layout=legacy reason=${learningObjectiveSelection.reason} failures=${failures} lesson=${deck.id} slide=${spec.id}`);
+        }
       }
       addEducationalHeader(pptx, slide, spec, tpl, tokens, deck.subject, index + 1, total, layahLogo, schoolLogo);
       renderEducationalComposition(pptx, slide, spec, image, tpl, tokens);

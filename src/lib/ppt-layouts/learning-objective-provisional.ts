@@ -113,6 +113,7 @@ export const STATEMENT_LAYOUT: LearningObjectiveLayoutDefinition = {
     { name: "label", box: { x: 0.069, y: 0.178, width: 0.57, height: 0.06 }, required: false, maxCharacters: 32, maxLines: 1, minimumFontPoints: 15, fontFallbacks: HEADING_FONTS },
     { name: "objective", box: { x: 0.069, y: 0.275, width: 0.59, height: 0.49 }, required: true, maxCharacters: 280, maxLines: 6, minimumFontPoints: 28, fontFallbacks: BODY_FONTS },
   ],
+  protectedRegions: [{ x: 0.66, y: 0.3, width: 0.3, height: 0.62 }],
   render: renderStatement,
 };
 
@@ -125,6 +126,7 @@ export const TARGET_LAYOUT: LearningObjectiveLayoutDefinition = {
     { name: "label", box: { x: 0.069, y: 0.184, width: 0.48, height: 0.06 }, required: false, maxCharacters: 32, maxLines: 1, minimumFontPoints: 16, fontFallbacks: HEADING_FONTS },
     { name: "objective", box: { x: 0.069, y: 0.278, width: 0.51, height: 0.45 }, required: true, maxCharacters: 140, maxLines: 4, minimumFontPoints: 26, fontFallbacks: BODY_FONTS },
   ],
+  protectedRegions: [{ x: 0.62, y: 0.14, width: 0.35, height: 0.75 }],
   render: renderTarget,
 };
 

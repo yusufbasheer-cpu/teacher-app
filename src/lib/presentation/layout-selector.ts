@@ -5,12 +5,13 @@ import {
   type LayoutId,
   type LearningObjectiveRegistryEntry,
   type DesignLibrarySlideType,
+  getLearningObjectiveFitFailures,
 } from "@/lib/presentation/layout-registry";
 import type { LearningObjectiveContent } from "@/lib/ppt-layouts/learning-objective-layout";
 
 export type LayoutSelection<TLayout> =
   | { kind: "registered"; layout: TLayout; eligibleLayoutIds: LayoutId[] }
-  | { kind: "legacy"; reason: "feature-disabled" | "requested-layout-incompatible" | "no-compatible-layout"; eligibleLayoutIds: LayoutId[] };
+  | { kind: "legacy"; reason: "feature-disabled" | "requested-layout-incompatible" | "no-compatible-layout"; eligibleLayoutIds: LayoutId[]; validationFailures?: Record<string, string[]> };
 
 function canonicalize(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -40,7 +41,12 @@ export function selectRegisteredLayout(input: {
 }): LayoutSelection<LearningObjectiveRegistryEntry> {
   if (!input.enabled) return { kind: "legacy", reason: "feature-disabled", eligibleLayoutIds: [] };
 
-  const compatible = getRegisteredLayoutsForSlideType(input.slideType)
+  const candidates = getRegisteredLayoutsForSlideType(input.slideType);
+  const validationFailures = Object.fromEntries(candidates.map((layout) => [
+    layout.id,
+    getLearningObjectiveFitFailures(layout, input.content).map((issue) => `${issue.code}:${issue.slot}`),
+  ]));
+  const compatible = candidates
     .filter((layout) => layout.fits(input.content))
     .sort((left, right) => left.id.localeCompare(right.id));
   const eligibleLayoutIds = compatible.map((layout) => layout.id);
@@ -50,9 +56,9 @@ export function selectRegisteredLayout(input: {
     if (requested && requested.slideType === input.slideType && requested.fits(input.content)) {
       return { kind: "registered", layout: requested, eligibleLayoutIds };
     }
-    return { kind: "legacy", reason: "requested-layout-incompatible", eligibleLayoutIds };
+    return { kind: "legacy", reason: "requested-layout-incompatible", eligibleLayoutIds, validationFailures };
   }
-  if (compatible.length === 0) return { kind: "legacy", reason: "no-compatible-layout", eligibleLayoutIds };
+  if (compatible.length === 0) return { kind: "legacy", reason: "no-compatible-layout", eligibleLayoutIds, validationFailures };
 
   const varied = input.previousFamily && compatible.some((layout) => layout.family !== input.previousFamily)
     ? compatible.filter((layout) => layout.family !== input.previousFamily)
