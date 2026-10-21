@@ -1,0 +1,9 @@
+{
+  "featureFlag": "PPT_LEARNING_OBJECTIVE_LAYOUTS_ENABLED",
+  "defaultEnabled": false,
+  "objective": "Explain how evaporation and condensation transfer water through the water cycle, using particle movement as evidence.",
+  "selections": {
+    "lo_statement_01": "phase2-water-cycle-0",
+    "lo_target_01": "phase2-water-cycle-1"
+  }
+}
