@@ -1,0 +1,10 @@
+{
+  "content_quality": 95,
+  "visual_balance": 92,
+  "image_coverage": 0,
+  "overflow_risk": 0,
+  "warnings": [
+    "Slide 1 (Science, Year 7): body is very short (5 words) — may read as empty/placeholder.",
+    "10 slide(s) have no image: #1, #2, #3, #6, #7, #8, #9, #10, #11, #12."
+  ]
+}

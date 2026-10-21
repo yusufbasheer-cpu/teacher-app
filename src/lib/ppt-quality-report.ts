@@ -31,6 +31,18 @@ const LEAKED_INSTRUCTION_PATTERNS: RegExp[] = [
 
 const MIN_WORDS_PER_SLIDE = 6;
 
+/** Generic fallback language is useful as a last-resort safety net, but it must never be
+ * mistaken for release-quality lesson content. These warnings are diagnostic only. */
+const GENERIC_CONTENT_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
+  { pattern: /take a moment to think about what you already know/i, message: "generic starter prompt" },
+  { pattern: /this topic links to the UN Sustainable Development Goals/i, message: "unexplained SDG connection" },
+  { pattern: /demonstrate a clear, measurable understanding/i, message: "non-measurable learning outcome" },
+  { pattern: /key concepts, terms, and explanations for today's lesson/i, message: "core teaching placeholder" },
+  { pattern: /a challenging task extending beyond the objective/i, message: "generic differentiation task" },
+  { pattern: /a short question to check your understanding/i, message: "missing exit-ticket question" },
+  { pattern: /reflect on what you have learned[\s\S]+rate your own confidence/i, message: "generic success criteria" },
+];
+
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
@@ -56,6 +68,12 @@ export function computeDeckQualityReport(
       if (re.test(slide.body)) {
         contentPenalty += 15;
         warnings.push(`${label}: possible leaked instructional phrasing detected (matched ${re}).`);
+      }
+    }
+    for (const { pattern, message } of GENERIC_CONTENT_PATTERNS) {
+      if (pattern.test(slide.body)) {
+        contentPenalty += 10;
+        warnings.push(`${label}: ${message} detected.`);
       }
     }
     const words = countWords(slide.body);
