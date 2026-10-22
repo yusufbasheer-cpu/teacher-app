@@ -3,6 +3,19 @@
 Branch `experiment/gamma-ppt-integration`. Nothing here has been deployed or paid for. Verified state is in the table; every command below is
 safe to copy as written. **Secrets are only ever typed into the Vercel/Supabase prompt or your own shell, never into chat, files or Git.**
 
+## Status update (final pre-deploy): application-wide isolation and auth findings
+
+**Application-wide isolation (new, `src/lib/environment-isolation.ts`).** Active only when `GAMMA_ENVIRONMENT_NAME` is set to a non-production name; production and ordinary previews are untouched. In an isolated environment the server must prove: the Supabase URL is allowlisted and not production; the **anon and service-role JWTs' `ref` claim equals the URL's project** (this verifies the Sensitive keys without reading them); no live Razorpay key (`rzp_live_`) is present. Violations: the proxy answers **every** page/API request with 503 (diagnostics route excepted), `getSupabaseServiceRole()` and `getRazorpayClient()` return null. Validated with the real staging keys: ok, and a failed URL override is detected.
+
+**`GET /api/environment-check`** (404 outside isolated environments) returns isolation status, the project ref, and the non-secret configuration (limits, provider default, tester *count*, key-present booleans, export-host placeholder flag, site-URL/origin match). It never returns a secret or an email. It is the post-deploy verification tool for the Sensitive variables.
+
+**Staging Supabase Auth: NOT confirmed working.** Public settings: email sign-up enabled, `mailer_autoconfirm=false` (email confirmation required), email provider only (no Google). Redirect probe (invalid-token `/auth/v1/verify`, no side effects): every `redirect_to`, including the branch alias, fell back to `http://localhost:3000/`, i.e. the alias does **not** appear to be on the allowlist and the Site URL is still `localhost:3000`. Consequences for registration: the app sends `emailRedirectTo = origin + /auth/callback`; unallowlisted ⇒ the confirmation link points at localhost.
+Manual fixes in Supabase → layah-staging → Authentication:
+1. URL Configuration: **Site URL** = `https://project-scquo-git-experiment-gamma-ppt-integration-teacher-app.vercel.app`; Redirect URLs include the same origin with `/**`. Click **Save**.
+2. Emails → Confirm sign up: do **not** use the production template (`confirmation.html` hardcodes `https://www.layah.in`). Use `supabase/templates/confirmation.staging.html` (builds the link from `{{ .SiteURL }}`).
+3. Supabase's built-in mailer is rate-limited and may only deliver to project team members; if your address is not one, configure custom SMTP or ask me to create a confirmed account (you asked me not to yet).
+Re-probe after saving (I can re-run it; it uses invalid tokens only).
+
 ## Status update (latest): staging configured and verified; awaiting authorisation to push/deploy
 
 * **Vercel:** 23 branch-scoped Preview variables written for `experiment/gamma-ppt-integration` only (plus the existing `GAMMA_API_KEY`). `node scripts/gamma-vercel-env.mjs --verify` reports 24/24 present. A before/after snapshot of Production and all-branch Preview variable names shows **no change** other than the branch-scoped additions.

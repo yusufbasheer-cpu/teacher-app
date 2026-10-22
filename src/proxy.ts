@@ -1,4 +1,5 @@
 import { createMiddlewareSupabaseClient } from "@/lib/supabase-ssr";
+import { checkEnvironmentIsolation } from "@/lib/environment-isolation";
 import { NextResponse, type NextRequest } from "next/server";
 import { USER_EMAIL_HEADER, USER_ID_HEADER } from "@/lib/auth-header-names";
 import type { User } from "@supabase/supabase-js";
@@ -83,6 +84,19 @@ function csrfGuard(request: NextRequest): NextResponse | null {
  * @see https://supabase.com/docs/guides/auth/server-side/nextjs
  */
 export async function proxy(request: NextRequest) {
+  // Application-wide isolation of an experimental environment. A no-op unless GAMMA_ENVIRONMENT_NAME marks this deployment
+  // as isolated; then ANY request is refused unless the server is provably on its allowlisted staging project with no live
+  // payment key. The diagnostic route stays reachable so the failure can be inspected.
+  if (request.nextUrl.pathname !== "/api/environment-check") {
+    const isolation = checkEnvironmentIsolation();
+    if (isolation.isolated && !isolation.ok) {
+      return new NextResponse(
+        JSON.stringify({ error: "This experimental environment failed its isolation check and is disabled.", reasons: isolation.violations }),
+        { status: 503, headers: { "content-type": "application/json", "cache-control": "no-store" } },
+      );
+    }
+  }
+
   const csrfBlock = csrfGuard(request);
   if (csrfBlock) return csrfBlock;
 

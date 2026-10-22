@@ -1,3 +1,4 @@
+import { isolationBlocksOperation } from "@/lib/environment-isolation";
 import crypto from "crypto";
 import Razorpay from "razorpay";
 import {
@@ -30,7 +31,7 @@ export function getRazorpayClient(): Razorpay | null {
   if (client !== undefined) return client;
   const keyId = process.env.RAZORPAY_KEY_ID?.trim();
   const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
-  if (!keyId || !keySecret) {
+  if (!keyId || !keySecret || isolationBlocksOperation()) {
     client = null;
     return client;
   }
