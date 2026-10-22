@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/panel";
+import { Select } from "@/components/ui/field";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { AnimatePresence, motion } from "motion/react";
 import ReactMarkdown from "react-markdown";
@@ -39,6 +40,7 @@ import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson"
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
 import { decodeReportHeader, presentVerdict, type GammaReportSummary } from "@/lib/gamma/report";
+import type { CuratedGammaTheme } from "@/lib/gamma/themes";
 import type { PresentationLanguage } from "@/lib/ppt-language";
 import { TemplateUploadIssuePanel } from "@/components/lesson-plan/template-upload-issue";
 import {
@@ -312,6 +314,10 @@ export function TeacherPackageViewer({
   const gammaExperiment = process.env.NEXT_PUBLIC_GAMMA_EXPERIMENT === "true";
   const [gammaAvailable, setGammaAvailable] = useState(false);
   const [useGamma, setUseGamma] = useState(false);
+  const [gammaThemes, setGammaThemes] = useState<CuratedGammaTheme[]>([]);
+  const [gammaThemeId, setGammaThemeId] = useState("");
+  const [gammaImageSource, setGammaImageSource] = useState("aiGenerated");
+  const [gammaImageStyle, setGammaImageStyle] = useState("clean educational illustration, age-appropriate, uncluttered");
   // Persistent until dismissed or the next generation starts; never auto-cleared by toasts.
   const [gammaPanel, setGammaPanel] = useState<GammaPanelState | null>(null);
   const [templateWarning, setTemplateWarning] = useState<{ code: string; error: string; slide: number | null } | null>(null);
@@ -342,12 +348,29 @@ export function TeacherPackageViewer({
         if (!live) return;
         setGammaAvailable(result.gammaAvailable === true);
         setUseGamma(result.gammaAvailable === true && result.defaultProvider === "gamma");
+        if (result.gammaAvailable === true) {
+          const themesResponse = await fetch("/api/lesson-plan/export/pptx/themes", { headers: await getAuthHeaders(), cache: "no-store" });
+          if (themesResponse.ok) {
+            const themesResult = await themesResponse.json() as { themes?: CuratedGammaTheme[] };
+            const themes = themesResult.themes ?? [];
+            if (!live) return;
+            setGammaThemes(themes);
+            const saved = window.localStorage.getItem("layah:gamma-theme-id");
+            const selected = themes.some((theme) => theme.id === saved) ? saved! : themes[0]?.id ?? "";
+            setGammaThemeId(selected);
+          }
+        }
       } catch {
         // Gamma simply stays unavailable.
       }
     })();
     return () => { live = false; };
   }, [gammaExperiment]);
+
+  const chooseGammaTheme = (id: string) => {
+    setGammaThemeId(id);
+    window.localStorage.setItem("layah:gamma-theme-id", id);
+  };
 
   const uploadTemplate = async (file: File) => {
     setTemplateWarning(null);
@@ -466,7 +489,7 @@ export function TeacherPackageViewer({
     setExportError(null);
     if (key === "ppt") {
       setTemplateWarning(null);
-      setGammaPanel(null);
+      setGammaPanel(useGamma ? { kind: "progress", startedAt: Date.now() } : null);
     }
     setBusy(key);
     try {
@@ -564,6 +587,11 @@ export function TeacherPackageViewer({
         pptTheme: pptThemeId,
         templateMode: mode,
         ...(gammaAvailable && mode === "layah" ? { pptProvider: useGamma ? "gamma" : "legacy" } : {}),
+        ...(gammaAvailable && useGamma && mode === "layah" ? {
+          ...(gammaThemeId ? { gammaThemeId } : {}),
+          gammaImageSource,
+          ...(gammaImageSource === "aiGenerated" && gammaImageStyle ? { gammaImageStyle } : {}),
+        } : {}),
         curriculumFramework: curriculumFramework?.trim() ?? "",
         ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
         ...(urls ? { pptSlideImageUrls: urls } : {}),
@@ -774,6 +802,10 @@ export function TeacherPackageViewer({
         </div>
       </div>
 
+      {gammaAvailable ? <ol className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-line-subtle bg-surface p-2 sm:grid-cols-4" aria-label="Lesson creation progress">
+        {["Lesson details", "DeepSeek content", "Design", "Download"].map((label, index) => <li key={label} className={`rounded-md px-3 py-2 text-[11px] font-medium ${index < 2 ? "text-brand-text" : index === 2 ? "bg-brand-subtle text-ink" : "text-faint"}`}><span className="mr-1.5 font-mono text-[10px]">{index + 1}</span>{label}</li>)}
+      </ol> : null}
+
       {exportError ? (
         <Notice tone="danger" className="animate-shake mb-3">
           {exportError}
@@ -816,6 +848,18 @@ export function TeacherPackageViewer({
         <aside className="space-y-6 lg:col-span-4">
         {hasPpt ? (
           <div className="rounded-md border border-line-subtle bg-surface p-3">
+            {gammaAvailable && useGamma ? (
+              <GammaDesignControls
+                themes={gammaThemes}
+                themeId={gammaThemeId}
+                imageSource={gammaImageSource}
+                imageStyle={gammaImageStyle}
+                onThemeChange={chooseGammaTheme}
+                onImageSourceChange={setGammaImageSource}
+                onImageStyleChange={setGammaImageStyle}
+                onUseLegacy={() => setUseGamma(false)}
+              />
+            ) : <>
             <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-disabled">
               Slide template
             </p>
@@ -896,6 +940,7 @@ export function TeacherPackageViewer({
               })}
             </div>
             ) : null}
+            </>}
           </div>
         ) : null}
 
@@ -1081,7 +1126,49 @@ export function TeacherPackageViewer({
 
 type GammaPanelState =
   | { kind: "result"; blob: Blob; filename: string; summary: GammaReportSummary | null }
-  | { kind: "error"; code: string; message: string };
+  | { kind: "error"; code: string; message: string }
+  | { kind: "progress"; startedAt: number };
+
+function GammaDesignControls({
+  themes, themeId, imageSource, imageStyle, onThemeChange, onImageSourceChange, onImageStyleChange, onUseLegacy,
+}: {
+  themes: CuratedGammaTheme[];
+  themeId: string;
+  imageSource: string;
+  imageStyle: string;
+  onThemeChange: (id: string) => void;
+  onImageSourceChange: (value: string) => void;
+  onImageStyleChange: (value: string) => void;
+  onUseLegacy: () => void;
+}) {
+  const swatch = { calm: "from-brand-subtle via-surface to-sunken", modern: "from-sunken via-brand-subtle to-surface", vivid: "from-brand-subtle via-generated-soft to-surface" } as const;
+  return (
+    <div>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div><p className="font-mono text-[10px] uppercase tracking-wider text-brand-text">Design with Gamma</p><h2 className="mt-1 text-[15px] font-semibold text-ink">Choose the look of your 13-slide lesson</h2><p className="mt-1 text-[12px] text-faint">Gamma applies the selected workspace theme while Layah holds the lesson text for validation.</p></div>
+        <Button type="button" variant="ghost" size="xs" onClick={onUseLegacy}>Use legacy renderer</Button>
+      </div>
+      {themes.length === 0 ? <Notice tone="brand" className="mb-3">Loading workspace themes… If this remains empty, Gamma’s theme service is unavailable and the workspace default will be used.</Notice> : (
+        <div className="space-y-2" role="radiogroup" aria-label="Gamma theme">
+          {themes.map((theme) => {
+            const selected = theme.id === themeId;
+            return <button key={theme.id} type="button" role="radio" aria-checked={selected} onClick={() => onThemeChange(theme.id)} className={`w-full rounded-lg border p-3 text-left transition-[border-color,background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transform-none ${selected ? "border-brand bg-brand-subtle" : "border-line-subtle bg-surface hover:border-line-strong"}`}>
+              <span className={`mb-2 block h-8 rounded-md bg-gradient-to-r ${swatch[theme.swatch]}`} aria-hidden />
+              <span className="block text-[12px] font-semibold text-ink">{theme.intent}</span>
+              <span className="block text-[11px] text-faint">{theme.name}</span>
+              <span className="mt-2 flex flex-wrap gap-1">{[...theme.colorKeywords, ...theme.toneKeywords].slice(0, 5).map((keyword) => <span key={keyword} className="rounded-full border border-line-subtle bg-sunken px-2 py-0.5 text-[10px] text-muted">{keyword}</span>)}</span>
+            </button>;
+          })}
+        </div>
+      )}
+      <div className="mt-4 grid gap-3">
+        <label className="text-[11px] font-medium text-muted">Image source<Select className="mt-1" value={imageSource} onChange={(e) => onImageSourceChange(e.target.value)}><option value="aiGenerated">AI-generated illustrations</option><option value="pexels">Pexels photography</option><option value="webFreeToUseCommercially">Commercial-use web images</option><option value="themeAccent">Theme accent images</option><option value="noImages">No images</option></Select></label>
+        {imageSource === "aiGenerated" ? <label className="text-[11px] font-medium text-muted">Image style<input value={imageStyle} maxLength={500} onChange={(e) => onImageStyleChange(e.target.value)} className="mt-1 h-10 w-full rounded-md border border-line bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand" /></label> : null}
+      </div>
+      <p className="mt-3 text-[11px] text-faint">Language follows the lesson. Gamma does not offer an exact image-count control, so none is shown.</p>
+    </div>
+  );
+}
 
 function GammaPanel({
   panel,
@@ -1090,6 +1177,13 @@ function GammaPanel({
   panel: GammaPanelState;
   onDismiss: () => void;
 }) {
+  if (panel.kind === "progress") {
+    return (
+      <Notice tone="brand" className="mb-3" aria-live="polite">
+        <div className="flex items-start gap-3"><span className="mt-1 size-2 shrink-0 animate-pulse rounded-full bg-brand motion-reduce:animate-none" aria-hidden /><div><p className="font-semibold">Gamma is designing and exporting your presentation</p><p className="mt-1">This usually takes 1–3 minutes. Layah will validate every slide before offering the file. If this request times out, retrying the same design resumes the ledger entry instead of submitting a second paid generation.</p></div></div>
+      </Notice>
+    );
+  }
   if (panel.kind === "error") {
     return (
       <Notice tone="danger" className="mb-3">
@@ -1103,8 +1197,10 @@ function GammaPanel({
   const s = panel.summary;
   return (
     <Notice tone={v.tone === "ok" ? "generated" : v.tone === "warn" ? "brand" : "danger"} className="mb-3">
-      <p className="font-semibold">Gamma experiment: {v.title}</p>
+      <div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{v.title}</p>{s?.resumed ? <span className="rounded-full bg-sunken px-2 py-0.5 text-[10px] font-semibold text-muted">Resumed · no new charge</span> : null}</div>
       <p className="mt-1">{v.detail}</p>
+      {s?.verdict === "uncertain" ? <p className="mt-2 text-sm">Uncertain means no text change was detected, but PowerPoint formatting may hide details the validator cannot prove. Review the deck manually.</p> : null}
+      {s?.verdict === "failed" ? <p className="mt-2 text-sm">Failed means the validator found missing, changed, or added lesson text. Download is held unless you explicitly choose otherwise.</p> : null}
       {s && s.examples.length > 0 ? (
         <ul className="mt-2 list-disc pl-5 text-sm">
           {s.examples.map((e) => <li key={e}>{e}</li>)}

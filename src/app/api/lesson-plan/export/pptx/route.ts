@@ -16,9 +16,10 @@ import { authenticateRequest } from "@/lib/user-usage-server";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 import { renderUploadedPpt, UploadedTemplateError } from "@/lib/uploaded-ppt-export";
 import { moveTeacherFacingLinesToNotes } from "@/lib/ppt-template-engine";
-import { defaultProviderFor, GammaError, gammaGate, resolvePptProvider } from "@/lib/gamma/config";
+import { defaultProviderFor, GammaError, gammaGate, getGammaConfig, resolvePptProvider } from "@/lib/gamma/config";
 import { encodeReportHeader, summariseReport } from "@/lib/gamma/report";
 import { renderPptxWithGamma } from "@/lib/gamma/render";
+import { listGammaThemes, validateGammaPresentationOptions } from "@/lib/gamma/themes";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -61,6 +62,9 @@ type Body = {
   teachingStrategy?: string;
   /** Experimental renderer choice; honoured only for authorised testers (see lib/gamma/config). */
   pptProvider?: unknown;
+  gammaThemeId?: unknown;
+  gammaImageSource?: unknown;
+  gammaImageStyle?: unknown;
 };
 
 const GAMMA_ERROR_STATUS: Record<GammaError["code"], number> = {
@@ -189,12 +193,20 @@ export async function POST(req: Request) {
     if (body.templateMode !== "uploaded") {
       const choice = resolvePptProvider({ requested: body.pptProvider, email: auth.email });
       if (choice.provider === "gamma") {
+        let requestConfig;
+        if (body.gammaThemeId || body.gammaImageSource || body.gammaImageStyle) {
+          const baseConfig = getGammaConfig();
+          const themes = body.gammaThemeId ? await listGammaThemes(baseConfig) : [];
+          const options = validateGammaPresentationOptions({ themeId: body.gammaThemeId, imageSource: body.gammaImageSource, imageStyle: body.gammaImageStyle }, themes);
+          requestConfig = { ...baseConfig, ...options };
+        }
         const result = await renderPptxWithGamma({
           deck,
           title: `${grade} ${subject}: ${topic}`,
           language,
           userId: auth.userId,
           startedAt,
+          ...(requestConfig ? { config: requestConfig } : {}),
         });
         const gammaName = sanitizeExportFileName(`${grade}-${subject}-${topic}-ppt-gamma`) || "ppt-gamma";
         return new NextResponse(new Uint8Array(result.buffer), {

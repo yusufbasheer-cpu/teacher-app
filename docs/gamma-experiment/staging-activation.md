@@ -1,5 +1,13 @@
 # Gamma on an isolated staging preview: activation runbook
 
+## 2026-10-22 focused-product update
+
+- Isolated feature lock added; the route matrix is in `experiment-feature-lock.md`.
+- `ai_usage_events` migration `20261022171633` applied to `layah-staging` (`esqnyktumxscyvznftlc`) only and recorded. RLS is enabled; `anon`/`authenticated` have no grants.
+- Tester `421891e6-e687-4801-8bca-8f61c1b85919` was upserted to `school_enterprise`, `generations_limit=-1`; read-back preserved `generations_used=0`, reset `2026-11-01`.
+- The branch environment plan now includes `EXPERIMENT_ALLOWED_FEATURES` and three DeepSeek estimate overrides. They remain dry-run-only until separately approved/applied.
+- No branch push/deploy and no paid Gamma generation were performed in this update.
+
 Branch `experiment/gamma-ppt-integration`. Nothing here has been deployed or paid for. Verified state is in the table; every command below is
 safe to copy as written. **Secrets are only ever typed into the Vercel/Supabase prompt or your own shell, never into chat, files or Git.**
 

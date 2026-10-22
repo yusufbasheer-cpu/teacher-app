@@ -9,18 +9,18 @@ const productionRef = "jbwevzvtloahjoamwnjt";
 const safe = enabled && !!url && !!serviceKey && !url.includes(productionRef);
 
 describe.skipIf(!safe)("ai_usage_events staging integration", () => {
-  const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+  const admin = safe ? createClient(url, serviceKey, { auth: { persistSession: false } }) : null;
   const ids: string[] = [];
 
   beforeAll(() => {
     if (url.includes(productionRef)) throw new Error("Refusing production Supabase");
   });
   afterAll(async () => {
-    if (ids.length) await admin.from("ai_usage_events").delete().in("id", ids);
+    if (ids.length) await admin!.from("ai_usage_events").delete().in("id", ids);
   });
 
   it("persists through service role and denies anon reads", async () => {
-    const { data, error } = await admin.from("ai_usage_events").insert({ user_id: crypto.randomUUID(), provider: "deepseek", operation: "integration_test", model: "deepseek-flash", total_tokens: 3, status: "success", duration_ms: 1 }).select("id,total_tokens").single();
+    const { data, error } = await admin!.from("ai_usage_events").insert({ user_id: crypto.randomUUID(), provider: "deepseek", operation: "integration_test", model: "deepseek-flash", total_tokens: 3, status: "success", duration_ms: 1 }).select("id,total_tokens").single();
     expect(error).toBeNull();
     expect(data?.total_tokens).toBe(3);
     if (data?.id) ids.push(data.id);
