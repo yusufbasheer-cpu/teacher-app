@@ -3,6 +3,28 @@
 Branch `experiment/gamma-ppt-integration`. Nothing here has been deployed or paid for. Verified state is in the table; every command below is
 safe to copy as written. **Secrets are only ever typed into the Vercel/Supabase prompt or your own shell, never into chat, files or Git.**
 
+## Status update: staging database prepared, Vercel configuration planned (not applied)
+
+| Item | State (verified) |
+|---|---|
+| `layah-staging` (`esqnyktumxscyvznftlc`) | **ACTIVE_HEALTHY** (resumed by you) |
+| Migrations on staging | 43 applied. **Missing: `20260919120000_school_templates`, `20261010120000_razorpay_orders_currency`** (both reviewed: additive/idempotent; **held for your approval**, not needed for the Gamma pilot). `20261022120000_gamma_generations` was **applied** (new table, 4 indexes incl. the partial-unique one-active-per-user, RLS on, **client grants revoked**) and recorded in migration history |
+| Ledger integration test on real staging Postgres | **7/7 pass** (atomic insert, 6-way concurrency ⇒ exactly one winner, persistence across instances, resume/undelivered, per-user counts, budget/rate-limit admission, anon RLS). 0 leftover rows |
+| Staging auth users | **0**: the tester account does not exist yet |
+| Usage-gate functions on staging (`consume_user_generation`, `refund_user_generation`, `ensure_own_user_usage`) | present; free plan may generate PPT |
+| `GAMMA_API_KEY` | present, Sensitive, scoped to Preview + branch `experiment/gamma-ppt-integration` only (name verified, value never read) |
+| Other branch variables | **not written yet**: `node scripts/gamma-vercel-env.mjs --tester-email <you>` prints the 23-operation dry run; `--apply` writes it |
+| Inherited Preview variables | Supabase URL/anon/service-role and live Razorpay keys are bound to ALL previews (prod). The plan overrides them for this branch only |
+| Branch pushed | yes (`origin/experiment/gamma-ppt-integration`); **a Vercel preview of it builds automatically with the inherited (production) variables and no Gamma settings: do not log in on that URL** |
+
+Additional findings that change the manual steps:
+
+* **CSRF:** `src/lib/csrf.ts`/`src/proxy.ts` accept browser POSTs only from `layah.in`, localhost, or exactly `NEXT_PUBLIC_SITE_URL`. The plan sets it to the branch URL `https://project-scquo-git-experiment-gamma-ppt-integration-teacher-app.vercel.app` (confirm with `vercel inspect` after the first build).
+* **Staging Supabase Auth must allow that origin:** Dashboard → layah-staging → Authentication → URL Configuration → Site URL and Redirect URLs `https://project-scquo-git-experiment-gamma-ppt-integration-teacher-app.vercel.app/**`. (A CLI config push would overwrite unrelated auth settings, so this is manual.)
+* **Tester account:** create it on the preview after the above (sign-up + confirm email), or tell me to create a confirmed account with the admin API and send a password-reset email.
+* **fal.ai:** with the server default `gamma`, the lesson-plan route now skips the legacy PPT deck image generation for authorised testers only (`src/lib/gamma/legacy-images.ts`, 3-line wiring). Section images and everyone else are unchanged. If the tester picks legacy at download, the legacy export generates images then.
+* Local tooling: this worktree is linked to Vercel (local `.vercel`, gitignored) and to the staging Supabase project (`supabase/.temp`, gitignored). `scripts/gamma-apply-migration.mjs` now uses `db query --linked` and refuses unless the linked ref equals the verified target.
+
 ## Verified state (checked live, 2026-10-22)
 
 | Item | State |
@@ -37,6 +59,7 @@ Compare with `ls supabase/migrations`. Missing earlier migrations must be applie
 
 Apply the Gamma migration (single file, verified target):
 ```
+npx supabase link --project-ref esqnyktumxscyvznftlc   # staging only
 node scripts/gamma-apply-migration.mjs esqnyktumxscyvznftlc
 ```
 Prove the ledger on the real database (take the two values from Supabase → layah-staging → Settings → API; type them into your shell only):

@@ -76,6 +76,7 @@ import {
   getStructuredLessonSlideTitles,
 } from "@/lib/ppt-structured-lesson";
 import { generatePptDeckSlideImages } from "@/lib/ppt-image-resolver";
+import { shouldSkipLegacyPptImages } from "@/lib/gamma/legacy-images";
 import { buildSlide8PptModeBlock } from "@/lib/ppt-slide-validation";
 import {
   generateSlide1Body,
@@ -625,6 +626,8 @@ async function runFluxAndBuildResponsePayload(
   mergedPlan: LessonPlanResult,
   parseNotices: string[],
   sourceMaterial?: string,
+  /** Gamma-by-default users: Gamma makes its own slide imagery, so the legacy deck images are not paid for. */
+  skipPptDeckImages = false,
 ): Promise<{
   lessonPlan: LessonPlanResult;
   parseNotice?: string;
@@ -635,7 +638,7 @@ async function runFluxAndBuildResponsePayload(
   let pptSlideImageUrls: (string | null)[] | undefined;
   const imageNotices: string[] = [];
 
-  if (sections.includes("PPT Slide Content")) {
+  if (sections.includes("PPT Slide Content") && !skipPptDeckImages) {
     try {
       // Feed each slide's own generated text into its image prompt so the four Fal-required
       // slides get contextually specific artwork rather than generic subject-level imagery.
@@ -776,6 +779,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
   }
 
+  const skipPptDeckImages = shouldSkipLegacyPptImages(auth.email);
+
   // Entitlement gate — runs before any rate-limit/spend/quota work so a
   // rejected request never consumes a generation. The frontend disables
   // these controls for Free users; this is the actual security boundary.
@@ -871,7 +876,7 @@ export async function POST(req: Request) {
             strategyBlock,
             onProgress: (message) => send({ type: "progress", message }),
           });
-          const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices, sourceMaterial);
+          const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices, sourceMaterial, skipPptDeckImages);
           send({ type: "complete", ...payload, usage: gate.usage });
           void logGenerationEvent({
             userId: auth.userId,
@@ -911,7 +916,7 @@ export async function POST(req: Request) {
       aflPromptBlock,
       strategyBlock,
     });
-    const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices, sourceMaterial);
+    const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices, sourceMaterial, skipPptDeckImages);
     void logGenerationEvent({
       userId: auth.userId,
       generationType: "lesson_plan",

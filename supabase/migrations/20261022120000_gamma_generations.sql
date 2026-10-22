@@ -27,3 +27,7 @@ create index if not exists gamma_generations_user_created on public.gamma_genera
 create index if not exists gamma_generations_created on public.gamma_generations (created_at desc);
 
 alter table public.gamma_generations enable row level security;
+
+-- Defence in depth: Supabase grants anon/authenticated ALL on new public tables by default. RLS (no policies) already denies
+-- them every row; revoking the grants means a future permissive policy cannot accidentally expose the ledger.
+revoke all on public.gamma_generations from anon, authenticated;
