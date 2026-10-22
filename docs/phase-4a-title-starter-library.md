@@ -54,8 +54,8 @@ Microsoft PowerPoint opened and exported every benchmark deck without repair pro
 ## Verification
 
 - TypeScript: passed
-- ESLint: passed with 73 existing warnings and no errors
-- Vitest: 500 passed, 5 skipped across 59 files
+- ESLint: passed with 72 existing warnings and no errors
+- Vitest: 501 passed, 5 skipped across 59 files
 - Production build: passed
 - Phase 4A targeted tests: 6 passed
 - Benchmark artifact generation: passed
@@ -79,6 +79,7 @@ Microsoft PowerPoint opened and exported every benchmark deck without repair pro
 - `scripts/create-phase4a-contact-sheets.mjs`
 - `artifacts/phase4a-title-starter/**`
 - `docs/phase-4a-title-starter-library.md`
+- `docs/phase-4a-claude-continuation.md`
 
 ## Remaining limitations
 
