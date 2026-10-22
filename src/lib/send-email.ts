@@ -1,6 +1,10 @@
 import nodemailer from "nodemailer";
+import { isIsolatedEnvironment } from "@/lib/environment-isolation";
 
 function getSmtpConfig() {
+  // An isolated experimental environment inherits production SMTP credentials; it must never send real email with them.
+  if (isIsolatedEnvironment()) return null;
+
   const host = process.env.SMTP_HOST?.trim();
   const user = process.env.SMTP_USER?.trim();
   const pass = process.env.SMTP_PASSWORD?.trim();

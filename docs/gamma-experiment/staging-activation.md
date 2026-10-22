@@ -3,6 +3,14 @@
 Branch `experiment/gamma-ppt-integration`. Nothing here has been deployed or paid for. Verified state is in the table; every command below is
 safe to copy as written. **Secrets are only ever typed into the Vercel/Supabase prompt or your own shell, never into chat, files or Git.**
 
+## Status update: staging auth verified; tester account prepared (not created)
+
+* **Staging Auth re-probed (read-only, invalid-token requests, no email):** `redirect_to` for the branch alias is honoured for `/auth/callback`, `/auth/confirm` and `/dashboard`; the **Site URL is the branch alias**; a disallowed host falls back to the Site URL (so the probe has a working control); the **production origin is not allowed**. Email sign-up on, email confirmation required, email provider only.
+* **No custom SMTP/template needed:** the pilot uses a pre-confirmed account, so no confirmation or reset email is involved.
+* **App flow:** email+password goes through `signInWithPassword` then `completeEmailPostAuthLogin` (active-session row, `ensure_own_user_usage` RPC, then `/api/welcome-email`). Staging has `active_sessions`, `user_usage.welcome_email_sent` and the RPC; there are **0 triggers on `auth.users`**, so creating a user has no side effects, and the usage row is created lazily at first login.
+* **Welcome email suppressed:** an isolated preview inherits production SMTP credentials, so `sendEmail` now refuses to send anything when `GAMMA_ENVIRONMENT_NAME` marks the deployment isolated (no-op in production; tested). The first-login welcome email therefore does not go out.
+* **`scripts/gamma-create-staging-tester.mjs`**: dry run by default; `--create` additionally requires `--confirm-ref esqnyktumxscyvznftlc`; refuses production, any other ref, an unhealthy/unlinked project, a service-role key whose JWT `ref` is not staging, passwords given as arguments, and weak passwords (<12 chars). Password comes from a hidden prompt or `STAGING_TESTER_PASSWORD` in your own shell; it is never printed or stored. `email_confirm:true`, no email sent. Dry run verified; every refusal path verified; **no account created**.
+
 ## Status update (final pre-deploy): application-wide isolation and auth findings
 
 **Application-wide isolation (new, `src/lib/environment-isolation.ts`).** Active only when `GAMMA_ENVIRONMENT_NAME` is set to a non-production name; production and ordinary previews are untouched. In an isolated environment the server must prove: the Supabase URL is allowlisted and not production; the **anon and service-role JWTs' `ref` claim equals the URL's project** (this verifies the Sensitive keys without reading them); no live Razorpay key (`rzp_live_`) is present. Violations: the proxy answers **every** page/API request with 503 (diagnostics route excepted), `getSupabaseServiceRole()` and `getRazorpayClient()` return null. Validated with the real staging keys: ok, and a failed URL override is detected.
