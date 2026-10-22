@@ -22,6 +22,7 @@ import {
 import { sendEmail } from "@/lib/send-email";
 import { logGenerationEvent } from "@/lib/generation-events";
 import { saveDifferentiatedPackGeneration } from "@/lib/content-persistence";
+import { logDeepSeekUsage } from "@/lib/ai-usage/deepseek";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -146,6 +147,7 @@ export async function POST(req: Request) {
   });
 
   let deepseekResponse: Response;
+  const deepSeekStartedAt = Date.now();
   try {
     deepseekResponse = await fetch(DEEPSEEK_API_URL, {
       method: "POST",
@@ -164,6 +166,7 @@ export async function POST(req: Request) {
       }),
     });
   } catch (e) {
+    void logDeepSeekUsage({ userId: auth.userId, operation: `differentiated_pack_${level}`, requestedModel: "deepseek-chat", status: "failed", durationMs: Date.now() - deepSeekStartedAt });
     console.error("[differentiated-pack] DeepSeek fetch error:", e);
     void logGenerationEvent({
       userId: auth.userId,
@@ -178,6 +181,7 @@ export async function POST(req: Request) {
   }
 
   const rawBody = await deepseekResponse.text();
+  void logDeepSeekUsage({ userId: auth.userId, operation: `differentiated_pack_${level}`, requestedModel: "deepseek-chat", rawBody, status: deepseekResponse.ok ? "success" : "failed", durationMs: Date.now() - deepSeekStartedAt });
   logDeepSeekRawResponse(`differentiated-pack:${level}`, deepseekResponse, rawBody);
   if (!deepseekResponse.ok) {
     const httpErrorMessage = deepSeekHttpErrorMessage(deepseekResponse.status, rawBody);

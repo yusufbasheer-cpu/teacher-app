@@ -45,6 +45,7 @@ const PLAN = [
   { name: "GAMMA_TESTER_EMAILS", kind: "literal", value: tester ?? "<--tester-email required for --apply>", why: "only these accounts can use Gamma" },
   { name: "PPT_GENERATION_PROVIDER", kind: "literal", value: "gamma", why: "Gamma is the default PPT renderer for those testers" },
   { name: "NEXT_PUBLIC_GAMMA_EXPERIMENT", kind: "literal", value: "true", why: "build-time: UI asks the server whether Gamma is available" },
+  { name: "EXPERIMENT_ALLOWED_FEATURES", kind: "literal", value: "home,auth,dashboard,lesson-plan,lesson-plan-docx,lesson-plan-pptx,lesson-plan-zip,my-lesson-plans,settings,super-admin,user-usage,environment-check", why: "server-enforced focused preview allowlist" },
   // ── 5. Pilot cost controls ──
   { name: "GAMMA_EXPORT_HOST_ALLOWLIST", kind: "literal", value: "pending-verification.invalid", why: "matches nothing: first paid smoke test names the real host; paid generation stays resumable" },
   { name: "GAMMA_USER_HOURLY_LIMIT", kind: "literal", value: "2", why: "conservative" },
@@ -54,6 +55,10 @@ const PLAN = [
   { name: "GAMMA_MAX_CARDS_PER_RUN", kind: "literal", value: "25", why: "deck is 13 cards" },
   { name: "GAMMA_MAX_CREDITS_PER_RUN", kind: "literal", value: "300", why: "post-hoc over-budget flag" },
   { name: "GAMMA_ESTIMATED_CREDITS_PER_RUN", kind: "literal", value: "300", why: "conservative reserve for in-flight/unknown runs" },
+  // ── 6. DeepSeek estimate overrides (official peak pricing verified 2026-10-22) ──
+  { name: "DEEPSEEK_CACHE_HIT_USD_PER_MILLION", kind: "literal", value: "0.006", why: "estimate only; current official peak cache-hit input price" },
+  { name: "DEEPSEEK_CACHE_MISS_USD_PER_MILLION", kind: "literal", value: "0.3", why: "estimate only; current official peak cache-miss input price" },
+  { name: "DEEPSEEK_OUTPUT_USD_PER_MILLION", kind: "literal", value: "1.2", why: "estimate only; current official peak output price" },
 ];
 const EXPECTED_PRESENT = ["GAMMA_API_KEY", ...PLAN.map((p) => p.name)];
 

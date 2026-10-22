@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { UsersPanel } from "@/components/admin/users-panel";
 import { BillingPanel } from "@/components/admin/billing-panel";
 import { AnalyticsPanel } from "@/components/admin/analytics-panel";
+import { AiUsagePanel } from "@/components/admin/ai-usage-panel";
 import { AnnouncementsPanel } from "@/components/admin/announcements-panel";
 import { AdminShell, type AdminTab } from "@/components/admin/ui/admin-shell";
 import {
@@ -470,6 +471,7 @@ function DashboardBody({ role, email }: { role: "super_admin" | "admin"; email: 
             <StatCard label="Generations (All Time)" value={stats.totalGenerationsToday} tone="positive" />
           </div>
           <AnalyticsPanel />
+          <AiUsagePanel />
         </section>
       )}
 

@@ -1,5 +1,6 @@
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
 import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
+import { logDeepSeekUsage } from "@/lib/ai-usage/deepseek";
 
 export const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 
@@ -29,6 +30,8 @@ export async function callDeepSeekChat(params: {
   userMessage: string;
   maxTokens: number;
   temperature: number;
+  userId?: string;
+  operation?: string;
 }): Promise<{ content: string } | { error: string }> {
   const apiKey = getDeepSeekApiKey();
   if (!apiKey) {
@@ -36,6 +39,7 @@ export async function callDeepSeekChat(params: {
   }
 
   let deepseekResponse: Response;
+  const startedAt = Date.now();
   try {
     deepseekResponse = await fetch(DEEPSEEK_API_URL, {
       method: "POST",
@@ -54,11 +58,13 @@ export async function callDeepSeekChat(params: {
       }),
     });
   } catch (e) {
+    if (params.userId && params.operation) void logDeepSeekUsage({ userId: params.userId, operation: params.operation, requestedModel: "deepseek-chat", status: "failed", durationMs: Date.now() - startedAt });
     const msg = e instanceof Error ? e.message : String(e);
     return { error: `DeepSeek request failed: ${msg}` };
   }
 
   const rawBody = await deepseekResponse.text();
+  if (params.userId && params.operation) void logDeepSeekUsage({ userId: params.userId, operation: params.operation, requestedModel: "deepseek-chat", rawBody, status: deepseekResponse.ok ? "success" : "failed", durationMs: Date.now() - startedAt });
   logDeepSeekRawResponse(params.logLabel, deepseekResponse, rawBody);
 
   if (!deepseekResponse.ok) {

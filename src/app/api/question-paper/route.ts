@@ -124,6 +124,8 @@ export async function POST(req: Request) {
     userMessage,
     maxTokens: DEEPSEEK_MAX_TOKENS_PAPER,
     temperature: body.generationMode === "strict" ? 0.35 : 0.55,
+    userId: auth.userId,
+    operation: "question_paper",
   });
 
   if ("error" in ds) {

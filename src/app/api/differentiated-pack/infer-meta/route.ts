@@ -14,6 +14,7 @@ import {
   DAY_MS,
 } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/send-email";
+import { logDeepSeekUsage } from "@/lib/ai-usage/deepseek";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -97,6 +98,7 @@ export async function POST(req: Request) {
   const snippet = rawText.slice(0, 12_000);
 
   let res: Response;
+  const deepSeekStartedAt = Date.now();
   try {
     res = await fetch(DEEPSEEK_API_URL, {
       method: "POST",
@@ -118,11 +120,13 @@ export async function POST(req: Request) {
       }),
     });
   } catch (e) {
+    void logDeepSeekUsage({ userId: auth.userId, operation: "differentiated_pack_infer_meta", requestedModel: "deepseek-chat", status: "failed", durationMs: Date.now() - deepSeekStartedAt });
     console.error("[infer-meta] DeepSeek fetch error:", e);
     return NextResponse.json({ error: USER_FACING_ERROR }, { status: 502 });
   }
 
   const rawBody = await res.text();
+  void logDeepSeekUsage({ userId: auth.userId, operation: "differentiated_pack_infer_meta", requestedModel: "deepseek-chat", rawBody, status: res.ok ? "success" : "failed", durationMs: Date.now() - deepSeekStartedAt });
   logDeepSeekRawResponse("infer-meta", res, rawBody);
   if (!res.ok) {
     console.error("[infer-meta] DeepSeek HTTP error:", deepSeekHttpErrorMessage(res.status, rawBody));

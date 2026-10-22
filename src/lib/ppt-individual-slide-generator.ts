@@ -18,6 +18,7 @@ import {
   pptString,
   type PresentationLanguage,
 } from "@/lib/ppt-language";
+import { logDeepSeekUsage } from "@/lib/ai-usage/deepseek";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const MAX_ATTEMPTS = 3;
@@ -55,6 +56,8 @@ export type SlideGenParams = {
   language?: PresentationLanguage;
   uaeFrameworkEnabled: boolean;
   dateStr?: string;
+  /** Observability only; never included in prompts. */
+  usageUserId?: string;
 };
 
 export type { MainActivityStructure };
@@ -154,11 +157,12 @@ function cleanBody(body: string, slideName: string): string {
   return s.replace(/\n{4,}/g, "\n\n\n").trim();
 }
 
-async function callDeepSeek(messages: DSMessage[]): Promise<{ content: string; error?: string }> {
+async function callDeepSeek(messages: DSMessage[], telemetry?: { userId: string; operation: string }): Promise<{ content: string; error?: string }> {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) return { content: "", error: "Missing DEEPSEEK_API_KEY" };
 
   let res: Response;
+  const startedAt = Date.now();
   try {
     res = await fetch(DEEPSEEK_API_URL, {
       method: "POST",
@@ -171,10 +175,12 @@ async function callDeepSeek(messages: DSMessage[]): Promise<{ content: string; e
       }),
     });
   } catch (err) {
+    if (telemetry) void logDeepSeekUsage({ ...telemetry, requestedModel: "deepseek-chat", status: "failed", durationMs: Date.now() - startedAt });
     return { content: "", error: `Network error: ${err instanceof Error ? err.message : String(err)}` };
   }
 
   const raw = await res.text();
+  if (telemetry) void logDeepSeekUsage({ ...telemetry, requestedModel: "deepseek-chat", rawBody: raw, status: res.ok ? "success" : "failed", durationMs: Date.now() - startedAt });
   if (!res.ok) return { content: "", error: `HTTP ${res.status}: ${raw.slice(0, 200)}` };
 
   let parsed: unknown;
@@ -195,6 +201,7 @@ async function generateWithRetries(
   systemPrompt: string,
   userPrompt: string,
   selectedTools?: { phase: AflPhaseId; ids: string[]; language: PresentationLanguage },
+  usageUserId?: string,
 ): Promise<SlideGenResult> {
   const notices: string[] = [];
   let body = "";
@@ -207,10 +214,11 @@ async function generateWithRetries(
       attempt > 1
         ? `\n\n(Attempt ${attempt}: correct this exact failure from the prior response: ${lastFailure}. Ensure the content is complete, topic-specific, and follows all isolation rules. If timing was on the slide, remove every duration from body and write it in teacher_notes.)`
         : "";
+    const slideNumber = ({ "Starter Activity": 2, "Chapter, Topic and SDG Goal": 3, "Learning Outcomes": 5, "Main Phase Core Teaching": 6, "Differentiated Activity and Mini Plenary": 7, "UAE Real Life and Cross Curricular Connection": 8, "Real Life and Cross Curricular Connection": 8, Plenary: 9, "Extended Task": 10, "Exit Ticket": 11, "Success Criteria and Self Evaluation": 12 } as Record<string, number>)[slideName];
     const { content, error } = await callDeepSeek([
       { role: "system", content: systemPrompt },
       { role: "user", content: `${userPrompt}${attemptHint}` },
-    ]);
+    ], usageUserId && slideNumber ? { userId: usageUserId, operation: `ppt_slide_${slideNumber}` } : undefined);
 
     if (error) {
       notices.push(`${slideName} attempt ${attempt}: ${error}`);
@@ -344,7 +352,7 @@ Requirements:
 - Do NOT mention differentiation, UAE content, homework, or plenary
 - Return only the starter activity content`;
 
-  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "starter"));
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "starter"), params.usageUserId);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -365,7 +373,7 @@ Rules:
 - Do NOT add explanations, descriptions, objectives, or activities
 - Do NOT add any other content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, undefined, params.usageUserId);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -405,7 +413,7 @@ Requirements:
 - Do NOT copy objectives verbatim — paraphrase into student learning outcomes
 - Do NOT include activities or teaching instructions`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, undefined, params.usageUserId);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -488,7 +496,7 @@ Requirements:
 - Do NOT include UAE-specific real-world links (separate slide)
 - Do NOT include homework (separate slide)`;
 
-  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "main"));
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "main"), params.usageUserId);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -526,7 +534,7 @@ STRICT RULES:
 - Do NOT include a full plenary activity
 - Do NOT include homework or extended tasks`;
 
-  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "differentiation"));
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "differentiation"), params.usageUserId);
   const cleaned = cleanBody(result.body, slideName);
   result.body = sanitizeSlide7DifferentiatedBody(
     cleaned,
@@ -573,7 +581,7 @@ Requirements:
 - Do NOT include plenary activities
 - Do NOT include homework`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, undefined, params.usageUserId);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -604,7 +612,7 @@ Requirements:
 - Do NOT include homework (separate slide)
 - Do NOT include new teaching content`;
 
-  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "plenary"));
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "plenary"), params.usageUserId);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -631,7 +639,7 @@ Requirements:
 - Do NOT include plenary activities
 - Do NOT repeat the slide title inside the content`;
 
-  const result = await generateWithRetries(slideName, system, user);
+  const result = await generateWithRetries(slideName, system, user, undefined, params.usageUserId);
   const cleaned = cleanBody(result.body, slideName);
   result.body = sanitizeSlide10ExtendedBody(cleaned, slideName);
   return result;
@@ -656,7 +664,7 @@ Requirements:
 - Do NOT include a separate success-criteria checklist; if the selected exit tool is Emoji Scale, its rating choices and topic-specific reason belong here
 - Do NOT include new teaching content`;
 
-  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "exitTicket"));
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "exitTicket"), params.usageUserId);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -679,7 +687,7 @@ Requirements:
 - Do NOT include exit ticket questions (separate slide)
 - Do NOT include new teaching content`;
 
-  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "successCriteria"));
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "successCriteria"), params.usageUserId);
   result.body = cleanBody(result.body, slideName);
   return result;
 }

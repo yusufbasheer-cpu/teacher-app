@@ -62,6 +62,7 @@ import {
 } from "@/lib/afl-tools";
 import { logDeepSeekRawResponse } from "@/lib/deepseek-log-raw";
 import { parseDeepSeekCompletionBody } from "@/lib/deepseek-chat-parse";
+import { logDeepSeekUsage } from "@/lib/ai-usage/deepseek";
 import {
   parseTeacherPackageResponse,
   stripOuterMarkdownFences,
@@ -300,6 +301,7 @@ async function generatePptSlideContentSlideBySlide(params: {
   aflSelections: ReturnType<typeof sanitizeAflSelections>;
   fullLessonPlan: string;
   onProgress: (message: string) => void;
+  userId: string;
 }): Promise<{ text: string; notices: string[] }> {
   const { input, aflSelections, onProgress } = params;
   const notices: string[] = [];
@@ -354,6 +356,7 @@ async function generatePptSlideContentSlideBySlide(params: {
     language,
     uaeFrameworkEnabled,
     dateStr,
+    usageUserId: params.userId,
   };
 
   // Shared completion counter — safe across parallel closures (JS is single-threaded at await points)
@@ -440,13 +443,14 @@ type GeneratePackageParams = {
   aflPromptBlock: string;
   strategyBlock: string;
   onProgress?: (message: string) => void;
+  userId: string;
 };
 
 async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
   mergedPlan: LessonPlanResult;
   parseNotices: string[];
 }> {
-  const { apiKey, input, sections, sourceMaterial, frameworkAddendum, aflSelections, aflPromptBlock, strategyBlock, onProgress } =
+  const { apiKey, input, sections, sourceMaterial, frameworkAddendum, aflSelections, aflPromptBlock, strategyBlock, onProgress, userId } =
     params;
   const orderedSections = TEACHER_PACKAGE_SECTIONS.filter((k) => sections.includes(k));
   const mergedPlan = emptyLessonShell(sections);
@@ -463,6 +467,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
         aflSelections,
         fullLessonPlan: fullLesson,
         onProgress: onProgress ?? (() => {}),
+        userId,
       });
       mergedPlan[section] = text;
       for (const n of notices) parseNotices.push(n);
@@ -505,6 +510,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
         continue;
       }
       let aflSheetResponse: Response;
+      const aflStartedAt = Date.now();
       try {
         aflSheetResponse = await fetch(DEEPSEEK_API_URL, {
           method: "POST",
@@ -532,6 +538,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
         continue;
       }
       const rawAflBody = await aflSheetResponse.text();
+      void logDeepSeekUsage({ userId, operation: "lesson_plan_afl_activity_sheets", requestedModel: "deepseek-chat", rawBody: rawAflBody, status: aflSheetResponse.ok ? "success" : "failed", durationMs: Date.now() - aflStartedAt });
       logDeepSeekRawResponse("lesson-plan:AFL-Activity-Sheets", aflSheetResponse, rawAflBody);
       if (!aflSheetResponse.ok) {
         console.warn(
@@ -554,6 +561,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
     }
 
     let deepseekResponse: Response;
+    const sectionStartedAt = Date.now();
     try {
       deepseekResponse = await fetch(DEEPSEEK_API_URL, {
         method: "POST",
@@ -575,6 +583,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
     }
 
     const rawBody = await deepseekResponse.text();
+    void logDeepSeekUsage({ userId, operation: `lesson_plan_section:${section}`, requestedModel: "deepseek-chat", rawBody, status: deepseekResponse.ok ? "success" : "failed", durationMs: Date.now() - sectionStartedAt });
     logDeepSeekRawResponse(`lesson-plan:${section}`, deepseekResponse, rawBody);
     if (!deepseekResponse.ok) {
       console.warn(
@@ -874,6 +883,7 @@ export async function POST(req: Request) {
             aflSelections,
             aflPromptBlock,
             strategyBlock,
+            userId: auth.userId,
             onProgress: (message) => send({ type: "progress", message }),
           });
           const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices, sourceMaterial, skipPptDeckImages);
@@ -915,6 +925,7 @@ export async function POST(req: Request) {
       aflSelections,
       aflPromptBlock,
       strategyBlock,
+      userId: auth.userId,
     });
     const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices, sourceMaterial, skipPptDeckImages);
     void logGenerationEvent({

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Applies ONE allowlisted migration file to ONE explicitly named, verified STAGING project.
-// Usage: node scripts/gamma-apply-migration.mjs <project-ref> [--migration gamma_generations|school_templates|razorpay_orders_currency] [--expect-name layah-staging]
+// Usage: node scripts/gamma-apply-migration.mjs <project-ref> [--migration gamma_generations|ai_usage_events|school_templates|razorpay_orders_currency] [--expect-name layah-staging]
 // (default migration: gamma_generations). Arbitrary files cannot be passed.
 // Refuses: the known production ref, any ref whose name differs from --expect-name, any project that is not ACTIVE_HEALTHY.
 // Does not read any .env file and never uses `db push` (which would apply every pending migration).
@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 const PROD_REF = "jbwevzvtloahjoamwnjt";
 const MIGRATIONS = {
   gamma_generations: "20261022120000_gamma_generations.sql",
+  ai_usage_events: "20261022171633_ai_usage_events.sql",
   school_templates: "20260919120000_school_templates.sql",
   razorpay_orders_currency: "20261010120000_razorpay_orders_currency.sql",
 };

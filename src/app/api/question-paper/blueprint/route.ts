@@ -122,6 +122,8 @@ export async function POST(req: Request) {
     }),
     maxTokens: DEEPSEEK_MAX_TOKENS_BLUEPRINT,
     temperature: 0.4,
+    userId: auth.userId,
+    operation: "question_paper_blueprint",
   });
 
   if ("error" in ds) {
