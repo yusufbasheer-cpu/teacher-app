@@ -305,6 +305,9 @@ export function TeacherPackageViewer({
   const [draft, setDraft] = useState("");
   const [templateBusy, setTemplateBusy] = useState(false);
   const [uploadIssue, setUploadIssue] = useState<TemplateUploadIssue | null>(null);
+  // Experimental Gamma renderer: toggle only exists in staging builds; the server re-checks authorisation.
+  const gammaExperiment = process.env.NEXT_PUBLIC_GAMMA_EXPERIMENT === "true";
+  const [useGamma, setUseGamma] = useState(false);
   const [templateWarning, setTemplateWarning] = useState<{ code: string; error: string; slide: number | null } | null>(null);
 
   useEffect(() => {
@@ -485,6 +488,9 @@ export function TeacherPackageViewer({
         throw new Error("Downloaded file was empty.");
       }
       triggerFileDownload(blob, filename);
+      if (key === "ppt" && res.headers.get("x-layah-gamma-validation") === "failed") {
+        setExportError(`Gamma experiment: content-preservation check FAILED (${res.headers.get("x-layah-gamma-issues") ?? "?"} issue types). The downloaded deck may differ from the lesson content — do not treat it as validated.`);
+      }
     } catch (e) {
       setExportError(toUserFacingError(e, `export-${key}`));
     } finally {
@@ -524,6 +530,7 @@ export function TeacherPackageViewer({
         teacherName: teacherName?.trim() || "",
         pptTheme: pptThemeId,
         templateMode: mode,
+        ...(gammaExperiment && useGamma && mode === "layah" ? { pptProvider: "gamma" } : {}),
         curriculumFramework: curriculumFramework?.trim() ?? "",
         ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
         ...(urls ? { pptSlideImageUrls: urls } : {}),
@@ -804,6 +811,12 @@ export function TeacherPackageViewer({
                 <span className="min-w-0 flex-1 truncate">{savedTemplate.original_filename}</span>
                 <Button type="button" variant="ghost" size="xs" disabled={templateBusy} onClick={() => void removeTemplate()}>Remove</Button>
               </div>
+            ) : null}
+            {gammaExperiment && templateMode === "layah" ? (
+              <label className="mb-3 flex items-center gap-2 text-sm text-muted">
+                <input type="checkbox" checked={useGamma} onChange={(e) => setUseGamma(e.target.checked)} />
+                Tester only: render with Gamma (experimental, uses paid credits; takes 1–3 minutes)
+              </label>
             ) : null}
             {templateMode === "uploaded" ? <p className="mb-3 text-sm text-faint">Your lesson will use the uploaded slide design. If its editable areas cannot hold the lesson, we&apos;ll ask you to choose a Layah template.</p> : null}
             {savedTemplate ? (

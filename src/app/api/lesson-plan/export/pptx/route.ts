@@ -16,6 +16,8 @@ import { authenticateRequest } from "@/lib/user-usage-server";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 import { renderUploadedPpt, UploadedTemplateError } from "@/lib/uploaded-ppt-export";
 import { moveTeacherFacingLinesToNotes } from "@/lib/ppt-template-engine";
+import { GammaError, resolvePptProvider, wantsGamma } from "@/lib/gamma/config";
+import { renderPptxWithGamma } from "@/lib/gamma/render";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -56,6 +58,23 @@ type Body = {
   /** Chapter was never forwarded here, which disabled the slide-2 chapter dedupe. */
   chapter?: string;
   teachingStrategy?: string;
+  /** Experimental renderer choice; honoured only for authorised testers (see lib/gamma/config). */
+  pptProvider?: unknown;
+};
+
+const GAMMA_ERROR_STATUS: Record<GammaError["code"], number> = {
+  missing_credentials: 503,
+  invalid_credentials: 502,
+  insufficient_credits: 503,
+  bad_request: 502,
+  rate_limited: 429,
+  timeout: 504,
+  generation_failed: 502,
+  api_error: 502,
+  download_rejected: 502,
+  invalid_export: 502,
+  budget_exceeded: 429,
+  duplicate_in_flight: 409,
 };
 
 export async function POST(req: Request) {
@@ -147,6 +166,33 @@ export async function POST(req: Request) {
       ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
     });
 
+    // ── Experimental Gamma renderer: same deck, no legacy image services. Default stays "legacy". ──
+    if (body.templateMode !== "uploaded" && wantsGamma(body.pptProvider)) {
+      const { data: userData } = await auth.supabase.auth.getUser(auth.accessToken);
+      const choice = resolvePptProvider({ requested: body.pptProvider, email: userData.user?.email });
+      if (choice.provider === "gamma") {
+        const result = await renderPptxWithGamma({
+          deck,
+          title: `${grade} ${subject}: ${topic}`,
+          language,
+          userId: auth.userId,
+        });
+        const gammaName = sanitizeExportFileName(`${grade}-${subject}-${topic}-ppt-gamma`) || "ppt-gamma";
+        return new NextResponse(new Uint8Array(result.buffer), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "Content-Disposition": `attachment; filename="${gammaName}.pptx"`,
+            "Cache-Control": "no-store",
+            "X-Layah-PPT-Provider": "gamma",
+            "X-Layah-Gamma-Validation": result.metrics.validation ?? "failed",
+            "X-Layah-Gamma-Issues": String(result.validation.reasons.length),
+          },
+        });
+      }
+      console.warn(`[pptx export] gamma requested but not allowed (${choice.reason}); using legacy renderer`);
+    }
+
     const fromClient = slideUrlsFromRequestBody(body.pptSlideImageUrls, deck.length);
     const slideContentByIndex = deck.map((slide) =>
       `${slide.slideTitle}. ${slide.body}`.replace(/\s+/g, " ").trim(),
@@ -233,6 +279,10 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof UploadedTemplateError) {
       return NextResponse.json({ code: e.code, error: e.message, slide: e.slide }, { status: e.status });
+    }
+    if (e instanceof GammaError) {
+      console.error("[pptx export] gamma", e.code, e.message);
+      return NextResponse.json({ code: `GAMMA_${e.code.toUpperCase()}`, error: e.message }, { status: GAMMA_ERROR_STATUS[e.code] });
     }
     const message = e instanceof Error ? e.message : String(e);
     console.error("[pptx export]", message, e);
