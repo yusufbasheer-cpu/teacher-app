@@ -134,10 +134,14 @@ No claims here are speculative; none of these prove the legacy output is "bad", 
 ## E. Gamma integration plan (minimum change)
 
 - New isolated module `src/lib/gamma/` (config, payload, client, validate, budget, render).
-- One branch in the export route (main's route has no `PptContentError` handling; none was added), after `buildStructuredLessonSlides()` and **before** any image generation:
+- One branch in the export route (main's route has no `PptContentError` handling; none was added; it also gained a small `GET` availability handler), after `buildStructuredLessonSlides()` and **before** any image generation:
   if the resolved provider is `gamma`, call `renderPptxWithGamma(deck)` and return its buffer; else fall through unchanged.
-- Provider resolution: env `PPT_GENERATION_PROVIDER` (default `legacy`) + optional request field `pptProvider`,
-  honoured only when `GAMMA_EXPERIMENT_ENABLED=true`, not a production Vercel env, and the caller's email is in
-  `GAMMA_TESTER_EMAILS`. Anything else resolves to `legacy`.
-- Frontend: a toggle rendered only when `NEXT_PUBLIC_GAMMA_EXPERIMENT=true`; server remains the authority.
+- Provider resolution (revised after code review; see `review-remediation.md`): a fail-closed server gate
+  (`GAMMA_EXPERIMENT_ENABLED`, explicit `GAMMA_ENVIRONMENT_NAME` in `GAMMA_ALLOWED_ENVIRONMENTS`, never production,
+  caller email in `GAMMA_TESTER_EMAILS`). The client's `pptProvider` only selects among what the gate allows; `PPT_GENERATION_PROVIDER`
+  is a server default for authorised testers. Anything else resolves to `legacy`.
+- Persistence: a `gamma_generations` ledger (migration `20261022120000`) records every paid generation, enforces one active
+  generation per user, and makes timeouts resumable instead of re-billable.
+- Frontend: the toggle is shown only if `GET /api/lesson-plan/export/pptx` reports Gamma as available; Gamma downloads are held behind a
+  validation panel. The server remains the authority.
 - Legacy code paths: zero lines changed.
