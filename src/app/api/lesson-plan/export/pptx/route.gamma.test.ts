@@ -17,6 +17,8 @@ const staging = {
   GAMMA_EXPERIMENT_ENABLED: "true",
   GAMMA_ENVIRONMENT_NAME: "staging",
   GAMMA_ALLOWED_ENVIRONMENTS: "staging",
+  NEXT_PUBLIC_SUPABASE_URL: "https://stagingref123456789.supabase.co",
+  GAMMA_ALLOWED_SUPABASE_REFS: "stagingref123456789",
   GAMMA_TESTER_EMAILS: "tester@x.com",
 };
 const setEnv = (e: Record<string, string>) => Object.entries(e).forEach(([k, v]) => vi.stubEnv(k, v));

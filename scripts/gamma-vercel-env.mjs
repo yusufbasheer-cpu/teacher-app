@@ -41,6 +41,7 @@ const PLAN = [
   { name: "GAMMA_EXPERIMENT_ENABLED", kind: "literal", value: "true", why: "gate" },
   { name: "GAMMA_ENVIRONMENT_NAME", kind: "literal", value: "staging", why: "explicit server identity (never production)" },
   { name: "GAMMA_ALLOWED_ENVIRONMENTS", kind: "literal", value: "staging", why: "allowlist" },
+  { name: "GAMMA_ALLOWED_SUPABASE_REFS", kind: "literal", value: STAGING_REF, why: "safety net: Gamma refuses to run unless the server's Supabase project is exactly this (and never production), even if an env override fails" },
   { name: "GAMMA_TESTER_EMAILS", kind: "literal", value: tester ?? "<--tester-email required for --apply>", why: "only these accounts can use Gamma" },
   { name: "PPT_GENERATION_PROVIDER", kind: "literal", value: "gamma", why: "Gamma is the default PPT renderer for those testers" },
   { name: "NEXT_PUBLIC_GAMMA_EXPERIMENT", kind: "literal", value: "true", why: "build-time: UI asks the server whether Gamma is available" },

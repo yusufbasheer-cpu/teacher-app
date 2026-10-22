@@ -6,6 +6,8 @@ const staging = {
   GAMMA_EXPERIMENT_ENABLED: "true",
   GAMMA_ENVIRONMENT_NAME: "staging",
   GAMMA_ALLOWED_ENVIRONMENTS: "staging, preview-gamma",
+  NEXT_PUBLIC_SUPABASE_URL: "https://stagingref123456789.supabase.co",
+  GAMMA_ALLOWED_SUPABASE_REFS: "stagingref123456789",
   GAMMA_TESTER_EMAILS: "T@x.com, b@x.com",
 };
 
@@ -26,6 +28,16 @@ describe("gammaGate fails closed", () => {
   });
   it("is disabled on Vercel production even when the name says staging", () => {
     expect(gammaGate("t@x.com", { ...staging, VERCEL_ENV: "production" }).reason).toBe("production-environment");
+  });
+  it("refuses the PRODUCTION database even if someone allowlists it", () => {
+    const env = { ...staging, NEXT_PUBLIC_SUPABASE_URL: "https://jbwevzvtloahjoamwnjt.supabase.co", GAMMA_ALLOWED_SUPABASE_REFS: "jbwevzvtloahjoamwnjt" };
+    expect(gammaGate("t@x.com", env)).toEqual({ available: false, reason: "production-database" });
+    expect(resolvePptProvider({ requested: "gamma", email: "t@x.com" }, env).provider).toBe("legacy");
+  });
+  it("fails closed when the database is unknown or not allowlisted", () => {
+    expect(gammaGate("t@x.com", { ...staging, NEXT_PUBLIC_SUPABASE_URL: "" }).reason).toBe("database-not-allowlisted");
+    expect(gammaGate("t@x.com", { ...staging, NEXT_PUBLIC_SUPABASE_URL: "https://otherproject00000000.supabase.co" }).reason).toBe("database-not-allowlisted");
+    expect(gammaGate("t@x.com", { ...staging, GAMMA_ALLOWED_SUPABASE_REFS: "" }).reason).toBe("database-not-allowlisted");
   });
   it("requires an allowlisted tester email (case-insensitive)", () => {
     expect(gammaGate("other@x.com", staging).reason).toBe("not-an-authorized-tester");

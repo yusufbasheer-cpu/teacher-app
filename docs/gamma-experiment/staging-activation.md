@@ -3,6 +3,20 @@
 Branch `experiment/gamma-ppt-integration`. Nothing here has been deployed or paid for. Verified state is in the table; every command below is
 safe to copy as written. **Secrets are only ever typed into the Vercel/Supabase prompt or your own shell, never into chat, files or Git.**
 
+## Status update (latest): staging configured and verified; awaiting authorisation to push/deploy
+
+* **Vercel:** 23 branch-scoped Preview variables written for `experiment/gamma-ppt-integration` only (plus the existing `GAMMA_API_KEY`). `node scripts/gamma-vercel-env.mjs --verify` reports 24/24 present. A before/after snapshot of Production and all-branch Preview variable names shows **no change** other than the branch-scoped additions.
+* **Limitation:** this Vercel project stores every new variable as *Sensitive* (even `NEXT_PUBLIC_*`), so values cannot be read back and branch-override precedence over the inherited production values cannot be proven before a build. Safety net added in code: Gamma is **refused unless the server's Supabase project is in `GAMMA_ALLOWED_SUPABASE_REFS` (= the staging ref) and is never the production ref**, so a failed override disables Gamma and its ledger instead of touching production.
+* **Staging database:** all 44 on-disk migrations applied (`school_templates` and `razorpay_orders_currency` applied this pass, reviewed as additive/idempotent; both recorded in migration history). Ledger integration test re-run after all migrations: 7/7, 0 leftover rows.
+* **Tests:** tsc clean; full suite 529 passed, 6 skipped (the staging-only DB tests, run separately: 7/7). A new test drives the **real** export route and **real** legacy renderer (default, tester choosing legacy, ordinary user, production-database server) and gets a valid PPTX each time.
+* **DeepSeek unchanged:** only `src/app/api/lesson-plan/route.ts` differs from `origin/main` among content-generation files, by 8 added/3 changed lines (the deck-image skip flag). No prompt, model, parser or educational logic changed.
+
+### Checks to run on the preview after the first deploy, BEFORE anyone logs in (no secrets needed)
+1. The page source/JS bundle contains `esqnyktumxscyvznftlc.supabase.co` and **not** `jbwevzvtloahjoamwnjt` (proves the Supabase override won). If the production ref appears: stop; Gamma will already be refusing to run.
+2. `GET /api/lesson-plan/export/pptx` without a session returns 401.
+3. Logged in as the tester: the same GET returns `{"gammaAvailable":true,"defaultProvider":"gamma"}` (this simultaneously proves the environment name, tester email, database allowlist and provider default took effect).
+4. The first ledger row appears in **staging** `gamma_generations`, not production.
+
 ## Status update: staging database prepared, Vercel configuration planned (not applied)
 
 | Item | State (verified) |

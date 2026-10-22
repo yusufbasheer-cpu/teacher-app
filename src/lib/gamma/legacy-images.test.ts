@@ -7,6 +7,8 @@ const staging = {
   GAMMA_EXPERIMENT_ENABLED: "true",
   GAMMA_ENVIRONMENT_NAME: "staging",
   GAMMA_ALLOWED_ENVIRONMENTS: "staging",
+  NEXT_PUBLIC_SUPABASE_URL: "https://stagingref123456789.supabase.co",
+  GAMMA_ALLOWED_SUPABASE_REFS: "stagingref123456789",
   GAMMA_TESTER_EMAILS: "tester@x.com",
   PPT_GENERATION_PROVIDER: "gamma",
 };
@@ -26,6 +28,7 @@ describe("shouldSkipLegacyPptImages", () => {
     expect(shouldSkipLegacyPptImages("tester@x.com", { ...staging, GAMMA_ENVIRONMENT_NAME: "" })).toBe(false);
     expect(shouldSkipLegacyPptImages("tester@x.com", { ...staging, GAMMA_EXPERIMENT_ENABLED: "false" })).toBe(false);
     expect(shouldSkipLegacyPptImages("tester@x.com", { ...staging, VERCEL_ENV: "production" })).toBe(false);
+    expect(shouldSkipLegacyPptImages("tester@x.com", { ...staging, NEXT_PUBLIC_SUPABASE_URL: "https://jbwevzvtloahjoamwnjt.supabase.co" })).toBe(false);
   });
 });
 
