@@ -3,6 +3,10 @@
 Branch `experiment/gamma-ppt-integration`. Nothing here has been deployed or paid for. Verified state is in the table; every command below is
 safe to copy as written. **Secrets are only ever typed into the Vercel/Supabase prompt or your own shell, never into chat, files or Git.**
 
+## Fix: tester script crashed in a normal terminal (`TypeError … reading '0'`)
+
+Root cause: `supabase db query -o json` returns a bare array (`[{"n":0}]`) in a human terminal but a wrapped object (`{boundary, rows, warning}`) when it detects an AI-agent runtime. The script read `.rows` only, which is `undefined` for the bare array. It also ignored the CLI exit status and built SQL from the email. Fixed in `scripts/lib/staging-tester-lib.mjs`: both shapes accepted, every other shape/error an explicit `StagingTesterError`; exit status checked; the existing-user check now uses the Auth Admin API (no SQL from user input); results are verified by reading back. 30 regression tests in `scripts/lib/staging-tester-lib.test.mjs` (vitest now includes `scripts/**/*.test.mjs`). The only remaining CLI SQL is one static, informational trigger count whose failure is reported, not hidden.
+
 ## Status update: staging auth verified; tester account prepared (not created)
 
 * **Staging Auth re-probed (read-only, invalid-token requests, no email):** `redirect_to` for the branch alias is honoured for `/auth/callback`, `/auth/confirm` and `/dashboard`; the **Site URL is the branch alias**; a disallowed host falls back to the Site URL (so the probe has a working control); the **production origin is not allowed**. Email sign-up on, email confirmation required, email provider only.
