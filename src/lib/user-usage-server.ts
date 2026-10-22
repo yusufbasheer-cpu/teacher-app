@@ -345,7 +345,7 @@ export async function refundGeneration(reservation: GenerationReservation | null
 export async function authenticateRequest(
   req: Request,
 ): Promise<
-  | { ok: true; supabase: SupabaseClient; userId: string; accessToken: string }
+  | { ok: true; supabase: SupabaseClient; userId: string; accessToken: string; email: string | null }
   | { ok: false; status: number; message: string }
 > {
   const token = getBearerToken(req);
@@ -393,5 +393,5 @@ export async function authenticateRequest(
     userId: user.id,
     auth_uid_matches: user.id,
   });
-  return { ok: true, supabase, userId: user.id, accessToken: token };
+  return { ok: true, supabase, userId: user.id, accessToken: token, email: user.email ?? null };
 }

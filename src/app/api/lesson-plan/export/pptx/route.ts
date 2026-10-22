@@ -16,7 +16,8 @@ import { authenticateRequest } from "@/lib/user-usage-server";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 import { renderUploadedPpt, UploadedTemplateError } from "@/lib/uploaded-ppt-export";
 import { moveTeacherFacingLinesToNotes } from "@/lib/ppt-template-engine";
-import { GammaError, resolvePptProvider, wantsGamma } from "@/lib/gamma/config";
+import { defaultProviderFor, GammaError, gammaGate, resolvePptProvider } from "@/lib/gamma/config";
+import { encodeReportHeader, summariseReport } from "@/lib/gamma/report";
 import { renderPptxWithGamma } from "@/lib/gamma/render";
 
 export const runtime = "nodejs";
@@ -68,16 +69,34 @@ const GAMMA_ERROR_STATUS: Record<GammaError["code"], number> = {
   insufficient_credits: 503,
   bad_request: 502,
   rate_limited: 429,
-  timeout: 504,
+  request_timeout: 504,
+  poll_timeout: 504,
+  deadline_exceeded: 504,
+  submission_unknown: 409,
   generation_failed: 502,
+  generation_in_progress: 409,
   api_error: 502,
   download_rejected: 502,
   invalid_export: 502,
+  export_host_unconfigured: 503,
+  store_unavailable: 503,
+  user_rate_limited: 429,
   budget_exceeded: 429,
   duplicate_in_flight: 409,
 };
 
+/** Tells the tester UI whether Gamma is selectable and what the server default is. Reveals nothing else. */
+export async function GET(req: Request) {
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
+  return NextResponse.json({
+    gammaAvailable: gammaGate(auth.email).available,
+    defaultProvider: defaultProviderFor(auth.email),
+  });
+}
+
 export async function POST(req: Request) {
+  const startedAt = Date.now();
   const auth = await authenticateRequest(req);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
@@ -167,15 +186,15 @@ export async function POST(req: Request) {
     });
 
     // ── Experimental Gamma renderer: same deck, no legacy image services. Default stays "legacy". ──
-    if (body.templateMode !== "uploaded" && wantsGamma(body.pptProvider)) {
-      const { data: userData } = await auth.supabase.auth.getUser(auth.accessToken);
-      const choice = resolvePptProvider({ requested: body.pptProvider, email: userData.user?.email });
+    if (body.templateMode !== "uploaded") {
+      const choice = resolvePptProvider({ requested: body.pptProvider, email: auth.email });
       if (choice.provider === "gamma") {
         const result = await renderPptxWithGamma({
           deck,
           title: `${grade} ${subject}: ${topic}`,
           language,
           userId: auth.userId,
+          startedAt,
         });
         const gammaName = sanitizeExportFileName(`${grade}-${subject}-${topic}-ppt-gamma`) || "ppt-gamma";
         return new NextResponse(new Uint8Array(result.buffer), {
@@ -185,12 +204,21 @@ export async function POST(req: Request) {
             "Content-Disposition": `attachment; filename="${gammaName}.pptx"`,
             "Cache-Control": "no-store",
             "X-Layah-PPT-Provider": "gamma",
-            "X-Layah-Gamma-Validation": result.metrics.validation ?? "failed",
-            "X-Layah-Gamma-Issues": String(result.validation.reasons.length),
+            "X-Layah-Gamma-Validation": result.validation.verdict,
+            "X-Layah-Gamma-Report": encodeReportHeader(
+              summariseReport(result.validation, {
+                generationId: result.metrics.generationId,
+                creditsDeducted: result.metrics.creditsDeducted,
+                resumed: result.metrics.resumed,
+              }),
+            ),
+            "Access-Control-Expose-Headers": "X-Layah-PPT-Provider, X-Layah-Gamma-Validation, X-Layah-Gamma-Report",
           },
         });
       }
-      console.warn(`[pptx export] gamma requested but not allowed (${choice.reason}); using legacy renderer`);
+      if (body.pptProvider === "gamma") {
+        console.warn(`[pptx export] gamma requested but not allowed (${choice.reason}); using legacy renderer`);
+      }
     }
 
     const fromClient = slideUrlsFromRequestBody(body.pptSlideImageUrls, deck.length);

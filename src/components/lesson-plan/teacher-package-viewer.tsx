@@ -38,6 +38,7 @@ import {
 import { STRUCTURED_LESSON_DECK_SLIDE_COUNT } from "@/lib/ppt-structured-lesson";
 import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
+import { decodeReportHeader, presentVerdict, type GammaReportSummary } from "@/lib/gamma/report";
 import type { PresentationLanguage } from "@/lib/ppt-language";
 import { TemplateUploadIssuePanel } from "@/components/lesson-plan/template-upload-issue";
 import {
@@ -306,8 +307,13 @@ export function TeacherPackageViewer({
   const [templateBusy, setTemplateBusy] = useState(false);
   const [uploadIssue, setUploadIssue] = useState<TemplateUploadIssue | null>(null);
   // Experimental Gamma renderer: toggle only exists in staging builds; the server re-checks authorisation.
+  // The server is the authority: the checkbox appears only if GET .../export/pptx says Gamma is available to this
+  // user, and its initial value follows the server default. Choosing "legacy" is always possible.
   const gammaExperiment = process.env.NEXT_PUBLIC_GAMMA_EXPERIMENT === "true";
+  const [gammaAvailable, setGammaAvailable] = useState(false);
   const [useGamma, setUseGamma] = useState(false);
+  // Persistent until dismissed or the next generation starts; never auto-cleared by toasts.
+  const [gammaPanel, setGammaPanel] = useState<GammaPanelState | null>(null);
   const [templateWarning, setTemplateWarning] = useState<{ code: string; error: string; slide: number | null } | null>(null);
 
   useEffect(() => {
@@ -324,6 +330,24 @@ export function TeacherPackageViewer({
     })();
     return () => { live = false; };
   }, []);
+
+  useEffect(() => {
+    if (!gammaExperiment) return;
+    let live = true;
+    void (async () => {
+      try {
+        const response = await fetch("/api/lesson-plan/export/pptx", { headers: await getAuthHeaders(), cache: "no-store" });
+        if (!response.ok) return;
+        const result = (await response.json()) as { gammaAvailable?: boolean; defaultProvider?: string };
+        if (!live) return;
+        setGammaAvailable(result.gammaAvailable === true);
+        setUseGamma(result.gammaAvailable === true && result.defaultProvider === "gamma");
+      } catch {
+        // Gamma simply stays unavailable.
+      }
+    })();
+    return () => { live = false; };
+  }, [gammaExperiment]);
 
   const uploadTemplate = async (file: File) => {
     setTemplateWarning(null);
@@ -440,7 +464,10 @@ export function TeacherPackageViewer({
     extraHeaders?: Record<string, string>,
   ) => {
     setExportError(null);
-    if (key === "ppt") setTemplateWarning(null);
+    if (key === "ppt") {
+      setTemplateWarning(null);
+      setGammaPanel(null);
+    }
     setBusy(key);
     try {
       const res = await fetch(url, {
@@ -456,6 +483,10 @@ export function TeacherPackageViewer({
         if (key === "ppt") {
           try {
             const issue = JSON.parse(raw) as { code?: string; error?: string; slide?: number | null };
+            if (issue.code?.startsWith("GAMMA_") && issue.error) {
+              setGammaPanel({ kind: "error", code: issue.code, message: issue.error });
+              return;
+            }
             if (issue.code && issue.error) {
               setTemplateWarning({ code: issue.code, error: issue.error, slide: issue.slide ?? null });
               return;
@@ -487,10 +518,12 @@ export function TeacherPackageViewer({
       if (blob.size === 0) {
         throw new Error("Downloaded file was empty.");
       }
-      triggerFileDownload(blob, filename);
-      if (key === "ppt" && res.headers.get("x-layah-gamma-validation") === "failed") {
-        setExportError(`Gamma experiment: content-preservation check FAILED (${res.headers.get("x-layah-gamma-issues") ?? "?"} issue types). The downloaded deck may differ from the lesson content — do not treat it as validated.`);
+      if (key === "ppt" && res.headers.get("x-layah-ppt-provider") === "gamma") {
+        // Hold the file: the tester sees the validation result first and then chooses to download.
+        setGammaPanel({ kind: "result", blob, filename, summary: decodeReportHeader(res.headers.get("x-layah-gamma-report")) });
+        return;
       }
+      triggerFileDownload(blob, filename);
     } catch (e) {
       setExportError(toUserFacingError(e, `export-${key}`));
     } finally {
@@ -530,7 +563,7 @@ export function TeacherPackageViewer({
         teacherName: teacherName?.trim() || "",
         pptTheme: pptThemeId,
         templateMode: mode,
-        ...(gammaExperiment && useGamma && mode === "layah" ? { pptProvider: "gamma" } : {}),
+        ...(gammaAvailable && mode === "layah" ? { pptProvider: useGamma ? "gamma" : "legacy" } : {}),
         curriculumFramework: curriculumFramework?.trim() ?? "",
         ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
         ...(urls ? { pptSlideImageUrls: urls } : {}),
@@ -746,6 +779,9 @@ export function TeacherPackageViewer({
           {exportError}
         </Notice>
       ) : null}
+      {gammaPanel ? (
+        <GammaPanel panel={gammaPanel} onDismiss={() => setGammaPanel(null)} />
+      ) : null}
       {templateWarning ? (
         <Notice tone="danger" className="mb-3">
           <p className="font-semibold">We couldn&apos;t use this PowerPoint for your lesson.</p>
@@ -812,7 +848,7 @@ export function TeacherPackageViewer({
                 <Button type="button" variant="ghost" size="xs" disabled={templateBusy} onClick={() => void removeTemplate()}>Remove</Button>
               </div>
             ) : null}
-            {gammaExperiment && templateMode === "layah" ? (
+            {gammaAvailable && templateMode === "layah" ? (
               <label className="mb-3 flex items-center gap-2 text-sm text-muted">
                 <input type="checkbox" checked={useGamma} onChange={(e) => setUseGamma(e.target.checked)} />
                 Tester only: render with Gamma (experimental, uses paid credits; takes 1–3 minutes)
@@ -1040,5 +1076,54 @@ export function TeacherPackageViewer({
         </div>
       </div>
     </div>
+  );
+}
+
+type GammaPanelState =
+  | { kind: "result"; blob: Blob; filename: string; summary: GammaReportSummary | null }
+  | { kind: "error"; code: string; message: string };
+
+function GammaPanel({
+  panel,
+  onDismiss,
+}: {
+  panel: GammaPanelState;
+  onDismiss: () => void;
+}) {
+  if (panel.kind === "error") {
+    return (
+      <Notice tone="danger" className="mb-3">
+        <p className="font-semibold">Gamma experiment: generation did not finish ({panel.code})</p>
+        <p className="mt-1">{panel.message}</p>
+        <div className="mt-3"><Button variant="ghost" size="sm" onClick={onDismiss}>Dismiss</Button></div>
+      </Notice>
+    );
+  }
+  const v = presentVerdict(panel.summary);
+  const s = panel.summary;
+  return (
+    <Notice tone={v.tone === "ok" ? "generated" : v.tone === "warn" ? "brand" : "danger"} className="mb-3">
+      <p className="font-semibold">Gamma experiment: {v.title}</p>
+      <p className="mt-1">{v.detail}</p>
+      {s && s.examples.length > 0 ? (
+        <ul className="mt-2 list-disc pl-5 text-sm">
+          {s.examples.map((e) => <li key={e}>{e}</li>)}
+        </ul>
+      ) : null}
+      {s ? (
+        <p className="mt-2 text-xs opacity-80">
+          Slides {s.counts.actualSlides}/{s.counts.expectedSlides} · images {s.pictures}
+          {s.creditsDeducted !== undefined ? ` · credits ${s.creditsDeducted}` : ""}
+          {s.generationId ? ` · generation ${s.generationId}` : ""}
+          {s.resumed ? " · resumed (no new charge)" : ""}
+        </p>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" variant={v.normalDownload ? "default" : "outline"} onClick={() => triggerFileDownload(panel.blob, panel.filename)}>
+          {v.downloadLabel}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onDismiss}>Dismiss</Button>
+      </div>
+    </Notice>
   );
 }
