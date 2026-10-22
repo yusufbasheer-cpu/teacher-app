@@ -20,6 +20,9 @@ import { defaultProviderFor, GammaError, gammaGate, getGammaConfig, resolvePptPr
 import { encodeReportHeader, summariseReport } from "@/lib/gamma/report";
 import { renderPptxWithGamma } from "@/lib/gamma/render";
 import { listGammaThemes, validateGammaPresentationOptions } from "@/lib/gamma/themes";
+import { buildGammaPayload } from "@/lib/gamma/payload";
+import { SupabaseGammaStore } from "@/lib/gamma/store";
+import { createHash } from "node:crypto";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -65,6 +68,7 @@ type Body = {
   gammaThemeId?: unknown;
   gammaImageSource?: unknown;
   gammaImageStyle?: unknown;
+  artifactLookup?: boolean;
 };
 
 const GAMMA_ERROR_STATUS: Record<GammaError["code"], number> = {
@@ -199,6 +203,14 @@ export async function POST(req: Request) {
           const themes = body.gammaThemeId ? await listGammaThemes(baseConfig) : [];
           const options = validateGammaPresentationOptions({ themeId: body.gammaThemeId, imageSource: body.gammaImageSource, imageStyle: body.gammaImageStyle }, themes);
           requestConfig = { ...baseConfig, ...options };
+        }
+        if (body.artifactLookup === true) {
+          const config = requestConfig ?? getGammaConfig();
+          const built = buildGammaPayload({ deck, title: `${grade} ${subject}: ${topic}`, language, config });
+          const requestHash = createHash("sha256").update(JSON.stringify(built.request)).digest("hex");
+          const imageOptions = built.request.imageOptions as { source?: string; style?: string } | undefined;
+          const row = await new SupabaseGammaStore().findReusableArtifact({ userId: auth.userId, requestHash, themeId: typeof built.request.themeId === "string" ? built.request.themeId : null, imageSource: imageOptions?.source ?? null, imageStyle: imageOptions?.style ?? null });
+          return NextResponse.json({ available: Boolean(row?.artifactPath), requestHash, validation: row?.validationReport ?? null });
         }
         const result = await renderPptxWithGamma({
           deck,

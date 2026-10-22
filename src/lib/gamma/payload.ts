@@ -2,6 +2,7 @@ import type { StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
 import { moveTeacherFacingLinesToNotes } from "@/lib/ppt-template-engine";
 import type { PresentationLanguage } from "@/lib/ppt-language";
 import type { GammaConfig } from "./config";
+import { planGammaVisuals, visualInstructionsFor, type GammaVisualBrief } from "./visual-plan";
 
 /** Gamma splits cards on this exact delimiter when cardSplit is "inputTextBreaks". */
 export const GAMMA_CARD_BREAK = "\n---\n";
@@ -13,8 +14,8 @@ export const GAMMA_DESIGN_INSTRUCTIONS = [
   "Do NOT add, remove, reword, shorten, summarise, translate or reorder any text. Keep every title, objective, question, answer, number, formula and instruction exactly as written.",
   "Do NOT invent facts, activities, examples, labels or captions. Every card in the input is one slide; keep one slide per card.",
   "Use clean, readable classroom typography, generous spacing and a consistent calm colour palette. Vary layouts by content type (lists, steps, questions) but never shrink text to unreadable sizes or clip it.",
-  "Use imagery only where it clearly helps the slide's own topic: simple, age-appropriate, uncluttered illustrations. Do not generate charts, graphs, maths figures or labelled scientific diagrams with data or labels that are not already in the text.",
-  "Aim for roughly 10 to 15 images across the whole deck, not one per slide.",
+  "Use imagery only where it clearly helps the slide's own topic: simple, age-appropriate, uncluttered educational visuals. Do not use generic icons, decorative backgrounds or stock-looking filler.",
+  "Prefer classroom-readable split layouts, generous spacing, aligned margins and a clear visual hierarchy. Never solve crowding by removing content or shrinking text to unreadable sizes.",
 ].join(" ");
 
 /** A line of exactly `---` inside a slide would silently create an extra card. */
@@ -38,7 +39,7 @@ export function buildGammaPayload(params: {
   title: string;
   language: PresentationLanguage;
   config: GammaConfig;
-}): { request: Record<string, unknown>; snapshot: SlideSnapshot[]; neutralisedBreaks: number } {
+}): { request: Record<string, unknown>; snapshot: SlideSnapshot[]; neutralisedBreaks: number; visualBriefs: GammaVisualBrief[] } {
   let neutralisedBreaks = 0;
   const snapshot: SlideSnapshot[] = [];
   const cards = params.deck.map((raw, index) => {
@@ -57,6 +58,7 @@ export function buildGammaPayload(params: {
   });
 
   const { config } = params;
+  const visualBriefs = planGammaVisuals(params.deck);
   const request: Record<string, unknown> = {
     inputText: cards.join(GAMMA_CARD_BREAK),
     textMode: "preserve",
@@ -65,7 +67,7 @@ export function buildGammaPayload(params: {
     cardSplit: "inputTextBreaks",
     exportAs: "pptx",
     title: params.title.slice(0, 500),
-    additionalInstructions: GAMMA_DESIGN_INSTRUCTIONS,
+    additionalInstructions: `${GAMMA_DESIGN_INSTRUCTIONS} ${visualInstructionsFor(visualBriefs)}`,
     cardOptions: { dimensions: "16x9" },
     textOptions: { language: params.language },
     imageOptions: {
@@ -75,5 +77,5 @@ export function buildGammaPayload(params: {
     },
     ...(config.themeId ? { themeId: config.themeId } : {}),
   };
-  return { request, snapshot, neutralisedBreaks };
+  return { request, snapshot, neutralisedBreaks, visualBriefs };
 }

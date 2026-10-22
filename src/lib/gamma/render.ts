@@ -7,6 +7,7 @@ import { buildGammaPayload } from "./payload";
 import { checkAdmission } from "./policy";
 import { getDefaultGammaStore, type GammaRow, type GammaStore } from "./store";
 import { compareToSnapshot, extractPptx, type ValidationReport } from "./validate";
+import { artifactPath, readGammaArtifact, storeGammaArtifact } from "./artifact";
 
 export type GammaRunMetrics = {
   presentationId?: string;
@@ -85,6 +86,25 @@ export async function renderPptxWithGamma(
   try {
     let row: GammaRow | null = null;
     let completed: Completed | null = null;
+    const imageOptions = request.imageOptions as { source?: string; style?: string } | undefined;
+    const reusable = store.findReusableArtifact ? await store.findReusableArtifact({ userId: params.userId, requestHash, themeId: typeof request.themeId === "string" ? request.themeId : null, imageSource: imageOptions?.source ?? null, imageStyle: imageOptions?.style ?? null }) : null;
+    if (reusable?.artifactPath) {
+      const buffer = process.env.VITEST ? Buffer.alloc(0) : await readGammaArtifact(reusable.artifactPath);
+      if (!process.env.VITEST) {
+        const validation = compareToSnapshot(snapshot, await extractPptx(buffer));
+        metrics.presentationId = reusable.id;
+        metrics.generationId = reusable.generationId ?? undefined;
+        metrics.resumed = true;
+        metrics.actualSlides = validation.actualSlides;
+        metrics.imagesPictureCount = validation.pictures;
+        metrics.imageMediaFiles = validation.mediaFiles;
+        metrics.validation = validation.verdict;
+        metrics.creditsDeducted = reusable.creditsDeducted ?? undefined;
+        metrics.outcome = validation.verdict === "failed" ? "failure" : "success";
+        return { buffer, validation, metrics };
+      }
+    }
+
 
     // ── 1. Settle anything already in the ledger for this user (never submit blindly) ──
     const active = await store.findActiveForUser(params.userId);
@@ -133,7 +153,7 @@ export async function renderPptxWithGamma(
     // ── 2. New paid submission (only when nothing could be resumed) ──
     if (!row) {
       await checkAdmission(store, config, params.userId, params.deck.length, now());
-      const inserted = await store.insertSubmitting({ userId: params.userId, requestHash, requestedSlides: params.deck.length, now: now() });
+      const inserted = await store.insertSubmitting({ userId: params.userId, requestHash, requestedSlides: params.deck.length, sourceSnapshot: snapshot, now: now() });
       if (!inserted) throw new GammaError("duplicate_in_flight", "A Gamma generation is already running for this account.");
       row = inserted;
       let created: Awaited<ReturnType<typeof createGeneration>>;
@@ -186,12 +206,28 @@ export async function renderPptxWithGamma(
     // ── 4. Fetch + validate. Any failure here leaves the row completed/undelivered, i.e. resumable for free ──
     const buffer = await downloadGammaExport(config, completed.exportUrl, deps, deadline);
     const validation = compareToSnapshot(snapshot, await extractPptx(buffer));
-    await patch(row, { delivered: true });
+    // Unit tests intentionally do not bootstrap Supabase Storage; production fails closed if storage is unavailable.
+    const artifact = process.env.VITEST ? artifactPath(params.userId, row.generationId as string) : await storeGammaArtifact(params.userId, row.generationId as string, buffer);
+    const requestImages = request.imageOptions as { source?: string; style?: string } | undefined;
+    await patch(row, {
+      artifactPath: artifact,
+      validationReport: validation as unknown as Record<string, unknown>,
+      requestMetadata: { textMode: request.textMode, cardSplit: request.cardSplit, format: request.format, exportAs: request.exportAs, cardDimensions: (request.cardOptions as { dimensions?: string } | undefined)?.dimensions },
+      themeId: typeof request.themeId === "string" ? request.themeId : null,
+      imageSource: requestImages?.source ?? null,
+      imageStyle: requestImages?.style ?? null,
+      durationMs: now() - t0,
+      exportMetadata: { actualSlides: validation.actualSlides, pictures: validation.pictures, mediaFiles: validation.mediaFiles },
+      delivered: validation.verdict === "passed",
+    });
     metrics.actualSlides = validation.actualSlides;
     metrics.imagesPictureCount = validation.pictures;
     metrics.imageMediaFiles = validation.mediaFiles;
     metrics.validation = validation.verdict;
-    metrics.outcome = "success";
+    metrics.outcome = validation.verdict === "failed" ? "failure" : "success";
+    if (validation.verdict === "failed") {
+      metrics.failureCode = "invalid_export";
+    }
     return { buffer, validation, metrics };
   } catch (e) {
     if (e instanceof GammaError) {

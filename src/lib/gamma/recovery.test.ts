@@ -34,6 +34,7 @@ describe("finding 1 — polling timeout never releases the lock; the next reques
     expect(h.gamma.state.posts).toBe(1);
     expect(h.store.rows).toHaveLength(1);
     expect(h.store.rows[0]).toMatchObject({ status: "pending", generationId: "gen-1", delivered: false });
+  expect(h.store.rows[0].sourceSnapshot).toHaveLength(13);
 
     h.gamma.state.pendingPolls = 0; // Gamma finished in the meantime
     h.clock.advance(60_000);

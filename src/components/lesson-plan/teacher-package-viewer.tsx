@@ -106,6 +106,8 @@ type ExportKey =
   | "afl-sheets"
   | "zip";
 
+type GammaThemeLoadState = "idle" | "loading" | "ready" | "empty" | "error";
+
 // ── PPT export progress (visual only; images are usually pre-built during generation) ──
 const TOTAL_IMAGES = 10;
 
@@ -315,11 +317,15 @@ export function TeacherPackageViewer({
   const [gammaAvailable, setGammaAvailable] = useState(false);
   const [useGamma, setUseGamma] = useState(false);
   const [gammaThemes, setGammaThemes] = useState<CuratedGammaTheme[]>([]);
+  const [gammaThemeLoadState, setGammaThemeLoadState] = useState<GammaThemeLoadState>("idle");
   const [gammaThemeId, setGammaThemeId] = useState("");
   const [gammaImageSource, setGammaImageSource] = useState("aiGenerated");
   const [gammaImageStyle, setGammaImageStyle] = useState("clean educational illustration, age-appropriate, uncluttered");
   // Persistent until dismissed or the next generation starts; never auto-cleared by toasts.
   const [gammaPanel, setGammaPanel] = useState<GammaPanelState | null>(null);
+  const [readyGammaFile, setReadyGammaFile] = useState<{ blob: Blob; filename: string; summary: GammaReportSummary | null } | null>(null);
+  const [gammaArtifactHash, setGammaArtifactHash] = useState<string | null>(null);
+  const [gammaArtifactAvailable, setGammaArtifactAvailable] = useState(false);
   const [templateWarning, setTemplateWarning] = useState<{ code: string; error: string; slide: number | null } | null>(null);
 
   useEffect(() => {
@@ -349,26 +355,48 @@ export function TeacherPackageViewer({
         setGammaAvailable(result.gammaAvailable === true);
         setUseGamma(result.gammaAvailable === true && result.defaultProvider === "gamma");
         if (result.gammaAvailable === true) {
+          setGammaThemeLoadState("loading");
           const themesResponse = await fetch("/api/lesson-plan/export/pptx/themes", { headers: await getAuthHeaders(), cache: "no-store" });
           if (themesResponse.ok) {
             const themesResult = await themesResponse.json() as { themes?: CuratedGammaTheme[] };
             const themes = themesResult.themes ?? [];
             if (!live) return;
             setGammaThemes(themes);
+            setGammaThemeLoadState(themes.length > 0 ? "ready" : "empty");
             const saved = window.localStorage.getItem("layah:gamma-theme-id");
             const selected = themes.some((theme) => theme.id === saved) ? saved! : themes[0]?.id ?? "";
             setGammaThemeId(selected);
-          }
+          } else setGammaThemeLoadState("error");
         }
       } catch {
-        // Gamma simply stays unavailable.
+        setGammaThemeLoadState("error");
       }
     })();
     return () => { live = false; };
   }, [gammaExperiment]);
 
+  useEffect(() => {
+    if (!gammaAvailable || !useGamma || !gammaThemeId || gammaThemeLoadState !== "ready") return;
+    let live = true;
+    const fullLessonPlan = getPptSourceLessonText(lessonPlan);
+    const pptContent = getPptSourceSlideOutline(lessonPlan);
+    const body = { subject, grade, topic, pptContent, fullLessonPlan, learningObjectives: learningObjectives?.trim() || "", homeworkTask: typeof lessonPlan["Homework Task"] === "string" ? lessonPlan["Homework Task"].trim() : "", teacherName: teacherName?.trim() || "", pptTheme: pptThemeId, templateMode: "layah", pptProvider: "gamma", gammaThemeId, gammaImageSource, ...(gammaImageSource === "aiGenerated" && gammaImageStyle ? { gammaImageStyle } : {}), curriculumFramework: curriculumFramework?.trim() ?? "", ...(chapter?.trim() ? { chapter: chapter.trim() } : {}), ...(language ? { language } : {}), ...(hasAflSelections(aflSelections) ? { aflSelections } : {}), artifactLookup: true };
+    void (async () => {
+      try {
+        const res = await fetch("/api/lesson-plan/export/pptx", { method: "POST", headers: { ...(await getAuthHeaders()), "content-type": "application/json" }, body: JSON.stringify(body), cache: "no-store" });
+        if (!res.ok) return;
+        const result = await res.json() as { available?: boolean; requestHash?: string };
+        if (live) { setGammaArtifactAvailable(result.available === true); setGammaArtifactHash(result.requestHash ?? null); }
+      } catch { /* generation remains available if lookup is unavailable */ }
+    })();
+    return () => { live = false; };
+  }, [gammaAvailable, useGamma, gammaThemeId, gammaThemeLoadState, gammaImageSource, gammaImageStyle, lessonPlan, subject, grade, topic, learningObjectives, teacherName, pptThemeId, curriculumFramework, chapter, language, aflSelections]);
+
   const chooseGammaTheme = (id: string) => {
     setGammaThemeId(id);
+    setReadyGammaFile(null);
+    setGammaArtifactHash(null);
+    setGammaArtifactAvailable(false);
     window.localStorage.setItem("layah:gamma-theme-id", id);
   };
 
@@ -485,11 +513,13 @@ export function TeacherPackageViewer({
     url: string,
     body: object,
     extraHeaders?: Record<string, string>,
+    skipGammaProgress = false,
   ) => {
     setExportError(null);
     if (key === "ppt") {
       setTemplateWarning(null);
-      setGammaPanel(useGamma ? { kind: "progress", startedAt: Date.now() } : null);
+      if (useGamma) setReadyGammaFile(null);
+      setGammaPanel(useGamma && !skipGammaProgress ? { kind: "progress", startedAt: Date.now() } : null);
     }
     setBusy(key);
     try {
@@ -543,7 +573,9 @@ export function TeacherPackageViewer({
       }
       if (key === "ppt" && res.headers.get("x-layah-ppt-provider") === "gamma") {
         // Hold the file: the tester sees the validation result first and then chooses to download.
-        setGammaPanel({ kind: "result", blob, filename, summary: decodeReportHeader(res.headers.get("x-layah-gamma-report")) });
+        const summary = decodeReportHeader(res.headers.get("x-layah-gamma-report"));
+        setReadyGammaFile(summary?.verdict === "passed" ? { blob, filename, summary } : null);
+        setGammaPanel({ kind: "result", blob, filename, summary });
         return;
       }
       triggerFileDownload(blob, filename);
@@ -563,6 +595,13 @@ export function TeacherPackageViewer({
   };
 
   const onDownloadPpt = (mode: "layah" | "uploaded" = templateMode) => {
+    if (useGamma && mode === "layah" && gammaArtifactAvailable && gammaArtifactHash) {
+      return runExport("ppt", `${baseName}-ppt.pptx`, "/api/lesson-plan/export/pptx/artifact", { requestHash: gammaArtifactHash, themeId: gammaThemeId || null, imageSource: gammaImageSource, imageStyle: gammaImageSource === "aiGenerated" ? gammaImageStyle : null }, undefined, true);
+    }
+    if (useGamma && mode === "layah" && readyGammaFile?.summary?.verdict === "passed") {
+      triggerFileDownload(readyGammaFile.blob, readyGammaFile.filename);
+      return;
+    }
     const fullLessonPlan = getPptSourceLessonText(lessonPlan);
     const pptContent = getPptSourceSlideOutline(lessonPlan);
     const lo = learningObjectives?.trim() || "";
@@ -851,6 +890,7 @@ export function TeacherPackageViewer({
             {gammaAvailable && useGamma ? (
               <GammaDesignControls
                 themes={gammaThemes}
+                themeLoadState={gammaThemeLoadState}
                 themeId={gammaThemeId}
                 imageSource={gammaImageSource}
                 imageStyle={gammaImageStyle}
@@ -981,7 +1021,7 @@ export function TeacherPackageViewer({
                 })}
               </div>
               <PptImageProgressCard
-                active={busy === "ppt"}
+                active={busy === "ppt" && !useGamma}
                 packagingOnly={Boolean(pptSlideImageUrls?.some(Boolean))}
               />
             </div>
@@ -1130,9 +1170,10 @@ type GammaPanelState =
   | { kind: "progress"; startedAt: number };
 
 function GammaDesignControls({
-  themes, themeId, imageSource, imageStyle, onThemeChange, onImageSourceChange, onImageStyleChange, onUseLegacy,
+  themes, themeLoadState, themeId, imageSource, imageStyle, onThemeChange, onImageSourceChange, onImageStyleChange, onUseLegacy,
 }: {
   themes: CuratedGammaTheme[];
+  themeLoadState: GammaThemeLoadState;
   themeId: string;
   imageSource: string;
   imageStyle: string;
@@ -1148,7 +1189,7 @@ function GammaDesignControls({
         <div><p className="font-mono text-[10px] uppercase tracking-wider text-brand-text">Design with Gamma</p><h2 className="mt-1 text-[15px] font-semibold text-ink">Choose the look of your 13-slide lesson</h2><p className="mt-1 text-[12px] text-faint">Gamma applies the selected workspace theme while Layah holds the lesson text for validation.</p></div>
         <Button type="button" variant="ghost" size="xs" onClick={onUseLegacy}>Use legacy renderer</Button>
       </div>
-      {themes.length === 0 ? <Notice tone="brand" className="mb-3">Loading workspace themes… If this remains empty, Gamma’s theme service is unavailable and the workspace default will be used.</Notice> : (
+      {themeLoadState === "loading" ? <Notice tone="brand" className="mb-3">Loading Gamma workspace themes…</Notice> : themeLoadState === "error" ? <Notice tone="danger" className="mb-3">Gamma workspace themes could not be loaded. Gamma&apos;s default theme can be used, or switch to the legacy renderer.</Notice> : themeLoadState === "empty" ? <Notice tone="brand" className="mb-3">No Gamma workspace themes are available. Gamma&apos;s default theme can be used, or switch to the legacy renderer.</Notice> : (
         <div className="space-y-2" role="radiogroup" aria-label="Gamma theme">
           {themes.map((theme) => {
             const selected = theme.id === themeId;
