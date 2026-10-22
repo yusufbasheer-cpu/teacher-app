@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { isNavLinkActive } from "@/lib/app-nav-links";
 import { BORDER, NAVY, TEAL, TEXT_MUTED } from "@/lib/design-tokens";
+import { isFeatureVisible } from "@/lib/experiment-feature-lock";
 
 // Rendered for signed-out visitors and for signed-in visitors on public
 // pages — AppShell swaps to AppFrame (the dashboard rail) only on actual
@@ -17,7 +18,7 @@ const NAV_LINKS = [
   { href: "/differentiated-worksheets", label: "Worksheets" },
   { href: "/question-paper", label: "Question Papers" },
   { href: "/pricing", label: "Pricing" },
-] as const;
+].filter((link) => isFeatureVisible(link.href));
 
 const FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]";

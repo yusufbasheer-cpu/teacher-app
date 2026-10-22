@@ -35,6 +35,7 @@ import {
   Skeleton,
 } from "@/components/ui/panel";
 import { cn } from "@/lib/utils";
+import { isFeatureVisible } from "@/lib/experiment-feature-lock";
 
 /**
  * The dashboard.
@@ -236,25 +237,25 @@ export function Workspace({ user }: { user: User }) {
 
           {/* The other two generators, carrying the same context so switching
               tool doesn't mean re-picking the class. */}
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line-subtle pt-4">
+          {isFeatureVisible("/question-paper") || isFeatureVisible("/differentiated-worksheets") ? <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line-subtle pt-4">
             <span className="text-[12px] text-faint">Or make</span>
-            <Link
+            {isFeatureVisible("/question-paper") ? <Link
               href={`/question-paper?${params()}`}
               className="inline-flex items-center gap-1.5 text-[12px] font-medium text-muted transition-colors hover:text-brand-text"
             >
               <ClipboardList className="size-3.5" aria-hidden />
               Question paper
               {isFree ? <Badge tone="generated">Pro</Badge> : null}
-            </Link>
-            <Link
+            </Link> : null}
+            {isFeatureVisible("/differentiated-worksheets") ? <Link
               href={`/differentiated-worksheets?${params()}`}
               className="inline-flex items-center gap-1.5 text-[12px] font-medium text-muted transition-colors hover:text-brand-text"
             >
               <Layers3 className="size-3.5" aria-hidden />
               Worksheet pack
               {isFree ? <Badge tone="generated">Pro</Badge> : null}
-            </Link>
-          </div>
+            </Link> : null}
+          </div> : null}
         </form>
       </Panel>
 

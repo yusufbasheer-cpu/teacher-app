@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkEnvironmentIsolation } from "@/lib/environment-isolation";
+import { experimentFeatureLockReport } from "@/lib/experiment-feature-lock";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,7 @@ export async function GET(req: Request) {
   return NextResponse.json(
     {
       isolation,
+      featureLock: experimentFeatureLockReport(),
       config: {
         environmentName: e.GAMMA_ENVIRONMENT_NAME ?? null,
         allowedEnvironments: e.GAMMA_ALLOWED_ENVIRONMENTS ?? null,

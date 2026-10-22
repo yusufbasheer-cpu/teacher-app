@@ -16,7 +16,7 @@ import { resolveLessonTitle } from "@/lib/lesson-plan";
 import { cn } from "@/lib/utils";
 import { Kbd } from "@/components/ui/panel";
 import { useTheme } from "@/components/app/theme";
-import { ACCOUNT_ITEMS, CREATE_ITEMS, LIBRARY_ITEMS, ROLE_ITEMS, type NavItem } from "@/lib/app-nav";
+import { ACCOUNT_ITEMS, CREATE_ITEMS, LIBRARY_ITEMS, ROLE_ITEMS, visibleNavItems, type NavItem } from "@/lib/app-nav";
 
 /**
  * Command palette (⌘K / Ctrl-K).
@@ -150,10 +150,10 @@ export function CommandPalette({
     }));
 
     return [
-      ...CREATE_ITEMS.map((i) => navCmd(i, "Create")),
-      ...LIBRARY_ITEMS.map((i) => navCmd(i, "Go to")),
-      ...roleItems.map((i) => navCmd(i, "Go to")),
-      ...ACCOUNT_ITEMS.map((i) => navCmd(i, "Go to")),
+      ...visibleNavItems(CREATE_ITEMS).map((i) => navCmd(i, "Create")),
+      ...visibleNavItems(LIBRARY_ITEMS).map((i) => navCmd(i, "Go to")),
+      ...visibleNavItems(roleItems).map((i) => navCmd(i, "Go to")),
+      ...visibleNavItems(ACCOUNT_ITEMS).map((i) => navCmd(i, "Go to")),
       ...lessonCmds,
       {
         id: "theme:light",

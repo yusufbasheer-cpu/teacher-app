@@ -1,5 +1,7 @@
 /** Primary app navigation (main header + mobile menu). */
-export const APP_NAV_LINKS = [
+import { isFeatureVisible } from "./experiment-feature-lock";
+
+const ALL_APP_NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/lesson-plan", label: "Generate Lesson Plan" },
   { href: "/question-paper", label: "Question Paper" },
@@ -7,6 +9,8 @@ export const APP_NAV_LINKS = [
   { href: "/pricing", label: "Pricing" },
   { href: "/my-lesson-plans", label: "My Lessons" },
 ] as const;
+
+export const APP_NAV_LINKS = ALL_APP_NAV_LINKS.filter((link) => isFeatureVisible(link.href));
 
 export const SCHOOL_ADMIN_NAV_LINK = {
   href: "/school-admin",
@@ -23,7 +27,7 @@ export const HOD_DASHBOARD_NAV_LINK = {
   label: "HOD Dashboard",
 } as const;
 
-export type AppNavLink = (typeof APP_NAV_LINKS)[number];
+export type AppNavLink = (typeof ALL_APP_NAV_LINKS)[number];
 
 export function isNavLinkActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";

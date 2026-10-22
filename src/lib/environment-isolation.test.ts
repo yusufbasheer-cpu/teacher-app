@@ -112,6 +112,19 @@ describe("proxy: application-wide fail-closed", () => {
     stubEnv({ NEXT_PUBLIC_SUPABASE_URL: `https://${PROD}.supabase.co`, SUPABASE_SERVICE_ROLE_KEY: jwt(PROD, "service_role"), RAZORPAY_KEY_ID: "rzp_live_abc" });
     expect((await proxy(req("/dashboard"))).status).not.toBe(503);
   });
+  it("redirects blocked pages and returns a JSON 404 for blocked APIs only in isolation", async () => {
+    stubEnv(isolatedOk);
+    const page = await proxy(req("/pricing"));
+    expect(page.status).toBe(307);
+    expect(page.headers.get("location")).toBe("https://preview.example/lesson-plan?unavailable=experimental-preview");
+    const api = await proxy(req("/api/razorpay/create-order"));
+    expect(api.status).toBe(404);
+    expect(await api.json()).toMatchObject({ code: "experiment_feature_locked" });
+
+    vi.unstubAllEnvs();
+    createMiddlewareSupabaseClient.mockReturnValue({ auth: { getUser: async () => ({ data: { user: null } }) } });
+    expect((await proxy(req("/pricing"))).status).not.toBe(307);
+  });
 });
 
 describe("credential clients refuse inside a violating isolated environment (defence in depth)", () => {
@@ -158,6 +171,8 @@ describe("GET /api/environment-check", () => {
     expect(body.isolation).toMatchObject({ isolated: true, ok: true, supabaseRef: STG });
     expect(body.config).toMatchObject({ environmentName: "staging", gammaExperimentEnabled: true, defaultProvider: "gamma", testerCount: 2, gammaKeyPresent: true, exportHostIsPlaceholder: true, siteUrlMatchesRequestOrigin: true, publicGammaExperiment: true });
     expect(body.config.limits.userHourly).toBe("2");
+    expect(body.featureLock).toMatchObject({ active: true });
+    expect(body.featureLock.allowed).toContain("lesson-plan-pptx");
     for (const secret of ["SECRET-GAMMA-KEY", "a@x.com", jwt(STG, "service_role")]) expect(text).not.toContain(secret);
   });
   it("flags a site-url/origin mismatch", async () => {

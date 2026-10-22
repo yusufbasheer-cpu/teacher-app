@@ -2,6 +2,7 @@ import { createMiddlewareSupabaseClient } from "@/lib/supabase-ssr";
 import { checkEnvironmentIsolation } from "@/lib/environment-isolation";
 import { NextResponse, type NextRequest } from "next/server";
 import { USER_EMAIL_HEADER, USER_ID_HEADER } from "@/lib/auth-header-names";
+import { isFeatureAllowed } from "@/lib/experiment-feature-lock";
 import type { User } from "@supabase/supabase-js";
 
 const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -95,6 +96,20 @@ export async function proxy(request: NextRequest) {
         { status: 503, headers: { "content-type": "application/json", "cache-control": "no-store" } },
       );
     }
+  }
+
+  if (!isFeatureAllowed(request.nextUrl.pathname)) {
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "Not found", code: "experiment_feature_locked" },
+        { status: 404, headers: { "cache-control": "no-store" } },
+      );
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = "/lesson-plan";
+    url.search = "";
+    url.searchParams.set("unavailable", "experimental-preview");
+    return NextResponse.redirect(url);
   }
 
   const csrfBlock = csrfGuard(request);

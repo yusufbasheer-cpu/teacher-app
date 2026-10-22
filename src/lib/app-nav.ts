@@ -10,6 +10,7 @@ import {
   Shield,
   Sparkles,
 } from "lucide-react";
+import { isFeatureVisible } from "./experiment-feature-lock";
 
 /**
  * The authenticated app's navigation, as data.
@@ -82,6 +83,8 @@ export const ROLE_ITEMS = {
   superAdmin: { href: "/super-admin", label: "Console", icon: Shield } as NavItem,
 };
 
+export const visibleNavItems = (items: NavItem[]) => items.filter((item) => isFeatureVisible(item.href));
+
 /** Groups shown in the rail, in order. */
 export function navGroups(roles: {
   schoolAdmin: boolean;
@@ -94,8 +97,8 @@ export function navGroups(roles: {
   if (roles.superAdmin) role.push(ROLE_ITEMS.superAdmin);
 
   const groups: NavGroup[] = [
-    { id: "library", label: "Library", items: LIBRARY_ITEMS },
-    { id: "create", label: "Create", items: CREATE_ITEMS },
+    { id: "library", label: "Library", items: visibleNavItems(LIBRARY_ITEMS) },
+    { id: "create", label: "Create", items: visibleNavItems(CREATE_ITEMS) },
   ];
   if (role.length) groups.push({ id: "manage", label: "Manage", items: role });
   return groups;
