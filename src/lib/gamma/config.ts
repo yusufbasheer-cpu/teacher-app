@@ -167,10 +167,12 @@ export function getGammaConfig(env: Env = process.env): GammaConfig {
     maxCardsPerRun: num(env.GAMMA_MAX_CARDS_PER_RUN, 25),
     maxCreditsPerRun,
     estimatedCreditsPerRun: num(env.GAMMA_ESTIMATED_CREDITS_PER_RUN, maxCreditsPerRun),
-    userHourlyLimit: num(env.GAMMA_USER_HOURLY_LIMIT, 3),
-    userDailyLimit: num(env.GAMMA_USER_DAILY_LIMIT, 10),
-    dailyCreditBudget: num(env.GAMMA_DAILY_CREDIT_BUDGET, 1_000),
-    monthlyCreditBudget: num(env.GAMMA_MONTHLY_CREDIT_BUDGET, 5_000),
+    // This isolated experiment intentionally leaves volume to the provider/account.
+    // Operators can still restore finite guardrails with the environment variables.
+    userHourlyLimit: num(env.GAMMA_USER_HOURLY_LIMIT, Number.MAX_SAFE_INTEGER),
+    userDailyLimit: num(env.GAMMA_USER_DAILY_LIMIT, Number.MAX_SAFE_INTEGER),
+    dailyCreditBudget: num(env.GAMMA_DAILY_CREDIT_BUDGET, Number.MAX_SAFE_INTEGER),
+    monthlyCreditBudget: num(env.GAMMA_MONTHLY_CREDIT_BUDGET, Number.MAX_SAFE_INTEGER),
     unknownQuarantineMs: num(env.GAMMA_UNKNOWN_QUARANTINE_MS, 30 * 60_000),
     staleActiveMs: num(env.GAMMA_STALE_ACTIVE_MS, 2 * 60 * 60_000),
     undeliveredWindowMs: num(env.GAMMA_UNDELIVERED_WINDOW_MS, 6 * 24 * 60 * 60_000),

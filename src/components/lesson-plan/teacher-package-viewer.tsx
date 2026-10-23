@@ -808,10 +808,15 @@ export function TeacherPackageViewer({
               Edit and regenerate
             </Button>
           ) : null}
-          {showTeacherDownloads ? (
+          {hasPpt ? (
+            <Button size="lg" disabled={busy !== null} onClick={() => onDownloadPpt()}>
+              <Download />
+              {busy === "ppt" ? "Preparing PowerPoint…" : "Download PowerPoint"}
+            </Button>
+          ) : showTeacherDownloads ? (
             <Button size="lg" disabled={busy !== null} onClick={onDownloadZip}>
               <Download />
-              {busy === "zip" ? "Building ZIP…" : "Download all"}
+              {busy === "zip" ? "Building ZIP…" : "Download lesson package"}
             </Button>
           ) : null}
         </div>
@@ -864,7 +869,7 @@ export function TeacherPackageViewer({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* ══════════ SIDEBAR ══════════ */}
         <aside className="space-y-6 lg:col-span-4">
-        {hasPpt ? (
+        {hasPpt && !useGamma ? (
           <div className="rounded-md border border-line-subtle bg-surface p-3">
             {gammaAvailable && useGamma ? (
               <GammaDesignControls

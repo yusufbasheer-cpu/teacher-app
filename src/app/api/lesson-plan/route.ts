@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   authenticateRequest,
   getCallerPlanType,
+  getOrCreateUserUsage,
   refundGeneration,
   reserveGeneration,
 } from "@/lib/user-usage-server";
@@ -736,10 +737,6 @@ export async function POST(req: Request) {
     return apiErrorResponse("DEEPSEEK_API_KEY too short", 500, "lesson-plan");
   }
 
-  const ip = getClientIp(req);
-  const ipLimit = checkRateLimit(`lesson-plan:ip:${ip}`, 10, HOUR_MS);
-  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
-
   let body: LessonPlanGenerateBody;
   try {
     body = (await req.json()) as LessonPlanGenerateBody;
@@ -753,6 +750,12 @@ export async function POST(req: Request) {
       { error: "Provide a non-empty \"sections\" array of valid teacher-package keys." },
       { status: 400 },
     );
+  }
+  const isPptExperiment = sections.includes("PPT Slide Content");
+  if (!isPptExperiment) {
+    const ip = getClientIp(req);
+    const ipLimit = checkRateLimit(`lesson-plan:ip:${ip}`, 10, HOUR_MS);
+    if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
   }
 
   const input: LessonPlanInput = {
@@ -820,22 +823,29 @@ export async function POST(req: Request) {
     );
   }
 
-  const userDayLimit = checkRateLimit(`lesson-plan:user:${auth.userId}`, 30, DAY_MS);
-  if (!userDayLimit.ok) return rateLimitResponse(userDayLimit.resetInSeconds);
+  if (!isPptExperiment) {
+    const userDayLimit = checkRateLimit(`lesson-plan:user:${auth.userId}`, 30, DAY_MS);
+    if (!userDayLimit.ok) return rateLimitResponse(userDayLimit.resetInSeconds);
 
-  const spending = checkSpendingProtection(auth.userId);
-  if (spending.blocked) {
-    if (spending.shouldAlert) {
-      void sendEmail({
-        to: "info@layah.in",
-        subject: "Layah Spending Alert — User Blocked",
-        text: `User ${auth.userId} exceeded 50 API calls in one hour and has been automatically blocked.\n\nEndpoint: /api/lesson-plan\nTime: ${new Date().toISOString()}`,
-      });
+    const spending = checkSpendingProtection(auth.userId);
+    if (spending.blocked) {
+      if (spending.shouldAlert) {
+        void sendEmail({
+          to: "info@layah.in",
+          subject: "Layah Spending Alert — User Blocked",
+          text: `User ${auth.userId} exceeded 50 API calls in one hour and has been automatically blocked.\n\nEndpoint: /api/lesson-plan\nTime: ${new Date().toISOString()}`,
+        });
+      }
+      return rateLimitResponse(spending.resetInSeconds);
     }
-    return rateLimitResponse(spending.resetInSeconds);
   }
 
-  const gate = await reserveGeneration(auth.supabase, auth.userId);
+  const experimentUsage = isPptExperiment
+    ? await getOrCreateUserUsage(auth.supabase, auth.userId)
+    : null;
+  const gate = isPptExperiment && experimentUsage
+    ? { ok: true as const, usage: experimentUsage, reservation: null }
+    : await reserveGeneration(auth.supabase, auth.userId);
   if (!gate.ok) {
     return NextResponse.json(
       {

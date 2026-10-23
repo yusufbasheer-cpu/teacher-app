@@ -13,7 +13,6 @@ import {
 } from "@/lib/ppt-template-config";
 import { resolvePresentationLanguage } from "@/lib/ppt-language";
 import { authenticateRequest } from "@/lib/user-usage-server";
-import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 import { renderUploadedPpt, UploadedTemplateError } from "@/lib/uploaded-ppt-export";
 import { moveTeacherFacingLinesToNotes } from "@/lib/ppt-template-engine";
 import { defaultProviderFor, GammaError, gammaGate, getGammaConfig, resolvePptProvider } from "@/lib/gamma/config";
@@ -110,9 +109,6 @@ export async function POST(req: Request) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
   }
-  const ipLimit = checkRateLimit(`lesson-plan-export-pptx:ip:${getClientIp(req)}`, 20, HOUR_MS);
-  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
-
   let body: Body;
   try {
     body = (await req.json()) as Body;

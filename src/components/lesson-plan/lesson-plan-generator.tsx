@@ -560,7 +560,9 @@ export function LessonPlanGenerator() {
       return;
     }
 
-    if (usage && !usage.canGenerate) {
+    // Gamma PPT experimentation is intentionally unmetered. Other generation
+    // flows continue to use the account allowance as before.
+    if (!sectionSelection["PPT Slide Content"] && usage && !usage.canGenerate) {
       setLimitModalOpen(true);
       return;
     }
