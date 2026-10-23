@@ -1194,10 +1194,22 @@ function GammaPanel({
     );
   }
   const v = presentVerdict(panel.summary);
+  // What exactly differs, so a failed or flagged deck explains itself (line examples, else the check's reasons).
+  const differences = panel.summary && panel.summary.verdict !== "passed"
+    ? (panel.summary.examples.length ? panel.summary.examples : panel.summary.reasons).slice(0, 4)
+    : [];
   return (
     <Notice tone={v.tone === "ok" ? "generated" : v.tone === "warn" ? "brand" : "danger"} className="mb-3" aria-live="polite">
       <p className="font-semibold">{v.title}</p>
       <p className="mt-1">{v.detail}</p>
+      {differences.length ? (
+        <div className="mt-2 text-[12px]">
+          <p className="font-medium">What differs:</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            {differences.map((d) => <li key={d} className="break-words">{d}</li>)}
+          </ul>
+        </div>
+      ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         <Button size="sm" variant={v.normalDownload ? "outline" : "default"} onClick={() => triggerFileDownload(panel.blob, panel.filename)}>
           {v.downloadLabel}

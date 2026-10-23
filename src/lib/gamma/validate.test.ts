@@ -178,3 +178,17 @@ describe("finding 9 — learning-objectives index comes from the shared constant
   });
 });
 
+
+describe("letter-case restyling by the theme", () => {
+  const snap = [{ index: 0, title: "Separation of Substances", lines: ["Separation of Substances", "Science · Grade 6", "CO2 is carbon dioxide"] }];
+  it("accepts a whole line Gamma retyped in capitals (typography, not content)", async () => {
+    const r = compareToSnapshot(snap, await extractPptx(await pptxFrom([["Separation of Substances", "SCIENCE · GRADE 6", "CO2 is carbon dioxide"]])));
+    expect(r.verdict).toBe("passed");
+  });
+  it("still fails any other case change, such as in a formula or a single word", async () => {
+    const formula = compareToSnapshot(snap, await extractPptx(await pptxFrom([["Separation of Substances", "Science · Grade 6", "Co2 is carbon dioxide"]])));
+    expect(formula.verdict).toBe("failed");
+    const word = compareToSnapshot(snap, await extractPptx(await pptxFrom([["Separation of Substances", "Science · GRADE 6", "CO2 is carbon dioxide"]])));
+    expect(word.verdict).toBe("failed");
+  });
+});

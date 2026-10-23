@@ -218,9 +218,20 @@ export type ValidationReport = {
   requiredVisuals?: RequiredVisualCoverageReport;
 };
 
+/**
+ * Gamma themes sometimes retype a short line in capitals ("Science · Grade 6" → "SCIENCE · GRADE 6") instead of
+ * styling it, which is typography, not a content change. Only a whole line that equals one of the slide's expected
+ * lines in capitals is restored; any other case difference (CO vs Co, a formula, one changed word) still fails.
+ */
+export function restoreAllCapsRestyle(paragraph: string, expectedOnSlide: readonly string[]): string {
+  if (/\p{Ll}/u.test(paragraph) || !/\p{Lu}/u.test(paragraph)) return paragraph;
+  return expectedOnSlide.find((line) => line !== paragraph && line.toUpperCase() === paragraph) ?? paragraph;
+}
+
 export function compareToSnapshot(snapshot: SlideSnapshot[], actual: ExtractedDeck): ValidationReport {
   const expectedLines = snapshot.map((s) => s.lines.map(normalise).filter(Boolean));
-  const actualParas = actual.slides.map((s) => s.paragraphs.map((p) => normalise(p.text)).filter(Boolean));
+  const actualParas = actual.slides.map((s, i) =>
+    s.paragraphs.map((p) => restoreAllCapsRestyle(normalise(p.text), expectedLines[i] ?? [])).filter(Boolean));
   const actualJoined = actualParas.map((p) => p.join(" "));
   const expectedJoined = expectedLines.map((l) => l.join(" "));
 

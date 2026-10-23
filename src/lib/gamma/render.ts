@@ -34,6 +34,8 @@ export type GammaRunMetrics = {
   requiredVisualValidation?: "passed" | "uncertain" | "failed";
   neutralisedBreaks: number;
   overRunBudget?: boolean;
+  /** Why validation did not pass, with any quoted lesson text removed (the log never carries slide text). */
+  validationReasons?: string[];
 };
 
 export type GammaRenderResult = { buffer: Buffer; validation: ValidationReport; metrics: GammaRunMetrics };
@@ -164,6 +166,7 @@ export async function renderPptxWithGamma(
         metrics.imagesPictureCount = validation.pictures;
         metrics.imageMediaFiles = validation.mediaFiles;
         metrics.validation = validation.verdict;
+    metrics.validationReasons = [...validation.reasons, ...validation.uncertainties].map((r) => r.replace(/"[^"]*"/g, "\"…\"")).slice(0, 8);
         metrics.requiredVisualValidation = validation.requiredVisuals?.verdict;
         metrics.creditsDeducted = reusable.creditsDeducted ?? undefined;
         metrics.outcome = validation.verdict === "failed" ? "failure" : "success";
@@ -289,6 +292,7 @@ export async function renderPptxWithGamma(
     metrics.imagesPictureCount = validation.pictures;
     metrics.imageMediaFiles = validation.mediaFiles;
     metrics.validation = validation.verdict;
+    metrics.validationReasons = [...validation.reasons, ...validation.uncertainties].map((r) => r.replace(/"[^"]*"/g, "\"…\"")).slice(0, 8);
     metrics.requiredVisualValidation = validation.requiredVisuals?.verdict;
     metrics.outcome = validation.verdict === "failed" ? "failure" : "success";
     if (validation.verdict === "failed") {

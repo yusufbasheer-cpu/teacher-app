@@ -22,11 +22,11 @@ export function summariseReport(
   meta: { generationId?: string; creditsDeducted?: number; resumed?: boolean } = {},
 ): GammaReportSummary {
   const examples = [
-    ...r.missing.slice(0, 2).map((m) => `slide ${m.slide} missing: "${clip(m.text)}"`),
-    ...r.modified.slice(0, 2).map((m) => `slide ${m.slide} changed: "${clip(m.expected, 40)}" → "${clip(m.found, 40)}"`),
-    ...r.unexpected.slice(0, 2).map((m) => `slide ${m.slide} added: "${clip(m.text)}"`),
-    ...r.numbers.missing.slice(0, 2).map((n) => `number missing: ${n}`),
-    ...r.numbers.unexpected.slice(0, 2).map((n) => `number added: ${n}`),
+    ...r.modified.slice(0, 2).map((m) => `Slide ${m.slide}: "${clip(m.expected, 40)}" became "${clip(m.found, 40)}"`),
+    ...r.missing.slice(0, 2).map((m) => `Slide ${m.slide}: missing "${clip(m.text)}"`),
+    ...r.unexpected.slice(0, 2).map((m) => `Slide ${m.slide}: added "${clip(m.text)}"`),
+    ...r.numbers.missing.slice(0, 2).map((n) => `Number missing: ${n}`),
+    ...r.numbers.unexpected.slice(0, 2).map((n) => `Number added: ${n}`),
   ].slice(0, 6);
   return {
     verdict: r.verdict,
