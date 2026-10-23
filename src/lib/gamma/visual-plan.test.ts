@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planGammaVisuals, visualInstructionsFor } from "./visual-plan";
+import { pictureMediumFor, planGammaVisuals, visualInstructionsFor } from "./visual-plan";
 import { makeDeck } from "./test-helpers";
 
 describe("deterministic Gamma visual planning", () => {
@@ -28,5 +28,21 @@ describe("deterministic Gamma visual planning", () => {
     expect(instructions).toContain("comparison");
     expect(instructions).toContain("generic icons");
     expect(instructions).toContain("Do not invent data labels");
+  });
+});
+
+describe("picture choice", () => {
+  const plan = planGammaVisuals(makeDeck(2), { topic: "Reflection of Light", subject: "Science", grade: "Grade 1" });
+  it("maps Gamma image settings to the teacher's choice", () => {
+    expect(pictureMediumFor("aiGenerated", "clean educational illustration")).toBe("illustration");
+    expect(pictureMediumFor("aiGenerated", "photorealistic, natural lighting")).toBe("realistic");
+    expect(pictureMediumFor("pexels")).toBe("photo");
+    expect(pictureMediumFor("noImages")).toBe("none");
+  });
+  it("describes the chosen kind of picture in the brief", () => {
+    expect(visualInstructionsFor(plan, "photo")).toContain("a real photograph showing");
+    expect(visualInstructionsFor(plan, "realistic")).toContain("a photorealistic image of");
+    expect(visualInstructionsFor(plan, "illustration")).toContain("illustration of");
+    expect(visualInstructionsFor(plan, "none")).toMatch(/No slide requires an image/);
   });
 });

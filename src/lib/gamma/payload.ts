@@ -2,7 +2,7 @@ import type { StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
 import { moveTeacherFacingLinesToNotes } from "@/lib/ppt-template-engine";
 import type { PresentationLanguage } from "@/lib/ppt-language";
 import type { GammaConfig } from "./config";
-import { planGammaVisuals, visualInstructionsFor, type GammaVisualBrief } from "./visual-plan";
+import { pictureMediumFor, planGammaVisuals, visualInstructionsFor, type GammaVisualBrief } from "./visual-plan";
 
 /** Gamma splits cards on this exact delimiter when cardSplit is "inputTextBreaks". */
 export const GAMMA_CARD_BREAK = "\n---\n";
@@ -89,7 +89,7 @@ export function buildGammaPayload(params: {
     cardSplit: "inputTextBreaks",
     exportAs: "pptx",
     title: params.title.slice(0, 500),
-    additionalInstructions: `${GAMMA_DESIGN_INSTRUCTIONS} ${visualInstructionsFor(visualBriefs)}`.slice(0, 5000),
+    additionalInstructions: `${GAMMA_DESIGN_INSTRUCTIONS} ${visualInstructionsFor(visualBriefs, pictureMediumFor(config.imageSource, config.imageStyle))}`.slice(0, 5000),
     cardOptions: { dimensions: "16x9" },
     textOptions: {
       language: params.language,

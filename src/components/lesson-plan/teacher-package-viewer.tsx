@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/panel";
-import { Select } from "@/components/ui/field";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { AnimatePresence, motion } from "motion/react";
 import ReactMarkdown from "react-markdown";
@@ -41,6 +40,7 @@ import { getAuthHeaders, getAuthOnlyHeaders } from "@/lib/auth-headers";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
 import { decodeReportHeader, presentVerdict, type GammaReportSummary } from "@/lib/gamma/report";
 import type { CuratedGammaTheme } from "@/lib/gamma/themes";
+import { pictureMediumFor, type PictureMedium } from "@/lib/gamma/visual-plan";
 import type { PresentationLanguage } from "@/lib/ppt-language";
 import { TemplateUploadIssuePanel } from "@/components/lesson-plan/template-upload-issue";
 import {
@@ -107,6 +107,14 @@ type ExportKey =
   | "zip";
 
 type GammaThemeLoadState = "idle" | "loading" | "ready" | "empty" | "error";
+
+/** Picture options shown to teachers, each mapped onto Gamma's image source + style. */
+const PICTURE_CHOICES: { medium: PictureMedium; label: string; hint: string; source: string; style: string }[] = [
+  { medium: "illustration", label: "Illustrations", hint: "Drawn pictures made for this lesson", source: "aiGenerated", style: "clean educational illustration, age-appropriate, uncluttered" },
+  { medium: "realistic", label: "Realistic images", hint: "Photo-like pictures made for this lesson", source: "aiGenerated", style: "photorealistic, natural lighting, real-world, classroom-appropriate" },
+  { medium: "photo", label: "Real photos", hint: "Photographs from a stock library", source: "pexels", style: "" },
+  { medium: "none", label: "No pictures", hint: "Text and the theme's design only", source: "noImages", style: "" },
+];
 
 /** Silent resumes of a long-running design before the teacher sees an error (each resume is free). */
 const GAMMA_MAX_RESUMES = 4;
@@ -1217,9 +1225,15 @@ function GammaDesignControls({
           })}
         </div>
       )}
-      <div className="mt-4 grid gap-3">
-        <label className="text-[11px] font-medium text-muted">Pictures<Select className="mt-1" value={imageSource} onChange={(e) => onImageSourceChange(e.target.value)}><option value="aiGenerated">Illustrations made for this lesson</option><option value="pexels">Photos</option><option value="webFreeToUseCommercially">Images from the web</option><option value="themeAccent">Theme decorations only</option><option value="noImages">No pictures</option></Select></label>
-        {imageSource === "aiGenerated" ? <label className="text-[11px] font-medium text-muted">Illustration style<input value={imageStyle} maxLength={500} onChange={(e) => onImageStyleChange(e.target.value)} className="mt-1 h-10 w-full rounded-md border border-line bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand" /></label> : null}
+      <p className="mt-4 mb-2 text-[11px] font-medium text-muted" id="gamma-picture-label">Pictures on your slides</p>
+      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="gamma-picture-label">
+        {PICTURE_CHOICES.map((choice) => {
+          const selected = pictureMediumFor(imageSource, imageStyle) === choice.medium;
+          return <button key={choice.medium} type="button" role="radio" aria-checked={selected} onClick={() => { onImageSourceChange(choice.source); onImageStyleChange(choice.style); }} className={`min-w-0 rounded-lg border p-2 text-left transition-[border-color,background-color] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${selected ? "border-brand bg-brand-subtle" : "border-line-subtle bg-surface hover:border-line-strong"}`}>
+            <span className="block text-[12px] font-semibold text-ink">{choice.label}</span>
+            <span className="block text-[10px] text-faint">{choice.hint}</span>
+          </button>;
+        })}
       </div>
     </div>
   );

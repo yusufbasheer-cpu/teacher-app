@@ -45,10 +45,26 @@ export function planGammaVisuals(deck: StructuredLessonSlideModel[], lesson?: Ga
   });
 }
 
-export function visualInstructionsFor(briefs: GammaVisualBrief[]): string {
-  const required = briefs.filter((brief) => brief.needsImage);
+/** What kind of picture the teacher asked for; the brief must describe that, not always "an illustration". */
+export type PictureMedium = "illustration" | "realistic" | "photo" | "none";
+
+export function pictureMediumFor(source: string, style?: string): PictureMedium {
+  if (source === "noImages" || source === "themeAccent") return "none";
+  if (source === "pexels" || source.startsWith("web")) return "photo";
+  return /photo|realistic/i.test(style ?? "") ? "realistic" : "illustration";
+}
+
+function pictureFor(brief: GammaVisualBrief, medium: PictureMedium): string {
+  // A stock photo cannot be a diagram, so the photo media describe a scene instead of the diagram type.
+  if (medium === "photo") return `a real photograph showing ${brief.subject}`;
+  if (medium === "realistic") return `a photorealistic image of ${brief.subject}`;
+  return `a ${brief.visualType} of ${brief.subject}`;
+}
+
+export function visualInstructionsFor(briefs: GammaVisualBrief[], medium: PictureMedium = "illustration"): string {
+  const required = medium === "none" ? [] : briefs.filter((brief) => brief.needsImage);
   if (required.length === 0) return "No slide requires an image; keep the text-first layout and do not add decorative imagery.";
-  const lines = required.map((brief) => `Slide ${brief.slideIndex + 1}: a ${brief.visualType} of ${brief.subject}${brief.layout === "full-bleed" ? " as a large hero image" : ", placed beside the text"}.`);
+  const lines = required.map((brief) => `Slide ${brief.slideIndex + 1}: ${pictureFor(brief, medium)}${brief.layout === "full-bleed" ? " as a large hero image" : ", placed beside the text"}.`);
   return [
     "Images: use the following visual brief. It supplements the slide text; it does not rewrite or add facts to it.",
     ...lines,
