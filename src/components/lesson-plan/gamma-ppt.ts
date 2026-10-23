@@ -133,7 +133,9 @@ export function buildPptExportBody(p: PptExportInput): Record<string, unknown> {
     } : {}),
     curriculumFramework: p.curriculumFramework?.trim() ?? "",
     ...(hasAflSelections(p.aflSelections) ? { aflSelections: p.aflSelections } : {}),
-    ...(p.pptSlideImageUrls ? { pptSlideImageUrls: p.pptSlideImageUrls } : {}),
+    // Gamma never receives the platform slide images: it designs its own, and paginating the canonical deck as the
+    // platform does without pictures keeps every Gamma request (prebuild, lookup, download) hashing the same.
+    ...(p.pptSlideImageUrls && !gamma ? { pptSlideImageUrls: p.pptSlideImageUrls } : {}),
   };
 }
 

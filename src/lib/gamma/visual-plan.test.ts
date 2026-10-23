@@ -1,58 +1,51 @@
 import { describe, expect, it } from "vitest";
-import { pictureMediumFor, planGammaVisuals, visualInstructionsFor } from "./visual-plan";
-import { makeDeck } from "./test-helpers";
+import { classifySlide, layoutInstructionsFor, pictureMediumFor, planSlideLayouts, type CanonicalSlide } from "./visual-plan";
 
-describe("deterministic Gamma visual planning", () => {
-  it("selects subject-specific visuals without changing slide content", () => {
-    const deck = makeDeck(5);
-    deck[0] = { ...deck[0], slideTitle: "Heat transfer by conduction", body: "Heat moves through a solid." };
-    deck[1] = { ...deck[1], slideTitle: "Specific heat capacity", body: "Calculate Q = mcΔT using 12.5 J." };
-    deck[2] = { ...deck[2], slideTitle: "Power generation", body: "A turbine drives a generator." };
-    const before = JSON.stringify(deck);
-    const plan = planGammaVisuals(deck);
-    expect(JSON.stringify(deck)).toBe(before);
-    expect(plan.slice(0, 3).map((p) => p.visualType)).toEqual(["concept-diagram", "worked-example", "process-flow"]);
+const slide = (deckIdx: number, lines: string[], part = 1, title = `Slide ${deckIdx + 1}`): CanonicalSlide => ({ deckIdx, part, parts: part, title, lines });
+
+describe("slide types", () => {
+  it("classifies by lesson role and content", () => {
+    expect(classifySlide(slide(0, ["Science · Grade 8"]))).toBe("title");
+    expect(classifySlide(slide(3, ["Explain force"]))).toBe("objectives");
+    expect(classifySlide(slide(10, ["What is pressure?", "Explain why."]))).toBe("questions");
+    expect(classifySlide(slide(6, ["A box weighs 60 N on 0.3 m². Calculate the pressure."]))).toBe("worked-example");
+    expect(classifySlide(slide(7, ["Dentists use mirrors."]))).toBe("real-life");
+    expect(classifySlide(slide(1, ["Observe the pin."]))).toBe("activity");
+    expect(classifySlide(slide(2, ["Chapter: Force"]))).toBe("concept");
+    expect(classifySlide(slide(12, ["Think back"]))).toBe("summary");
   });
+});
 
-  it("handles empty and image-slot-disabled slides safely", () => {
-    const deck = makeDeck(2);
-    deck[0] = { ...deck[0], slideTitle: "", body: "", includeImageSlot: true };
-    deck[1] = { ...deck[1], slideTitle: "Heat transfer", includeImageSlot: false };
-    expect(planGammaVisuals(deck).every((p) => !p.needsImage)).toBe(true);
-    expect(visualInstructionsFor(planGammaVisuals(deck))).toMatch(/text-first/);
+describe("image policy: content first", () => {
+  it("gives continuation, question, worked-example, objective and dense slides no picture", () => {
+    const plans = planSlideLayouts([
+      slide(0, ["cover"]),
+      slide(2, ["Chapter: Force and Pressure"]),
+      slide(5, ["x".repeat(800)]),
+      slide(7, ["Dentists use mirrors."], 2),
+      slide(10, ["What is pressure?"]),
+      slide(6, ["Calculate 60 ÷ 0.3"]),
+      slide(4, ["Outcome"]),
+    ]);
+    expect(plans.map((p) => p.image)).toEqual(["hero", "side", "none", "none", "none", "none", "none"]);
   });
-
-  it("requires relevant visuals and rejects decorative filler in its guidance", () => {
-    const plan = planGammaVisuals([{ ...makeDeck(1)[0], slideTitle: "Urban heat islands", body: "City versus green space." }]);
-    const instructions = visualInstructionsFor(plan);
-    expect(instructions).toContain("comparison");
-    expect(instructions).toContain("generic icons");
-    expect(instructions).toContain("Do not invent data labels");
+  it("keeps short activities to a small inset", () => {
+    expect(planSlideLayouts([slide(1, ["Observe a sharp and a blunt pin."])])[0]!.image).toBe("inset");
   });
 });
 
 describe("picture choice", () => {
-  const plan = planGammaVisuals(makeDeck(2), { topic: "Reflection of Light", subject: "Science", grade: "Grade 1" });
   it("maps Gamma image settings to the teacher's choice", () => {
     expect(pictureMediumFor("aiGenerated", "clean educational illustration")).toBe("illustration");
     expect(pictureMediumFor("aiGenerated", "photorealistic, natural lighting")).toBe("realistic");
     expect(pictureMediumFor("pexels")).toBe("photo");
     expect(pictureMediumFor("noImages")).toBe("none");
   });
-  it("describes the chosen kind of picture in the brief", () => {
-    expect(visualInstructionsFor(plan, "photo")).toContain("a real photograph showing");
-    expect(visualInstructionsFor(plan, "realistic")).toContain("a photorealistic image of");
-    expect(visualInstructionsFor(plan, "illustration")).toContain("illustration of");
-    expect(visualInstructionsFor(plan, "none")).toMatch(/No slide requires an image/);
-  });
-});
-
-describe("content before pictures", () => {
-  it("gives text-heavy slides no picture and keeps pictures small elsewhere", () => {
-    const deck = makeDeck(3).map((s) => ({ ...s, includeImageSlot: true }));
-    deck[1] = { ...deck[1]!, body: "x ".repeat(300) };
-    const plan = planGammaVisuals(deck, { topic: "Light", subject: "Science", grade: "Grade 1" });
-    expect(plan.map((p) => p.needsImage)).toEqual([true, false, true]);
-    expect(visualInstructionsFor(plan)).toContain("small inset");
+  it("describes the chosen medium and says 'no image' where none is planned", () => {
+    const slides = [slide(0, ["cover"]), slide(2, ["Chapter"], 1, "Chapter, Topic and SDG Goal"), slide(10, ["Why?"])];
+    const plans = planSlideLayouts(slides);
+    expect(layoutInstructionsFor(slides, plans, "photo")).toContain('one real photograph of "Chapter, Topic and SDG Goal"');
+    expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("S3 questions: no image.");
+    expect(layoutInstructionsFor(slides, plans, "none")).not.toMatch(/photograph|illustration or/);
   });
 });

@@ -1,57 +1,75 @@
 import type { StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
-import { moveTeacherFacingLinesToNotes } from "@/lib/ppt-template-engine";
+import { chunkDeckForSlides, moveTeacherFacingLinesToNotes, normalizeToLines } from "@/lib/ppt-template-engine";
 import type { PresentationLanguage } from "@/lib/ppt-language";
 import type { GammaConfig } from "./config";
-import { pictureMediumFor, planGammaVisuals, visualInstructionsFor, type GammaVisualBrief } from "./visual-plan";
+import { layoutInstructionsFor, pictureMediumFor, planSlideLayouts, type CanonicalSlide, type SlideLayoutPlan } from "./visual-plan";
 
 /** Gamma splits cards on this exact delimiter when cardSplit is "inputTextBreaks". */
 export const GAMMA_CARD_BREAK = "\n---\n";
 
 export type SlideSnapshot = { index: number; title: string; lines: string[] };
 
-/** What the lesson is about; drives the cover slide and Gamma's audience/tone. */
+/** What the lesson is about; drives the cover slide. */
 export type GammaLessonMeta = { topic: string; subject: string; grade: string; chapter?: string };
 
 /**
- * Our slide text is written like a worksheet (full sentences, every instruction spelled out). Sending it with
- * textMode "preserve" forced Gamma to paste it verbatim, which is why decks came out as plain walls of text.
- * "condense" lets Gamma lay it out as slides, but content quality comes first: it may tighten wording, never drop
- * items, and pictures stay small on content slides. validate.ts checks slide count, titles, objectives and figures.
+ * Gamma is a presentation layer only. The platform deck is the source of truth: the same physical slides (from the
+ * platform renderer's own pagination), the same order and the same text, sent with textMode "preserve" and checked
+ * line by line afterwards (validate.ts). Gamma decides typography, spacing, hierarchy, colour and a few pictures.
  */
 export const GAMMA_DESIGN_INSTRUCTIONS = [
-  "This is a school lesson presentation that a teacher will project in class. The lesson content is the priority; design serves it.",
-  "Each card in the input is exactly one slide. Keep one slide per card, in the same order. Keep every slide title exactly as written.",
-  "Keep ALL of the content: every step, instruction, question, example, success criterion, learning objective, number, unit, formula and key term must appear on its slide. You may only tighten wording (remove filler words, turn sentences into clear bullets or numbered steps); never drop, merge away or summarise items.",
-  "Do not add facts, examples, activities, data or claims that are not in the input.",
-  "Content takes most of every slide: text and lists should fill at least two-thirds of the slide. On content slides an image is a small supporting inset or a narrow side column of at most one-third of the slide width, never a half-slide or full-slide background. Only the cover slide may use a large image.",
-  "Use a clear visual hierarchy, consistent alignment, cards or columns for parallel items, and text large enough to read from the back of a classroom.",
-  "Never leave empty image frames, blank boxes, placeholder shapes or decorative arrows without text.",
+  "This is a school lesson presentation. The input text is the final, approved lesson content; your job is ONLY the visual design.",
+  "Keep every word, number, symbol and line exactly as written and in the same order. Do not add, remove, shorten, merge, reword, summarise or translate text, and do not add captions, labels or headings.",
+  "Each card is exactly one slide: keep the same number of slides in the same order, and never split or merge cards.",
+  "Improve typography, spacing, alignment, colour and visual hierarchy. Keep body text large enough to read from the back of a classroom: when a slide is dense, use a single-column text-first layout with no picture rather than smaller text.",
+  "Never leave empty image frames, placeholder boxes, or decorative icons and arrows that take space from text.",
 ].join(" ");
 
 /** A line of exactly `---` inside a slide would silently create an extra card. */
-function neutraliseBreakLines(text: string): { text: string; changed: number } {
-  let changed = 0;
-  const out = text
-    .split("\n")
-    .map((line) => {
-      if (/^\s*(-{3,}|_{3,}|\*{3,})\s*$/.test(line)) {
-        changed++;
-        return "";
-      }
-      return line;
-    })
-    .join("\n");
-  return { text: out, changed };
+function neutraliseBreakLine(line: string): { text: string; changed: boolean } {
+  return /^\s*(-{3,}|_{3,}|\*{3,})\s*$/.test(line) ? { text: "", changed: true } : { text: line, changed: false };
 }
 
-/** The legacy deck's cover is titled "Subject, Grade"; a Gamma cover leads with the lesson topic instead. */
-function coverSlide(slide: StructuredLessonSlideModel, lesson: GammaLessonMeta): StructuredLessonSlideModel {
-  const topic = lesson.topic.trim();
-  if (!topic) return slide;
-  const subtitle = [lesson.subject.trim(), lesson.grade.trim()].filter(Boolean).join(" · ");
-  const kept = slide.body.split("\n").map((l) => l.trim()).filter((l) => l && l !== lesson.grade.trim() && l !== slide.slideTitle.trim());
-  const body = [subtitle, lesson.chapter?.trim() ?? "", ...kept].filter(Boolean).join("\n");
-  return { ...slide, slideTitle: topic, body };
+/** Short label-like lines ("Higher Achievers task", "Response fields:") become sub-headings; the rest are bullets. */
+function asMarkdownLine(line: string, isLast: boolean): string {
+  const t = line.trim();
+  const label = !isLast && t.length <= 48 && !/[.?!]$/.test(t) && !/^\d/.test(t);
+  return label ? `### ${t}` : `- ${t}`;
+}
+
+/**
+ * The platform deck, slide by slide: cover, then each lesson section split exactly as the platform renderer splits
+ * it (continuation slides repeat the section title), then the closing takeaway. `hasImage` must describe the
+ * platform's own pictures for this request, because a picture narrows the text column and changes the split.
+ */
+export function buildCanonicalSlides(params: {
+  deck: StructuredLessonSlideModel[];
+  lesson?: GammaLessonMeta;
+  hasImage?: (deckIdx: number) => boolean;
+}): CanonicalSlide[] {
+  const deck = params.deck.map(moveTeacherFacingLinesToNotes);
+  const chunks = chunkDeckForSlides(deck, params.hasImage ?? (() => false), "No content provided.");
+  const slides: CanonicalSlide[] = [];
+  deck.forEach((model, deckIdx) => {
+    const title = model.slideTitle.trim();
+    if (deckIdx === 0) {
+      const lesson = params.lesson;
+      const body = model.body.split("\n").map((l) => l.trim()).filter(Boolean);
+      // The platform cover shows "Subject · Grade", the topic as the headline, and the date line.
+      const lines = lesson?.topic.trim()
+        ? [`${lesson.subject.trim()} · ${lesson.grade.trim()}`, ...(lesson.chapter?.trim() ? [lesson.chapter.trim()] : []), ...body.filter((l) => l !== lesson.grade.trim() && l !== title)]
+        : body;
+      slides.push({ deckIdx, part: 1, parts: 1, title: lesson?.topic.trim() || title, lines });
+      return;
+    }
+    const parts = chunks[deckIdx]!;
+    if (parts.length === 0) {
+      slides.push({ deckIdx, part: 1, parts: 1, title, lines: normalizeToLines(model.body) });
+      return;
+    }
+    parts.forEach((lines, i) => slides.push({ deckIdx, part: i + 1, parts: parts.length, title, lines }));
+  });
+  return slides;
 }
 
 export function buildGammaPayload(params: {
@@ -60,45 +78,35 @@ export function buildGammaPayload(params: {
   language: PresentationLanguage;
   config: GammaConfig;
   lesson?: GammaLessonMeta;
-}): { request: Record<string, unknown>; snapshot: SlideSnapshot[]; neutralisedBreaks: number; visualBriefs: GammaVisualBrief[] } {
+  hasImage?: (deckIdx: number) => boolean;
+}): { request: Record<string, unknown>; snapshot: SlideSnapshot[]; neutralisedBreaks: number; slides: CanonicalSlide[]; layout: SlideLayoutPlan[] } {
+  const slides = buildCanonicalSlides(params);
   let neutralisedBreaks = 0;
   const snapshot: SlideSnapshot[] = [];
-  const deck = params.lesson && params.deck.length > 0 ? [coverSlide(params.deck[0]!, params.lesson), ...params.deck.slice(1)] : params.deck;
-  const cards = deck.map((raw, index) => {
-    // Same student-facing filter the legacy renderer applies; teacher-facing lines stay in notes (not sent).
-    const slide = moveTeacherFacingLinesToNotes(raw);
-    const title = neutraliseBreakLines(slide.slideTitle.trim());
-    const body = neutraliseBreakLines(slide.body.replace(/\r\n/g, "\n").trim());
-    const afl = slide.aflCallout?.trim() ? neutraliseBreakLines(slide.aflCallout.trim()) : null;
-    neutralisedBreaks += title.changed + body.changed + (afl?.changed ?? 0);
-    const parts = [`# ${title.text}`, body.text, ...(afl ? [afl.text] : [])].filter((p) => p.trim());
-    const lines = [title.text, ...body.text.split("\n"), ...(afl ? afl.text.split("\n") : [])]
-      .map((l) => l.trim())
-      .filter(Boolean);
-    snapshot.push({ index, title: title.text, lines });
-    return parts.join("\n\n");
+  const cards = slides.map((s, index) => {
+    const title = neutraliseBreakLine(s.title);
+    const lines = s.lines.map(neutraliseBreakLine);
+    neutralisedBreaks += Number(title.changed) + lines.filter((l) => l.changed).length;
+    const kept = lines.map((l) => l.text.trim()).filter(Boolean);
+    snapshot.push({ index, title: title.text, lines: [title.text, ...kept] });
+    const body = index === 0 ? kept.join("\n\n") : kept.map((l, i) => asMarkdownLine(l, i === kept.length - 1)).join("\n");
+    return [`# ${title.text}`, body].filter((p) => p.trim()).join("\n\n");
   });
 
-  const { config, lesson } = params;
-  const visualBriefs = planGammaVisuals(deck, lesson);
-  const audience = lesson ? `${lesson.grade} ${lesson.subject} students and their teacher`.trim() : "school students and their teacher";
+  const { config } = params;
+  const layout = planSlideLayouts(slides);
+  const medium = pictureMediumFor(config.imageSource, config.imageStyle);
   const request: Record<string, unknown> = {
     inputText: cards.join(GAMMA_CARD_BREAK),
-    textMode: "condense",
+    textMode: "preserve",
     format: "presentation",
     // numCards is ignored by Gamma when cardSplit is inputTextBreaks, so it is deliberately not sent.
     cardSplit: "inputTextBreaks",
     exportAs: "pptx",
     title: params.title.slice(0, 500),
-    additionalInstructions: `${GAMMA_DESIGN_INSTRUCTIONS} ${visualInstructionsFor(visualBriefs, pictureMediumFor(config.imageSource, config.imageStyle))}`.slice(0, 5000),
+    additionalInstructions: `${GAMMA_DESIGN_INSTRUCTIONS} ${layoutInstructionsFor(slides, layout, medium, params.lesson)}`.slice(0, 5000),
     cardOptions: { dimensions: "16x9" },
-    textOptions: {
-      language: params.language,
-      // "detailed": keep the lesson's substance; the instructions above only allow tightening wording.
-      amount: "detailed",
-      audience: audience.slice(0, 500),
-      tone: "clear, warm and encouraging; classroom-ready",
-    },
+    textOptions: { language: params.language },
     imageOptions: {
       source: config.imageSource,
       ...(config.imageSource === "aiGenerated" && config.imageModel ? { model: config.imageModel } : {}),
@@ -106,5 +114,5 @@ export function buildGammaPayload(params: {
     },
     ...(config.themeId ? { themeId: config.themeId } : {}),
   };
-  return { request, snapshot, neutralisedBreaks, visualBriefs };
+  return { request, snapshot, neutralisedBreaks, slides, layout };
 }

@@ -190,7 +190,7 @@ const CHIP_RESERVE_H = 0.46;
 
 // ─── Text utilities ───────────────────────────────────────────────────────────
 
-function normalizeToLines(body: string): string[] {
+export function normalizeToLines(body: string): string[] {
   return body
     .replace(/\r\n/g, "\n")
     .replace(/```[\s\S]*?```/g, "\n")
@@ -697,6 +697,45 @@ export function computeDeckLayoutStats(
   return stats;
 }
 
+// ─── Pagination (shared with the Gamma renderer) ──────────────────────────────
+
+/**
+ * Splits each deck slide's body into the physical slides this renderer draws, reserving space for the eyebrow chip
+ * on chunks where one is shown. Index 0 (cover) and hero-close are always one physical slide and get no chunks here.
+ * `hasImage(i)` must match whether slide i renders a picture: an image narrows the text column and changes the split.
+ *
+ * This is the single source of the platform's slide count. The Gamma renderer calls it too, so a Gamma deck has
+ * exactly the slides (and per-slide text) the platform deck has. `deck` must already be through
+ * moveTeacherFacingLinesToNotes, as the renderer does.
+ */
+export function chunkDeckForSlides(
+  deck: StructuredLessonSlideModel[],
+  hasImage: (deckIdx: number) => boolean,
+  noContentText: string,
+): string[][][] {
+  const chunksByDeckIdx: string[][][] = new Array(deck.length);
+  if (deck.length > 0) chunksByDeckIdx[0] = [];
+  for (let i = 1; i < deck.length; i++) {
+    if (SLIDE_KIND_BY_INDEX[i] === "hero-close") { chunksByDeckIdx[i] = []; continue; }
+    const cpl = hasImage(i) ? CPL_IMAGE : CPL_FULL;
+    const kind = SLIDE_KIND_BY_INDEX[i] ?? "standard";
+    const budget = chipKeyFor(kind, i) ? CONTENT_H - CHIP_RESERVE_H : CONTENT_H;
+    chunksByDeckIdx[i] = chunkLinesByHeight(normalizeToLines(deck[i]!.body), cpl, budget, bulletVariantFor(kind), noContentText);
+  }
+  return chunksByDeckIdx;
+}
+
+/** Cover and hero-close count as one slide each; every other deck slide counts its chunks. */
+export function physicalSlideCount(chunksByDeckIdx: string[][][]): number {
+  return chunksByDeckIdx.reduce((n, chunks, i) => n + (i === 0 || chunks.length === 0 ? 1 : chunks.length), 0);
+}
+
+/** The functional role of each deck index in the 13-slide lesson structure (drives layout rules). */
+export function slideKindAt(deckIdx: number): SlideKind {
+  return SLIDE_KIND_BY_INDEX[deckIdx] ?? "standard";
+}
+export type { SlideKind };
+
 // ─── Main build function ──────────────────────────────────────────────────────
 
 export async function buildPptxFromTemplateEngine(params: {
@@ -759,23 +798,8 @@ export async function buildPptxFromTemplateEngine(params: {
   pptx.subject = `${params.subject} — ${params.topic}`;
   pptx.title   = `${ctx.s("deckTitlePrefix")} — ${params.topic}`;
 
-  // Pre-compute chunks (and physical slide count) per deck slide, reserving space for the
-  // eyebrow chip (activity or concept kind) on the first physical chunk where one is shown.
-  const chunksByDeckIdx: string[][][] = new Array(deck.length);
-  let totalPhysical = 1; // always 1 for the hero-open slide
-  for (let i = 1; i < deck.length; i++) {
-    if (SLIDE_KIND_BY_INDEX[i] === "hero-close") { chunksByDeckIdx[i] = []; totalPhysical += 1; continue; }
-    const hasImg = Boolean(images[i]);
-    const cpl = hasImg ? CPL_IMAGE : CPL_FULL;
-    const kind = SLIDE_KIND_BY_INDEX[i] ?? "standard";
-    const budget = chipKeyFor(kind, i) ? CONTENT_H - CHIP_RESERVE_H : CONTENT_H;
-    const lines = normalizeToLines(deck[i]!.body);
-    const chunks = chunkLinesByHeight(
-      lines, cpl, budget, bulletVariantFor(kind), ctx.s("noContentProvided"),
-    );
-    chunksByDeckIdx[i] = chunks;
-    totalPhysical += chunks.length;
-  }
+  const chunksByDeckIdx = chunkDeckForSlides(deck, (i) => Boolean(images[i]), ctx.s("noContentProvided"));
+  const totalPhysical = physicalSlideCount(chunksByDeckIdx);
 
   let slideNum = 1;
 

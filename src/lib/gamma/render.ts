@@ -6,7 +6,7 @@ import { getGammaConfig, GammaError, type GammaConfig } from "./config";
 import { buildGammaPayload, type GammaLessonMeta } from "./payload";
 import { checkAdmission } from "./policy";
 import { getDefaultGammaStore, type GammaRow, type GammaStore } from "./store";
-import { extractPptx, validateGammaDeck, type ValidationReport } from "./validate";
+import { checkLayout, compareToSnapshot, extractPptx, type ValidationReport } from "./validate";
 import { artifactPath, readGammaArtifact, storeGammaArtifact } from "./artifact";
 
 export type GammaRunMetrics = {
@@ -54,8 +54,10 @@ export async function renderPptxWithGamma(
     title: string;
     language: PresentationLanguage;
     userId: string;
-    /** Topic/subject/grade for the cover and audience. Must match what the artifact lookup sends, or reuse never hits. */
+    /** Topic/subject/grade for the cover. Must match what the artifact lookup sends, or reuse never hits. */
     lesson?: GammaLessonMeta;
+    /** Which lesson sections carry a platform picture in this request; it changes the platform pagination. */
+    hasImage?: (deckIdx: number) => boolean;
     config?: GammaConfig;
     store?: GammaStore;
     /** When the HTTP request began; the overall budget is measured from here. */
@@ -70,7 +72,7 @@ export async function renderPptxWithGamma(
   const deadline = t0 + config.overallBudgetMs;
   const metrics: GammaRunMetrics = {
     provider: "gamma",
-    requestedSlides: params.deck.length,
+    requestedSlides: 0, // set from the canonical (paginated) deck below
     imageModel: config.imageModel ?? "gamma-auto",
     imageSource: config.imageSource,
     durationMs: 0,
@@ -80,8 +82,11 @@ export async function renderPptxWithGamma(
     resumed: false,
     neutralisedBreaks: 0,
   };
-  const { request, snapshot, neutralisedBreaks } = buildGammaPayload({ deck: params.deck, title: params.title, language: params.language, config, lesson: params.lesson });
+  const { request, snapshot, neutralisedBreaks, layout } = buildGammaPayload({ deck: params.deck, title: params.title, language: params.language, config, lesson: params.lesson, hasImage: params.hasImage });
+  // Content (strict, line by line) and layout (image dominance) are separate checks; only content decides the verdict.
+  const validateDeck = (deck: Awaited<ReturnType<typeof extractPptx>>): ValidationReport => ({ ...compareToSnapshot(snapshot, deck), layout: checkLayout(layout, deck) });
   metrics.neutralisedBreaks = neutralisedBreaks;
+  metrics.requestedSlides = snapshot.length;
   const requestHash = createHash("sha256").update(JSON.stringify(request)).digest("hex");
   const patch = (row: GammaRow, p: Parameters<GammaStore["update"]>[1]) => store.update(row.id, p, now());
 
@@ -93,7 +98,7 @@ export async function renderPptxWithGamma(
     if (reusable?.artifactPath) {
       const buffer = process.env.VITEST ? Buffer.alloc(0) : await readGammaArtifact(reusable.artifactPath);
       if (!process.env.VITEST) {
-        const validation = validateGammaDeck(request.textMode, snapshot, await extractPptx(buffer));
+        const validation = validateDeck(await extractPptx(buffer));
         metrics.presentationId = reusable.id;
         metrics.generationId = reusable.generationId ?? undefined;
         metrics.resumed = true;
@@ -154,8 +159,8 @@ export async function renderPptxWithGamma(
 
     // ── 2. New paid submission (only when nothing could be resumed) ──
     if (!row) {
-      await checkAdmission(store, config, params.userId, params.deck.length, now());
-      const inserted = await store.insertSubmitting({ userId: params.userId, requestHash, requestedSlides: params.deck.length, sourceSnapshot: snapshot, now: now() });
+      await checkAdmission(store, config, params.userId, snapshot.length, now());
+      const inserted = await store.insertSubmitting({ userId: params.userId, requestHash, requestedSlides: snapshot.length, sourceSnapshot: snapshot, now: now() });
       if (!inserted) throw new GammaError("duplicate_in_flight", "A Gamma generation is already running for this account.");
       row = inserted;
       let created: Awaited<ReturnType<typeof createGeneration>>;
@@ -207,7 +212,7 @@ export async function renderPptxWithGamma(
 
     // ── 4. Fetch + validate. Any failure here leaves the row completed/undelivered, i.e. resumable for free ──
     const buffer = await downloadGammaExport(config, completed.exportUrl, deps, deadline);
-    const validation = validateGammaDeck(request.textMode, snapshot, await extractPptx(buffer));
+    const validation = validateDeck(await extractPptx(buffer));
     // Unit tests intentionally do not bootstrap Supabase Storage; production fails closed if storage is unavailable.
     const artifact = process.env.VITEST ? artifactPath(params.userId, row.generationId as string) : await storeGammaArtifact(params.userId, row.generationId as string, buffer);
     const requestImages = request.imageOptions as { source?: string; style?: string } | undefined;

@@ -209,6 +209,8 @@ export type ValidationReport = {
   reasons: string[];
   /** Validator limitations (drive verdict "uncertain" when there are no reasons). */
   uncertainties: string[];
+  /** Image-dominance review notes; reported separately and never part of the verdict. */
+  layout?: LayoutReport;
 };
 
 export function compareToSnapshot(snapshot: SlideSnapshot[], actual: ExtractedDeck): ValidationReport {
@@ -333,64 +335,26 @@ export function compareToSnapshot(snapshot: SlideSnapshot[], actual: ExtractedDe
   };
 }
 
+export type LayoutFinding = { slide: number; pictures: number; textChars: number };
+export type LayoutReport = {
+  /** Slides planned as text-only that came back with a picture (cover excluded). */
+  picturesOnTextOnlySlides: LayoutFinding[];
+  /** Slides with more than one picture. */
+  crowdedSlides: LayoutFinding[];
+  totalPictures: number;
+};
+
 /**
- * Validation for textMode "condense", where Gamma is ASKED to shorten wording, so verbatim line matching would
- * reject every deck. What still must hold: one slide per lesson section (hard failure otherwise), each slide keeps
- * its title, the learning objectives keep their meaning, and no figures appear that the lesson never had.
- * Slide-count changes and invented figures fail; everything else is "uncertain" (review), never silently passed.
+ * Image dominance, checked SEPARATELY from content: a beautiful deck with missing text still fails compareToSnapshot,
+ * and a faithful deck with too many pictures is reported here without being blocked. Theme decorations exported as
+ * pictures can count too, so these are review notes, not a verdict.
  */
-export function compareCondensed(snapshot: SlideSnapshot[], actual: ExtractedDeck): ValidationReport {
-  const lower = (s: string) => normalise(s).toLowerCase();
-  const actualJoined = actual.slides.map((s) => s.paragraphs.map((p) => lower(p.text)).join(" "));
-  const reasons: string[] = [];
-  const uncertainties: string[] = [];
-  if (snapshot.length !== actual.slides.length) reasons.push(`slide count ${actual.slides.length} ≠ expected ${snapshot.length}`);
-
-  const modified: ModifiedText[] = [];
-  let matched = 0;
-  snapshot.forEach((s, i) => {
-    const hay = actualJoined[i] ?? "";
-    if (s.title && hay.includes(lower(s.title))) matched++;
-    else if (s.title) modified.push({ slide: i + 1, expected: s.title, found: actual.slides[i]?.paragraphs[0]?.text ?? "" });
-  });
-  if (modified.length) uncertainties.push(`slide title reworded on slide(s) ${modified.map((m) => m.slide).join(", ")}`);
-
-  const loLines = snapshot[LEARNING_OBJECTIVES_SLIDE_INDEX]?.lines.slice(1).map(lower).filter(Boolean) ?? [];
-  const loHay = actualJoined[LEARNING_OBJECTIVES_SLIDE_INDEX];
-  const learningObjectivesPreserved = loLines.length && loHay !== undefined ? loLines.every((l) => similarity(l, loHay) >= 0.6) : null;
-  if (learningObjectivesPreserved === false) uncertainties.push("learning objectives were reworded");
-
-  // Small integers are list numbering Gamma adds as layout; larger figures are content.
-  const figures = (text: string) => new Map([...tally(text, NUMBER_RE)].filter(([k]) => !/^\d{1,2}$/.test(k) || Number(k) > 20));
-  const numbers = diffTally(figures(snapshot.flatMap((s) => s.lines).join(" ")), figures(actual.slides.flatMap((s) => s.paragraphs.map((p) => p.text)).join(" ")));
-  // An invented figure is a factual error in a lesson, so it blocks the normal download; a dropped one is only shortening.
-  if (numbers.unexpected.length) reasons.push(`figures not in the lesson appeared: ${numbers.unexpected.slice(0, 5).join(", ")}`);
-  if (numbers.missing.length) uncertainties.push(`figures from the lesson were left out: ${numbers.missing.slice(0, 5).join(", ")}`);
-
-  const verdict: Verdict = reasons.length ? "failed" : uncertainties.length ? "uncertain" : "passed";
+export function checkLayout(plans: { slideIndex: number; image: string }[], actual: ExtractedDeck): LayoutReport {
+  const findings = actual.slides.map((s, i) => ({ slide: i + 1, pictures: s.pictures, textChars: s.paragraphs.reduce((n, p) => n + p.text.length, 0), planned: plans[i]?.image ?? "none" }));
+  const strip = ({ slide, pictures, textChars }: LayoutFinding) => ({ slide, pictures, textChars });
   return {
-    verdict,
-    passed: verdict === "passed",
-    expectedSlides: snapshot.length,
-    actualSlides: actual.slides.length,
-    matched,
-    missing: [],
-    modified,
-    unexpected: [],
-    movedBetweenSlides: [],
-    reorderedOnSlide: [],
-    numbers,
-    operators: { missing: [], unexpected: [] },
-    questions: { total: 0, preserved: 0, missing: [] },
-    learningObjectivesPreserved,
-    pictures: actual.slides.reduce((n, s) => n + s.pictures, 0),
-    mediaFiles: actual.mediaFiles,
-    reasons,
-    uncertainties,
+    picturesOnTextOnlySlides: findings.filter((f) => f.slide > 1 && f.planned === "none" && f.pictures > 0).map(strip),
+    crowdedSlides: findings.filter((f) => f.pictures > 1).map(strip),
+    totalPictures: findings.reduce((n, f) => n + f.pictures, 0),
   };
-}
-
-/** Picks the validator that matches how the text was sent to Gamma. */
-export function validateGammaDeck(textMode: unknown, snapshot: SlideSnapshot[], actual: ExtractedDeck): ValidationReport {
-  return textMode === "condense" ? compareCondensed(snapshot, actual) : compareToSnapshot(snapshot, actual);
 }

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { LEARNING_OBJECTIVES_SLIDE_INDEX } from "@/lib/ppt-structured-lesson";
-import { autoNumberLabel, compareCondensed, compareToSnapshot, extractPptx, validateGammaDeck } from "./validate";
-import { makeDeck, pptxFrom, sourceLines, sourceSnapshot, type ParaSpec, type SlideSpec } from "./test-helpers";
+import { autoNumberLabel, compareToSnapshot, extractPptx } from "./validate";
+import { makeDeck, pptxFrom, type ParaSpec, type SlideSpec } from "./test-helpers";
+import type { StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
+
+// The validator is tested against the raw lesson text (title + body lines exactly as written, numbering included),
+// independent of how the Gamma payload paginates or normalises it.
+const sourceSnapshot = (deck: StructuredLessonSlideModel[] = makeDeck()) =>
+  deck.map((s, index) => ({ index, title: s.slideTitle, lines: [s.slideTitle, ...s.body.split("\n").map((l) => l.trim()).filter(Boolean)] }));
+const sourceLines = (deck: StructuredLessonSlideModel[] = makeDeck()) => sourceSnapshot(deck).map((s) => s.lines);
 
 const check = async (slides: (ParaSpec[] | SlideSpec)[], deck = makeDeck()) =>
   compareToSnapshot(sourceSnapshot(deck), await extractPptx(await pptxFrom(slides)));
@@ -171,27 +178,3 @@ describe("finding 9 — learning-objectives index comes from the shared constant
   });
 });
 
-describe("condensed-mode validation", () => {
-  const deck = () => sourceSnapshot();
-  const shortened = () => deck().map((s) => ({ paras: [s.title, "short version"] }));
-  it("passes a deck that keeps every slide and title even though wording was shortened", async () => {
-    const r = compareCondensed(deck(), await extractPptx(await pptxFrom(deck().map((s) => [s.title, ...s.lines.slice(1)]))));
-    expect(r.verdict).toBe("passed");
-  });
-  it("flags reworded titles for review rather than failing", async () => {
-    const out = shortened();
-    out[3] = { paras: ["Something else", "short version"] };
-    const r = compareCondensed(deck(), await extractPptx(await pptxFrom(out)));
-    expect(r.verdict).toBe("uncertain");
-    expect(r.modified.map((m) => m.slide)).toContain(4);
-  });
-  it("fails when slides are merged or split", async () => {
-    const r = compareCondensed(deck(), await extractPptx(await pptxFrom(shortened().slice(0, 10))));
-    expect(r.verdict).toBe("failed");
-  });
-  it("routes by text mode", async () => {
-    const x = await extractPptx(await pptxFrom(shortened()));
-    expect(validateGammaDeck("condense", deck(), x).verdict).not.toBe("failed");
-    expect(validateGammaDeck("preserve", deck(), x).verdict).toBe("failed");
-  });
-});

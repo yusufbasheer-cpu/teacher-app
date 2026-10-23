@@ -7,6 +7,8 @@ export type GammaReportSummary = {
   examples: string[];
   counts: { expectedSlides: number; actualSlides: number; matched: number; missing: number; modified: number; unexpected: number };
   pictures: number;
+  /** Image-dominance review notes (separate from the content verdict); slide numbers are 1-based. */
+  layout?: { picturesOnTextOnlySlides: number[]; crowdedSlides: number[] };
   generationId?: string;
   creditsDeducted?: number;
   resumed?: boolean;
@@ -32,6 +34,7 @@ export function summariseReport(
     examples,
     counts: { expectedSlides: r.expectedSlides, actualSlides: r.actualSlides, matched: r.matched, missing: r.missing.length, modified: r.modified.length, unexpected: r.unexpected.length },
     pictures: r.pictures,
+    ...(r.layout ? { layout: { picturesOnTextOnlySlides: r.layout.picturesOnTextOnlySlides.map((f) => f.slide), crowdedSlides: r.layout.crowdedSlides.map((f) => f.slide) } } : {}),
     ...meta,
   };
 }
@@ -96,6 +99,6 @@ export function presentVerdict(s: GammaReportSummary | null): VerdictPresentatio
     downloadLabel: "Download anyway",
     detail: s.counts.actualSlides !== s.counts.expectedSlides
       ? `The design has ${s.counts.actualSlides} slides instead of ${s.counts.expectedSlides}. You can download it and check it, or pick another theme for a fresh design.`
-      : "Some numbers on the slides aren't in your lesson. You can download it and check those numbers, or pick another theme for a fresh design.",
+      : "Some of your lesson text is missing or changed on the designed slides. You can download it and check it, or pick another theme for a fresh design.",
   };
 }

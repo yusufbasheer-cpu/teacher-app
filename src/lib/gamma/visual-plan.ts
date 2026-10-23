@@ -1,56 +1,16 @@
-import type { StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
+import { slideKindAt } from "@/lib/ppt-template-engine";
 import type { GammaLessonMeta } from "./payload";
 
-export type GammaVisualBrief = {
-  slideIndex: number;
-  needsImage: boolean;
-  visualType: "concept-diagram" | "worked-example" | "process-flow" | "comparison" | "illustration" | "none";
-  subject: string;
-  layout: "split" | "full-bleed" | "text-first";
-  reason: string;
-};
+/** One physical slide of the canonical (platform-paginated) deck. `part` is 1-based within its lesson section. */
+export type CanonicalSlide = { deckIdx: number; part: number; parts: number; title: string; lines: string[] };
 
-type Rule = { terms: RegExp; visualType: GammaVisualBrief["visualType"]; subject: string; reason: string };
+/** Functional role of a slide; decides its layout and whether it may carry a picture. */
+export type SlideType = "title" | "concept" | "worked-example" | "activity" | "questions" | "real-life" | "objectives" | "summary";
 
-const RULES: Rule[] = [
-  { terms: /heat transfer|conduction|convection|radiation/i, visualType: "concept-diagram", subject: "heat transfer between objects, with directional arrows", reason: "A spatial mechanism is easier to learn as a diagram than prose." },
-  { terms: /specific heat|calculation|calculate|equation|formula|numerical|joule|temperature change/i, visualType: "worked-example", subject: "a clean worked calculation using only the numbers and symbols already on the slide", reason: "The slide contains a quantitative relationship that benefits from visual sequencing." },
-  { terms: /power generation|energy conversion|energy transfer|electricity|turbine|generator/i, visualType: "process-flow", subject: "an energy-conversion flow from the named input to the named output", reason: "The content describes a sequence or transformation." },
-  { terms: /insulation|double glazing|thermos|thermal conductivity/i, visualType: "concept-diagram", subject: "a cross-section showing the insulating layers named on the slide", reason: "A cross-section makes the material structure observable." },
-  { terms: /urban heat island|green space|city|vegetation/i, visualType: "comparison", subject: "a city-versus-green-space comparison using the slide's own labels", reason: "The concept depends on contrasting environments." },
-  { terms: /cycle|stages|step|process|sequence|flow/i, visualType: "process-flow", subject: "a simple left-to-right process flow for the named stages", reason: "The content has ordered stages." },
-];
+/** hero: large (cover only) · side: one picture in a column ≤ 1/3 width · inset: one small picture ≤ 1/4 · none. */
+export type ImagePlan = "hero" | "side" | "inset" | "none";
 
-/** Above this much body text a slide gets no picture. ponytail: a character count, not a layout measurement; tune from real decks. */
-export const DENSE_SLIDE_CHARS = 450;
-
-function textOf(slide: StructuredLessonSlideModel): string {
-  return [slide.slideTitle, slide.body, slide.aflCallout ?? ""].join(" ").trim();
-}
-
-/**
- * Every slide with an image slot gets a brief. Specific subjects keep their diagram rules; anything else falls back
- * to an illustration of the slide's own title within the lesson topic. (Previously only the thermodynamics rules
- * existed, so a lesson on any other topic told Gamma "no images" and came back as plain text slides.)
- */
-export function planGammaVisuals(deck: StructuredLessonSlideModel[], lesson?: GammaLessonMeta): GammaVisualBrief[] {
-  const topic = lesson?.topic.trim();
-  return deck.map((slide, slideIndex) => {
-    const text = textOf(slide);
-    if (!slide.includeImageSlot || text.length === 0) {
-      return { slideIndex, needsImage: false, visualType: "none", subject: "", layout: "text-first", reason: "This slide has no image slot." };
-    }
-    // Content before pictures: a text-heavy slide needs the whole slide for its content.
-    if (slideIndex > 0 && slide.body.length > DENSE_SLIDE_CHARS) {
-      return { slideIndex, needsImage: false, visualType: "none", subject: "", layout: "text-first", reason: "Dense slide: the content needs the space." };
-    }
-    const rule = RULES.find((candidate) => candidate.terms.test(text));
-    if (rule) return { slideIndex, needsImage: true, visualType: rule.visualType, subject: rule.subject, layout: "split", reason: rule.reason };
-    const title = slide.slideTitle.trim();
-    const subject = topic && title !== topic ? `"${title}" in a lesson about ${topic}` : `"${title || topic}"`;
-    return { slideIndex, needsImage: true, visualType: "illustration", subject, layout: slideIndex === 0 ? "full-bleed" : "split", reason: "Illustrates the slide's own subject." };
-  });
-}
+export type SlideLayoutPlan = { slideIndex: number; type: SlideType; image: ImagePlan; reason: string };
 
 /** What kind of picture the teacher asked for; the brief must describe that, not always "an illustration". */
 export type PictureMedium = "illustration" | "realistic" | "photo" | "none";
@@ -61,22 +21,79 @@ export function pictureMediumFor(source: string, style?: string): PictureMedium 
   return /photo|realistic/i.test(style ?? "") ? "realistic" : "illustration";
 }
 
-function pictureFor(brief: GammaVisualBrief, medium: PictureMedium): string {
-  // A stock photo cannot be a diagram, so the photo media describe a scene instead of the diagram type.
-  if (medium === "photo") return `a real photograph showing ${brief.subject}`;
-  if (medium === "realistic") return `a photorealistic image of ${brief.subject}`;
-  return `a ${brief.visualType} of ${brief.subject}`;
+/** Text density limits per picture size. ponytail: character counts, not a layout measurement; tune from real decks. */
+export const SIDE_IMAGE_MAX_CHARS = 700;
+export const INSET_IMAGE_MAX_CHARS = 350;
+
+const WORKED = /(=|÷|×|\bcalculat|\bformula\b|\bsolve\b|\bequation\b)/i;
+const charsOf = (s: CanonicalSlide) => s.lines.reduce((n, l) => n + l.length, 0);
+
+export function classifySlide(s: CanonicalSlide): SlideType {
+  const kind = slideKindAt(s.deckIdx);
+  if (s.deckIdx === 0) return "title";
+  if (kind === "hero-close") return "summary";
+  if (kind === "checklist") return "objectives";
+  const questions = s.lines.filter((l) => l.trim().endsWith("?")).length;
+  if (s.deckIdx === 10 || (s.lines.length > 0 && questions / s.lines.length >= 0.5)) return "questions";
+  const text = s.lines.join(" ");
+  if (WORKED.test(text) && /\d/.test(text)) return "worked-example";
+  if (s.deckIdx === 7) return "real-life";
+  if (kind === "activity") return "activity";
+  return "concept";
 }
 
-export function visualInstructionsFor(briefs: GammaVisualBrief[], medium: PictureMedium = "illustration"): string {
-  const required = medium === "none" ? [] : briefs.filter((brief) => brief.needsImage);
-  if (required.length === 0) return "No slide requires an image; keep the text-first layout and do not add decorative imagery.";
-  const lines = required.map((brief) => `Slide ${brief.slideIndex + 1}: ${pictureFor(brief, medium)}${brief.layout === "full-bleed" ? " as a large hero image" : " as a small inset beside the text (at most one-third of the slide width)"}.`);
+/**
+ * Content first: a picture is allowed only where it can help without taking text space. Continuation slides,
+ * questions, objectives, worked examples and summaries never get one; dense slides lose theirs.
+ */
+export function planSlideLayouts(slides: CanonicalSlide[]): SlideLayoutPlan[] {
+  return slides.map((s, slideIndex) => {
+    const type = classifySlide(s);
+    const chars = charsOf(s);
+    const plan = (image: ImagePlan, reason: string): SlideLayoutPlan => ({ slideIndex, type, image, reason });
+    if (type === "title") return plan("hero", "Cover: a strong opening image.");
+    if (s.part > 1) return plan("none", "Continuation slide: all space goes to the content.");
+    if ((type === "concept" || type === "real-life") && chars <= SIDE_IMAGE_MAX_CHARS) return plan("side", "One relevant picture supports the explanation.");
+    if (type === "activity" && chars <= INSET_IMAGE_MAX_CHARS) return plan("inset", "Short activity: a small supporting picture fits.");
+    return plan("none", type === "concept" || type === "real-life" || type === "activity" ? "Dense slide: the content needs the space." : `${type} slides are text-first.`);
+  });
+}
+
+const LAYOUT_RULES: Record<SlideType, string> = {
+  title: "bold cover",
+  concept: "text-first or balanced split, text keeps at least two-thirds of the slide",
+  "worked-example": "strictly text-first, every equation, number and step on its own line in order",
+  activity: "text-first, numbered steps or side-by-side cards for parallel tasks",
+  questions: "text only, each question clearly separated",
+  "real-life": "balanced, text keeps at least 60% of the slide",
+  objectives: "clean checklist, text only",
+  summary: "calm, simple text layout",
+};
+
+function pictureNoun(medium: PictureMedium): string {
+  if (medium === "photo") return "real photograph";
+  if (medium === "realistic") return "photorealistic image";
+  return "educational illustration or simple diagram";
+}
+
+/** Compact per-slide brief (a legend once, then one short line per slide) so 25 slides still fit Gamma's 5000 chars. */
+export function layoutInstructionsFor(slides: CanonicalSlide[], plans: SlideLayoutPlan[], medium: PictureMedium, lesson?: GammaLessonMeta): string {
+  const noun = pictureNoun(medium);
+  const about = lesson?.topic.trim() ? ` (lesson: ${lesson.topic.trim()})` : "";
+  const legend = (Object.keys(LAYOUT_RULES) as SlideType[]).map((t) => `${t} = ${LAYOUT_RULES[t]}`).join("; ");
+  const lines = plans.map((p) => {
+    const image = medium === "none" || p.image === "none"
+      ? "no image"
+      : p.image === "hero"
+        ? `large ${noun}`
+        : p.image === "side"
+          ? `one ${noun} of "${slides[p.slideIndex]!.title}" in a side column, max 1/3 width`
+          : `one small ${noun} of "${slides[p.slideIndex]!.title}", max 1/4 of the slide`;
+    return `S${p.slideIndex + 1} ${p.type}: ${image}.`;
+  });
   return [
-    "Images: use the following visual brief. It supplements the slide text; it does not rewrite or add facts to it.",
+    `Per-slide layout${about}. Layout types: ${legend}.`,
     ...lines,
-    "Slides not listed may use the theme's accents but need no image.",
-    "Images must be educational, topic-specific and age-appropriate, not generic icons, gradients, backgrounds, or stock decoration.",
-    "Do not invent data labels, numerical values, formulas, captions, or scientific claims. Do not crop, overlap, or shrink text to fit.",
+    `"No image" means no picture, icon or decorative graphic on that slide. Pictures must show the slide's own content, be age-appropriate, prefer diagrams over decoration, never sit behind text, and never contain invented labels, numbers or claims.`,
   ].join(" ");
 }
