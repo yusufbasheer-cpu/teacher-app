@@ -4,9 +4,23 @@ import { makeDeck, testConfig } from "./test-helpers";
 
 describe("request serialisation", () => {
   const config = testConfig();
-  it("builds a preserve / inputTextBreaks request with one card per slide", () => {
+  it("leads the cover with the lesson topic and pitches the text at the class", () => {
+    const deck = makeDeck();
+    deck[0] = { ...deck[0]!, slideTitle: "Science, Grade 1", body: "Grade 1\nThursday, 22 October 2026" };
+    const { request, snapshot } = buildGammaPayload({ deck, title: "t", language: "en", config, lesson: { topic: "Reflection of Light", subject: "Science", grade: "Grade 1", chapter: "Light" } });
+    expect(snapshot[0]!.title).toBe("Reflection of Light");
+    expect(String(request.inputText).split(GAMMA_CARD_BREAK)[0]).toBe("# Reflection of Light\n\nScience · Grade 1\nLight\nThursday, 22 October 2026");
+    expect(request.textOptions).toMatchObject({ amount: "medium", audience: "Grade 1 Science students and their teacher", language: "en" });
+  });
+  it("asks for an image on every image-slot slide, whatever the topic", () => {
+    const deck = makeDeck(3).map((s) => ({ ...s, includeImageSlot: true }));
+    const { visualBriefs, request } = buildGammaPayload({ deck, title: "t", language: "en", config, lesson: { topic: "Reflection of Light", subject: "Science", grade: "Grade 1" } });
+    expect(visualBriefs.every((b) => b.needsImage)).toBe(true);
+    expect(String(request.additionalInstructions)).not.toContain("No slide requires an image");
+  });
+  it("builds a condense / inputTextBreaks request with one card per slide", () => {
     const { request, snapshot } = buildGammaPayload({ deck: makeDeck(), title: "G7 Maths", language: "en", config });
-    expect(request).toMatchObject({ textMode: "preserve", format: "presentation", cardSplit: "inputTextBreaks", exportAs: "pptx", cardOptions: { dimensions: "16x9" } });
+    expect(request).toMatchObject({ textMode: "condense", format: "presentation", cardSplit: "inputTextBreaks", exportAs: "pptx", cardOptions: { dimensions: "16x9" } });
     expect(request).not.toHaveProperty("numCards");
     expect(String(request.inputText).split(GAMMA_CARD_BREAK)).toHaveLength(13);
     expect(snapshot).toHaveLength(13);

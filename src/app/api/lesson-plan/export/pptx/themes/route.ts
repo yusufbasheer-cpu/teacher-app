@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const themes = curateGammaThemes(await listGammaThemes(getGammaConfig()));
     return NextResponse.json({ themes }, { headers: { "cache-control": "private, max-age=300" } });
   } catch (error) {
-    const message = error instanceof GammaError ? error.message : "Gamma themes are temporarily unavailable.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    console.error("[gamma themes]", error instanceof GammaError ? `${error.code}: ${error.message}` : error);
+    return NextResponse.json({ error: "Slide themes couldn't be loaded right now. Your slides will use a clean default look." }, { status: 502 });
   }
 }

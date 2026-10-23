@@ -57,40 +57,45 @@ export function decodeReportHeader(h: string | null): GammaReportSummary | null 
 export type VerdictPresentation = {
   title: string;
   tone: "ok" | "warn" | "bad";
-  /** passed: normal download. Otherwise the user must make an explicit "download anyway" choice. */
+  /** True: the file downloads straight away. False: the teacher must choose "Download anyway". */
   normalDownload: boolean;
   downloadLabel: string;
   detail: string;
 };
 
-/** Pure UI decision logic (unit-tested): what the tester sees BEFORE any download is enabled. */
+/**
+ * Pure UI decision logic (unit-tested). Teacher-facing copy: no validator jargon. A passed or merely "review"
+ * deck downloads automatically; only a structurally wrong deck (or no report at all) needs an explicit choice.
+ */
 export function presentVerdict(s: GammaReportSummary | null): VerdictPresentation {
   if (!s) {
     return {
-      title: "Validation result missing",
+      title: "We couldn't check your slides",
       tone: "bad",
       normalDownload: false,
-      downloadLabel: "Download anyway (unvalidated)",
-      detail: "The server did not return a validation report, so this deck cannot be treated as verified.",
+      downloadLabel: "Download anyway",
+      detail: "Your presentation was made, but we couldn't confirm it matches your lesson. Please look through it before class.",
     };
   }
   if (s.verdict === "passed") {
-    return { title: "Content check passed", tone: "ok", normalDownload: true, downloadLabel: "Download PowerPoint", detail: `${s.counts.matched} text lines matched across ${s.counts.actualSlides} slides.` };
+    return { title: "Your slides are ready", tone: "ok", normalDownload: true, downloadLabel: "Download again", detail: `${s.counts.actualSlides} slides, designed and downloaded.` };
   }
   if (s.verdict === "uncertain") {
     return {
-      title: "Content check inconclusive",
+      title: "Your slides are ready — give them a quick look",
       tone: "warn",
-      normalDownload: false,
-      downloadLabel: "Download anyway (review manually)",
-      detail: `No text changes were found, but the checker cannot verify: ${s.uncertainties.join("; ")}.`,
+      normalDownload: true,
+      downloadLabel: "Download again",
+      detail: "Some wording was shortened to fit the slides. Read through them once before class.",
     };
   }
   return {
-    title: "Content check FAILED: the lesson text was changed",
+    title: "Some slides didn't come out right",
     tone: "bad",
     normalDownload: false,
-    downloadLabel: "Download anyway (content differs)",
-    detail: s.reasons.join("; "),
+    downloadLabel: "Download anyway",
+    detail: s.counts.actualSlides !== s.counts.expectedSlides
+      ? `The design has ${s.counts.actualSlides} slides instead of ${s.counts.expectedSlides}. You can download it and check it, or pick another theme for a fresh design.`
+      : "Some numbers on the slides aren't in your lesson. You can download it and check those numbers, or pick another theme for a fresh design.",
   };
 }

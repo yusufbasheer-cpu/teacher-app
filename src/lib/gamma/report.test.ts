@@ -9,25 +9,23 @@ const reportFor = async (slides: Parameters<typeof pptxFrom>[0]) => compareToSna
 describe("presentVerdict", () => {
   it("passed ⇒ normal download", async () => {
     const v = presentVerdict(summariseReport(await reportFor(sourceLines())));
-    expect(v).toMatchObject({ tone: "ok", normalDownload: true, downloadLabel: "Download PowerPoint" });
+    expect(v).toMatchObject({ tone: "ok", normalDownload: true, title: "Your slides are ready" });
   });
-  it("failed ⇒ explicit 'download anyway', reasons shown, tone bad", async () => {
+  it("failed ⇒ explicit 'download anyway', plain-language explanation, tone bad", async () => {
     const out = sourceLines().map((l, i) => (i === 1 ? [...l, "Invented"] : l));
     const s = summariseReport(await reportFor(out));
     const v = presentVerdict(s);
-    expect(v).toMatchObject({ tone: "bad", normalDownload: false });
-    expect(v.title).toMatch(/FAILED/);
-    expect(v.detail).toMatch(/unexpected/);
+    expect(v).toMatchObject({ tone: "bad", normalDownload: false, downloadLabel: "Download anyway" });
+    expect(v.detail).not.toMatch(/validator|verdict|unexpected/i);
     expect(s.examples.join()).toContain("Invented");
   });
-  it("uncertain is described differently from failed (validator limitation, not corruption)", async () => {
+  it("uncertain still delivers the file but asks for a quick review, without jargon", async () => {
     const s = summariseReport(await reportFor(sourceLines().map((paras, i) => ({ paras, chart: i === 0 }))));
     const v = presentVerdict(s);
     expect(s.verdict).toBe("uncertain");
-    expect(v).toMatchObject({ tone: "warn", normalDownload: false });
-    expect(v.title).toMatch(/inconclusive/i);
-    expect(v.title).not.toMatch(/FAILED/);
-    expect(v.detail).toMatch(/cannot verify/);
+    expect(v).toMatchObject({ tone: "warn", normalDownload: true });
+    expect(v.title).toMatch(/quick look/i);
+    expect(v.detail).not.toMatch(/validator|verify|checker/i);
   });
   it("a missing/unparseable report is never presented as success", () => {
     expect(presentVerdict(null)).toMatchObject({ tone: "bad", normalDownload: false });

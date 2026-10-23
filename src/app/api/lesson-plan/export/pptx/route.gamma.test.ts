@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { gammaUserMessage } from "@/lib/gamma/user-messages";
 
 const authenticateRequest = vi.hoisted(() => vi.fn());
 const renderPptxWithGamma = vi.hoisted(() => vi.fn());
@@ -133,7 +134,10 @@ describe("POST: authorised tester in staging", () => {
     renderPptxWithGamma.mockRejectedValue(new GammaError(code, "safe message"));
     const res = await post({ pptProvider: "gamma" });
     expect(res.status).toBe(status);
-    expect(await res.json()).toEqual({ code: `GAMMA_${code.toUpperCase()}`, error: "safe message" });
+    // The technical message stays in the logs; teachers get plain language, plus a flag the UI uses to resume silently.
+    const friendly = gammaUserMessage(code);
+    expect(await res.json()).toEqual({ code: `GAMMA_${code.toUpperCase()}`, error: friendly.message, resumable: friendly.resumable });
+    expect(friendly.message).not.toMatch(/safe message|gamma|credit|ledger|HTTP/i);
   });
 });
 

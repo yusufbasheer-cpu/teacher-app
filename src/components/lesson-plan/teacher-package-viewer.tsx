@@ -108,6 +108,9 @@ type ExportKey =
 
 type GammaThemeLoadState = "idle" | "loading" | "ready" | "empty" | "error";
 
+/** Silent resumes of a long-running design before the teacher sees an error (each resume is free). */
+const GAMMA_MAX_RESUMES = 4;
+
 // ── PPT export progress (visual only; images are usually pre-built during generation) ──
 const TOTAL_IMAGES = 10;
 
@@ -523,11 +526,20 @@ export function TeacherPackageViewer({
     }
     setBusy(key);
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { ...(await getAuthHeaders()), ...(extraHeaders ?? {}) },
-        body: JSON.stringify(body),
-      });
+      // A long design can outlast one request. The server marks those responses `resumable`: sending the same
+      // request again picks up the same generation by id (no second generation, no extra cost), so we do that
+      // quietly instead of showing the teacher an error and asking them to click again.
+      let res: Response;
+      for (let attempt = 0; ; attempt++) {
+        res = await fetch(url, {
+          method: "POST",
+          headers: { ...(await getAuthHeaders()), ...(extraHeaders ?? {}) },
+          body: JSON.stringify(body),
+        });
+        if (res.ok || key !== "ppt" || !useGamma || attempt >= GAMMA_MAX_RESUMES) break;
+        const peek = (await res.clone().json().catch(() => null)) as { resumable?: boolean } | null;
+        if (peek?.resumable !== true) break;
+      }
 
       const contentType = res.headers.get("content-type") ?? "";
 
@@ -558,23 +570,23 @@ export function TeacherPackageViewer({
 
       if (!looksLikeBinary && contentType.includes("application/json")) {
         const raw = await res.text();
+        let j: { error?: string } = {};
         try {
-          const j = JSON.parse(raw) as { error?: string };
-          throw new Error(j.error ?? "Server returned JSON instead of a file.");
-        } catch (e) {
-          if (e instanceof Error && e.message.includes("Server returned")) throw e;
-          throw new Error("Unexpected response from download server.");
-        }
+          j = JSON.parse(raw) as { error?: string };
+        } catch { /* not JSON after all; use the generic message */ }
+        throw new Error(j.error ?? "We couldn't prepare your file. Please try again.");
       }
 
       const blob = await res.blob();
       if (blob.size === 0) {
-        throw new Error("Downloaded file was empty.");
+        throw new Error("Your file came back empty. Please try again.");
       }
       if (key === "ppt" && res.headers.get("x-layah-ppt-provider") === "gamma") {
-        // Hold the file: the tester sees the validation result first and then chooses to download.
+        // Download straight away when the deck checks out; only a structurally wrong deck waits for an explicit choice.
         const summary = decodeReportHeader(res.headers.get("x-layah-gamma-report"));
-        setReadyGammaFile(summary?.verdict === "passed" ? { blob, filename, summary } : null);
+        const view = presentVerdict(summary);
+        if (view.normalDownload) triggerFileDownload(blob, filename);
+        setReadyGammaFile(view.normalDownload ? { blob, filename, summary } : null);
         setGammaPanel({ kind: "result", blob, filename, summary });
         return;
       }
@@ -598,7 +610,7 @@ export function TeacherPackageViewer({
     if (useGamma && mode === "layah" && gammaArtifactAvailable && gammaArtifactHash) {
       return runExport("ppt", `${baseName}-ppt.pptx`, "/api/lesson-plan/export/pptx/artifact", { requestHash: gammaArtifactHash, themeId: gammaThemeId || null, imageSource: gammaImageSource, imageStyle: gammaImageSource === "aiGenerated" ? gammaImageStyle : null }, undefined, true);
     }
-    if (useGamma && mode === "layah" && readyGammaFile?.summary?.verdict === "passed") {
+    if (useGamma && mode === "layah" && readyGammaFile) {
       triggerFileDownload(readyGammaFile.blob, readyGammaFile.filename);
       return;
     }
@@ -842,7 +854,10 @@ export function TeacherPackageViewer({
       </div>
 
       {gammaAvailable ? <ol className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-line-subtle bg-surface p-2 sm:grid-cols-4" aria-label="Lesson creation progress">
-        {["Lesson details", "DeepSeek content", "Design", "Download"].map((label, index) => <li key={label} className={`rounded-md px-3 py-2 text-[11px] font-medium ${index < 2 ? "text-brand-text" : index === 2 ? "bg-brand-subtle text-ink" : "text-faint"}`}><span className="mr-1.5 font-mono text-[10px]">{index + 1}</span>{label}</li>)}
+        {["Lesson details", "Lesson content", "Design", "Download"].map((label, index) => {
+          const current = gammaPanel?.kind === "result" ? 3 : 2;
+          return <li key={label} aria-current={index === current ? "step" : undefined} className={`rounded-md px-3 py-2 text-[11px] font-medium ${index < current ? "text-brand-text" : index === current ? "bg-brand-subtle text-ink" : "text-faint"}`}><span className="mr-1.5 font-mono text-[10px]">{index < current ? "✓" : index + 1}</span>{label}</li>;
+        })}
       </ol> : null}
 
       {exportError ? (
@@ -851,7 +866,7 @@ export function TeacherPackageViewer({
         </Notice>
       ) : null}
       {gammaPanel ? (
-        <GammaPanel panel={gammaPanel} onDismiss={() => setGammaPanel(null)} />
+        <GammaPanel panel={gammaPanel} onDismiss={() => setGammaPanel(null)} onRetry={busy === null ? () => void onDownloadPpt("layah") : undefined} />
       ) : null}
       {templateWarning ? (
         <Notice tone="danger" className="mb-3">
@@ -935,7 +950,7 @@ export function TeacherPackageViewer({
             {gammaAvailable && templateMode === "layah" ? (
               <label className="mb-3 flex items-center gap-2 text-sm text-muted">
                 <input type="checkbox" checked={useGamma} onChange={(e) => setUseGamma(e.target.checked)} />
-                Tester only: render with Gamma (experimental, uses paid credits; takes 1–3 minutes)
+                Design my slides with Gamma (beta)
               </label>
             ) : null}
             {templateMode === "uploaded" ? <p className="mb-3 text-sm text-faint">Your lesson will use the uploaded slide design. If its editable areas cannot hold the lesson, we&apos;ll ask you to choose a Layah template.</p> : null}
@@ -1182,81 +1197,81 @@ function GammaDesignControls({
   onImageStyleChange: (value: string) => void;
   onUseLegacy: () => void;
 }) {
-  const swatch = { calm: "from-brand-subtle via-surface to-sunken", modern: "from-sunken via-brand-subtle to-surface", vivid: "from-brand-subtle via-generated-soft to-surface" } as const;
   return (
     <div>
       <div className="mb-4 flex items-start justify-between gap-3">
-        <div><p className="font-mono text-[10px] uppercase tracking-wider text-brand-text">Design with Gamma</p><h2 className="mt-1 text-[15px] font-semibold text-ink">Choose the look of your 13-slide lesson</h2><p className="mt-1 text-[12px] text-faint">Gamma applies the selected workspace theme while Layah holds the lesson text for validation.</p></div>
-        <Button type="button" variant="ghost" size="xs" onClick={onUseLegacy}>Use legacy renderer</Button>
+        <div><p className="font-mono text-[10px] uppercase tracking-wider text-brand-text">Slide design</p><h2 className="mt-1 text-[15px] font-semibold text-ink">Choose a look for your slides</h2><p className="mt-1 text-[12px] text-faint">Your lesson stays the same; the theme sets the colours, fonts and layout.</p></div>
+        <Button type="button" variant="ghost" size="xs" onClick={onUseLegacy}>Use Layah templates</Button>
       </div>
-      {themeLoadState === "loading" ? <Notice tone="brand" className="mb-3">Loading Gamma workspace themes…</Notice> : themeLoadState === "error" ? <Notice tone="danger" className="mb-3">Gamma workspace themes could not be loaded. Gamma&apos;s default theme can be used, or switch to the legacy renderer.</Notice> : themeLoadState === "empty" ? <Notice tone="brand" className="mb-3">No Gamma workspace themes are available. Gamma&apos;s default theme can be used, or switch to the legacy renderer.</Notice> : (
-        <div className="space-y-2" role="radiogroup" aria-label="Gamma theme">
+      {themeLoadState === "loading" ? <Notice tone="brand" className="mb-3">Loading themes…</Notice> : themeLoadState === "error" || themeLoadState === "empty" ? <Notice tone="brand" className="mb-3">Themes couldn&apos;t be loaded right now. Your slides will use a clean default look.</Notice> : (
+        <div className="grid max-h-80 grid-cols-2 gap-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Slide theme">
           {themes.map((theme) => {
             const selected = theme.id === themeId;
-            return <button key={theme.id} type="button" role="radio" aria-checked={selected} onClick={() => onThemeChange(theme.id)} className={`w-full rounded-lg border p-3 text-left transition-[border-color,background-color,transform] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transform-none ${selected ? "border-brand bg-brand-subtle" : "border-line-subtle bg-surface hover:border-line-strong"}`}>
-              <span className={`mb-2 block h-8 rounded-md bg-gradient-to-r ${swatch[theme.swatch]}`} aria-hidden />
-              <span className="block text-[12px] font-semibold text-ink">{theme.intent}</span>
-              <span className="block text-[11px] text-faint">{theme.name}</span>
-              <span className="mt-2 flex flex-wrap gap-1">{[...theme.colorKeywords, ...theme.toneKeywords].slice(0, 5).map((keyword) => <span key={keyword} className="rounded-full border border-line-subtle bg-sunken px-2 py-0.5 text-[10px] text-muted">{keyword}</span>)}</span>
+            return <button key={theme.id} type="button" role="radio" aria-checked={selected} onClick={() => onThemeChange(theme.id)} className={`min-w-0 rounded-lg border p-2 text-left transition-[border-color,background-color] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${selected ? "border-brand bg-brand-subtle" : "border-line-subtle bg-surface hover:border-line-strong"}`}>
+              <span className="mb-2 flex h-8 overflow-hidden rounded-md border border-line-subtle bg-sunken" aria-hidden>
+                {theme.swatch.map((colour) => <span key={colour} className="flex-1" style={{ background: colour }} />)}
+              </span>
+              <span className="block truncate text-[12px] font-semibold text-ink">{theme.name}</span>
+              <span className="block truncate text-[10px] text-faint">{[...theme.toneKeywords, ...theme.colorKeywords].slice(0, 3).join(" · ") || (theme.type === "custom" ? "Your workspace theme" : " ")}</span>
             </button>;
           })}
         </div>
       )}
       <div className="mt-4 grid gap-3">
-        <label className="text-[11px] font-medium text-muted">Image source<Select className="mt-1" value={imageSource} onChange={(e) => onImageSourceChange(e.target.value)}><option value="aiGenerated">AI-generated illustrations</option><option value="pexels">Pexels photography</option><option value="webFreeToUseCommercially">Commercial-use web images</option><option value="themeAccent">Theme accent images</option><option value="noImages">No images</option></Select></label>
-        {imageSource === "aiGenerated" ? <label className="text-[11px] font-medium text-muted">Image style<input value={imageStyle} maxLength={500} onChange={(e) => onImageStyleChange(e.target.value)} className="mt-1 h-10 w-full rounded-md border border-line bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand" /></label> : null}
+        <label className="text-[11px] font-medium text-muted">Pictures<Select className="mt-1" value={imageSource} onChange={(e) => onImageSourceChange(e.target.value)}><option value="aiGenerated">Illustrations made for this lesson</option><option value="pexels">Photos</option><option value="webFreeToUseCommercially">Images from the web</option><option value="themeAccent">Theme decorations only</option><option value="noImages">No pictures</option></Select></label>
+        {imageSource === "aiGenerated" ? <label className="text-[11px] font-medium text-muted">Illustration style<input value={imageStyle} maxLength={500} onChange={(e) => onImageStyleChange(e.target.value)} className="mt-1 h-10 w-full rounded-md border border-line bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand" /></label> : null}
       </div>
-      <p className="mt-3 text-[11px] text-faint">Language follows the lesson. Gamma does not offer an exact image-count control, so none is shown.</p>
     </div>
+  );
+}
+
+/** Stage messages advance with time but never promise a duration. */
+const GAMMA_STAGES = ["Designing your slides…", "Creating illustrations for your lesson…", "Laying out each slide…", "Adding the finishing touches…"];
+
+function GammaProgress({ startedAt }: { startedAt: number }) {
+  const [stage, setStage] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setStage(Math.min(GAMMA_STAGES.length - 1, Math.floor((Date.now() - startedAt) / 20_000)));
+    }, 2_000);
+    return () => window.clearInterval(id);
+  }, [startedAt]);
+  return (
+    <Notice tone="brand" className="mb-3" aria-live="polite">
+      <div className="flex items-start gap-3"><span className="mt-1.5 size-2 shrink-0 animate-pulse rounded-full bg-brand motion-reduce:animate-none" aria-hidden /><div><p className="font-semibold">{GAMMA_STAGES[stage]}</p><p className="mt-1">Your PowerPoint will download automatically when it&apos;s ready. You can keep reading your lesson meanwhile.</p></div></div>
+    </Notice>
   );
 }
 
 function GammaPanel({
   panel,
   onDismiss,
+  onRetry,
 }: {
   panel: GammaPanelState;
   onDismiss: () => void;
+  onRetry?: () => void;
 }) {
-  if (panel.kind === "progress") {
-    return (
-      <Notice tone="brand" className="mb-3" aria-live="polite">
-        <div className="flex items-start gap-3"><span className="mt-1 size-2 shrink-0 animate-pulse rounded-full bg-brand motion-reduce:animate-none" aria-hidden /><div><p className="font-semibold">Gamma is designing and exporting your presentation</p><p className="mt-1">This usually takes 1–3 minutes. Layah will validate every slide before offering the file. If this request times out, retrying the same design resumes the ledger entry instead of submitting a second paid generation.</p></div></div>
-      </Notice>
-    );
-  }
+  if (panel.kind === "progress") return <GammaProgress startedAt={panel.startedAt} />;
   if (panel.kind === "error") {
     return (
       <Notice tone="danger" className="mb-3">
-        <p className="font-semibold">Gamma experiment: generation did not finish ({panel.code})</p>
+        <p className="font-semibold">We couldn&apos;t finish your slides</p>
         <p className="mt-1">{panel.message}</p>
-        <div className="mt-3"><Button variant="ghost" size="sm" onClick={onDismiss}>Dismiss</Button></div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {onRetry ? <Button size="sm" onClick={onRetry}>Try again</Button> : null}
+          <Button variant="ghost" size="sm" onClick={onDismiss}>Dismiss</Button>
+        </div>
       </Notice>
     );
   }
   const v = presentVerdict(panel.summary);
-  const s = panel.summary;
   return (
-    <Notice tone={v.tone === "ok" ? "generated" : v.tone === "warn" ? "brand" : "danger"} className="mb-3">
-      <div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{v.title}</p>{s?.resumed ? <span className="rounded-full bg-sunken px-2 py-0.5 text-[10px] font-semibold text-muted">Resumed · no new charge</span> : null}</div>
+    <Notice tone={v.tone === "ok" ? "generated" : v.tone === "warn" ? "brand" : "danger"} className="mb-3" aria-live="polite">
+      <p className="font-semibold">{v.title}</p>
       <p className="mt-1">{v.detail}</p>
-      {s?.verdict === "uncertain" ? <p className="mt-2 text-sm">Uncertain means no text change was detected, but PowerPoint formatting may hide details the validator cannot prove. Review the deck manually.</p> : null}
-      {s?.verdict === "failed" ? <p className="mt-2 text-sm">Failed means the validator found missing, changed, or added lesson text. Download is held unless you explicitly choose otherwise.</p> : null}
-      {s && s.examples.length > 0 ? (
-        <ul className="mt-2 list-disc pl-5 text-sm">
-          {s.examples.map((e) => <li key={e}>{e}</li>)}
-        </ul>
-      ) : null}
-      {s ? (
-        <p className="mt-2 text-xs opacity-80">
-          Slides {s.counts.actualSlides}/{s.counts.expectedSlides} · images {s.pictures}
-          {s.creditsDeducted !== undefined ? ` · credits ${s.creditsDeducted}` : ""}
-          {s.generationId ? ` · generation ${s.generationId}` : ""}
-          {s.resumed ? " · resumed (no new charge)" : ""}
-        </p>
-      ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button size="sm" variant={v.normalDownload ? "default" : "outline"} onClick={() => triggerFileDownload(panel.blob, panel.filename)}>
+        <Button size="sm" variant={v.normalDownload ? "outline" : "default"} onClick={() => triggerFileDownload(panel.blob, panel.filename)}>
           {v.downloadLabel}
         </Button>
         <Button variant="ghost" size="sm" onClick={onDismiss}>Dismiss</Button>

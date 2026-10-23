@@ -22,6 +22,7 @@ import { renderPptxWithGamma } from "@/lib/gamma/render";
 import { listGammaThemes, validateGammaPresentationOptions } from "@/lib/gamma/themes";
 import { buildGammaPayload } from "@/lib/gamma/payload";
 import { SupabaseGammaStore } from "@/lib/gamma/store";
+import { gammaUserMessage } from "@/lib/gamma/user-messages";
 import { createHash } from "node:crypto";
 
 export const runtime = "nodejs";
@@ -204,9 +205,10 @@ export async function POST(req: Request) {
           const options = validateGammaPresentationOptions({ themeId: body.gammaThemeId, imageSource: body.gammaImageSource, imageStyle: body.gammaImageStyle }, themes);
           requestConfig = { ...baseConfig, ...options };
         }
+        const lesson = { topic, subject, grade, ...(chapter ? { chapter } : {}) };
         if (body.artifactLookup === true) {
           const config = requestConfig ?? getGammaConfig();
-          const built = buildGammaPayload({ deck, title: `${grade} ${subject}: ${topic}`, language, config });
+          const built = buildGammaPayload({ deck, title: `${grade} ${subject}: ${topic}`, language, config, lesson });
           const requestHash = createHash("sha256").update(JSON.stringify(built.request)).digest("hex");
           const imageOptions = built.request.imageOptions as { source?: string; style?: string } | undefined;
           const row = await new SupabaseGammaStore().findReusableArtifact({ userId: auth.userId, requestHash, themeId: typeof built.request.themeId === "string" ? built.request.themeId : null, imageSource: imageOptions?.source ?? null, imageStyle: imageOptions?.style ?? null });
@@ -217,6 +219,7 @@ export async function POST(req: Request) {
           title: `${grade} ${subject}: ${topic}`,
           language,
           userId: auth.userId,
+          lesson,
           startedAt,
           ...(requestConfig ? { config: requestConfig } : {}),
         });
@@ -333,11 +336,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ code: e.code, error: e.message, slide: e.slide }, { status: e.status });
     }
     if (e instanceof GammaError) {
+      // The technical message (credits, hosts, ledger state) is for logs; teachers get plain language.
       console.error("[pptx export] gamma", e.code, e.message);
-      return NextResponse.json({ code: `GAMMA_${e.code.toUpperCase()}`, error: e.message }, { status: GAMMA_ERROR_STATUS[e.code] });
+      const friendly = gammaUserMessage(e.code);
+      return NextResponse.json({ code: `GAMMA_${e.code.toUpperCase()}`, error: friendly.message, resumable: friendly.resumable }, { status: GAMMA_ERROR_STATUS[e.code] });
     }
     const message = e instanceof Error ? e.message : String(e);
     console.error("[pptx export]", message, e);
-    return NextResponse.json({ error: `Failed to build PowerPoint: ${message}` }, { status: 500 });
+    return NextResponse.json({ error: "We couldn't create your PowerPoint. Please try again." }, { status: 500 });
   }
 }

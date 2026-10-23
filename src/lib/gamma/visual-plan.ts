@@ -1,4 +1,5 @@
 import type { StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
+import type { GammaLessonMeta } from "./payload";
 
 export type GammaVisualBrief = {
   slideIndex: number;
@@ -24,25 +25,35 @@ function textOf(slide: StructuredLessonSlideModel): string {
   return [slide.slideTitle, slide.body, slide.aflCallout ?? ""].join(" ").trim();
 }
 
-export function planGammaVisuals(deck: StructuredLessonSlideModel[]): GammaVisualBrief[] {
+/**
+ * Every slide with an image slot gets a brief. Specific subjects keep their diagram rules; anything else falls back
+ * to an illustration of the slide's own title within the lesson topic. (Previously only the thermodynamics rules
+ * existed, so a lesson on any other topic told Gamma "no images" and came back as plain text slides.)
+ */
+export function planGammaVisuals(deck: StructuredLessonSlideModel[], lesson?: GammaLessonMeta): GammaVisualBrief[] {
+  const topic = lesson?.topic.trim();
   return deck.map((slide, slideIndex) => {
     const text = textOf(slide);
-    const rule = RULES.find((candidate) => candidate.terms.test(text));
-    if (!rule || !slide.includeImageSlot || text.length === 0) {
-      return { slideIndex, needsImage: false, visualType: "none", subject: "", layout: "text-first", reason: "No deterministic educational visual requirement was found." };
+    if (!slide.includeImageSlot || text.length === 0) {
+      return { slideIndex, needsImage: false, visualType: "none", subject: "", layout: "text-first", reason: "This slide has no image slot." };
     }
-    return { slideIndex, needsImage: true, visualType: rule.visualType, subject: rule.subject, layout: "split", reason: rule.reason };
+    const rule = RULES.find((candidate) => candidate.terms.test(text));
+    if (rule) return { slideIndex, needsImage: true, visualType: rule.visualType, subject: rule.subject, layout: "split", reason: rule.reason };
+    const title = slide.slideTitle.trim();
+    const subject = topic && title !== topic ? `"${title}" in a lesson about ${topic}` : `"${title || topic}"`;
+    return { slideIndex, needsImage: true, visualType: "illustration", subject, layout: slideIndex === 0 ? "full-bleed" : "split", reason: "Illustrates the slide's own subject." };
   });
 }
 
 export function visualInstructionsFor(briefs: GammaVisualBrief[]): string {
   const required = briefs.filter((brief) => brief.needsImage);
   if (required.length === 0) return "No slide requires an image; keep the text-first layout and do not add decorative imagery.";
-  const lines = required.map((brief) => `Slide ${brief.slideIndex + 1}: use a ${brief.visualType} about ${brief.subject}. Keep it in a balanced split layout with readable text.`);
+  const lines = required.map((brief) => `Slide ${brief.slideIndex + 1}: a ${brief.visualType} of ${brief.subject}${brief.layout === "full-bleed" ? " as a large hero image" : ", placed beside the text"}.`);
   return [
-    "Use the following deterministic visual brief. It supplements the slide text; it does not rewrite, summarize, label, or add facts to it.",
+    "Images: use the following visual brief. It supplements the slide text; it does not rewrite or add facts to it.",
     ...lines,
-    "Images must be educational and topic-specific, not generic icons, gradients, backgrounds, or stock decoration.",
+    "Slides not listed may use the theme's accents but need no image.",
+    "Images must be educational, topic-specific and age-appropriate, not generic icons, gradients, backgrounds, or stock decoration.",
     "Do not invent data labels, numerical values, formulas, captions, or scientific claims. Do not crop, overlap, or shrink text to fit.",
   ].join(" ");
 }
