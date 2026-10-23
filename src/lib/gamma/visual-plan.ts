@@ -21,6 +21,9 @@ const RULES: Rule[] = [
   { terms: /cycle|stages|step|process|sequence|flow/i, visualType: "process-flow", subject: "a simple left-to-right process flow for the named stages", reason: "The content has ordered stages." },
 ];
 
+/** Above this much body text a slide gets no picture. ponytail: a character count, not a layout measurement; tune from real decks. */
+export const DENSE_SLIDE_CHARS = 450;
+
 function textOf(slide: StructuredLessonSlideModel): string {
   return [slide.slideTitle, slide.body, slide.aflCallout ?? ""].join(" ").trim();
 }
@@ -36,6 +39,10 @@ export function planGammaVisuals(deck: StructuredLessonSlideModel[], lesson?: Ga
     const text = textOf(slide);
     if (!slide.includeImageSlot || text.length === 0) {
       return { slideIndex, needsImage: false, visualType: "none", subject: "", layout: "text-first", reason: "This slide has no image slot." };
+    }
+    // Content before pictures: a text-heavy slide needs the whole slide for its content.
+    if (slideIndex > 0 && slide.body.length > DENSE_SLIDE_CHARS) {
+      return { slideIndex, needsImage: false, visualType: "none", subject: "", layout: "text-first", reason: "Dense slide: the content needs the space." };
     }
     const rule = RULES.find((candidate) => candidate.terms.test(text));
     if (rule) return { slideIndex, needsImage: true, visualType: rule.visualType, subject: rule.subject, layout: "split", reason: rule.reason };
@@ -64,7 +71,7 @@ function pictureFor(brief: GammaVisualBrief, medium: PictureMedium): string {
 export function visualInstructionsFor(briefs: GammaVisualBrief[], medium: PictureMedium = "illustration"): string {
   const required = medium === "none" ? [] : briefs.filter((brief) => brief.needsImage);
   if (required.length === 0) return "No slide requires an image; keep the text-first layout and do not add decorative imagery.";
-  const lines = required.map((brief) => `Slide ${brief.slideIndex + 1}: ${pictureFor(brief, medium)}${brief.layout === "full-bleed" ? " as a large hero image" : ", placed beside the text"}.`);
+  const lines = required.map((brief) => `Slide ${brief.slideIndex + 1}: ${pictureFor(brief, medium)}${brief.layout === "full-bleed" ? " as a large hero image" : " as a small inset beside the text (at most one-third of the slide width)"}.`);
   return [
     "Images: use the following visual brief. It supplements the slide text; it does not rewrite or add facts to it.",
     ...lines,

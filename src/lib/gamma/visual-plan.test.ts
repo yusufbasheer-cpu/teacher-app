@@ -46,3 +46,13 @@ describe("picture choice", () => {
     expect(visualInstructionsFor(plan, "none")).toMatch(/No slide requires an image/);
   });
 });
+
+describe("content before pictures", () => {
+  it("gives text-heavy slides no picture and keeps pictures small elsewhere", () => {
+    const deck = makeDeck(3).map((s) => ({ ...s, includeImageSlot: true }));
+    deck[1] = { ...deck[1]!, body: "x ".repeat(300) };
+    const plan = planGammaVisuals(deck, { topic: "Light", subject: "Science", grade: "Grade 1" });
+    expect(plan.map((p) => p.needsImage)).toEqual([true, false, true]);
+    expect(visualInstructionsFor(plan)).toContain("small inset");
+  });
+});

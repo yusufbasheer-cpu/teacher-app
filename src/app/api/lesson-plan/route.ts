@@ -470,7 +470,10 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
         userId,
       });
       mergedPlan[section] = text;
-      for (const n of notices) parseNotices.push(n);
+      // These are the slide writer's retry diagnostics ("Exit Ticket attempt 1: timing must be in speaker notes").
+      // The retries already fixed them, and a slide that never succeeded says so in its own text; teachers can't act
+      // on the log, so it stays server-side.
+      if (notices.length) console.warn(`[lesson-plan] PPT slide retries: ${notices.join(" | ")}`);
       continue;
     }
 

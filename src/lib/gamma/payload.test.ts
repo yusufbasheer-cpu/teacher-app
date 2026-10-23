@@ -10,7 +10,7 @@ describe("request serialisation", () => {
     const { request, snapshot } = buildGammaPayload({ deck, title: "t", language: "en", config, lesson: { topic: "Reflection of Light", subject: "Science", grade: "Grade 1", chapter: "Light" } });
     expect(snapshot[0]!.title).toBe("Reflection of Light");
     expect(String(request.inputText).split(GAMMA_CARD_BREAK)[0]).toBe("# Reflection of Light\n\nScience · Grade 1\nLight\nThursday, 22 October 2026");
-    expect(request.textOptions).toMatchObject({ amount: "medium", audience: "Grade 1 Science students and their teacher", language: "en" });
+    expect(request.textOptions).toMatchObject({ amount: "detailed", audience: "Grade 1 Science students and their teacher", language: "en" });
   });
   it("asks for an image on every image-slot slide, whatever the topic", () => {
     const deck = makeDeck(3).map((s) => ({ ...s, includeImageSlot: true }));
@@ -39,5 +39,15 @@ describe("request serialisation", () => {
     const withModel = { ...config, imageModel: "m1", imageStyle: "flat" };
     expect(buildGammaPayload({ deck: makeDeck(2), title: "t", language: "en", config: withModel }).request.imageOptions).toEqual({ source: "aiGenerated", model: "m1", style: "flat" });
     expect(buildGammaPayload({ deck: makeDeck(2), title: "t", language: "en", config: { ...withModel, imageSource: "noImages" } }).request.imageOptions).toEqual({ source: "noImages" });
+  });
+});
+
+describe("design brief size", () => {
+  it("fits Gamma's 5000-char limit without being cut, even with long titles on all 13 slides", () => {
+    const deck = makeDeck().map((s, i) => ({ ...s, slideTitle: `Differentiated Activity and Mini Plenary ${i}`, body: "x", includeImageSlot: true }));
+    const { request } = buildGammaPayload({ deck, title: "t", language: "en", config: testConfig(), lesson: { topic: "Reflection of Light and Formation of Images", subject: "Science", grade: "Grade 1" } });
+    const brief = String(request.additionalInstructions);
+    expect(brief.length).toBeLessThan(4900);
+    expect(brief.endsWith("shrink text to fit.")).toBe(true);
   });
 });

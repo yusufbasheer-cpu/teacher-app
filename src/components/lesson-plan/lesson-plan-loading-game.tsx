@@ -6,7 +6,7 @@ import { LoadingScene, type SceneFocus } from "./lesson-plan-loading-scene";
 
 /** Which piece of the workbench scene represents each checklist section. */
 const SCENE_FOCUS: Record<string, SceneFocus> = {
-  lesson: "doc", notes: "doc", ppt: "slides",
+  lesson: "doc", notes: "doc", ppt: "slides", design: "slides",
   worksheet: "sheet", assessment: "sheet", homework: "sheet", afl: "sheet",
   paper: "sheet", blueprint: "doc", downloads: "sheet",
 };
@@ -69,6 +69,8 @@ const SECTIONS: SectionDef[] = [
     label: "Activity Sheet AFL",
     keywords: ["afl activity", "afl", "activity sheet", "printable"],
   },
+  // Not a lesson section: the designed deck, built after the content when the teacher chose a slide design.
+  { key: "design", sectionKey: "Slide Design", label: "Slide Design", keywords: ["designing your slides"] },
 ];
 
 /** Question paper generator checklist (same overlay component). */
@@ -100,12 +102,16 @@ function sectionCatalogForPreset(preset: LoadingGamePreset): SectionDef[] {
 const emptyStatusesFor = (sections: SectionDef[]): Record<string, SectionStatus> =>
   Object.fromEntries(sections.map((s) => [s.key, "waiting"])) as Record<string, SectionStatus>;
 
+/** Most specific keyword wins: "designing your slides" must not match the PPT section just because it says "slide". */
 function detectActiveSection(text: string, sections: SectionDef[]): string | null {
   const lower = text.toLowerCase();
+  let best: { key: string; len: number } | null = null;
   for (const s of sections) {
-    if (s.keywords.some((k) => lower.includes(k))) return s.key;
+    for (const k of s.keywords) {
+      if (lower.includes(k) && (!best || k.length > best.len)) best = { key: s.key, len: k.length };
+    }
   }
-  return null;
+  return best?.key ?? null;
 }
 
 function computeProgress(

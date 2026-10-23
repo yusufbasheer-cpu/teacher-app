@@ -20,7 +20,9 @@ import {
   isPresentationLanguage,
 } from "@/lib/ppt-language";
 import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
-import { TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
+import { safeFilenamePart, TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
+import { GammaDesignControls } from "@/components/lesson-plan/gamma-design-controls";
+import { buildPptExportBody, requestGammaPpt, useGammaDesign, type GammaPptOutcome } from "@/components/lesson-plan/gamma-ppt";
 import type {
   LessonPlanInput,
   LessonPlanResult,
@@ -107,7 +109,7 @@ type ExtractPayload = {
   partialErrors?: { sourceLabel: string; message: string }[];
 };
 
-type ComposerStep = "details" | "outputs";
+type ComposerStep = "details" | "outputs" | "design";
 
 function formatExtractUploadFailure(status: number, data: ExtractPayload, raw: string): string {
   console.error("[lesson-plan upload] extract failed", {
@@ -212,6 +214,9 @@ export function LessonPlanGenerator() {
   const [aflSelected, setAflSelected] = useState<Record<AflPhaseId, string[]>>(() => emptyAflSelected());
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [composerStep, setComposerStep] = useState<ComposerStep>("details");
+  // Slide design is chosen before generating, so the deck can be built while the loader is already showing.
+  const gammaDesign = useGammaDesign();
+  const [pregeneratedPpt, setPregeneratedPpt] = useState<GammaPptOutcome | null>(null);
   const [detailsValidationAttempted, setDetailsValidationAttempted] = useState(false);
 
   /** Fail-closed to Free's entitlements while usage is still loading, so
@@ -532,6 +537,7 @@ export function LessonPlanGenerator() {
     setSectionImages(null);
     setPptSlideImageUrls(null);
     setActivePlanId(null);
+    setPregeneratedPpt(null);
 
     if (!form.topic.trim() || !form.learningObjectives.trim()) {
       setComposerStep("details");
@@ -682,6 +688,28 @@ export function LessonPlanGenerator() {
           }
         };
         void saveLessonPlan();
+        return stripped.planTextOnly;
+      };
+
+      // Build the designed deck inside the same loader, from the same inputs the viewer sends on Download, so the
+      // stored deck is also found again later. A failure never blocks the lesson: the viewer shows a friendly retry.
+      const designSlides = async (plan: LessonPlanResult) => {
+        if (!designBeforeGenerate) return;
+        setGenerationProgress("Designing your slides");
+        const topicTitle = resolveLessonTitle(form.topic, form.chapter, form.subject);
+        const teacher = typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : user?.email?.split("@")[0];
+        const outcome = await requestGammaPpt(
+          buildPptExportBody({
+            lessonPlan: plan, subject: form.subject, grade: form.grade, topic: topicTitle, chapter: form.chapter,
+            language: form.language ?? DEFAULT_PRESENTATION_LANGUAGE, learningObjectives: form.learningObjectives, teacherName: teacher,
+            pptThemeId, curriculumFramework: form.curriculumFramework.trim() || undefined,
+            aflSelections: hasAflForExport ? aflSelectionsPayload : undefined,
+            templateMode: "layah", provider: "gamma",
+            design: { themeId: gammaDesign.themeId, imageSource: gammaDesign.imageSource, imageStyle: gammaDesign.imageStyle },
+          }),
+          `${safeFilenamePart(topicTitle, "lesson")}-ppt.pptx`,
+        );
+        setPregeneratedPpt(outcome);
       };
 
       if (response.ok && pptSelected && contentType.includes("application/x-ndjson")) {
@@ -722,8 +750,8 @@ export function LessonPlanGenerator() {
           console.error("[lesson-plan client] stream ended without complete lesson package");
           throw new Error(USER_FACING_ERROR);
         }
+        await designSlides(await applySuccessPayload(completePayload));
         setGenerationProgress("Finalizing...");
-        await applySuccessPayload(completePayload);
         // Hold the loading screen open so the celebration animation plays
         await new Promise<void>((r) => setTimeout(r, 3000));
       } else {
@@ -760,8 +788,8 @@ export function LessonPlanGenerator() {
           throw new Error(sanitizeUserMessage(data.error, "lesson-plan-generate"));
         }
 
+        await designSlides(await applySuccessPayload(data));
         setGenerationProgress("Finalizing...");
-        await applySuccessPayload(data);
         // Hold the loading screen open so the celebration animation plays
         await new Promise<void>((r) => setTimeout(r, 3000));
       }
@@ -906,6 +934,7 @@ export function LessonPlanGenerator() {
   }
 
   const selectedGenerationCount = Object.values(sectionSelection).filter(Boolean).length;
+  const designBeforeGenerate = sectionSelection["PPT Slide Content"] && gammaDesign.available && gammaDesign.useGamma;
 
   const detailsComplete = Boolean(form.topic.trim() && form.learningObjectives.trim());
   const missingLessonDetails = [
@@ -1529,14 +1558,26 @@ export function LessonPlanGenerator() {
                   >
                     Back
                   </Button>
-                  <Button
-                    type="submit"
-                    size="xl"
-                    block
-                    disabled={!canGenerate}
-                  >
-                    {loading ? "Generating…" : "Generate lesson"}
-                  </Button>
+                  {designBeforeGenerate ? (
+                    <Button
+                      type="button"
+                      size="xl"
+                      block
+                      disabled={!canGenerate}
+                      onClick={() => setComposerStep("design")}
+                    >
+                      Next: slide design
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      size="xl"
+                      block
+                      disabled={!canGenerate}
+                    >
+                      {loading ? "Generating…" : "Generate lesson"}
+                    </Button>
+                  )}
 
                   <p className="mt-2 text-center text-[11px] text-faint">
                     {selectedGenerationCount === 0 ? (
@@ -1571,6 +1612,36 @@ export function LessonPlanGenerator() {
               </Panel>
             </aside>
             ) : null}
+
+            {/* ── Slide design: chosen up front so the deck is built during generation ──── */}
+            {composerStep === "design" ? (
+            <aside className="min-w-0">
+              <Panel className="overflow-hidden">
+                <div className="p-4">
+                  <GammaDesignControls
+                    themes={gammaDesign.themes}
+                    themeLoadState={gammaDesign.themeLoadState}
+                    themeId={gammaDesign.themeId}
+                    imageSource={gammaDesign.imageSource}
+                    imageStyle={gammaDesign.imageStyle}
+                    onThemeChange={gammaDesign.setThemeId}
+                    onImageSourceChange={gammaDesign.setImageSource}
+                    onImageStyleChange={gammaDesign.setImageStyle}
+                    onUseLegacy={() => { gammaDesign.setUseGamma(false); setComposerStep("outputs"); }}
+                  />
+                </div>
+                <div className="border-t border-line-subtle p-3">
+                  <Button type="button" variant="ghost" size="sm" className="mb-2" onClick={() => setComposerStep("outputs")}>
+                    Back
+                  </Button>
+                  <Button type="submit" size="xl" block disabled={!canGenerate}>
+                    {loading ? "Generating…" : "Generate lesson"}
+                  </Button>
+                  <p className="mt-2 text-center text-[11px] text-faint">Your lesson and designed slides are prepared together.</p>
+                </div>
+              </Panel>
+            </aside>
+            ) : null}
           </form>
         </div>
       ) : (
@@ -1595,6 +1666,8 @@ export function LessonPlanGenerator() {
                 : user?.email?.split("@")[0]
             }
             parseNotice={parseNotice}
+            gammaDesign={gammaDesign}
+            pregeneratedPpt={pregeneratedPpt}
             onLessonPlanChange={setLessonPlan}
             onRegenerate={() => {
               // Back to the composer with every input still in place, so
@@ -1614,7 +1687,7 @@ export function LessonPlanGenerator() {
         </div>
       ) : null}
 
-      {loading ? <LessonPlanLoadingGame active statusText={generationProgress} selectedSections={sectionSelection} /> : null}
+      {loading ? <LessonPlanLoadingGame active statusText={generationProgress} selectedSections={{ ...sectionSelection, "Slide Design": designBeforeGenerate }} /> : null}
 
       <GenerationLimitModal
         open={limitModalOpen}

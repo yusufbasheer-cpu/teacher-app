@@ -15,15 +15,16 @@ export type GammaLessonMeta = { topic: string; subject: string; grade: string; c
 /**
  * Our slide text is written like a worksheet (full sentences, every instruction spelled out). Sending it with
  * textMode "preserve" forced Gamma to paste it verbatim, which is why decks came out as plain walls of text.
- * "condense" lets Gamma do what it is good at (slide-sized copy, varied layouts) under these guardrails, and
- * validate.ts checks the guardrails that matter (slide count, titles, objectives) instead of verbatim lines.
+ * "condense" lets Gamma lay it out as slides, but content quality comes first: it may tighten wording, never drop
+ * items, and pictures stay small on content slides. validate.ts checks slide count, titles, objectives and figures.
  */
 export const GAMMA_DESIGN_INSTRUCTIONS = [
-  "This is a school lesson presentation that a teacher will project in class.",
+  "This is a school lesson presentation that a teacher will project in class. The lesson content is the priority; design serves it.",
   "Each card in the input is exactly one slide. Keep one slide per card, in the same order. Keep every slide title exactly as written.",
-  "Turn long instructions into concise, slide-friendly text: short bullets, numbered steps, side-by-side cards, callouts and highlighted key ideas.",
-  "Keep the meaning of every activity, every question, every learning objective, and every number, unit, formula and key term. Do not add facts, examples, activities, data or claims that are not in the input.",
-  "Design it like a polished, modern presentation: vary the layout from slide to slide (image beside text, columns, step sequences, comparison cards, a bold cover), use a strong visual hierarchy, generous spacing and text large enough to read from the back of a classroom.",
+  "Keep ALL of the content: every step, instruction, question, example, success criterion, learning objective, number, unit, formula and key term must appear on its slide. You may only tighten wording (remove filler words, turn sentences into clear bullets or numbered steps); never drop, merge away or summarise items.",
+  "Do not add facts, examples, activities, data or claims that are not in the input.",
+  "Content takes most of every slide: text and lists should fill at least two-thirds of the slide. On content slides an image is a small supporting inset or a narrow side column of at most one-third of the slide width, never a half-slide or full-slide background. Only the cover slide may use a large image.",
+  "Use a clear visual hierarchy, consistent alignment, cards or columns for parallel items, and text large enough to read from the back of a classroom.",
   "Never leave empty image frames, blank boxes, placeholder shapes or decorative arrows without text.",
 ].join(" ");
 
@@ -93,7 +94,8 @@ export function buildGammaPayload(params: {
     cardOptions: { dimensions: "16x9" },
     textOptions: {
       language: params.language,
-      amount: "medium",
+      // "detailed": keep the lesson's substance; the instructions above only allow tightening wording.
+      amount: "detailed",
       audience: audience.slice(0, 500),
       tone: "clear, warm and encouraging; classroom-ready",
     },
