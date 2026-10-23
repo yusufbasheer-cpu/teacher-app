@@ -1,8 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
+import { LoadingScene, type SceneFocus } from "./lesson-plan-loading-scene";
+
+/** Which piece of the workbench scene represents each checklist section. */
+const SCENE_FOCUS: Record<string, SceneFocus> = {
+  lesson: "doc", notes: "doc", ppt: "slides",
+  worksheet: "sheet", assessment: "sheet", homework: "sheet", afl: "sheet",
+  paper: "sheet", blueprint: "doc", downloads: "sheet",
+};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type LoadingGamePreset = "lesson-plan" | "question-paper";
@@ -191,21 +198,6 @@ function fireConfetti() {
     myConfetti.reset();
     canvas.remove();
   }, 3500);
-}
-
-// ── Logo ──────────────────────────────────────────────────────────────────────
-function LayahLogo() {
-  return (
-    <div className="flex items-center justify-center">
-      <Image
-        src="/Logo.png"
-        alt="Layah"
-        width={110}
-        height={40}
-        className="h-10 w-auto"
-      />
-    </div>
-  );
 }
 
 // ── Status icon ───────────────────────────────────────────────────────────────
@@ -405,9 +397,9 @@ export function LessonPlanLoadingGame({
 
   const pct = Math.round(smoothProgress);
   const doneCount = activeSections.filter((s) => statuses[s.key] === "done").length;
-  const currentLabel =
-    activeSections.find((s) => statuses[s.key] === "generating")?.label ??
-    (doneCount > 0 ? "Finishing up…" : "Starting generation…");
+  const generating = activeSections.find((s) => statuses[s.key] === "generating");
+  const currentLabel = generating?.label ?? (doneCount > 0 ? "Finishing up…" : "Starting generation…");
+  const sceneFocus: SceneFocus = (generating && SCENE_FOCUS[generating.key]) || (preset === "question-paper" ? "sheet" : "doc");
 
   /* ── Inline keyframes (no Framer Motion on loading screen) ───────────── */
   const keyframes = `
@@ -436,8 +428,10 @@ export function LessonPlanLoadingGame({
           height: "100%",
           zIndex: 9999,
           display: "flex",
-          alignItems: "center",
+          // "safe": on short screens the taller card scrolls instead of being clipped at the top.
+          alignItems: "safe center",
           justifyContent: "center",
+          overflowY: "auto",
           padding: 16,
           backgroundColor: "var(--text)",
         }}
@@ -458,10 +452,7 @@ export function LessonPlanLoadingGame({
               boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
             }}
           >
-            {/* Logo */}
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
-              <LayahLogo />
-            </div>
+            <LoadingScene focus={sceneFocus} showSlides={preset !== "question-paper"} />
 
             {/* Title */}
             <p style={{ textAlign: "center", fontSize: 17, fontWeight: 700, color: "var(--text-inverse)", marginBottom: 4 }}>
@@ -501,7 +492,7 @@ export function LessonPlanLoadingGame({
             </div>
 
             {/* Checklist */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
               {activeSections.map((s) => {
                 const status = statuses[s.key] ?? "waiting";
                 const isActive  = status === "generating";
