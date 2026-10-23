@@ -58,7 +58,8 @@ const SOCIAL_LINKS = [
 ];
 
 export default function ContactPage() {
-  const [form, setForm] = useState({ name: "", email: "", subject: SUBJECTS[0], message: "" });
+  // `website` is a honeypot: hidden from people, filled by naive bots.
+  const [form, setForm] = useState({ name: "", email: "", subject: SUBJECTS[0], message: "", website: "" });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useErrorToast<string>("");
@@ -88,17 +89,17 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen" style={{ background: "var(--canvas)", color: NAVY }}>
       {/* Hero */}
-      <section className="relative overflow-hidden py-20 sm:py-28" style={{ background: NAVY }}>
+      <section className="relative overflow-hidden bg-navy py-20 sm:py-28">
         <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 70% 50%, color-mix(in oklch, var(--brand) 20%, transparent), transparent 60%)` }} />
         <Container>
           <div className="relative mx-auto max-w-3xl text-center">
             <p className="mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider" style={{ background: "color-mix(in oklch, var(--brand) 15%, transparent)", color: TEAL }}>
               Contact Us
             </p>
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-5xl" style={{ fontWeight: 700 }}>
+            <h1 className="text-3xl font-bold tracking-tight text-chalk sm:text-5xl" style={{ fontWeight: 700 }}>
               We would love to hear from you
             </h1>
-            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/60">
+            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-chalk/65">
               Whether you have a question, feedback, or want to explore school plans — reach out and we will get back to you.
             </p>
           </div>
@@ -183,6 +184,8 @@ export default function ContactPage() {
                         <label htmlFor="contact-name" className="mb-1.5 block text-sm font-medium" style={{ color: NAVY }}>Name</label>
                         <input
                           id="contact-name"
+                          maxLength={100}
+                          autoComplete="name"
                           required
                           type="text"
                           value={form.name}
@@ -196,6 +199,8 @@ export default function ContactPage() {
                         <label htmlFor="contact-email" className="mb-1.5 block text-sm font-medium" style={{ color: NAVY }}>Email</label>
                         <input
                           id="contact-email"
+                          maxLength={254}
+                          autoComplete="email"
                           required
                           type="email"
                           value={form.email}
@@ -223,6 +228,8 @@ export default function ContactPage() {
                         <label htmlFor="contact-message" className="mb-1.5 block text-sm font-medium" style={{ color: NAVY }}>Message</label>
                         <textarea
                           id="contact-message"
+                          minLength={10}
+                          maxLength={5000}
                           required
                           rows={5}
                           value={form.message}
@@ -232,9 +239,22 @@ export default function ContactPage() {
                           placeholder="How can we help you?"
                         />
                       </div>
-                      {error ? (
-                        <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{error}</p>
-                      ) : null}
+                      <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+                        <label htmlFor="contact-website">Website</label>
+                        <input
+                          id="contact-website"
+                          type="text"
+                          tabIndex={-1}
+                          autoComplete="off"
+                          value={form.website}
+                          onChange={(e) => setForm({ ...form, website: e.target.value })}
+                        />
+                      </div>
+                      <div role="alert" aria-live="polite">
+                        {error ? (
+                          <p className="rounded-lg bg-destructive/10 px-4 py-2 text-sm text-destructive">{error}</p>
+                        ) : null}
+                      </div>
                       <button
                         type="submit"
                         disabled={sending}

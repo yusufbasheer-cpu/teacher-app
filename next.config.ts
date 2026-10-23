@@ -4,7 +4,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 const CSP = [
   "default-src 'self'",
   // Next.js requires unsafe-inline for hydration scripts
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com https://checkout.razorpay.com https://cdn.razorpay.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://us-assets.i.posthog.com https://checkout.razorpay.com https://cdn.razorpay.com",
   "style-src 'self' 'unsafe-inline'",
   // Images: self, data URIs, blobs, and any HTTPS source (Pexels, fal.ai CDN, etc.)
   "img-src 'self' data: blob: https:",
@@ -14,7 +14,7 @@ const CSP = [
   // checkout.js into OUR page context (not their iframe), so it needs both a
   // script-src entry above and a connect-src entry here - without them the CSP
   // silently blocked fraud detection on every checkout.
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.deepseek.com https://rest.fal.run https://fal.run https://queue.fal.run https://ipapi.co https://api.country.is https://api.pexels.com https://*.sentry.io https://sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://api.razorpay.com https://lumberjack.razorpay.com https://cdn.razorpay.com",
+  "connect-src 'self' https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.supabase.co wss://*.supabase.co https://api.deepseek.com https://rest.fal.run https://fal.run https://queue.fal.run https://ipapi.co https://api.country.is https://api.pexels.com https://*.sentry.io https://sentry.io https://us.i.posthog.com https://us-assets.i.posthog.com https://api.razorpay.com https://lumberjack.razorpay.com https://cdn.razorpay.com",
   // Workers: blob: required by Sentry replay and other browser workers
   "worker-src blob: 'self'",
   // Razorpay's checkout overlay renders card/3DS/OTP steps in an iframe from these origins
@@ -50,6 +50,11 @@ const nextConfig: NextConfig = {
         destination: "https://us.i.posthog.com/:path*",
       },
     ];
+  },
+  // Permanent (308) redirects for URLs that genuinely moved. The apex->www
+  // redirect is a Vercel domain setting, not code (see docs/seo).
+  async redirects() {
+    return [{ source: "/landing", destination: "/", permanent: true }];
   },
   async headers() {
     return [

@@ -1,32 +1,20 @@
 import type { MetadataRoute } from "next";
 import { posts } from "@/content/blog/posts";
+import { absoluteUrl } from "@/lib/site";
 
-const BASE = "https://layah.in";
+// Public, indexable, canonical pages only. `lastModified` is set only where a
+// real date exists (blog posts); static pages omit it rather than claim
+// "modified now" on every build. `/landing` is a redirect to `/`, and the
+// generators, login and signup need an account, so none are listed.
+const STATIC_PATHS = ["/", "/pricing", "/about", "/blog", "/faq", "/contact", "/privacy", "/terms"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticPages: MetadataRoute.Sitemap = [
-    // Core product pages
-    { url: `${BASE}/`,                        lastModified: new Date(), changeFrequency: "weekly",  priority: 1.0 },
-    // Marketing & discovery
-    { url: `${BASE}/pricing`,                 lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${BASE}/about`,                   lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${BASE}/blog`,                    lastModified: new Date(), changeFrequency: "weekly",  priority: 0.8 },
-    // Note: `/landing` is intentionally omitted — it's a legacy alias that
-    // redirects to `/`, so listing both is duplicate content for search engines.
-    { url: `${BASE}/faq`,                     lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${BASE}/contact`,                 lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    // Legal
-    { url: `${BASE}/privacy`,                 lastModified: new Date(), changeFrequency: "yearly",  priority: 0.4 },
-    { url: `${BASE}/terms`,                   lastModified: new Date(), changeFrequency: "yearly",  priority: 0.4 },
-  ];
+  const staticPages: MetadataRoute.Sitemap = STATIC_PATHS.map((path) => ({ url: absoluteUrl(path) }));
 
-  // Blog posts are generated dynamically from posts.ts — adding a new post
-  // there automatically includes it here with no manual sitemap update needed.
+  // Adding a post to posts.ts adds it here automatically.
   const blogPostPages: MetadataRoute.Sitemap = posts.map((post) => ({
-    url: `${BASE}/blog/${post.slug}`,
+    url: absoluteUrl(`/blog/${post.slug}`),
     lastModified: new Date(post.publishedAt),
-    changeFrequency: "monthly",
-    priority: 0.7,
   }));
 
   return [...staticPages, ...blogPostPages];

@@ -1,30 +1,25 @@
-import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Footer } from "@/components/layout/footer";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import type { ReactNode } from "react";
 
 const NAVY = "var(--text)";
-const TEAL = "var(--brand)";
 
 type LegalPageLayoutProps = {
   title: string;
+  /** Route of this page, used for the breadcrumb trail. */
+  path: string;
   lastUpdated: string;
   children: ReactNode;
 };
 
-export function LegalPageLayout({ title, lastUpdated, children }: LegalPageLayoutProps) {
+export function LegalPageLayout({ title, path, lastUpdated, children }: LegalPageLayoutProps) {
   return (
     <>
       <main className="min-h-screen pb-20" style={{ background: "var(--canvas)" }}>
         <div className="border-b bg-[var(--surface)]" style={{ borderColor: "color-mix(in oklch, var(--brand) 20%, transparent)" }}>
           <Container className="py-8">
-            <Link
-              href="/"
-              className="text-sm font-semibold transition hover:opacity-80"
-              style={{ color: TEAL }}
-            >
-              ← Back to Layah
-            </Link>
+            <Breadcrumbs trail={[{ name: title, href: path }]} />
             <h1
               className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl"
               style={{ color: NAVY }}

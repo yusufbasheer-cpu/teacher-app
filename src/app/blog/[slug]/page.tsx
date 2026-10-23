@@ -5,6 +5,8 @@ import { Container } from "@/components/ui/container";
 import { Footer } from "@/components/layout/footer";
 import { buttonVariants } from "@/components/ui/button";
 import { SectionLabel } from "@/components/marketing/section-label";
+import { OG_IMAGE, absoluteUrl } from "@/lib/site";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { posts, getPostBySlug, formatDate, type ContentBlock } from "@/content/blog/posts";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -33,6 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: post.excerpt,
       url: `https://layah.in/blog/${post.slug}`,
       type: "article",
+      images: [OG_IMAGE],
       publishedTime: post.publishedAt,
       authors: [post.author],
     },
@@ -141,7 +144,7 @@ export default async function BlogPostPage({ params }: Props) {
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
-  const postUrl = `https://layah.in/blog/${post.slug}`;
+  const postUrl = absoluteUrl(`/blog/${post.slug}`);
   const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(postUrl)}`;
   const linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(postUrl)}`;
 
@@ -153,13 +156,13 @@ export default async function BlogPostPage({ params }: Props) {
       {/* Article */}
       <Container className="pb-20">
         <article className="mx-auto max-w-2xl">
-          <div className="flex items-center gap-2 pb-6 pt-8 text-sm text-muted-foreground">
-            <Link href="/blog" className="text-primary transition hover:underline">
-              Blog
-            </Link>
-            <span>/</span>
-            <span className="truncate">{post.title}</span>
-          </div>
+          <Breadcrumbs
+            className="pb-6 pt-8"
+            trail={[
+              { name: "Blog", href: "/blog" },
+              { name: post.title, href: `/blog/${post.slug}` },
+            ]}
+          />
 
           <h1 className="font-display text-3xl font-semibold leading-tight tracking-tight text-navy sm:text-4xl">
             {post.title}

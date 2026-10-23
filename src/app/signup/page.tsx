@@ -6,6 +6,7 @@ import { PageLoader } from "@/components/ui/animate";
 
 export const metadata: Metadata = {
   title: "Sign Up",
+  robots: { index: false, follow: true },
   description:
     "Create a free Layah account and start generating AI lesson plans, PPTs, worksheets, question papers and assessments for your classes in minutes.",
 };

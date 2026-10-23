@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BreadcrumbJsonLd } from "@/components/layout/breadcrumbs";
 
 export const metadata: Metadata = {
   title: "Contact Us",
@@ -7,5 +8,10 @@ export const metadata: Metadata = {
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return children;
+  return (
+    <>
+      <BreadcrumbJsonLd trail={[{ name: "Contact", href: "/contact" }]} />
+      {children}
+    </>
+  );
 }

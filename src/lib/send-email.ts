@@ -18,6 +18,8 @@ type SendEmailOptions = {
   subject: string;
   text: string;
   html?: string;
+  /** Defaults to the SMTP sender. Set to the visitor's address for contact-form mail. */
+  replyTo?: string;
 };
 
 export async function sendEmail(options: SendEmailOptions): Promise<{ ok: boolean; error?: string }> {
@@ -49,7 +51,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ ok: boolea
   try {
     const info = await transporter.sendMail({
       from: `Layah <${config.from}>`,
-      replyTo: config.from,
+      replyTo: options.replyTo ?? config.from,
       to: options.to,
       subject: options.subject,
       text: options.text,

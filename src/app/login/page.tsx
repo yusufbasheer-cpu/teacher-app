@@ -6,6 +6,7 @@ import { PageLoader } from "@/components/ui/animate";
 
 export const metadata: Metadata = {
   title: "Log In",
+  robots: { index: false, follow: true },
   description:
     "Log in to your Layah account to open your saved lesson plans, PPTs, worksheets, question papers and assessments, and keep planning faster with AI.",
 };

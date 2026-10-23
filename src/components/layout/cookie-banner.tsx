@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-const STORAGE_KEY = "layah_cookie_consent";
+import { CONSENT_EVENT, CONSENT_STORAGE_KEY as STORAGE_KEY } from "@/lib/analytics-consent";
 
 export function CookieBanner() {
   const [visible, setVisible] = useState(false);
@@ -16,6 +16,7 @@ export function CookieBanner() {
 
   const accept = () => {
     localStorage.setItem(STORAGE_KEY, "accepted");
+    window.dispatchEvent(new Event(CONSENT_EVENT));
     setVisible(false);
   };
 
@@ -35,17 +36,20 @@ export function CookieBanner() {
       <div
         className="mx-auto flex max-w-4xl flex-col gap-4 rounded-2xl p-5 shadow-2xl sm:flex-row sm:items-center sm:justify-between"
         style={{
-          background: "var(--text)",
-          border: "1px solid color-mix(in oklch, var(--brand) 30%, transparent)",
-          boxShadow: "0 -4px 32px rgba(0,0,0,0.35)",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          boxShadow: "0 -4px 32px rgba(0,0,0,0.25)",
         }}
       >
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-white">
+          <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
             We use cookies
           </p>
-          <p className="mt-1 text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>
-            We use essential cookies to keep you signed in and remember your preferences.{" "}
+          <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            We use essential cookies to keep you signed in and remember your preferences.
+            {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
+              ? " If you accept, we also use Google Analytics to see which public pages are visited."
+              : ""}{" "}
             <Link href="/privacy" className="underline hover:opacity-80" style={{ color: "var(--brand)" }}>
               Privacy Policy
             </Link>
@@ -57,7 +61,7 @@ export function CookieBanner() {
             type="button"
             onClick={decline}
             className="inline-flex min-h-9 items-center rounded-xl border px-4 text-sm font-semibold transition hover:bg-surface/5"
-            style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)" }}
+            style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
           >
             Decline
           </button>
@@ -65,7 +69,7 @@ export function CookieBanner() {
             type="button"
             onClick={accept}
             className="inline-flex min-h-9 items-center rounded-xl px-5 text-sm font-bold transition hover:opacity-90"
-            style={{ background: "var(--brand)", color: "var(--text)" }}
+            style={{ background: "var(--brand)", color: "var(--brand-on)" }}
           >
             Accept All
           </button>

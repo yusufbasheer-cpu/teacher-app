@@ -115,7 +115,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const ownChrome = pathname === "/" || pathname.startsWith("/super-admin");
   if (ownChrome) return <>{children}</>;
 
-  if (!resolved) {
+  // Public pages render the same chrome (Navbar + page) whether or not anyone is
+  // signed in, so there is nothing to wait for. Rendering them immediately puts
+  // the real content in the server-rendered HTML; waiting for the client-side
+  // session check shipped crawlers an empty placeholder on every public page.
+  if (!resolved && isProtectedClientRoute(pathname)) {
     // Hold the frame's shape rather than flashing an unstyled page. No spinner:
     // this resolves from local storage in a few milliseconds, and a spinner
     // that appears and vanishes reads as jank.
