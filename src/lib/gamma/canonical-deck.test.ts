@@ -97,15 +97,14 @@ describe("content: every platform line reaches Gamma, verbatim and in order", ()
   });
 });
 
-describe("pictures: selective, never dominant", () => {
-  it("plans one concept diagram on core teaching, and no cover art or decorative pictures", () => {
+describe("pictures: six required categories, never dominant", () => {
+  it("plans one meaningful visual for every required logical category", () => {
     const { layout, slides } = build();
-    // The Gamma deck had 25 pictures on 13 slides; the plan is a single diagram where it teaches.
-    expect(layout.filter((p) => p.image !== "none").map((p) => [p.slideIndex + 1, slides[p.slideIndex]!.title, p.image])).toEqual([[6, "Main Phase Core Teaching", "diagram"]]);
-    for (const p of layout) {
-      if (slides[p.slideIndex]!.deckIdx === 5) continue;
-      if (slides[p.slideIndex]!.part > 1 || ["title", "questions", "worked-example", "objectives", "summary"].includes(p.type)) expect(p.image, `slide ${p.slideIndex + 1}`).toBe("none");
-    }
+    expect(layout.filter((p) => p.requiredVisualCategory).map((p) => p.requiredVisualCategory)).toEqual([
+      "cover", "starter", "topic", "main-phase", "uae-connection", "takeaway",
+    ]);
+    expect(layout.filter((p) => p.image !== "none")).toHaveLength(6);
+    for (const p of layout) if (slides[p.slideIndex]!.part > 1) expect(p.image, `slide ${p.slideIndex + 1}`).toBe("none");
   });
 
   it("reports image dominance separately from the content verdict", async () => {

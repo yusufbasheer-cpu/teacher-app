@@ -2,6 +2,7 @@ import {
   buildProgrammaticSlide1Body,
   buildTeacherObjectivesSlide4Body,
   parseDeckBodiesFromPptOutline,
+  parseMainPhaseActivitiesFromPptOutline,
   parseTeacherNotesFromPptOutline,
   sanitizeEarlyPptSlideBody,
   sanitizeSlide10ExtendedBody,
@@ -22,12 +23,14 @@ import {
   getPptSourceLessonText,
   getPptSourceSlideOutline,
 } from "@/lib/lesson-plan";
+import type { MainPhaseActivityInstruction } from "@/lib/ppt-main-phase-activity";
+import { attachEducationalMetadata, neutraliseDifferentiationLabels, parseDeckQualityFromOutline, type SlideEducationalMetadata } from "@/lib/ppt-educational-quality";
 
 /** Exactly thirteen slides; single instructional purpose per slide; no overflow slides. */
 export const STRUCTURED_LESSON_DECK_SLIDE_COUNT = 13 as const;
 
 /** Slides that reserve a right-hand image column in the 13-slide Layah deck (0-based indices). */
-export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([0, 1, 2, 5, 6, 7, 8, 9, 10, 11]);
+export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([0, 1, 2, 5, 6, 7, 8, 9, 10, 11, 12]);
 
 /** Legacy note: FLUX images previously only on slides 2, 6, 9 — superseded by full deck pipeline in `ppt-image-resolver.ts`. */
 export const PPT_FLUX_PRIMARY_SLIDE_INDICES = [2, 5, 6, 10, 11] as const;
@@ -41,6 +44,10 @@ export type StructuredLessonSlideModel = {
   speakerNotes: string;
   aflCallout?: string;
   includeImageSlot: boolean;
+  /** Physical instruction/activity cards owned by logical element 6; never count as new logical elements. */
+  mainPhaseActivities?: MainPhaseActivityInstruction[];
+  /** Deck-quality metadata (element id, the one selected SDG, question sources). Never shown on the slide. */
+  educationalMetadata?: SlideEducationalMetadata;
 };
 
 const BULLET_MAX_LINES = 16;
@@ -900,15 +907,15 @@ function pickUaeFrameworkSlide8(
   if (body.replace(/\s+/g, "").length < MIN_SINGLE_LINK_CHARS) {
     body = stripMarkdownSymbolsForStudents(
       isAr
-        ? `ربط إماراتي: موضوع «${topic}» في ${subj}\n\nالهوية الوطنية: يرتبط موضوع «${topic}» بقيم الإمارات وأهدافها نحو الابتكار والمعرفة.\n\nمواءمة المنهج الإماراتي: يدعم تدريس «${topic}» أهداف وزارة التربية والتعليم ومعايير الجودة الوطنية.\n\nمعايير خدة وسبيا: التعلم الفعّال في هذا الموضوع يعكس مؤشرات التقييم والتفتيش المدرسي.\n\nأهداف التنمية المستدامة: فهم «${topic}» يسهم في تحقيق أهداف التنمية المستدامة ضمن رؤية الإمارات 2071.`
-        : `UAE Real-Life Connection: "${topic}" (${subj}, ${gr})\n\nUAE National Identity: This topic connects to UAE values of knowledge, innovation, and sustainable development — central to Vision 2071.\n\nUAE MOE Curriculum Alignment: Teaching "${topic}" directly supports UAE Ministry of Education learning standards and curriculum goals.\n\nKHDA and SPEA Inspection Standards: Effective delivery of "${topic}" demonstrates the high-quality, evidence-based teaching that inspectors look for.\n\nSDG in UAE Context: Understanding "${topic}" contributes to the UAE's commitment to Sustainable Development Goals and its role as a global knowledge hub.`,
+        ? `ربط إماراتي: موضوع «${topic}» في ${subj}\n\nالهوية الوطنية: يرتبط موضوع «${topic}» بقيم الإمارات وأهدافها نحو الابتكار والمعرفة.\n\nمهمة عبر المواد: اكتب جملتين تربط فيهما «${topic}» بمادة أخرى تدرسها، مع مثال من الإمارات.\n\nأهداف التنمية المستدامة: فهم «${topic}» يسهم في تحقيق أهداف التنمية المستدامة ضمن رؤية الإمارات 2071.`
+        : `UAE Real-Life Connection: "${topic}" (${subj}, ${gr})\n\nUAE National Identity: This topic connects to UAE values of knowledge, innovation, and sustainable development — central to Vision 2071.\n\nCross-Curricular Task: Write two sentences linking "${topic}" to another subject you study, using one UAE example.\n\nSDG in UAE Context: Understanding "${topic}" contributes to the UAE's commitment to Sustainable Development Goals and its role as a global knowledge hub.`,
     );
   }
   const notes = buildTeacherSlideNotes(
     suggestedTiming,
     isAr
-      ? "شريحة 8 — إطار الإمارات: ربط محلي، مواءمة، تفتيش، هوية، وتنمية مستدامة."
-      : "Slide 8 — UAE framework: landmarks/values, MOE, KHDA/SPEA, national identity, SDG in UAE context.",
+      ? "شريحة 8 — إطار الإمارات: ربط محلي، مهمة عبر المواد، هوية، وتنمية مستدامة. مواءمة المنهج تبقى في خطة الدرس."
+      : "Slide 8 — UAE framework: landmarks/values, cross-curricular task, national identity, SDG in UAE context. Curriculum-alignment notes stay in the lesson plan, not on the slide.",
     isAr,
   );
   return { body, notes };
@@ -1166,6 +1173,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
   const parsedDeckBodies =
     ppt.length >= 40 ? parseDeckBodiesFromPptOutline(ppt, isAr, uaeFrameworkSelected) : null;
   const parsedTeacherNotes = ppt.length >= 40 ? parseTeacherNotesFromPptOutline(ppt) : [];
+  const parsedMainPhaseActivities = ppt.length >= 40 ? parseMainPhaseActivitiesFromPptOutline(ppt) : [];
   const earlyCtx: EarlySlideSanitizeContext = {
     subject: subj,
     grade: gr,
@@ -1281,14 +1289,20 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     contextAnchor,
     parsedDeckBodies?.[5],
   );
-  slides.push({ slideTitle: T[5]!, body: s6.body, speakerNotes: s6.notes, includeImageSlot: true });
+  slides.push({
+    slideTitle: T[5]!,
+    body: s6.body,
+    speakerNotes: s6.notes,
+    includeImageSlot: true,
+    ...(parsedMainPhaseActivities.length ? { mainPhaseActivities: parsedMainPhaseActivities } : {}),
+  });
 
   const s7 = pickDeck(
     "differentiated",
     ["differentiation", "mini plenary", "support", "extension", "التمايز", "تلخيص"],
     isAr
-      ? `مهام متمايزة: «${topic}»\n\nذوو التحصيل الأعلى — تحدٍّ يمتد إلى ما وراء الهدف.\nذوو التحصيل الأوسط — نشاط قياسي يحقق الهدف.\nذوو التحصيل الأدنى — نشاط مدعوم بالتسقيل والإرشاد.\n\nتلخيص مصغر: سؤال سريع للتحقق من الفهم.`
-      : `Differentiated Tasks: "${topic}"\n\nHigher Achievers — a challenging task extending beyond the objective.\nMiddle Achievers — a standard task matching the objective.\nLower Achievers — a scaffolded task with sentence starters or guided prompts.\n\nMini Plenary: one quick question to check understanding.`,
+      ? `مهام متمايزة: «${topic}»\n\nيجب — نشاط مدعوم بالتسقيل والإرشاد.\nينبغي — نشاط قياسي يحقق الهدف.\nيمكنك — تحدٍّ يمتد إلى ما وراء الهدف.\n\nتلخيص مصغر: سؤال سريع للتحقق من الفهم.`
+      : `Differentiated Tasks: "${topic}"\n\nMust — a scaffolded task with sentence starters or guided prompts.\nShould — a standard task matching the objective.\nCould — a challenging task extending beyond the objective.\n\nMini Plenary: one quick question to check understanding.`,
     "10–12 minutes",
     isAr,
     plan,
@@ -1382,7 +1396,7 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
       isAr ? `اختتم الدرس بخلاصة تعليمية قصيرة وسؤال تأملي.` : `Close with a concise learning takeaway and one reflective next-step question.`,
       isAr,
     ),
-    includeImageSlot: false,
+    includeImageSlot: true,
   });
 
   // Notes generated alongside the isolated student-facing bodies are authoritative. Older
@@ -1399,7 +1413,11 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     console.warn("[ppt-structured-lesson] expected at least 13 slides, got", slides.length);
   }
 
-  return slides;
+  // Lessons saved before the neutral labels still say "Higher Achievers task"; students never see that wording.
+  if (slides[6]) slides[6].body = neutraliseDifferentiationLabels(slides[6].body);
+
+  // Element ids, the one selected SDG and question sources ride along for notes and validation (never displayed).
+  return attachEducationalMetadata(slides, ppt.length >= 40 ? parseDeckQualityFromOutline(ppt) : undefined);
 }
 
 export function mapLessonPptImagesToDeck(

@@ -1,3 +1,4 @@
+import { parseSelectedSdg, validateSelectedSdg, type DeckQualityMetadata, type TeachingEvidence } from "@/lib/ppt-educational-quality";
 import { NextResponse } from "next/server";
 import {
   authenticateRequest,
@@ -95,6 +96,7 @@ import {
   generateSlide12,
   generateSlide13Body,
   type SlideGenParams,
+  type SlideGenResult,
 } from "@/lib/ppt-individual-slide-generator";
 
 export const runtime = "nodejs";
@@ -363,39 +365,56 @@ async function generatePptSlideContentSlideBySlide(params: {
   // Shared completion counter — safe across parallel closures (JS is single-threaded at await points)
   let completedCount = 0;
 
-  const track = (resultPromise: Promise<{ body: string; teacherNotes: string; notices: string[] }>): Promise<{ body: string; teacherNotes: string }> =>
+  const track = (resultPromise: Promise<SlideGenResult>): Promise<SlideGenResult> =>
     resultPromise.then((r) => {
       notices.push(...r.notices);
       onProgress(`Generating Slide ${++completedCount} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
-      return { body: r.body, teacherNotes: r.teacherNotes };
+      return r;
     });
 
-  const trackSync = (result: { body: string; teacherNotes: string; notices: string[] }): { body: string; teacherNotes: string } => {
+  const trackSync = (result: SlideGenResult): SlideGenResult => {
     notices.push(...result.notices);
     onProgress(`Generating Slide ${++completedCount} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
-    return { body: result.body, teacherNotes: result.teacherNotes };
+    return result;
   };
 
-  console.log(`[ppt-deck] Launching ${STRUCTURED_LESSON_DECK_SLIDE_COUNT} isolated parallel slide generators`);
+  console.log(`[ppt-deck] Launching ${STRUCTURED_LESSON_DECK_SLIDE_COUNT} isolated slide generators in two waves`);
 
-  // All 13 slide generators run simultaneously — Promise.allSettled ensures a single
+  // Wave 1: the teaching slides and the topic/SDG slide, in parallel. Promise.allSettled ensures a single
   // slide failure never blocks or cancels any other slide.
-  const [
-    r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13,
-  ] = await Promise.allSettled([
+  const [r1, r2, r3, r4, r5, r6, r10, r12, r13] = await Promise.allSettled([
     Promise.resolve(trackSync(generateSlide1Body(slideParams))),   // programmatic
     track(generateSlide2(slideParams)),                             // starter
     track(generateSlide3(slideParams)),                             // chapter/SDG
     Promise.resolve(trackSync(generateSlide4Body(slideParams))),   // programmatic
     track(generateSlide5(slideParams)),                             // outcomes
     track(generateSlide6(slideParams)),                             // main phase
-    track(generateSlide7(slideParams)),                             // differentiated
-    track(generateSlide8(slideParams)),                             // UAE/real life
-    track(generateSlide9(slideParams)),                             // plenary
     track(generateSlide10(slideParams)),                            // extended task
-    track(generateSlide11(slideParams)),                            // exit ticket
     track(generateSlide12(slideParams)),                            // success criteria
     Promise.resolve(trackSync(generateSlide13Body(slideParams))),  // programmatic
+  ]);
+
+  // Wave 2: the question slides only ask about what wave 1 actually taught, and every slide that names an SDG
+  // uses the single one slide 3 chose. (Previously all 13 ran at once, so questions were written blind and
+  // slides 3 and 8 picked their SDGs independently.)
+  const okBody = (r: PromiseSettledResult<SlideGenResult>) => (r.status === "fulfilled" ? r.value.body : "");
+  const mainPhase = r6.status === "fulfilled" ? r6.value : undefined;
+  const teachingEvidence: TeachingEvidence[] = [
+    { elementId: "starter", slideNumber: 2, title: "Starter Activity", content: okBody(r2) },
+    {
+      elementId: "main-phase",
+      slideNumber: 6,
+      title: "Main Phase Core Teaching",
+      content: [okBody(r6), ...(mainPhase?.mainPhaseActivities ?? []).map((a) => a.activityContent)].filter(Boolean).join("\n\n"),
+    },
+  ].filter((e) => e.content.trim());
+  const selectedSdg = parseSelectedSdg(undefined, okBody(r3));
+  const questionParams: SlideGenParams = { ...slideParams, teachingEvidence, ...(selectedSdg ? { selectedSdg } : {}) };
+  const [r7, r8, r9, r11] = await Promise.allSettled([
+    track(generateSlide7(questionParams)),                          // differentiated + mini plenary
+    track(generateSlide8(questionParams)),                          // UAE/real life (uses the selected SDG)
+    track(generateSlide9(questionParams)),                          // plenary
+    track(generateSlide11(questionParams)),                         // exit ticket
   ]);
 
   const slideResults = [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13];
@@ -411,17 +430,30 @@ async function generatePptSlideContentSlideBySlide(params: {
   if (failedSelected) {
     throw new Error(`PPT Slide ${failedSelected[0]} could not implement the selected AFL tool. Please regenerate the presentation.`);
   }
-  const bodies = slideResults.map((result, i) => {
+  const bodies: SlideGenResult[] = slideResults.map((result, i) => {
     if (result.status === "fulfilled") return result.value;
     const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
     notices.push(`PPT Slide ${i + 1} rejected: ${reason}`);
     return {
       body: `_(Slide ${i + 1} could not be generated — please regenerate.)_`,
       teacherNotes: "Suggested timing: Adjust to the lesson period.\nAFL: Check understanding using the selected tool before continuing.\nDelivery tip: Regenerate this slide if needed.",
+      notices: [],
     };
   });
 
   console.log(`[ppt-deck] All ${STRUCTURED_LESSON_DECK_SLIDE_COUNT} slides complete — ${completedCount} ready`);
+
+  // One SDG per deck: anything still contradicting it is logged for review rather than silently rewritten.
+  if (selectedSdg) {
+    const mismatches = validateSelectedSdg(bodies.map((b) => ({ body: b.body })), selectedSdg);
+    if (mismatches.length) console.warn(`[ppt-deck] SDG mismatches after retries: ${mismatches.join(" | ")}`);
+  }
+  const questionElements: Record<number, string> = { 6: "differentiation", 8: "plenary", 10: "exit-ticket" };
+  const deckQuality: DeckQualityMetadata = {
+    ...(selectedSdg ? { selectedSdg } : {}),
+    questions: Object.entries(questionElements).flatMap(([index, elementId]) =>
+      (bodies[Number(index)]?.questionSources ?? []).map((q) => ({ ...q, questionElementId: elementId }))),
+  };
 
   return {
     text: assembleFullPptFromSlideBodies(
@@ -429,6 +461,8 @@ async function generatePptSlideContentSlideBySlide(params: {
       isAr,
       uaeFrameworkEnabled,
       bodies.map((item) => item.teacherNotes),
+      bodies[5]?.mainPhaseActivities ?? [],
+      deckQuality,
     ),
     notices,
   };
@@ -653,7 +687,7 @@ async function runFluxAndBuildResponsePayload(
 
   if (sections.includes("PPT Slide Content") && !skipPptDeckImages) {
     try {
-      // Feed each slide's own generated text into its image prompt so the four Fal-required
+      // Feed each slide's own generated text into its image prompt so required visual categories
       // slides get contextually specific artwork rather than generic subject-level imagery.
       const deckLanguage = resolvePresentationLanguage({
         language: input.language,

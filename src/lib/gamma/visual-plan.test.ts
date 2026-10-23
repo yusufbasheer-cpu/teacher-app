@@ -16,17 +16,17 @@ describe("slide types", () => {
   });
 });
 
-describe("image policy: concept diagrams first, content always first", () => {
-  it("puts a concept diagram on core teaching, and no cover art or decorative chapter picture", () => {
+describe("image policy: six required educational categories, content always first", () => {
+  it("plans required cover, topic, main-phase, and real-life visuals", () => {
     const plans = planSlideLayouts([
       slide(0, ["cover"]),
       slide(2, ["Chapter: Force and Pressure"]),
       slide(5, ["Pressure = force ÷ area. ".repeat(30)]),
       slide(7, ["Dentists use mirrors."]),
     ]);
-    expect(plans.map((p) => p.image)).toEqual(["none", "none", "diagram", "side"]);
+    expect(plans.map((p) => p.image)).toEqual(["side", "diagram", "diagram", "side"]);
   });
-  it("gives continuation, question, worked-example, objective and dense slides no picture", () => {
+  it("keeps continuation, question, worked-example and objective slides text-only", () => {
     const plans = planSlideLayouts([
       slide(5, ["x".repeat(1300)]),
       slide(7, ["Dentists use mirrors."], 2),
@@ -35,10 +35,11 @@ describe("image policy: concept diagrams first, content always first", () => {
       slide(4, ["Outcome"]),
       slide(7, ["y".repeat(800)]),
     ]);
-    expect(plans.map((p) => p.image)).toEqual(["none", "none", "none", "none", "none", "none"]);
+    expect(plans.map((p) => p.image)).toEqual(["diagram", "none", "none", "none", "none", "none"]);
   });
-  it("keeps short activities to a small inset", () => {
-    expect(planSlideLayouts([slide(1, ["Observe a sharp and a blunt pin."])])[0]!.image).toBe("inset");
+  it("requires a starter visual but keeps activity-instruction cards text-only", () => {
+    expect(planSlideLayouts([slide(1, ["Observe a sharp and a blunt pin."])])[0]!.image).toBe("side");
+    expect(planSlideLayouts([{ ...slide(5, ["1. Join your group."]), physicalKind: "activity-instructions" }])[0]!.image).toBe("none");
   });
 });
 
@@ -54,7 +55,7 @@ describe("picture choice", () => {
     const plans = planSlideLayouts(slides);
     expect(layoutInstructionsFor(slides, plans, "photo")).toContain('one real photograph that shows the idea explaining "Main Phase Core Teaching"');
     expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("simple concept diagram with no words or numbers in it");
-    expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("S1 title: no image.");
+    expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("REQUIRED cover visual");
     expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("S3 questions: no image.");
     expect(layoutInstructionsFor(slides, plans, "none")).not.toMatch(/photograph|illustration or/);
   });

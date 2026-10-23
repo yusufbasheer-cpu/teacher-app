@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import type { RequiredVisualCoverageReport } from "@/lib/ppt-visual-intent";
 import { LEARNING_OBJECTIVES_SLIDE_INDEX } from "@/lib/ppt-structured-lesson";
 import type { SlideSnapshot } from "./payload";
 
@@ -211,6 +212,10 @@ export type ValidationReport = {
   uncertainties: string[];
   /** Image-dominance review notes; reported separately and never part of the verdict. */
   layout?: LayoutReport;
+  /** Speaker notes written into the exported PPTX (Gamma exports none of its own). */
+  speakerNotes?: { added: boolean; slidesWithNotes: number; totalSlides: number; reason?: string };
+  /** Independent from the educational-content verdict. */
+  requiredVisuals?: RequiredVisualCoverageReport;
 };
 
 export function compareToSnapshot(snapshot: SlideSnapshot[], actual: ExtractedDeck): ValidationReport {

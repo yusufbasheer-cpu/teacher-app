@@ -9,6 +9,7 @@ export type GammaReportSummary = {
   pictures: number;
   /** Image-dominance review notes (separate from the content verdict); slide numbers are 1-based. */
   layout?: { picturesOnTextOnlySlides: number[]; crowdedSlides: number[] };
+  requiredVisuals?: { verdict: "passed" | "uncertain" | "failed"; missing: string[]; unverified: string[] };
   generationId?: string;
   creditsDeducted?: number;
   resumed?: boolean;
@@ -35,6 +36,13 @@ export function summariseReport(
     counts: { expectedSlides: r.expectedSlides, actualSlides: r.actualSlides, matched: r.matched, missing: r.missing.length, modified: r.modified.length, unexpected: r.unexpected.length },
     pictures: r.pictures,
     ...(r.layout ? { layout: { picturesOnTextOnlySlides: r.layout.picturesOnTextOnlySlides.map((f) => f.slide), crowdedSlides: r.layout.crowdedSlides.map((f) => f.slide) } } : {}),
+    ...(r.requiredVisuals ? {
+      requiredVisuals: {
+        verdict: r.requiredVisuals.verdict,
+        missing: r.requiredVisuals.categories.filter((item) => item.status === "missing").map((item) => item.category),
+        unverified: r.requiredVisuals.categories.filter((item) => item.status === "unverified").map((item) => item.category),
+      },
+    } : {}),
     ...meta,
   };
 }
@@ -81,6 +89,18 @@ export function presentVerdict(s: GammaReportSummary | null): VerdictPresentatio
     };
   }
   if (s.verdict === "passed") {
+    if (s.requiredVisuals && s.requiredVisuals.verdict !== "passed") {
+      const missing = s.requiredVisuals.missing.length
+        ? ` Missing required pictures: ${s.requiredVisuals.missing.join(", ")}.`
+        : " Picture relevance could not be verified automatically.";
+      return {
+        title: "Your slides are ready — check the pictures",
+        tone: "warn",
+        normalDownload: true,
+        downloadLabel: "Download again",
+        detail: `Your lesson wording was preserved.${missing}`,
+      };
+    }
     return { title: "Your slides are ready", tone: "ok", normalDownload: true, downloadLabel: "Download again", detail: `${s.counts.actualSlides} slides, designed and downloaded.` };
   }
   if (s.verdict === "uncertain") {

@@ -115,9 +115,9 @@ The app builds **exactly 13 slides** in this **fixed order**. **Each slide has o
 4. **Learning Objectives** — **Only** the teacher’s form objectives, **verbatim** (same count, same wording). Do **not** generate, edit, paraphrase, or add objectives. Do **not** write “Learning Objectives” inside the body.
 5. **Learning Outcomes** — Measurable outcomes generated **only** from the teacher’s verbatim objectives; typically one per objective; Bloom verbs; **no** scope beyond those objectives. Do **not** write “Learning Outcomes” inside the body.
 6. **Main Phase Core Teaching** — Implement the selected teaching strategy's actual sequence. Exploratory approaches begin with a real topic-specific problem, question, case, or evidence before a concise explanation. Fully implement the selected main-phase AFL tool with real learner tasks. No plenary, differentiation, or exit ticket here.
-7. **Differentiated Activity and Mini Plenary** — **Differentiation** AFL tool: exactly four sections in order — **Higher Achievers task**, **Middle Achievers task**, **Lower Achievers task**, then **Mini Plenary** with one topic-specific check. Fill in three increasingly independent tasks for the same objective. No full plenary, homework, success criteria, or exit ticket.
+7. **Differentiated Activity and Mini Plenary** — **Differentiation** AFL tool: exactly four sections in order — **Must**, **Should**, **Could** (neutral task labels; never ability-group labels such as "Higher/Lower Achievers"), then **Mini Plenary** with one topic-specific check. Fill in three increasingly independent tasks for the same objective. No full plenary, homework, success criteria, or exit ticket.
 8. **Connection slide (slide 8 — UAE Framework conditional; see user message “Slide 8 mode”):**
-   - **If UAE Framework selected:** title **UAE Real Life and Cross Curricular Connection** — UAE landmarks/values, UAE MOE alignment, KHDA/SPEA inspection connection, UAE National Identity, SDG in UAE context; inspection-ready; **no** non-UAE-only generic link.
+   - **If UAE Framework selected:** title **UAE Real Life and Cross Curricular Connection** — a specific UAE real-life example tied to the concept, a student-facing cross-curricular task, UAE National Identity, and the lesson's one selected SDG in UAE context. No curriculum-alignment, inspection or quality-standard claims on the slide (they belong in teacher guidance); **no** non-UAE-only generic link.
    - **If UAE Framework NOT selected:** title **Real Life and Cross Curricular Connection** — choose **exactly ONE** of: cross-curricular link, real-life application, career connection, global/SDG link, or subject integration. **Must NOT** mention UAE, Emirates, Dubai, MOE UAE, KHDA, or SPEA anywhere on this slide.
 9. **Plenary** — One **real classroom plenary activity** using teacher-selected **or** AI-selected **Plenary** AFL tool — fully implemented (student tasks, prompts, interaction). No new teaching, homework, objectives, or future-slide references.
 10. **Extended Task** — Extended task or homework only (research, creative work, practice, investigation). There is no AFL phase on this slide. **Do not** repeat the slide title in the body. **No** success criteria, self-evaluation, exit ticket, or plenary.
@@ -361,12 +361,12 @@ ${PPT_AFL_DRIVEN_SYSTEM_RULES}
                 : n === 7
                   ? `
 
-**Slide 7 body rule:** Exactly four sections — **Higher Achievers task**, **Middle Achievers task**, **Lower Achievers task**, then **Mini Plenary** with one topic-specific checkpoint. Implement the selected differentiation tool within the three tasks. No full plenary, homework, success criteria, or exit ticket.`
+**Slide 7 body rule:** Exactly four sections — **Must**, **Should**, **Could** (never ability-group labels), then **Mini Plenary** with one topic-specific checkpoint. Implement the selected differentiation tool within the three tasks. No full plenary, homework, success criteria, or exit ticket.`
                   : n === 8
                     ? uaeOn
                       ? `
 
-**Slide 8 body rule (UAE Framework ON):** Title **UAE Real Life and Cross Curricular Connection**. Include UAE landmark/value link, UAE MOE alignment, KHDA/SPEA inspection connection, UAE National Identity, and SDG in UAE context. Inspection-ready. Do not repeat the slide title in the body.`
+**Slide 8 body rule (UAE Framework ON):** Title **UAE Real Life and Cross Curricular Connection**. Include a UAE landmark/value link tied to the concept, a student-facing cross-curricular task, UAE National Identity, and the lesson's one selected SDG in UAE context. No curriculum-alignment, inspection or quality-standard claims on the slide. Do not repeat the slide title in the body.`
                       : `
 
 **Slide 8 body rule (UAE Framework OFF):** Title **Real Life and Cross Curricular Connection**. Choose exactly ONE: cross-curricular, real-life application, career, global/SDG, or subject integration. **Never** mention UAE, Emirates, Dubai, MOE UAE, KHDA, or SPEA. Do not repeat the slide title in the body.`

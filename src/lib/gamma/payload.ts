@@ -1,11 +1,15 @@
+import { buildPhysicalSlideNotes } from "@/lib/ppt-speaker-notes";
 import type { StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
 import { chunkDeckForSlides, moveTeacherFacingLinesToNotes, normalizeToLines } from "@/lib/ppt-template-engine";
 import type { PresentationLanguage } from "@/lib/ppt-language";
 import type { GammaConfig } from "./config";
 import { layoutInstructionsFor, pictureMediumFor, planSlideLayouts, type CanonicalSlide, type SlideLayoutPlan } from "./visual-plan";
+import { instructionSlideLines, instructionSlideTitle } from "@/lib/ppt-main-phase-activity";
+import { GammaError } from "./config";
 
 /** Gamma splits cards on this exact delimiter when cardSplit is "inputTextBreaks". */
 export const GAMMA_CARD_BREAK = "\n---\n";
+export const GAMMA_MAX_CARDS = 25;
 
 export type SlideSnapshot = { index: number; title: string; lines: string[] };
 
@@ -59,17 +63,71 @@ export function buildCanonicalSlides(params: {
       const lines = lesson?.topic.trim()
         ? [`${lesson.subject.trim()} · ${lesson.grade.trim()}`, ...(lesson.chapter?.trim() ? [lesson.chapter.trim()] : []), ...body.filter((l) => l !== lesson.grade.trim() && l !== title)]
         : body;
-      slides.push({ deckIdx, part: 1, parts: 1, title: lesson?.topic.trim() || title, lines });
+      slides.push({ deckIdx, part: 1, parts: 1, title: lesson?.topic.trim() || title, lines, physicalKind: "content" });
+      return;
+    }
+    if (deckIdx === 5 && model.mainPhaseActivities?.length) {
+      for (let activityIndex = 0; activityIndex < model.mainPhaseActivities.length; activityIndex++) {
+        const activity = model.mainPhaseActivities[activityIndex]!;
+        slides.push({
+          deckIdx,
+          part: 1,
+          parts: 1,
+          title: instructionSlideTitle(activity),
+          lines: instructionSlideLines(activity),
+          physicalKind: "activity-instructions",
+          activityId: activity.activityId,
+        });
+        const activityDeck = deck.map((slide, i) => i === deckIdx
+          ? { ...slide, body: activity.activityContent, mainPhaseActivities: undefined }
+          : slide);
+        const activityParts = chunkDeckForSlides(
+          activityDeck,
+          (index) => activityIndex === 0 && (params.hasImage?.(index) ?? false),
+          "No content provided.",
+        )[deckIdx]!;
+        activityParts.forEach((lines, i) => slides.push({
+          deckIdx,
+          part: i + 1,
+          parts: activityParts.length,
+          title,
+          lines,
+          physicalKind: "content",
+          activityId: activity.activityId,
+        }));
+      }
       return;
     }
     const parts = chunks[deckIdx]!;
     if (parts.length === 0) {
-      slides.push({ deckIdx, part: 1, parts: 1, title, lines: normalizeToLines(model.body) });
+      slides.push({ deckIdx, part: 1, parts: 1, title, lines: normalizeToLines(model.body), physicalKind: "content" });
       return;
     }
-    parts.forEach((lines, i) => slides.push({ deckIdx, part: i + 1, parts: parts.length, title, lines }));
+    parts.forEach((lines, i) => slides.push({ deckIdx, part: i + 1, parts: parts.length, title, lines, physicalKind: "content" }));
   });
   return slides;
+}
+
+/**
+ * Speaker notes for every canonical (physical) slide, built exactly as the legacy renderer builds them. Gamma does
+ * not carry notes, so these are written into its exported PPTX afterwards (notes.ts). Never sent to Gamma.
+ */
+export function speakerNotesForCanonicalSlides(deck: StructuredLessonSlideModel[], slides: CanonicalSlide[], topic?: string): string[] {
+  const models = deck.map(moveTeacherFacingLinesToNotes);
+  const sectionChars = (s: CanonicalSlide) => slides
+    .filter((o) => o.deckIdx === s.deckIdx && o.activityId === s.activityId && o.physicalKind === s.physicalKind)
+    .reduce((n, o) => n + o.lines.join("").length, 0);
+  return slides.map((s) => {
+    const model = models[s.deckIdx]!;
+    const activity = s.activityId ? model.mainPhaseActivities?.find((a) => a.activityId === s.activityId) : undefined;
+    const lines = s.deckIdx === 0 ? model.body.split("\n").map((l) => l.trim()).filter(Boolean) : s.lines;
+    return buildPhysicalSlideNotes({
+      model, deckIdx: s.deckIdx, lines, part: s.part, parts: s.parts,
+      sectionChars: s.deckIdx === 0 ? 0 : sectionChars(s),
+      physicalKind: s.physicalKind === "activity-instructions" ? "activity-instructions" : "content",
+      activity, topic,
+    });
+  });
 }
 
 export function buildGammaPayload(params: {
@@ -79,8 +137,14 @@ export function buildGammaPayload(params: {
   config: GammaConfig;
   lesson?: GammaLessonMeta;
   hasImage?: (deckIdx: number) => boolean;
-}): { request: Record<string, unknown>; snapshot: SlideSnapshot[]; neutralisedBreaks: number; slides: CanonicalSlide[]; layout: SlideLayoutPlan[] } {
+}): { request: Record<string, unknown>; snapshot: SlideSnapshot[]; neutralisedBreaks: number; slides: CanonicalSlide[]; layout: SlideLayoutPlan[]; notes: string[] } {
   const slides = buildCanonicalSlides(params);
+  if (slides.length > GAMMA_MAX_CARDS) {
+    throw new GammaError(
+      "card_limit_exceeded",
+      `This lesson needs ${slides.length} physical slides, but Gamma supports at most ${GAMMA_MAX_CARDS}. Shorten dense sections; activity instructions and activity content will not be removed.`,
+    );
+  }
   let neutralisedBreaks = 0;
   const snapshot: SlideSnapshot[] = [];
   const cards = slides.map((s, index) => {
@@ -114,5 +178,5 @@ export function buildGammaPayload(params: {
     },
     ...(config.themeId ? { themeId: config.themeId } : {}),
   };
-  return { request, snapshot, neutralisedBreaks, slides, layout };
+  return { request, snapshot, neutralisedBreaks, slides, layout, notes: speakerNotesForCanonicalSlides(params.deck, slides, params.lesson?.topic) };
 }

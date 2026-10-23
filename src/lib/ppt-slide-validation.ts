@@ -104,7 +104,7 @@ export function buildPptSlidePreflightChecklist(ctx: PptSlideValidationContext):
     4: "teacher learning objectives verbatim only",
     5: "exactly one measurable learning outcome per teacher objective, same order, same count",
     6: "selected teaching strategy sequence with a concrete opener, concise concept explanation, and fully implemented main-phase AFL activity",
-    7: 'four sections in order: "Higher Achievers task" (challenging extension), "Middle Achievers task" (standard objective), "Lower Achievers task" (scaffolded with sentence starters or word bank), then "Mini Plenary" — one quick question to check understanding',
+    7: 'four sections in order: "Must" (scaffolded with sentence starters or word bank), "Should" (standard objective), "Could" (challenging extension), then "Mini Plenary" — one quick question to check understanding',
     8: ctx.uaeFrameworkSelected
       ? "UAE-specific real-life connection to the topic, cross-curricular link relevant to UAE schools, UAE MOE alignment, KHDA/SPEA inspection note, and SDG in UAE context — all specific to the actual topic"
       : "one specific connection (real-life application, cross-curricular link, career connection, or global/SDG link) fully developed for the actual topic — no UAE references at all",

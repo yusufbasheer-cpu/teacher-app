@@ -11,6 +11,7 @@ const MESSAGES: Record<GammaErrorCode, { message: string; resumable?: boolean }>
   request_timeout: { message: "The connection was slow. We'll pick up where we left off.", resumable: true },
   generation_in_progress: { message: "Your previous presentation is still being designed. Please try again in a minute." },
   duplicate_in_flight: { message: "Your presentation is already being designed. Please wait a moment and try again." },
+  card_limit_exceeded: { message: "This lesson has too many physical slides for Gamma. Shorten a dense section; activity instructions and tasks will not be removed." },
   submission_unknown: { message: "We couldn't confirm your last request went through. Please try again in a few minutes." },
   rate_limited: { message: "Lots of teachers are designing slides right now. Please try again in a minute." },
   user_rate_limited: { message: "You've designed several presentations recently. Please try again a little later." },

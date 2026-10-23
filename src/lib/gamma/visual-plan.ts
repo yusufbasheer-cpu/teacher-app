@@ -1,8 +1,20 @@
 import { slideKindAt } from "@/lib/ppt-template-engine";
 import type { GammaLessonMeta } from "./payload";
+import {
+  REQUIRED_VISUAL_DECK_INDEX,
+  type RequiredVisualCategory,
+} from "@/lib/ppt-visual-intent";
 
 /** One physical slide of the canonical (platform-paginated) deck. `part` is 1-based within its lesson section. */
-export type CanonicalSlide = { deckIdx: number; part: number; parts: number; title: string; lines: string[] };
+export type CanonicalSlide = {
+  deckIdx: number;
+  part: number;
+  parts: number;
+  title: string;
+  lines: string[];
+  physicalKind?: "content" | "activity-instructions";
+  activityId?: string;
+};
 
 /** Functional role of a slide; decides its layout and whether it may carry a picture. */
 export type SlideType = "title" | "concept" | "worked-example" | "activity" | "questions" | "real-life" | "objectives" | "summary";
@@ -10,7 +22,13 @@ export type SlideType = "title" | "concept" | "worked-example" | "activity" | "q
 /** diagram: one concept diagram in a column ≤ 1/3 width · side: one contextual picture ≤ 1/3 · inset: one small picture ≤ 1/4 · none. */
 export type ImagePlan = "diagram" | "side" | "inset" | "none";
 
-export type SlideLayoutPlan = { slideIndex: number; type: SlideType; image: ImagePlan; reason: string };
+export type SlideLayoutPlan = {
+  slideIndex: number;
+  type: SlideType;
+  image: ImagePlan;
+  reason: string;
+  requiredVisualCategory?: RequiredVisualCategory;
+};
 
 import { pictureMediumFor, type PictureMedium } from "./picture-medium";
 export { pictureMediumFor, type PictureMedium };
@@ -39,7 +57,6 @@ export function classifySlide(s: CanonicalSlide): SlideType {
 
 /** Deck indexes in the 13-section lesson: the core teaching slide, and the decorative chapter/SDG slide. */
 const CORE_TEACHING_IDX = 5;
-const CHAPTER_SDG_IDX = 2;
 
 /**
  * Content first, and pictures that teach: the one visual that helps most is a concept diagram on the core teaching
@@ -47,13 +64,37 @@ const CHAPTER_SDG_IDX = 2;
  * summary slides stay text-only, and dense slides lose their picture before any text gets smaller.
  */
 export function planSlideLayouts(slides: CanonicalSlide[]): SlideLayoutPlan[] {
+  const firstContentByDeck = new Map<number, number>();
+  slides.forEach((slide, index) => {
+    if (slide.physicalKind !== "activity-instructions" && !firstContentByDeck.has(slide.deckIdx)) {
+      firstContentByDeck.set(slide.deckIdx, index);
+    }
+  });
+  const requiredByDeck = new Map<number, RequiredVisualCategory>(
+    Object.entries(REQUIRED_VISUAL_DECK_INDEX).map(([category, deckIndex]) => [deckIndex, category as RequiredVisualCategory]),
+  );
   return slides.map((s, slideIndex) => {
     const type = classifySlide(s);
     const chars = charsOf(s);
-    const plan = (image: ImagePlan, reason: string): SlideLayoutPlan => ({ slideIndex, type, image, reason });
-    if (type === "title") return plan("none", "Cover: the theme carries it; no cover art.");
+    const requiredVisualCategory = requiredByDeck.get(s.deckIdx);
+    const isRequiredPlacement = requiredVisualCategory !== undefined && s.part === 1 && firstContentByDeck.get(s.deckIdx) === slideIndex;
+    const plan = (image: ImagePlan, reason: string): SlideLayoutPlan => ({
+      slideIndex,
+      type,
+      image,
+      reason,
+      ...(isRequiredPlacement ? { requiredVisualCategory } : {}),
+    });
+    if (s.physicalKind === "activity-instructions") return plan("none", "Student instructions stay text-only and readable.");
+    if (isRequiredPlacement) {
+      if (requiredVisualCategory === "cover") return plan("side", "Required subject-specific cover visual.");
+      if (requiredVisualCategory === "starter") return plan("side", "Required visual supports the starter observation or question.");
+      if (requiredVisualCategory === "topic") return plan("diagram", "Required topic overview illustration.");
+      if (requiredVisualCategory === "main-phase") return plan("diagram", "Required compact teaching diagram on the first main-phase content card.");
+      if (requiredVisualCategory === "uae-connection") return plan("side", "Required visual depicts the actual real-life/UAE connection.");
+      if (requiredVisualCategory === "takeaway") return plan("diagram", "Required visual reinforces the central learning takeaway.");
+    }
     if (s.part > 1) return plan("none", "Continuation slide: all space goes to the content.");
-    if (s.deckIdx === CHAPTER_SDG_IDX) return plan("none", "Chapter/SDG slide: a picture here would be decoration.");
     if (s.deckIdx === CORE_TEACHING_IDX && chars <= DIAGRAM_MAX_CHARS) return plan("diagram", "Core teaching: a concept diagram explains the idea.");
     if (type === "concept" && chars <= SIDE_IMAGE_MAX_CHARS) return plan("diagram", "A concept diagram supports the explanation.");
     if (type === "real-life" && chars <= SIDE_IMAGE_MAX_CHARS) return plan("side", "One contextual picture supports the application.");
@@ -97,7 +138,8 @@ export function layoutInstructionsFor(slides: CanonicalSlide[], plans: SlideLayo
         : p.image === "side"
           ? `one ${noun} of "${slides[p.slideIndex]!.title}" in a side column, max 1/3 width`
           : `one small ${noun} of "${slides[p.slideIndex]!.title}", max 1/4 of the slide`;
-    return `S${p.slideIndex + 1} ${p.type}: ${image}.`;
+    const required = p.requiredVisualCategory ? ` REQUIRED ${p.requiredVisualCategory} visual; it must depict this slide's educational concept, not theme decoration.` : "";
+    return `S${p.slideIndex + 1} ${p.type}: ${image}.${required}`;
   });
   return [
     `Per-slide layout${about}. Layout types: ${legend}.`,

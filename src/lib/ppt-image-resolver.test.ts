@@ -40,12 +40,13 @@ const {
 
 const META = { subject: "Science", grade: "Grade 5", topic: "The Water Cycle" };
 
-/** The four slides the product requires to be Fal-generated. */
+/** Slides the product requires to be Fal-generated without stock substitution. */
 const REQUIRED = {
   starter: 1,
   differentiatedAndMiniPlenary: 6,
   uaeRealLifeCrossCurricular: 7,
   extendedTask: 9,
+  lessonTakeaway: 12,
 } as const;
 
 beforeEach(() => {
@@ -62,7 +63,7 @@ afterEach(() => {
 });
 
 describe("provider policy", () => {
-  it("marks exactly the four required slides as fal-required", () => {
+  it("marks exactly the provider-required slides as fal-required", () => {
     expect([...FAL_REQUIRED_DECK_INDICES].sort()).toEqual(
       Object.values(REQUIRED).slice().sort(),
     );
@@ -160,8 +161,10 @@ describe("routing when fal fails", () => {
       expect(d?.falFailureKind).toBe("balance");
       expect(d?.falFailureReason).toContain("balance");
     }
-    // One Sentry report per required slide — the fal-preferred ones must not raise.
-    expect(captureException).toHaveBeenCalledTimes(Object.values(REQUIRED).length);
+    // Required educational categories and Fal-only legacy slots are all observable.
+    expect(captureException).toHaveBeenCalledTimes(
+      diagnostics.filter((d) => d.requiredCategory || d.policy === "fal-required").length,
+    );
   });
 
   it("still lets fal-preferred slides fall back to Pexels", async () => {

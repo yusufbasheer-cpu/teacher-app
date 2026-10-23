@@ -75,6 +75,9 @@ export async function pptxFrom(slides: (ParaSpec[] | SlideSpec)[], media = 0): P
     const num = s.sldNumPlaceholder ? `<p:sp><p:nvSpPr><p:nvPr><p:ph type="sldNum"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:r><a:t>${s.sldNumPlaceholder}</a:t></a:r></a:p></p:txBody></p:sp>` : "";
     const chart = s.chart ? '<p:graphicFrame><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"/></a:graphic></p:graphicFrame>' : "";
     zip.file(`ppt/slides/slide${i + 1}.xml`, `<p:sld>${body}${num}${chart}${s.pic || i < media ? "<p:pic></p:pic>" : ""}</p:sld>`);
+    // Like a real Gamma export: each slide links its own notes slide, whose body holds only the slide number.
+    zip.file(`ppt/slides/_rels/slide${i + 1}.xml.rels`, `<Relationships><Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide${i + 1}.xml"/></Relationships>`);
+    zip.file(`ppt/notesSlides/notesSlide${i + 1}.xml`, `<p:notes><p:cSld><p:spTree><p:sp><p:nvSpPr><p:nvPr><p:ph type="sldImg"/></p:nvPr></p:nvSpPr></p:sp><p:sp><p:nvSpPr><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t></a:t></a:r><a:endParaRPr lang="en-US" dirty="0"/></a:p></p:txBody></p:sp><p:sp><p:nvSpPr><p:nvPr><p:ph type="sldNum" idx="10"/></p:nvPr></p:nvSpPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:fld id="{1}" type="slidenum"><a:t>${i + 1}</a:t></a:fld></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:notes>`);
   });
   for (let i = 0; i < media; i++) zip.file(`ppt/media/image${i}.png`, "x");
   return Buffer.from(await zip.generateAsync({ type: "uint8array" }));

@@ -14,10 +14,17 @@
  */
 
 // Server-only: Node.js built-ins and pptxgenjs must not be imported by client components.
+import { buildPhysicalSlideNotes } from "@/lib/ppt-speaker-notes";
+import { isComplianceClaim } from "@/lib/ppt-educational-quality";
 import { readFile } from "fs/promises";
 import path from "path";
 import PptxGenJS from "pptxgenjs";
 import type { StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
+import {
+  activityInstructionNotes,
+  instructionSlideLines,
+  instructionSlideTitle,
+} from "@/lib/ppt-main-phase-activity";
 import {
   drawIconBadge,
   drawSectionChip,
@@ -200,8 +207,13 @@ export function normalizeToLines(body: string): string[] {
       s = s.replace(/^#{1,6}\s+/, "");
       s = s.replace(/^\s*(?:[-*+]|\d+[.):])\s+/, "");
       s = s.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1");
-      s = s.replace(/`([^`]+)`/g, "$1").replace(/_{1,2}([^_]+)_{1,2}/g, "$1");
+      // A run of 3+ underscores is a fill-in blank ("A plant needs ______"), not emphasis. Protect it, or a
+      // sentence starter and a cloze question lose the very gap students must fill.
+      const blanks: string[] = [];
+      s = s.replace(/_{3,}/g, (run) => `\u0000${blanks.push(run) - 1}\u0000`);
+      s = s.replace(/`([^`]+)`/g, "$1").replace(/_{1,2}([^_\u0000]+)_{1,2}/g, "$1");
       s = s.replace(/[*#_`|]/g, "").replace(/\s+/g, " ").trim();
+      s = s.replace(/\u0000(\d+)\u0000/g, (_, i: string) => blanks[Number(i)]!);
       return s;
     })
     .filter((l) => l.length > 0);
@@ -210,6 +222,8 @@ export function normalizeToLines(body: string): string[] {
 function isTeacherFacingRenderLine(line: string): boolean {
   const t = line.trim();
   if (!t) return false;
+  // Compliance / inspection claims are teacher guidance, never student text (also cleans older saved lessons).
+  if (isComplianceClaim(t)) return true;
   return (
     /^(?:time|timing|total duration|duration)\s*[:=]/i.test(t) ||
     /^step\s*\d+\s*\([^)]*(?:minute|min|mins)\)/i.test(t) ||
@@ -472,7 +486,7 @@ function doHeroOpenSlide(
 
   addFooter(pptx, slide, tpl, ctx.fontFace, subject, slideNum, total, layahLogo);
   if (schoolLogo) addSchoolLogo(pptx, slide, schoolLogo);
-  slide.addNotes(model.speakerNotes ?? "");
+  slide.addNotes(buildPhysicalSlideNotes({ model, deckIdx: 0, lines: model.body.split("\n").map((l) => l.trim()).filter(Boolean), part: 1, parts: 1, sectionChars: 0 }));
 }
 
 function doHeroCloseSlide(
@@ -519,7 +533,7 @@ function doHeroCloseSlide(
 
   addFooter(pptx, slide, tpl, ctx.fontFace, subject, slideNum, total, layahLogo);
   if (schoolLogo) addSchoolLogo(pptx, slide, schoolLogo);
-  slide.addNotes(model.speakerNotes ?? "");
+  slide.addNotes(buildPhysicalSlideNotes({ model, deckIdx: 12, lines: model.body.split("\n").map((l) => l.trim()).filter(Boolean), part: 1, parts: 1, sectionChars: 0 }));
 }
 
 function doContentSlide(
@@ -536,6 +550,9 @@ function doContentSlide(
   layahLogo: string | null,
   schoolLogo: string | null,
   ctx: RenderContext,
+  suppressChip = false,
+  /** Notes for this physical slide (buildPhysicalSlideNotes); falls back to the logical slide's notes. */
+  physicalNotes?: string,
 ): void {
   const slide = pptx.addSlide();
   const c = tpl.colors;
@@ -605,7 +622,7 @@ function doContentSlide(
   let bodyY = CONTENT_Y;
 
   if (!isCont) {
-    const chipKey = chipKeyFor(kind, deckIdx);
+    const chipKey = suppressChip ? undefined : chipKeyFor(kind, deckIdx);
     if (chipKey) {
       drawSectionChip(pptx, slide, {
         text: ctx.s(chipKey), x: contentX, y: bodyY, tpl, fontFace: ctx.fontFace,
@@ -647,9 +664,9 @@ function doContentSlide(
   addFooter(pptx, slide, tpl, ctx.fontFace, subject, slideNum, total, layahLogo);
   if (schoolLogo) addSchoolLogo(pptx, slide, schoolLogo);
 
-  const notes = isCont
+  const notes = physicalNotes ?? (isCont
     ? `${model.speakerNotes ?? ""}\n\n${ctx.s("continuationNote")}`
-    : (model.speakerNotes ?? "");
+    : (model.speakerNotes ?? ""));
   slide.addNotes(notes);
 }
 
@@ -799,7 +816,21 @@ export async function buildPptxFromTemplateEngine(params: {
   pptx.title   = `${ctx.s("deckTitlePrefix")} — ${params.topic}`;
 
   const chunksByDeckIdx = chunkDeckForSlides(deck, (i) => Boolean(images[i]), ctx.s("noContentProvided"));
-  const totalPhysical = physicalSlideCount(chunksByDeckIdx);
+  const mainPhaseActivities = deck[5]?.mainPhaseActivities ?? [];
+  const mainPhaseActivityChunks = mainPhaseActivities.map((activity, activityIndex) =>
+    chunkLinesByHeight(
+      normalizeToLines(activity.activityContent),
+      images[5] && activityIndex === 0 ? CPL_IMAGE : CPL_FULL,
+      CONTENT_H - CHIP_RESERVE_H,
+      bulletVariantFor(SLIDE_KIND_BY_INDEX[5] ?? "activity"),
+      ctx.s("noContentProvided"),
+    ),
+  );
+  const originalMainPhaseCount = chunksByDeckIdx[5]?.length ?? 0;
+  const expandedMainPhaseCount = mainPhaseActivities.length
+    ? mainPhaseActivities.length + mainPhaseActivityChunks.reduce((sum, chunks) => sum + chunks.length, 0)
+    : originalMainPhaseCount;
+  const totalPhysical = physicalSlideCount(chunksByDeckIdx) - originalMainPhaseCount + expandedMainPhaseCount;
 
   let slideNum = 1;
 
@@ -822,11 +853,74 @@ export async function buildPptxFromTemplateEngine(params: {
     const hasImg = image !== null;
     const chunks = chunksByDeckIdx[di]!;
 
+    if (di === 5 && mainPhaseActivities.length > 0) {
+      for (let ai = 0; ai < mainPhaseActivities.length; ai++) {
+        const activity = mainPhaseActivities[ai]!;
+        const instructionModel: StructuredLessonSlideModel = {
+          slideTitle: instructionSlideTitle(activity),
+          body: instructionSlideLines(activity).join("\n"),
+          speakerNotes: activityInstructionNotes(activity),
+          includeImageSlot: false,
+        };
+        doContentSlide(
+          pptx,
+          instructionModel,
+          di,
+          instructionSlideLines(activity),
+          0,
+          tpl,
+          null,
+          params.subject,
+          slideNum,
+          totalPhysical,
+          layahLogo,
+          schoolLogo,
+          ctx,
+          true,
+          buildPhysicalSlideNotes({ model, deckIdx: di, lines: instructionSlideLines(activity), part: 1, parts: 1, sectionChars: 0, physicalKind: "activity-instructions", activity, topic: params.topic }),
+        );
+        slideNum++;
+
+        const activityModel: StructuredLessonSlideModel = {
+          ...model,
+          body: activity.activityContent,
+          speakerNotes: activity.teacherNotes || model.speakerNotes,
+          mainPhaseActivities: undefined,
+        };
+        const activityChunks = mainPhaseActivityChunks[ai]!;
+        const activityChars = activityChunks.reduce((n, c) => n + c.join("").length, 0);
+        for (let ci = 0; ci < activityChunks.length; ci++) {
+          doContentSlide(
+            pptx,
+            activityModel,
+            di,
+            activityChunks[ci]!,
+            ci,
+            tpl,
+            ai === 0 && ci === 0 && hasImg ? image : null,
+            params.subject,
+            slideNum,
+            totalPhysical,
+            layahLogo,
+            schoolLogo,
+            ctx,
+            false,
+            buildPhysicalSlideNotes({ model, deckIdx: di, lines: activityChunks[ci]!, part: ci + 1, parts: activityChunks.length, sectionChars: activityChars, activity, topic: params.topic }),
+          );
+          slideNum++;
+        }
+      }
+      continue;
+    }
+
+    const sectionChars = chunks.reduce((n, c) => n + c.join("").length, 0);
     for (let ci = 0; ci < chunks.length; ci++) {
       doContentSlide(
         pptx, model, di, chunks[ci]!, ci, tpl,
         ci === 0 && hasImg ? image : null,
         params.subject, slideNum, totalPhysical, layahLogo, schoolLogo, ctx,
+        false,
+        buildPhysicalSlideNotes({ model, deckIdx: di, lines: chunks[ci]!, part: ci + 1, parts: chunks.length, sectionChars, topic: params.topic }),
       );
       slideNum++;
     }

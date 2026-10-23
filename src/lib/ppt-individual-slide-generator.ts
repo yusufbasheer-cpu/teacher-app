@@ -19,6 +19,22 @@ import {
   type PresentationLanguage,
 } from "@/lib/ppt-language";
 import { logDeepSeekUsage } from "@/lib/ai-usage/deepseek";
+import {
+  parseQuestionSources,
+  QUESTION_SOURCE_SELF_CHECK,
+  selectedSdgLabel,
+  TEACHER_TEXT_SELF_CHECK,
+  teachingEvidencePrompt,
+  validateSelectedSdg,
+  type QuestionSource,
+  type SelectedSdg,
+  type TeachingEvidence,
+} from "@/lib/ppt-educational-quality";
+import {
+  buildFallbackMainPhaseActivity,
+  parseMainPhaseActivities,
+  type MainPhaseActivityInstruction,
+} from "@/lib/ppt-main-phase-activity";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const MAX_ATTEMPTS = 3;
@@ -33,6 +49,10 @@ export type SlideGenParams = {
   learningObjectives?: string;
   /** Formatted AFL description for the Starter slide (slide 2). */
   starterAflBlock?: string;
+  /** Finished earlier teaching text (starter, main phase) that question slides must draw on. */
+  teachingEvidence?: TeachingEvidence[];
+  /** The one SDG chosen on slide 3 for the whole deck. */
+  selectedSdg?: SelectedSdg;
   /** Formatted AFL description for the Main Phase slide (slide 6). */
   mainAflBlock?: string;
   /** Formatted AFL description for the Plenary slide (slide 9). */
@@ -62,9 +82,68 @@ export type SlideGenParams = {
 
 export type { MainActivityStructure };
 
-export type SlideGenResult = { body: string; teacherNotes: string; notices: string[] };
+export type SlideGenResult = {
+  body: string;
+  teacherNotes: string;
+  notices: string[];
+  mainPhaseActivities?: MainPhaseActivityInstruction[];
+  /** Question slides only: each question, its expected answer and the earlier element that teaches it. */
+  questionSources?: QuestionSource[];
+};
+
+/** What the parsed provider response offers to a slide-specific acceptance check. */
+type ParsedSlideResponse = { body: string; teacherNotes: string; questionSources: QuestionSource[] };
 
 type DSMessage = { role: "system" | "user"; content: string };
+
+/** Elements whose finished text is given to the question slides as their only source of answerable knowledge. */
+export const QUESTION_SOURCE_ELEMENTS = ["starter", "main-phase"] as const;
+
+/**
+ * Appended to the plenary, mini-plenary and exit-ticket prompts. The earlier teaching text is the source of truth,
+ * and the structured question_sources list makes each question's answer traceable to where it was taught.
+ */
+function questionSourcingBlock(params: SlideGenParams): string {
+  return `
+WHAT WAS TAUGHT EARLIER IN THIS LESSON (the ONLY knowledge your questions may require):
+${teachingEvidencePrompt(params.teachingEvidence ?? [])}
+
+QUESTIONS MUST COME FROM THE TEACHING ABOVE (MANDATORY):
+- Every question must be answerable from the earlier teaching text above. Objectives alone do not prove a concept was taught. Questions may test understanding or application, but never require facts that were not taught.
+- Keep the intended difficulty and thinking level.
+- Sentence starters scaffold the response without giving the answer away, e.g. "The plant needs ______ because ______." Never write the answer into a question, choice stem or sentence starter.
+- Put every expected answer in teacher_notes, never on the slide.
+- Add a "question_sources" array to the JSON: one entry per question with "question_id" (q1, q2...), "question_text" (exactly as written on the slide), "expected_answer", "source_element_ids" (one or more of: ${QUESTION_SOURCE_ELEMENTS.join(", ")}), and "learning_objective_ref" (the objective it checks, or "").
+- ${QUESTION_SOURCE_SELF_CHECK}`;
+}
+
+/** The one SDG chosen on slide 3; every later explicit SDG reference must use exactly this label. */
+function selectedSdgRule(params: SlideGenParams): string {
+  return params.selectedSdg
+    ? `If you refer to a Sustainable Development Goal, use exactly "${selectedSdgLabel(params.selectedSdg)}". Never name or number any other SDG.`
+    : "Do not cite a Sustainable Development Goal number on this slide.";
+}
+
+/** Rejects a question slide whose questions are not all traced to earlier teaching, or that prints an answer. */
+function questionSourceCheck(parsed: ParsedSlideResponse): string | undefined {
+  if (parsed.questionSources.length === 0) return "missing question_sources: list every question with its expected answer and the earlier teaching element it comes from";
+  const allowed = new Set<string>(QUESTION_SOURCE_ELEMENTS);
+  const bad = parsed.questionSources.filter((q) => q.sourceElementIds.some((id) => !allowed.has(id)));
+  if (bad.length) return `question_sources may only cite ${QUESTION_SOURCE_ELEMENTS.join(" or ")}; fix ${bad.map((q) => q.questionId).join(", ")}`;
+  const body = parsed.body.toLowerCase();
+  const leaked = parsed.questionSources.find((q) => q.expectedAnswer.length >= 12 && body.includes(q.expectedAnswer.toLowerCase()));
+  if (leaked) return `the expected answer for ${leaked.questionId} appears on the student slide; move it to teacher_notes`;
+  return undefined;
+}
+
+/** Rejects a slide that names an SDG other than the one selected for this lesson. */
+function sdgCheck(params: SlideGenParams) {
+  return (parsed: ParsedSlideResponse): string | undefined => {
+    if (!params.selectedSdg) return undefined;
+    const mismatches = validateSelectedSdg([{ body: parsed.body }], params.selectedSdg);
+    return mismatches.length ? `use only ${selectedSdgLabel(params.selectedSdg)} for any SDG reference` : undefined;
+  };
+}
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -140,7 +219,7 @@ VISIBLE SLIDE AUDIENCE (MANDATORY):
 - Explain concepts directly to students, then give them a clear task. Address activity steps directly: "Think...", "Discuss...", "Write...".
 - Timing, AFL delivery, teacher moves, answer reveals, and differentiation support belong only in teacher_notes.
 - Never print a tool's catalogue purpose or a heading such as "Selected AFL". Display the actual student task, filled-in items, questions, and response format instead. A tool name may appear only alongside its fully implemented task.
-- Return JSON with exactly two keys: "body" (student-facing visible text) and "teacher_notes" (short teacher-only note with timing, AFL tool/reminder, and delivery/differentiation tip). Do not use markdown fences.
+- Return JSON with "body" (student-facing visible text) and "teacher_notes" (short teacher-only note with timing, AFL tool/reminder, and delivery/differentiation tip). The main-phase prompt may require one additional "main_phase_activities" array; do not add it for other slides. Do not use markdown fences.
 `;
 }
 
@@ -202,11 +281,19 @@ async function generateWithRetries(
   userPrompt: string,
   selectedTools?: { phase: AflPhaseId; ids: string[]; language: PresentationLanguage },
   usageUserId?: string,
+  requireMainPhaseActivities = false,
+  fallbackActivity?: (body: string, teacherNotes: string) => MainPhaseActivityInstruction,
+  extraCheck?: (parsed: ParsedSlideResponse) => string | undefined,
 ): Promise<SlideGenResult> {
   const notices: string[] = [];
   let body = "";
   let teacherNotes = "";
+  let mainPhaseActivities: MainPhaseActivityInstruction[] = [];
+  let questionSources: QuestionSource[] = [];
   let lastFailure = "";
+  let lastCandidateBody = "";
+  let lastCandidateTeacherNotes = "";
+  let lastFailureIsQualityOnly = false;
   const maxAttempts = selectedTools?.ids.length ? 4 : MAX_ATTEMPTS;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -228,23 +315,59 @@ async function generateWithRetries(
     const parsed = parseStudentSlideResponse(content);
     body = parsed.body;
     teacherNotes = parsed.teacherNotes;
-    const failure = validateSelectedAflBody(body, selectedTools) ??
+    mainPhaseActivities = parsed.mainPhaseActivities;
+    questionSources = parsed.questionSources;
+    lastCandidateBody = body;
+    lastCandidateTeacherNotes = teacherNotes;
+    const coreFailure = validateSelectedAflBody(body, selectedTools) ??
+      (requireMainPhaseActivities && mainPhaseActivities.length === 0 ? "missing or invalid structured main-phase activity instructions" : undefined) ??
       (selectedTools?.ids.length && teacherNotes.length < 35 ? "missing teacher guidance in speaker notes" : undefined) ??
       (body.length < 30 ? `response too short (${body.length} chars)` : undefined);
+    const extraFailure = coreFailure ? undefined : extraCheck?.({ body, teacherNotes, questionSources });
+    const failure = coreFailure ?? extraFailure;
     if (!failure) break;
     lastFailure = failure;
+    lastFailureIsQualityOnly = !coreFailure;
     notices.push(`${slideName} attempt ${attempt}: ${failure}`);
     body = "";
   }
 
+  // The question-source / SDG checks improve a complete slide; they never cost the teacher its content. If only
+  // they still fail, keep the last complete slide and let validation report its questions as unverified.
+  if (!body && lastFailureIsQualityOnly && lastCandidateBody.length >= 30) {
+    body = lastCandidateBody;
+    teacherNotes = lastCandidateTeacherNotes;
+    notices.push(`${slideName}: kept the last complete slide; ${lastFailure} (flagged for review)`);
+  }
+
   if (!body) {
-    if (selectedTools?.ids.length) {
-      throw new Error(`${slideName}: selected AFL tool was not implemented after ${maxAttempts} attempts (${notices.join("; ")})`);
+    if (
+      requireMainPhaseActivities &&
+      fallbackActivity &&
+      lastCandidateBody.length >= 30 &&
+      lastFailure === "missing or invalid structured main-phase activity instructions"
+    ) {
+      body = lastCandidateBody;
+      teacherNotes = lastCandidateTeacherNotes;
+      mainPhaseActivities = [fallbackActivity(body, teacherNotes)];
+      notices.push(`${slideName}: used the deterministic activity-instruction fallback after invalid structured metadata`);
+    }
+  }
+
+  if (!body) {
+    if (selectedTools?.ids.length || requireMainPhaseActivities) {
+      throw new Error(`${slideName}: activity content or its required student-instruction metadata was not implemented after ${maxAttempts} attempts (${notices.join("; ")})`);
     }
     body = `_(${slideName} could not be generated — please regenerate this slide.)_`;
   }
 
-  return { body, teacherNotes: teacherNotes || defaultTeacherNotes(slideName), notices };
+  return {
+    body,
+    teacherNotes: teacherNotes || defaultTeacherNotes(slideName),
+    notices,
+    ...(mainPhaseActivities.length ? { mainPhaseActivities } : {}),
+    ...(questionSources.length ? { questionSources } : {}),
+  };
 }
 
 function selectedToolsFor(params: SlideGenParams, phase: AflPhaseId) {
@@ -272,7 +395,7 @@ export function validateSelectedAflBody(
   if (/selected afl|teacher instructions|ask students|tell students|circulate|debrief with/i.test(body)) return "teacher-facing or catalogue text on visible slide";
   if (/\b\d+\s*(?:min|minutes)\b/i.test(body)) return "timing must be in speaker notes";
   if (selection.language !== "en") return undefined;
-  if (selection.phase === "differentiation" && !/Higher Achievers task[\s\S]*Middle Achievers task[\s\S]*Lower Achievers task[\s\S]*Mini Plenary/i.test(body)) {
+  if (selection.phase === "differentiation" && !/^\s*Must\s*$[\s\S]*^\s*Should\s*$[\s\S]*^\s*Could\s*$[\s\S]*Mini Plenary/im.test(body)) {
     return "differentiated tiers or mini plenary are missing";
   }
   const concrete = /[?؟]|\b(?:write|solve|compare|explain|discuss|choose|list|predict|identify|create|decide|show|test|draw|read|mark|sort|share|teach|reflect|rate)\b/i.test(body);
@@ -292,17 +415,27 @@ export function validateSelectedAflBody(
   return undefined;
 }
 
-function parseStudentSlideResponse(content: string): { body: string; teacherNotes: string } {
+function parseStudentSlideResponse(content: string): {
+  body: string;
+  teacherNotes: string;
+  mainPhaseActivities: MainPhaseActivityInstruction[];
+  questionSources: QuestionSource[];
+} {
   const raw = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   try {
-    const parsed = JSON.parse(raw) as { body?: unknown; teacher_notes?: unknown };
+    const parsed = JSON.parse(raw) as { body?: unknown; teacher_notes?: unknown; main_phase_activities?: unknown; question_sources?: unknown };
     if (typeof parsed.body === "string" && parsed.body.trim()) {
-      return { body: parsed.body.trim(), teacherNotes: typeof parsed.teacher_notes === "string" ? parsed.teacher_notes.trim() : "" };
+      return {
+        body: parsed.body.trim(),
+        teacherNotes: typeof parsed.teacher_notes === "string" ? parsed.teacher_notes.trim() : "",
+        mainPhaseActivities: parseMainPhaseActivities(parsed.main_phase_activities),
+        questionSources: parseQuestionSources(parsed.question_sources),
+      };
     }
   } catch {
     // Keep compatibility with older/plain-text provider responses.
   }
-  return { body: raw, teacherNotes: "" };
+  return { body: raw, teacherNotes: "", mainPhaseActivities: [], questionSources: [] };
 }
 
 function defaultTeacherNotes(slideName: string): string {
@@ -366,7 +499,7 @@ export async function generateSlide3(params: SlideGenParams): Promise<SlideGenRe
 
 Item 1 — Chapter: ${chapter ? chapter : `The most appropriate chapter or unit that contains "${topic}"`}
 Item 2 — Topic: ${topic}
-Item 3 — SDG Goal: The single most relevant Sustainable Development Goal for ${topic} — include the goal number and full official title
+Item 3 — SDG Goal: The single most relevant Sustainable Development Goal for ${topic}, written exactly as "SDG <number> — <full official title>" (for example "SDG 2 — Zero Hunger"). This is the one SDG for the whole lesson.
 
 Rules:
 - Write ONLY these three items, each on its own line
@@ -494,9 +627,37 @@ Requirements:
 - Do NOT include differentiation tasks (separate slide)
 - Do NOT include plenary or reflection (separate slide)
 - Do NOT include UAE-specific real-world links (separate slide)
-- Do NOT include homework (separate slide)`;
+- Do NOT include homework (separate slide)
 
-  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "main"), params.usageUserId);
+STRUCTURED ACTIVITY OUTPUT (MANDATORY):
+- Return a "main_phase_activities" array in addition to "body" and "teacher_notes".
+- Add one array item for every independently executed main-phase activity, in execution order. Usually there is one item; never split one activity merely because its content may overflow onto continuation slides.
+- Each item must use these exact keys: activity_id, activity_name, activity_goal, student_instructions, duration_minutes, group_size, student_role, required_materials, expected_output, teacher_notes, activity_content, activity_type, parent_element_id.
+- parent_element_id must be "main-phase". activity_id must use the selected id ${mainActivity?.id ?? "or a stable fallback id"}. activity_name must use ${mainActivity?.label ?? "the actual fallback activity name"}.
+- student_instructions must contain 4-6 ordered actions. Each action is one short sentence, at most 15 words, directly addressed to students, and tailored to ${topic} at ${grade} level.
+- The steps must tell students what to do, who to work with, what to produce, and how to know they are finished.
+- duration_minutes must be a realistic integer for this activity (2-40). group_size and student_role must be concise. required_materials must be a non-empty string array. Do not claim specialist materials unless the task genuinely needs them.
+- teacher_notes must cover grouping, preparation, timing, monitoring, learner support, transition, and a check for understanding. None of that teacher-only guidance may appear in student_instructions or body.
+- activity_content is the complete visible task that follows its instruction slide. For one activity it must preserve the complete body task. For multiple activities, each activity_content is its exact portion of body, with no dropped questions.
+- The top-level body must contain the same activity content in the same order; do not put the separate instruction-slide steps inside body.`;
+
+  const result = await generateWithRetries(
+    slideName,
+    system,
+    user,
+    selectedToolsFor(params, "main"),
+    params.usageUserId,
+    true,
+    (body, teacherNotes) => buildFallbackMainPhaseActivity({
+      activityId: mainActivity?.id,
+      activityName: mainActivity?.label,
+      activityType: mainActivity?.id ?? params.teachingStrategy,
+      topic,
+      grade,
+      activityContent: body,
+      teacherNotes,
+    }),
+  );
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -509,16 +670,16 @@ export async function generateSlide7(params: SlideGenParams): Promise<SlideGenRe
   const user = `Generate differentiated activities for a ${grade} ${subject} lesson on: ${topic}
 ${differentiationAflBlock ? `AFL Differentiation Tool (teacher-selected - implement it): ${differentiationAflBlock}` : ""}
 
-Write EXACTLY FOUR sections in this precise order:
+Write EXACTLY FOUR sections in this precise order, each heading on its own line:
 
-Higher Achievers task
-Write a concrete challenge about ${topic} that requires independent analysis, evaluation, or creation while staying within the SAME objective and procedure. Increase reasoning demand, not syllabus scope (for example, do not switch from one-step to two-step equations).
+Must
+Write a concrete scaffolded version of the objective about ${topic}, including a useful first step, example, or sentence starter (blanks, never the answer).
 
-Middle Achievers task
+Should
 Write a concrete core task about ${topic} that directly practises the main objective.
 
-Lower Achievers task
-Write a concrete scaffolded version of the SAME objective, including a useful first step, example, or sentence starter.
+Could
+Write a concrete challenge about ${topic} that requires independent analysis, evaluation, or creation while staying within the SAME objective and procedure. Increase reasoning demand, not syllabus scope (for example, do not switch from one-step to two-step equations).
 
 Mini Plenary
 Write ONE filled-in question checking understanding of ${topic}; maximum one sentence.
@@ -526,15 +687,17 @@ Write ONE filled-in question checking understanding of ${topic}; maximum one sen
 STRICT RULES:
 - Write ONLY the four sections above — nothing else
 - Replace every instruction above with finished topic-specific task text; do not copy these descriptions or use square-bracket placeholders.
-- If Must-Should-Could is selected, put a real Could task under Higher, a real Should task under Middle, and a real Must task under Lower. Make reasoning increasingly independent across the three tasks.
-- When Must-Should-Could is selected, start the first task line of each tier with the literal labels "Could:", "Should:", and "Must:" respectively. Include all three labels and complete tasks; each tier needs at most two short equations or one short reasoning challenge.
+- The headings are exactly "Must", "Should" and "Could". Never label tasks by ability or achievement group (no "Higher/Middle/Lower Achievers", "High/Low Ability", "weak/strong students"); put any grouping advice in teacher_notes.
+- Make reasoning increasingly independent from Must to Could; each tier needs at most two short equations or one short reasoning challenge.
 - Keep the whole body under 20 non-empty lines, including the four section headings and mini plenary, so the entire task survives export.
 - If another differentiation tool is selected, express its actual choice, tiers, or menu mechanism inside the three sections.
 - Do NOT include UAE content, real-world connections, or cross-curricular links
 - Do NOT include a full plenary activity
-- Do NOT include homework or extended tasks`;
+- Do NOT include homework or extended tasks
+- ${selectedSdgRule(params)}
+${questionSourcingBlock(params)}`;
 
-  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "differentiation"), params.usageUserId);
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "differentiation"), params.usageUserId, false, undefined, questionSourceCheck);
   const cleaned = cleanBody(result.body, slideName);
   result.body = sanitizeSlide7DifferentiatedBody(
     cleaned,
@@ -555,15 +718,15 @@ export async function generateSlide8(params: SlideGenParams): Promise<SlideGenRe
   const user = uaeFrameworkEnabled
     ? `Generate UAE Real Life and Cross Curricular Connection content for a ${grade} ${subject} lesson on: ${topic}
 
-Include ALL four of the following:
-1. UAE Real-Life Connection: A specific UAE example directly related to ${topic}. Choose the most relevant from: UAE national tree (Ghaf), mangroves, desert ecosystems, UAE Vision 2031, Masdar City, EXPO 2020 legacy, UAE sustainability goals, Emirates wildlife — only what genuinely connects to ${topic}.
-2. Cross-Curricular Link: How ${topic} connects to another school subject taught in UAE schools — give a specific classroom example.
-3. UAE MOE Alignment: How teaching ${topic} supports UAE Ministry of Education curriculum goals and KHDA/SPEA inspection quality standards.
-4. SDG in UAE Context: The most relevant SDG goal number and title, and how the UAE is actively working toward it in relation to ${topic}.
+Include ALL three of the following, written directly to students:
+1. UAE Real-Life Connection: A specific UAE example directly related to ${topic}. Choose the most relevant from: UAE national tree (Ghaf), mangroves, desert ecosystems, UAE Vision 2031, Masdar City, EXPO 2020 legacy, UAE sustainability goals, Emirates wildlife — only what genuinely connects to ${topic}. Say clearly how it connects to today's concept.
+2. Cross-Curricular Task: A short task students do that links ${topic} to another school subject (for example Mathematics, Arabic, ICT, Social Studies), with a specific example.
+3. SDG in UAE Context: ${params.selectedSdg ? `Use exactly "${selectedSdgLabel(params.selectedSdg)}"` : "The most relevant SDG, written as \"SDG <number> — <official title>\""} and how the UAE is working toward it in relation to ${topic}.
 
 Requirements:
 - All content must be SPECIFIC to ${topic}, not generic
-- Inspection-ready quality for KHDA and SPEA
+- ${TEACHER_TEXT_SELF_CHECK} No curriculum-alignment, inspection or quality-standard statements on the slide (e.g. about MOE, KHDA or SPEA); real UAE examples and institutions as learning content are fine.
+- ${selectedSdgRule(params)}
 - Do NOT include differentiation tasks
 - Do NOT include plenary activities
 - Do NOT include homework`
@@ -577,11 +740,13 @@ C) Career connection: 2-3 specific careers that use knowledge of ${topic} and ex
 Requirements:
 - Content must be SPECIFIC to ${topic} — not generic
 - Do NOT mention UAE, Emirates, Dubai, Abu Dhabi, MOE UAE, KHDA, or SPEA
+- ${selectedSdgRule(params)}
+- ${TEACHER_TEXT_SELF_CHECK}
 - Do NOT include differentiation tasks
 - Do NOT include plenary activities
 - Do NOT include homework`;
 
-  const result = await generateWithRetries(slideName, system, user, undefined, params.usageUserId);
+  const result = await generateWithRetries(slideName, system, user, undefined, params.usageUserId, false, undefined, sdgCheck(params));
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -610,9 +775,11 @@ Requirements:
 - Do NOT include differentiation tasks (separate slide)
 - Do NOT include UAE content (separate slide)
 - Do NOT include homework (separate slide)
-- Do NOT include new teaching content`;
+- Do NOT include new teaching content
+- ${selectedSdgRule(params)}
+${questionSourcingBlock(params)}`;
 
-  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "plenary"), params.usageUserId);
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "plenary"), params.usageUserId, false, undefined, questionSourceCheck);
   result.body = cleanBody(result.body, slideName);
   return result;
 }
@@ -662,9 +829,11 @@ Requirements:
 - If the tool calls for multiple questions, progress from recall to application
 - Do NOT include homework instructions
 - Do NOT include a separate success-criteria checklist; if the selected exit tool is Emoji Scale, its rating choices and topic-specific reason belong here
-- Do NOT include new teaching content`;
+- Do NOT include new teaching content
+- ${selectedSdgRule(params)}
+${questionSourcingBlock(params)}`;
 
-  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "exitTicket"), params.usageUserId);
+  const result = await generateWithRetries(slideName, system, user, selectedToolsFor(params, "exitTicket"), params.usageUserId, false, undefined, questionSourceCheck);
   result.body = cleanBody(result.body, slideName);
   return result;
 }

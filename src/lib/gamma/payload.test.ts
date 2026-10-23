@@ -47,6 +47,23 @@ describe("request serialisation", () => {
     expect(buildGammaPayload({ deck: makeDeck(2), title: "t", language: "en", config: withModel }).request.imageOptions).toEqual({ source: "aiGenerated", model: "m1", style: "flat" });
     expect(buildGammaPayload({ deck: makeDeck(2), title: "t", language: "en", config: { ...withModel, imageSource: "noImages" } }).request.imageOptions).toEqual({ source: "noImages" });
   });
+  it("fails before generation when physical instructions push the deck above 25 cards", () => {
+    const deck = makeDeck();
+    deck[5] = {
+      ...deck[5]!,
+      mainPhaseActivities: Array.from({ length: 13 }, (_, index) => ({
+        activityId: `activity-${index}`,
+        activityName: `Activity ${index + 1}`,
+        studentInstructions: ["Join your group.", "Read the task.", "Complete the task.", "Check your answer."],
+        requiredMaterials: ["task card"],
+        expectedOutput: "a checked response",
+        teacherNotes: "Prepare groups, monitor progress, support learners, manage timing, signal transitions, and check understanding.",
+        activityContent: `Complete activity ${index + 1}.`,
+        parentElementId: "main-phase" as const,
+      })),
+    };
+    expect(() => buildGammaPayload({ deck, title: "t", language: "en", config })).toThrow(/at most 25/i);
+  });
 });
 
 describe("design brief size", () => {

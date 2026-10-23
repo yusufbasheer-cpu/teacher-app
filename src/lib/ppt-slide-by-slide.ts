@@ -1,3 +1,4 @@
+import { deckQualityTrailer, type DeckQualityMetadata } from "@/lib/ppt-educational-quality";
 import type { LessonPlanInput } from "@/lib/lesson-plan";
 import { usesArabicPptSlideTitles } from "@/lib/lesson-plan";
 import { buildSourceMaterialPromptBlock, SOURCE_MATERIAL_MAX_CHARS } from "@/lib/lesson-plan";
@@ -15,6 +16,10 @@ import {
   getStructuredLessonSlideTitle,
   getStructuredLessonSlideTitles,
 } from "@/lib/ppt-structured-lesson";
+import {
+  parseMainPhaseActivities,
+  type MainPhaseActivityInstruction,
+} from "@/lib/ppt-main-phase-activity";
 
 /** Markers for one DeepSeek completion = one slide body only. */
 export const SINGLE_PPT_SLIDE_BODY_START = "SINGLE PPT SLIDE BODY START" as const;
@@ -149,6 +154,8 @@ export function assembleFullPptFromSlideBodies(
   useArabicTitles: boolean,
   uaeFrameworkSelected = false,
   teacherNotes: readonly string[] = [],
+  mainPhaseActivities: readonly MainPhaseActivityInstruction[] = [],
+  deckQuality?: DeckQualityMetadata,
 ): string {
   const titles = getStructuredLessonSlideTitles(useArabicTitles, uaeFrameworkSelected);
   const parts: string[] = [];
@@ -161,9 +168,28 @@ export function assembleFullPptFromSlideBodies(
   }
   const outline = parts.join("\n").trim();
   const notes = teacherNotes.slice(0, STRUCTURED_LESSON_DECK_SLIDE_COUNT).map((note) => note ?? "");
-  return notes.some(Boolean)
-    ? `${outline}\n\n<!--__LAYAH_TEACHER_NOTES__${JSON.stringify(notes)}-->`
-    : outline;
+  const activityTrailer = mainPhaseActivities.length
+    ? `\n\n<!--__LAYAH_MAIN_PHASE_ACTIVITIES__${JSON.stringify(mainPhaseActivities)}-->`
+    : "";
+  const notesTrailer = notes.some(Boolean)
+    ? `\n\n<!--__LAYAH_TEACHER_NOTES__${JSON.stringify(notes)}-->`
+    : "";
+  // The teacher-notes trailer stays last: older readers took everything after its marker as the notes JSON.
+  return `${outline}${activityTrailer}${deckQualityTrailer(deckQuality)}${notesTrailer}`;
+}
+
+/** Extracts activity metadata without exposing it in the visible lesson outline. */
+export function parseMainPhaseActivitiesFromPptOutline(outline: string): MainPhaseActivityInstruction[] {
+  const marker = "__LAYAH_MAIN_PHASE_ACTIVITIES__";
+  const idx = outline.indexOf(marker);
+  if (idx < 0) return [];
+  const end = outline.indexOf("-->", idx);
+  if (end < 0) return [];
+  try {
+    return parseMainPhaseActivities(JSON.parse(outline.slice(idx + marker.length, end).trim()));
+  } catch {
+    return [];
+  }
 }
 
 /** Extracts generation-time teacher notes from the private outline trailer. */
@@ -171,13 +197,17 @@ export function parseTeacherNotesFromPptOutline(outline: string): string[] {
   const marker = "__LAYAH_TEACHER_NOTES__";
   const idx = outline.indexOf(marker);
   if (idx < 0) return [];
-  try {
-    const tail = outline.slice(idx + marker.length).replace(/-->\s*$/, "").trim();
-    const parsed = JSON.parse(tail) as unknown;
-    return Array.isArray(parsed) ? parsed.map((item) => (typeof item === "string" ? item : "")) : [];
-  } catch {
-    return [];
+  // Read up to this trailer's own closing "-->" (not the end of the text), so another trailer after it never breaks
+  // it. A note may itself contain "-->", so try each closing marker until the JSON is complete.
+  for (let end = outline.indexOf("-->", idx); end >= 0; end = outline.indexOf("-->", end + 3)) {
+    try {
+      const parsed = JSON.parse(outline.slice(idx + marker.length, end).trim()) as unknown;
+      return Array.isArray(parsed) ? parsed.map((item) => (typeof item === "string" ? item : "")) : [];
+    } catch {
+      // not the end of this trailer yet
+    }
   }
+  return [];
 }
 
 /** Slide 1 body: grade + date only (subject lives in the slide title, not the body). */
@@ -366,7 +396,10 @@ export function parseDeckBodiesFromPptOutline(
   uaeFrameworkSelected = false,
 ): string[] | null {
   const titles = getStructuredLessonSlideTitles(useArabicTitles, uaeFrameworkSelected);
-  const text = ppt.replace(/\r\n/g, "\n").split("<!--__LAYAH_TEACHER_NOTES__", 1)[0].trim();
+  const text = ppt
+    .replace(/\r\n/g, "\n")
+    .split(/<!--__LAYAH_(?:MAIN_PHASE_ACTIVITIES|TEACHER_NOTES)__/, 1)[0]
+    .trim();
   if (text.length < 40) return null;
 
   const bodies: string[] = [];
@@ -434,14 +467,16 @@ export const SINGLE_SLIDE_USER_FOCUS_EN: readonly string[] = [
 
 export function singleSlideUserFocusForSlide8(uaeFrameworkSelected: boolean): string {
   if (uaeFrameworkSelected) {
-    return `UAE Real Life and Cross Curricular Connection — content must be SPECIFIC to the actual class topic and UAE context. Write 3–4 concise, inspection-ready paragraphs: (1) UAE Real-Life Connection — name a specific UAE example directly related to the topic (e.g. for Biology: UAE mangroves, Ghaf trees, camel adaptation, coral reef conservation; for Science/Environment: UAE sustainability goals, solar energy in Abu Dhabi, Masdar City; for any topic: UAE Vision 2031, EXPO legacy, national innovation agenda — always tie it tightly to the lesson topic). (2) Cross-Curricular Link — show how this topic connects to another subject taught in UAE schools (e.g. Mathematics, Arabic, ICT, Islamic Studies) with a concrete classroom example. (3) UAE MOE and Inspection Alignment — state clearly how teaching this topic meets UAE Ministry of Education curriculum goals and KHDA/SPEA inspection-quality standards. (4) SDG in UAE Context — name the specific Sustainable Development Goal most relevant to this topic and explain how the UAE is working toward it. Content must feel real and specific — never generic. Do not repeat the slide title in the body.`;
+    return `UAE Real Life and Cross Curricular Connection — content must be SPECIFIC to the actual class topic and UAE context. Write 3 concise, student-facing paragraphs: (1) UAE Real-Life Connection — name a specific UAE example directly related to the topic (e.g. for Biology: UAE mangroves, Ghaf trees, camel adaptation, coral reef conservation; for Science/Environment: UAE sustainability goals, solar energy in Abu Dhabi, Masdar City; for any topic: UAE Vision 2031, EXPO legacy, national innovation agenda — always tie it tightly to the lesson topic). (2) Cross-Curricular Task — a short task students do that connects this topic to another subject (e.g. Mathematics, Arabic, ICT, Islamic Studies) with a concrete example. (3) SDG in UAE Context — use the lesson's one selected Sustainable Development Goal and explain how the UAE is working toward it. Never put curriculum-alignment, inspection or quality-standard statements (MOE, KHDA, SPEA) on the slide; those belong in teacher guidance. Content must feel real and specific — never generic. Do not repeat the slide title in the body.`;
   }
   return `Real Life and Cross Curricular Connection — choose the ONE connection that fits the actual class topic BEST and develop it fully with specific, topic-related details (not generic statements). Write 2–3 clear paragraphs: choose from (A) Real-Life Daily Application — give a concrete, specific example of how this topic is used in everyday life; (B) Cross-Curricular Link — explain specifically how this topic connects to another school subject with a classroom example; (C) Career Connection — name 2–3 specific careers where professionals use this knowledge and explain how; (D) Global Issue or SDG — connect to a specific Sustainable Development Goal with a real-world example; (E) Subject Integration — show how Science, Math, English, or another subject uses this topic. Content must be directly relevant to the actual topic taught. Must NOT mention UAE, Emirates, Dubai, Abu Dhabi, MOE UAE, KHDA, or SPEA anywhere. Do not repeat the slide title in the body.`;
 }
 
-export const SLIDE7_HIGHER_LABEL = "Higher Achievers task" as const;
-export const SLIDE7_MIDDLE_LABEL = "Middle Achievers task" as const;
-export const SLIDE7_LOWER_LABEL = "Lower Achievers task" as const;
+// Neutral, task-based labels. Students see what each task asks (Must / Should / Could), never an ability group.
+// The tiers keep their difficulty progression: Must = the scaffolded core task, Could = the extension.
+export const SLIDE7_HIGHER_LABEL = "Could" as const;
+export const SLIDE7_MIDDLE_LABEL = "Should" as const;
+export const SLIDE7_LOWER_LABEL = "Must" as const;
 
 const SLIDE7_CANONICAL_LABELS = [SLIDE7_HIGHER_LABEL, SLIDE7_MIDDLE_LABEL, SLIDE7_LOWER_LABEL] as const;
 
@@ -475,6 +510,9 @@ const SLIDE7_MINI_PLENARY_AR_RE = /\u062a\u0644\u062e\u064a\u0635\s*\u0645\u0635
 
 const SLIDE7_INLINE_TIER_RE =
   /^(higher|middle|lower)\s*(achiev\w*|attain\w*|ability\w*|level\w*|tier\w*)\s*(?:task\s*)?[:.\-]\s*(.+)$/i;
+/** "Must: complete the sentences" - the Must-Should-Could tool writes its label inline. */
+const SLIDE7_MSC_INLINE_RE = /^(must|should|could)\s*[:\-–—]\s*(.+)$/i;
+const MSC_TIER: Record<string, Slide7Tier> = { must: "lower", should: "middle", could: "higher" };
 
 function classifySlide7TierLine(line: string): Slide7Tier | null {
   const t = line.trim();
@@ -482,6 +520,9 @@ function classifySlide7TierLine(line: string): Slide7Tier | null {
   if (SLIDE7_MINI_PLENARY_HEADING_RE.test(t) || SLIDE7_FULL_PLENARY_HEADING_RE.test(t)) return null;
   if (SLIDE7_MINI_PLENARY_AR_RE.test(t)) return null;
   if (SLIDE7_QUICK_CHECK_RE.test(t)) return null;
+  if (/^#*\s*could\s*:?\s*$/i.test(t)) return "higher";
+  if (/^#*\s*should\s*:?\s*$/i.test(t)) return "middle";
+  if (/^#*\s*must\s*:?\s*$/i.test(t)) return "lower";
   if (SLIDE7_HIGHER_HEADING_RE.test(t) || /^higher\s+achievers?\s+task\s*$/i.test(t)) return "higher";
   if (SLIDE7_MIDDLE_HEADING_RE.test(t) || /^middle\s+achievers?\s+task\s*$/i.test(t)) return "middle";
   if (SLIDE7_LOWER_HEADING_RE.test(t) || /^lower\s+achievers?\s+task\s*$/i.test(t)) return "lower";
@@ -545,6 +586,14 @@ function parseSlide7TierBlocks(body: string): { tiers: Record<Slide7Tier, string
 
     if (SLIDE7_FULL_PLENARY_HEADING_RE.test(t)) {
       current = null;
+      continue;
+    }
+
+    const msc = t.match(SLIDE7_MSC_INLINE_RE);
+    if (msc && current !== "miniPlenary") {
+      const key = MSC_TIER[msc[1]!.toLowerCase()]!;
+      current = key;
+      tiers[key].push(msc[2]!.trim());
       continue;
     }
 
@@ -612,7 +661,8 @@ function formatSlide7CanonicalBody(
     middle: language === "ar" ? pptString(language, "slide7Middle") : SLIDE7_MIDDLE_LABEL,
     lower: language === "ar" ? pptString(language, "slide7Lower") : SLIDE7_LOWER_LABEL,
   };
-  const order: Slide7Tier[] = ["higher", "middle", "lower"];
+  // Easiest first: Must, then Should, then Could.
+  const order: Slide7Tier[] = ["lower", "middle", "higher"];
   const tierBody = order
     .map((tier) => {
       const content =

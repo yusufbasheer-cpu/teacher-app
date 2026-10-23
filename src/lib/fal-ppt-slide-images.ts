@@ -92,6 +92,7 @@ export type LessonPptFluxSlot =
   | "differentiated_activity"
   | "exit_ticket"
   | "success_criteria"
+  | "lesson_takeaway"
   /** When Pexels fails on a photo slide, fal generates a non-duplicate illustration instead. */
   | "fallback_pexels_title"
   | "fallback_pexels_starter"
@@ -206,6 +207,9 @@ export function buildLessonPptFluxPrompt(meta: PptSlideImageMeta, slot: LessonPp
       break;
     case "success_criteria":
       core = `A completed learning journey for ${topic}: three neatly finished groups of ${visualObjects} leading toward a small medal and star-shaped object`;
+      break;
+    case "lesson_takeaway":
+      core = `A concise visual summary of ${topic}: the most important ${visualObjects} arranged to show the lesson's central relationship, with no trophy or celebration imagery`;
       break;
     case "title_slide_fal_fallback":
       core = `A strong hero still life for ${topic} in ${subject}, centered on ${visualObjects}`;

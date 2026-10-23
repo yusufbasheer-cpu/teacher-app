@@ -71,7 +71,9 @@ describe("prompt construction requires Arabic everywhere", () => {
     const p = { ...BASE, language: "ar" as const };
     await Promise.all([generateSlide2(p), generateSlide5(p), generateSlide6(p), generateSlide7(p)]);
 
-    expect(calls.length).toBe(4);
+    // Slide 6 retries the new structured activity metadata before using its compatibility fallback, and slide 7
+    // retries because this mocked reply has no question_sources (3 attempts, then it keeps the complete slide).
+    expect(calls.length).toBe(8);
     for (const call of calls) {
       expect(call.system).toContain("OUTPUT LANGUAGE (ABSOLUTE REQUIREMENT)");
       expect(call.system).toContain("Modern Standard Arabic");
@@ -187,13 +189,14 @@ describe("slide 7 keeps Arabic content instead of replacing it with English defa
     expect(body).not.toContain("اشرح في جملة واحدة أهم ما تعلمته");
   });
 
-  it("leaves the English deck's labels exactly as they were", () => {
+  it("turns old ability-group headings into neutral Must / Should / Could, keeping each task", () => {
     const body = sanitizeSlide7DifferentiatedBody(
       "Higher Achievers task\nDesign a model.\nMiddle Achievers task\nComplete the diagram.\nLower Achievers task\nSort the picture cards.",
       "The Water Cycle",
       "en",
     );
-    expect(body).toContain("Higher Achievers task");
+    expect(body.startsWith("Must\nSort the picture cards.\n\nShould\nComplete the diagram.\n\nCould\nDesign a model.")).toBe(true);
+    expect(body).not.toMatch(/Achievers|Ability/i);
     expect(body).toContain("Mini Plenary");
     expect(body).not.toMatch(/[؀-ۿ]/);
   });

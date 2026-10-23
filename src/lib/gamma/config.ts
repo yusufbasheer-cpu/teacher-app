@@ -24,7 +24,8 @@ export type GammaErrorCode =
   | "store_unavailable"
   | "user_rate_limited"
   | "budget_exceeded"
-  | "duplicate_in_flight";
+  | "duplicate_in_flight"
+  | "card_limit_exceeded";
 
 export class GammaError extends Error {
   constructor(

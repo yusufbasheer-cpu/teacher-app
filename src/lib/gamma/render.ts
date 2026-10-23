@@ -7,7 +7,10 @@ import { buildGammaPayload, type GammaLessonMeta } from "./payload";
 import { checkAdmission } from "./policy";
 import { getDefaultGammaStore, type GammaRow, type GammaStore } from "./store";
 import { checkLayout, compareToSnapshot, extractPptx, type ValidationReport } from "./validate";
+import { insertSpeakerNotes, readSpeakerNotes } from "./notes";
+import { scanStudentFacingText, validateSelectedSdg } from "@/lib/ppt-educational-quality";
 import { artifactPath, readGammaArtifact, storeGammaArtifact } from "./artifact";
+import { buildRequiredVisualIntents, verifyRequiredVisualCoverage } from "@/lib/ppt-visual-intent";
 
 export type GammaRunMetrics = {
   presentationId?: string;
@@ -28,6 +31,7 @@ export type GammaRunMetrics = {
   pollCount: number;
   resumed: boolean;
   validation?: ValidationReport["verdict"];
+  requiredVisualValidation?: "passed" | "uncertain" | "failed";
   neutralisedBreaks: number;
   overRunBudget?: boolean;
 };
@@ -82,9 +86,63 @@ export async function renderPptxWithGamma(
     resumed: false,
     neutralisedBreaks: 0,
   };
-  const { request, snapshot, neutralisedBreaks, layout } = buildGammaPayload({ deck: params.deck, title: params.title, language: params.language, config, lesson: params.lesson, hasImage: params.hasImage });
+  const { request, snapshot, neutralisedBreaks, layout, slides, notes } = buildGammaPayload({ deck: params.deck, title: params.title, language: params.language, config, lesson: params.lesson, hasImage: params.hasImage });
+  const visualIntents = buildRequiredVisualIntents({
+    deck: params.deck,
+    topic: params.lesson?.topic ?? params.title,
+    subject: params.lesson?.subject ?? "Lesson",
+    grade: params.lesson?.grade ?? "",
+  }).map((intent) => ({ ...intent, imageSource: "gamma" as const, assetStatus: "provider-generated-unverified" as const }));
   // Content (strict, line by line) and layout (image dominance) are separate checks; only content decides the verdict.
-  const validateDeck = (deck: Awaited<ReturnType<typeof extractPptx>>): ValidationReport => ({ ...compareToSnapshot(snapshot, deck), layout: checkLayout(layout, deck) });
+  const selectedSdg = params.deck.find((m) => m.educationalMetadata?.selectedSdg)?.educationalMetadata?.selectedSdg;
+  const validateDeck = (deck: Awaited<ReturnType<typeof extractPptx>>): ValidationReport => {
+    const content = compareToSnapshot(snapshot, deck);
+    // Final-PPTX student text check: the canonical slides are already clean, so a compliance claim, an ability label
+    // or a different SDG in Gamma's export means Gamma introduced it. That is a content failure, not a layout note.
+    const exported = deck.slides.map((s, i) => ({ slideTitle: `Slide ${i + 1}`, body: s.paragraphs.map((p) => p.text).join("\n") }));
+    const studentText = scanStudentFacingText(exported).map((f) => `slide ${f.slide}: ${f.label} ("${f.match.slice(0, 60)}")`);
+    const sdg = selectedSdg ? validateSelectedSdg(exported, selectedSdg) : [];
+    const reasons = [...content.reasons, ...studentText, ...sdg];
+    const verdict = reasons.length ? "failed" : content.verdict;
+    return {
+      ...content,
+      verdict,
+      passed: verdict === "passed",
+      reasons,
+      layout: checkLayout(layout, deck),
+      requiredVisuals: verifyRequiredVisualCoverage({ intents: visualIntents, physicalSlides: slides, actualSlides: deck.slides }),
+    };
+  };
+  /**
+   * Writes Layah's per-slide speaker notes into Gamma's export, then proves nothing else moved: the strict content
+   * comparison runs again on the modified file and every slide must read back non-empty notes. On any doubt the
+   * original file is kept and the report says the notes are missing.
+   */
+  const withSpeakerNotes = async (buffer: Buffer): Promise<{ buffer: Buffer; validation: ValidationReport }> => {
+    const before = validateDeck(await extractPptx(buffer));
+    try {
+      const updated = await insertSpeakerNotes(buffer, notes);
+      const after = validateDeck(await extractPptx(updated));
+      const written = await readSpeakerNotes(updated);
+      const slidesWithNotes = written.filter((n) => n.trim()).length;
+      if (after.verdict !== before.verdict || after.reasons.join("|") !== before.reasons.join("|")) throw new Error("content changed while adding notes");
+      if (slidesWithNotes !== written.length) throw new Error(`${written.length - slidesWithNotes} slide(s) still have no notes`);
+      return { buffer: updated, validation: { ...after, speakerNotes: { added: true, slidesWithNotes, totalSlides: written.length } } };
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      console.warn(`[gamma-ppt] speaker notes not added: ${reason}`);
+      return {
+        buffer,
+        validation: {
+          ...before,
+          verdict: before.verdict === "passed" ? "uncertain" : before.verdict,
+          passed: false,
+          uncertainties: [...before.uncertainties, `speaker notes could not be added (${reason})`],
+          speakerNotes: { added: false, slidesWithNotes: 0, totalSlides: before.actualSlides, reason },
+        },
+      };
+    }
+  };
   metrics.neutralisedBreaks = neutralisedBreaks;
   metrics.requestedSlides = snapshot.length;
   const requestHash = createHash("sha256").update(JSON.stringify(request)).digest("hex");
@@ -96,9 +154,9 @@ export async function renderPptxWithGamma(
     const imageOptions = request.imageOptions as { source?: string; style?: string } | undefined;
     const reusable = store.findReusableArtifact ? await store.findReusableArtifact({ userId: params.userId, requestHash, themeId: typeof request.themeId === "string" ? request.themeId : null, imageSource: imageOptions?.source ?? null, imageStyle: imageOptions?.style ?? null }) : null;
     if (reusable?.artifactPath) {
-      const buffer = process.env.VITEST ? Buffer.alloc(0) : await readGammaArtifact(reusable.artifactPath);
+      const stored = process.env.VITEST ? Buffer.alloc(0) : await readGammaArtifact(reusable.artifactPath);
       if (!process.env.VITEST) {
-        const validation = validateDeck(await extractPptx(buffer));
+        const { buffer, validation } = await withSpeakerNotes(stored);
         metrics.presentationId = reusable.id;
         metrics.generationId = reusable.generationId ?? undefined;
         metrics.resumed = true;
@@ -106,6 +164,7 @@ export async function renderPptxWithGamma(
         metrics.imagesPictureCount = validation.pictures;
         metrics.imageMediaFiles = validation.mediaFiles;
         metrics.validation = validation.verdict;
+        metrics.requiredVisualValidation = validation.requiredVisuals?.verdict;
         metrics.creditsDeducted = reusable.creditsDeducted ?? undefined;
         metrics.outcome = validation.verdict === "failed" ? "failure" : "success";
         return { buffer, validation, metrics };
@@ -211,8 +270,7 @@ export async function renderPptxWithGamma(
     }
 
     // ── 4. Fetch + validate. Any failure here leaves the row completed/undelivered, i.e. resumable for free ──
-    const buffer = await downloadGammaExport(config, completed.exportUrl, deps, deadline);
-    const validation = validateDeck(await extractPptx(buffer));
+    const { buffer, validation } = await withSpeakerNotes(await downloadGammaExport(config, completed.exportUrl, deps, deadline));
     // Unit tests intentionally do not bootstrap Supabase Storage; production fails closed if storage is unavailable.
     const artifact = process.env.VITEST ? artifactPath(params.userId, row.generationId as string) : await storeGammaArtifact(params.userId, row.generationId as string, buffer);
     const requestImages = request.imageOptions as { source?: string; style?: string } | undefined;
@@ -231,6 +289,7 @@ export async function renderPptxWithGamma(
     metrics.imagesPictureCount = validation.pictures;
     metrics.imageMediaFiles = validation.mediaFiles;
     metrics.validation = validation.verdict;
+    metrics.requiredVisualValidation = validation.requiredVisuals?.verdict;
     metrics.outcome = validation.verdict === "failed" ? "failure" : "success";
     if (validation.verdict === "failed") {
       metrics.failureCode = "invalid_export";

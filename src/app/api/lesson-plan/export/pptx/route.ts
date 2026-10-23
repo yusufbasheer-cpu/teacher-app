@@ -3,6 +3,7 @@ import { isValidCurriculumFramework } from "@/lib/curriculum-framework";
 import {
   FAL_REQUIRED_DECK_INDICES,
   generatePptDeckSlideImages,
+  type SlideImageDiagnostic,
 } from "@/lib/ppt-image-resolver";
 import { sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildPptxFromPptContent, sanitizeExportFileName } from "@/lib/lesson-plan-export";
@@ -19,7 +20,14 @@ import { defaultProviderFor, GammaError, gammaGate, getGammaConfig, resolvePptPr
 import { encodeReportHeader, summariseReport } from "@/lib/gamma/report";
 import { renderPptxWithGamma } from "@/lib/gamma/render";
 import { listGammaThemes, validateGammaPresentationOptions } from "@/lib/gamma/themes";
-import { buildGammaPayload } from "@/lib/gamma/payload";
+import { buildCanonicalSlides, buildGammaPayload } from "@/lib/gamma/payload";
+import { extractPptx } from "@/lib/gamma/validate";
+import {
+  buildRequiredVisualIntents,
+  REQUIRED_VISUAL_DECK_INDICES,
+  verifyRequiredVisualCoverage,
+  type RequiredVisualCoverageReport,
+} from "@/lib/ppt-visual-intent";
 import { SupabaseGammaStore } from "@/lib/gamma/store";
 import { gammaUserMessage } from "@/lib/gamma/user-messages";
 import { createHash } from "node:crypto";
@@ -39,8 +47,11 @@ function isPexelsUrl(url: string | null | undefined): boolean {
   return typeof url === "string" && /\bpexels\.com\b/i.test(url);
 }
 
-function needsFalRequiredImageRepair(urls: readonly (string | null)[]): boolean {
-  return FAL_REQUIRED_DECK_INDICES.some((idx) => !urls[idx] || isPexelsUrl(urls[idx]));
+function requiredImageRepairIndices(urls: readonly (string | null)[]): number[] {
+  return [...new Set([
+    ...REQUIRED_VISUAL_DECK_INDICES.filter((idx) => !urls[idx]),
+    ...FAL_REQUIRED_DECK_INDICES.filter((idx) => !urls[idx] || isPexelsUrl(urls[idx])),
+  ])];
 }
 
 type Body = {
@@ -91,6 +102,7 @@ const GAMMA_ERROR_STATUS: Record<GammaError["code"], number> = {
   user_rate_limited: 429,
   budget_exceeded: 429,
   duplicate_in_flight: 409,
+  card_limit_exceeded: 422,
 };
 
 /** Tells the tester UI whether Gamma is selectable and what the server default is. Reveals nothing else. */
@@ -228,6 +240,7 @@ export async function POST(req: Request) {
             "Cache-Control": "no-store",
             "X-Layah-PPT-Provider": "gamma",
             "X-Layah-Gamma-Validation": result.validation.verdict,
+            "X-Layah-PPT-Visual-Validation": result.validation.requiredVisuals?.verdict ?? "uncertain",
             "X-Layah-Gamma-Report": encodeReportHeader(
               summariseReport(result.validation, {
                 generationId: result.metrics.generationId,
@@ -235,7 +248,7 @@ export async function POST(req: Request) {
                 resumed: result.metrics.resumed,
               }),
             ),
-            "Access-Control-Expose-Headers": "X-Layah-PPT-Provider, X-Layah-Gamma-Validation, X-Layah-Gamma-Report",
+            "Access-Control-Expose-Headers": "X-Layah-PPT-Provider, X-Layah-Gamma-Validation, X-Layah-Gamma-Report, X-Layah-PPT-Visual-Validation",
           },
         });
       }
@@ -251,10 +264,12 @@ export async function POST(req: Request) {
     const slideTitleByIndex = deck.map((slide) => slide.slideTitle);
 
     let slideImageUrls: (string | null)[];
+    let imageDiagnostics: SlideImageDiagnostic[] = [];
     if (fromClient !== null) {
       console.log("[pptx export] embedding pre-generated slide images (no new API image calls)");
       slideImageUrls = fromClient;
-      if (needsFalRequiredImageRepair(slideImageUrls)) {
+      const repairIndices = requiredImageRepairIndices(slideImageUrls);
+      if (repairIndices.length) {
         console.error(
           "[pptx export] pre-generated slide images are missing Fal-required slots; repairing before export",
         );
@@ -267,11 +282,13 @@ export async function POST(req: Request) {
           curriculumFramework: curriculumFramework || undefined,
           slideContentByIndex,
           slideTitleByIndex,
+          requestedDeckIndices: repairIndices,
         });
+        imageDiagnostics = repaired.diagnostics ?? [];
         slideImageUrls = slideImageUrls.map((url, idx) =>
-          FAL_REQUIRED_DECK_INDICES.includes(idx as (typeof FAL_REQUIRED_DECK_INDICES)[number])
+          repairIndices.includes(idx)
             ? repaired.urls[idx] ?? url
-            : url ?? repaired.urls[idx] ?? null,
+            : url,
         );
       }
     } else {
@@ -288,6 +305,7 @@ export async function POST(req: Request) {
           slideContentByIndex,
           slideTitleByIndex,
         });
+        imageDiagnostics = generated.diagnostics ?? [];
         slideImageUrls = Array.from({ length: deck.length }, (_, i) => generated.urls[i] ?? null);
       } catch (imgErr) {
         console.error("[pptx export] Image fetch failed; continuing without images:", imgErr);
@@ -318,6 +336,54 @@ export async function POST(req: Request) {
           ...(Object.keys(aflSelections).length > 0 ? { aflSelections } : {}),
         });
 
+    const visualIntents = buildRequiredVisualIntents({ deck, topic, subject, grade, curriculumFramework })
+      .map((intent) => {
+        const diagnostic = imageDiagnostics.find((item) => item.deckIndex === intent.deckIndex);
+        if (diagnostic?.resolvedProvider !== "none" && diagnostic?.resolvedImageReference) {
+          return {
+            ...intent,
+            imageSource: diagnostic.resolvedProvider,
+            assetStatus: "resolved" as const,
+            resolvedImageReference: diagnostic.resolvedImageReference,
+          };
+        }
+        if (slideImageUrls[intent.deckIndex]) {
+          return { ...intent, imageSource: "cached" as const, assetStatus: "provider-generated-unverified" as const };
+        }
+        return { ...intent, imageSource: "none" as const, assetStatus: "missing" as const };
+      });
+    let visualCoverage: RequiredVisualCoverageReport;
+    let structuralValidation: "passed" | "failed" = "passed";
+    try {
+      const extracted = await extractPptx(buffer);
+      const physicalSlides = buildCanonicalSlides({
+        deck,
+        lesson: { topic, subject, grade, ...(chapter ? { chapter } : {}) },
+        hasImage: (deckIdx) => Boolean(slideImageUrls[deckIdx]),
+      });
+      visualCoverage = verifyRequiredVisualCoverage({ intents: visualIntents, physicalSlides, actualSlides: extracted.slides });
+    } catch (verificationError) {
+      structuralValidation = "failed";
+      console.error("[pptx export] required-visual verification could not inspect the PPTX", verificationError);
+      visualCoverage = {
+        verdict: "failed",
+        categories: visualIntents.map((intent) => ({
+          category: intent.category,
+          deckIndex: intent.deckIndex,
+          physicalSlides: [],
+          pictureCount: 0,
+          status: "missing",
+          reason: "The exported PPTX could not be inspected for required visuals.",
+        })),
+        reasons: ["PPTX visual verification unavailable"],
+      };
+    }
+    const visualHeader = encodeURIComponent(JSON.stringify({
+      verdict: visualCoverage.verdict,
+      missing: visualCoverage.categories.filter((item) => item.status === "missing").map((item) => item.category),
+      unverified: visualCoverage.categories.filter((item) => item.status === "unverified").map((item) => item.category),
+    }));
+
     const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-ppt`) || "ppt-content";
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
@@ -325,6 +391,11 @@ export async function POST(req: Request) {
         "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         "Content-Disposition": `attachment; filename="${name}.pptx"`,
         "Cache-Control": "no-store",
+        "X-Layah-PPT-Content-Validation": "preserved-by-platform-renderer",
+        "X-Layah-PPT-Visual-Validation": visualCoverage.verdict,
+        "X-Layah-PPT-Visual-Report": visualHeader,
+        "X-Layah-PPT-Structural-Validation": structuralValidation,
+        "X-Layah-PPT-Layout-Validation": "unverified",
       },
     });
   } catch (e) {
