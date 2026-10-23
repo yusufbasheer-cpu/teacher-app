@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/panel";
 import type { CuratedGammaTheme } from "@/lib/gamma/themes";
-import { pictureMediumFor, type PictureMedium } from "@/lib/gamma/visual-plan";
+import { pictureMediumFor, type PictureMedium } from "@/lib/gamma/picture-medium";
 import type { GammaThemeLoadState } from "./gamma-ppt";
 
 /** Picture options shown to teachers, each mapped onto Gamma's image source + style. */

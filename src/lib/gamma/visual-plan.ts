@@ -12,14 +12,8 @@ export type ImagePlan = "hero" | "side" | "inset" | "none";
 
 export type SlideLayoutPlan = { slideIndex: number; type: SlideType; image: ImagePlan; reason: string };
 
-/** What kind of picture the teacher asked for; the brief must describe that, not always "an illustration". */
-export type PictureMedium = "illustration" | "realistic" | "photo" | "none";
-
-export function pictureMediumFor(source: string, style?: string): PictureMedium {
-  if (source === "noImages" || source === "themeAccent") return "none";
-  if (source === "pexels" || source.startsWith("web")) return "photo";
-  return /photo|realistic/i.test(style ?? "") ? "realistic" : "illustration";
-}
+import { pictureMediumFor, type PictureMedium } from "./picture-medium";
+export { pictureMediumFor, type PictureMedium };
 
 /** Text density limits per picture size. ponytail: character counts, not a layout measurement; tune from real decks. */
 export const SIDE_IMAGE_MAX_CHARS = 700;
