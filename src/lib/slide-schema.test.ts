@@ -158,4 +158,3 @@ describe("slide schema v1", () => {
   });
 });
 
-\n
