@@ -7,8 +7,8 @@ export type CanonicalSlide = { deckIdx: number; part: number; parts: number; tit
 /** Functional role of a slide; decides its layout and whether it may carry a picture. */
 export type SlideType = "title" | "concept" | "worked-example" | "activity" | "questions" | "real-life" | "objectives" | "summary";
 
-/** hero: large (cover only) · side: one picture in a column ≤ 1/3 width · inset: one small picture ≤ 1/4 · none. */
-export type ImagePlan = "hero" | "side" | "inset" | "none";
+/** diagram: one concept diagram in a column ≤ 1/3 width · side: one contextual picture ≤ 1/3 · inset: one small picture ≤ 1/4 · none. */
+export type ImagePlan = "diagram" | "side" | "inset" | "none";
 
 export type SlideLayoutPlan = { slideIndex: number; type: SlideType; image: ImagePlan; reason: string };
 
@@ -16,6 +16,7 @@ import { pictureMediumFor, type PictureMedium } from "./picture-medium";
 export { pictureMediumFor, type PictureMedium };
 
 /** Text density limits per picture size. ponytail: character counts, not a layout measurement; tune from real decks. */
+export const DIAGRAM_MAX_CHARS = 1200;
 export const SIDE_IMAGE_MAX_CHARS = 700;
 export const INSET_IMAGE_MAX_CHARS = 350;
 
@@ -36,18 +37,26 @@ export function classifySlide(s: CanonicalSlide): SlideType {
   return "concept";
 }
 
+/** Deck indexes in the 13-section lesson: the core teaching slide, and the decorative chapter/SDG slide. */
+const CORE_TEACHING_IDX = 5;
+const CHAPTER_SDG_IDX = 2;
+
 /**
- * Content first: a picture is allowed only where it can help without taking text space. Continuation slides,
- * questions, objectives, worked examples and summaries never get one; dense slides lose theirs.
+ * Content first, and pictures that teach: the one visual that helps most is a concept diagram on the core teaching
+ * slide. No cover art, no decorative chapter/SDG picture; continuation, question, objective, worked-example and
+ * summary slides stay text-only, and dense slides lose their picture before any text gets smaller.
  */
 export function planSlideLayouts(slides: CanonicalSlide[]): SlideLayoutPlan[] {
   return slides.map((s, slideIndex) => {
     const type = classifySlide(s);
     const chars = charsOf(s);
     const plan = (image: ImagePlan, reason: string): SlideLayoutPlan => ({ slideIndex, type, image, reason });
-    if (type === "title") return plan("hero", "Cover: a strong opening image.");
+    if (type === "title") return plan("none", "Cover: the theme carries it; no cover art.");
     if (s.part > 1) return plan("none", "Continuation slide: all space goes to the content.");
-    if ((type === "concept" || type === "real-life") && chars <= SIDE_IMAGE_MAX_CHARS) return plan("side", "One relevant picture supports the explanation.");
+    if (s.deckIdx === CHAPTER_SDG_IDX) return plan("none", "Chapter/SDG slide: a picture here would be decoration.");
+    if (s.deckIdx === CORE_TEACHING_IDX && chars <= DIAGRAM_MAX_CHARS) return plan("diagram", "Core teaching: a concept diagram explains the idea.");
+    if (type === "concept" && chars <= SIDE_IMAGE_MAX_CHARS) return plan("diagram", "A concept diagram supports the explanation.");
+    if (type === "real-life" && chars <= SIDE_IMAGE_MAX_CHARS) return plan("side", "One contextual picture supports the application.");
     if (type === "activity" && chars <= INSET_IMAGE_MAX_CHARS) return plan("inset", "Short activity: a small supporting picture fits.");
     return plan("none", type === "concept" || type === "real-life" || type === "activity" ? "Dense slide: the content needs the space." : `${type} slides are text-first.`);
   });
@@ -67,7 +76,12 @@ const LAYOUT_RULES: Record<SlideType, string> = {
 function pictureNoun(medium: PictureMedium): string {
   if (medium === "photo") return "real photograph";
   if (medium === "realistic") return "photorealistic image";
-  return "educational illustration or simple diagram";
+  return "educational illustration";
+}
+
+/** A stock photo cannot be a diagram; every other medium draws one, without text so it cannot invent labels. */
+function diagramNoun(medium: PictureMedium): string {
+  return medium === "photo" ? "real photograph that shows the idea" : "simple concept diagram with no words or numbers in it";
 }
 
 /** Compact per-slide brief (a legend once, then one short line per slide) so 25 slides still fit Gamma's 5000 chars. */
@@ -78,8 +92,8 @@ export function layoutInstructionsFor(slides: CanonicalSlide[], plans: SlideLayo
   const lines = plans.map((p) => {
     const image = medium === "none" || p.image === "none"
       ? "no image"
-      : p.image === "hero"
-        ? `large ${noun}`
+      : p.image === "diagram"
+        ? `one ${diagramNoun(medium)} explaining "${slides[p.slideIndex]!.title}", side column, max 1/3 width`
         : p.image === "side"
           ? `one ${noun} of "${slides[p.slideIndex]!.title}" in a side column, max 1/3 width`
           : `one small ${noun} of "${slides[p.slideIndex]!.title}", max 1/4 of the slide`;
@@ -88,6 +102,6 @@ export function layoutInstructionsFor(slides: CanonicalSlide[], plans: SlideLayo
   return [
     `Per-slide layout${about}. Layout types: ${legend}.`,
     ...lines,
-    `"No image" means no picture, icon or decorative graphic on that slide. Pictures must show the slide's own content, be age-appropriate, prefer diagrams over decoration, never sit behind text, and never contain invented labels, numbers or claims.`,
+    `"No image" means no picture, icon or decorative graphic on that slide. Pictures must show the slide's own content, be age-appropriate, never be cover art or decoration, never sit behind text, and never contain invented labels, numbers or claims.`,
   ].join(" ");
 }
