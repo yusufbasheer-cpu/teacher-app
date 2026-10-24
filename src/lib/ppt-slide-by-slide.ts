@@ -459,7 +459,7 @@ export const SINGLE_SLIDE_USER_FOCUS_EN: readonly string[] = [
   "Differentiated Activity and Mini Plenary — write FOUR sections in this exact order: (1) Higher Achievers task — a challenging activity that extends thinking beyond the lesson objectives, (2) Middle Achievers task — a standard activity that directly matches the learning objective, (3) Lower Achievers task — a supported activity with scaffolding, word banks, sentence starters, or guided prompts. Then at the bottom: (4) Mini Plenary — one quick question or checkpoint for the teacher to check whole-class understanding. All four tasks must be specific to the actual topic. Do NOT add homework, success criteria, exit ticket, or a full plenary. No UAE link on this slide.",
   "SLIDE_8_PLACEHOLDER",
   "Plenary activity — fully implement the selected AFL tool's exact student response format with topic-specific prompts. Address students directly. Put teacher delivery and timings in speaker notes. No homework, new teaching, or future slide references.",
-  "Extended task or homework — write ONE complete, clear task that goes BEYOND the lesson content and bridges to future learning. Do NOT repeat the slide title in the body. Do NOT include any success criteria, self-evaluation, I can statements, checklist, or rating scale (those belong on slide 12 only). Structure the task with: (1) a clear task name, (2) numbered step-by-step student instructions, (3) what the finished product or output should look like, (4) a challenge extension for early finishers. Choose the most appropriate task type: research task, investigative task, creative project, or design challenge. The task must be specific to the actual topic taught.",
+  "Extended Task — ONE short practical task that fits on ONE slide. Use this exact body structure: Your mission: one sentence; Steps: 3 or 4 numbered steps, maximum 15 words each; Show us: one outcome only, maximum 20 words, including when to present it; Skill you'll build: one clear skill in the student's own words; Challenge: optional, maximum 20 words. Give the task a short specific name for the deck title, maximum 6 words after 'Extended Task:'. Use a real-life situation at home, school, with family, or in the local area when that honestly fits the topic; otherwise use a meaningful topic-based create, explain, design, or compare task. Use accessible materials only, require no spending or unsafe activity, and make it suitable for 15–30 minutes or a few days of simple observation. Do NOT include future-learning text, long expected-output paragraphs, multiple products, success criteria, self-evaluation, marking guidance, or teacher directions in the student body.",
   "Exit ticket AFL tool: short focused assessment — immediate understanding check. No success criteria or homework paragraph.",
   "Success criteria and self-evaluation AFL tool — fully implemented. Do NOT write 'Success Criteria and Self Evaluation' or any version of the slide title inside the body. Start directly with the criteria items (e.g. 'I can…' statements, checklist, or rating scale). No exit ticket repeat.",
   "Lesson Takeaway: one concise, topic-specific reminder and a student-facing next-step reflection. No new teaching or activity.",
@@ -821,6 +821,66 @@ export function sanitizeSlide10ExtendedBody(body: string, slideTitle = "Extended
     .trim();
 }
 
+const EXTENDED_TASK_LABEL_RE = /^(?:task\s*name|title|your\s+mission|mission|steps?|show\s+us|what\s+to\s+bring\/?show|expected\s+output|skill\s+you(?:'|’)ll\s+build|skill|challenge)\s*:\s*/i;
+const EXTENDED_TASK_TEACHER_RE = /^(?:teacher\s+(?:guidance|notes?|directions?)|marking|mark\s+scheme|what\s+a\s+good\s+answer|model\s+answer|look\s+for|assessment\s+guidance|parent\/?carer|how\s+this\s+connects\s+to\s+future\s+learning|future\s+learning)\s*:/i;
+
+function limitWords(value: string, maximum: number): string {
+  return value.replace(/\s+/g, " ").trim().split(" ").filter(Boolean).slice(0, maximum).join(" ").replace(/[,:;.-]+$/, "");
+}
+
+function stripExtendedTaskLabel(value: string): string {
+  return value.replace(/^#+\s*/, "").replace(EXTENDED_TASK_LABEL_RE, "").trim();
+}
+
+export type NormalizedExtendedTask = { slideTitle: string; body: string; teacherGuidance: string[] };
+
+/** Final fail-safe applied before either renderer or Gamma sees the Extended Task. */
+export function normalizeExtendedTaskSlide(
+  body: string,
+  topic = "the lesson topic",
+  slideTitle = "Extended Task",
+): NormalizedExtendedTask {
+  const sanitized = sanitizeSlide10ExtendedBody(body, slideTitle);
+  const isArabic = /[\u0600-\u06ff]/.test(sanitized);
+  const rawLines = sanitized.replace(/\r\n/g, "\n").split("\n").map((line) => line.trim()).filter(Boolean);
+  const teacherGuidance = rawLines.filter((line) => EXTENDED_TASK_TEACHER_RE.test(line));
+  const lines = rawLines.filter((line) => !EXTENDED_TASK_TEACHER_RE.test(line));
+  const find = (re: RegExp) => lines.find((line) => re.test(line));
+  const taskNameLine = find(/^(?:task\s*name|title)\s*:/i)
+    ?? lines.find((line) => /^(?:homework\s+task|extended\s+task)\s*[-—:]/i.test(line))
+    ?? lines.find((line) => !/^\d+[.)]\s+/.test(line) && !EXTENDED_TASK_LABEL_RE.test(line));
+  const taskName = limitWords(stripExtendedTaskLabel(taskNameLine ?? topic).replace(/^(?:homework\s+task|extended\s+task)\s*[-—:]\s*/i, ""), 6) || limitWords(topic, 6);
+  const missionLine = find(/^(?:your\s+mission|mission)\s*:/i);
+  const numbered = lines.filter((line) => /^\d+[.)]\s+/.test(line)).map((line) => line.replace(/^\d+[.)]\s+/, ""));
+  const fallbackActions = lines.filter((line) => line !== taskNameLine && !EXTENDED_TASK_LABEL_RE.test(line) && !/^\d+[.)]\s+/.test(line));
+  const steps = (numbered.length >= 3 ? numbered : fallbackActions).slice(0, 4).map((line) => limitWords(stripExtendedTaskLabel(line), 15));
+  const defaults = [
+    `Observe or review one clear example of ${topic}.`,
+    "Record the most useful detail in your own words.",
+    "Explain what your evidence shows.",
+  ];
+  while (steps.length < 3) steps.push(limitWords(defaults[steps.length]!, 15));
+  const mission = limitWords(stripExtendedTaskLabel(missionLine ?? taskNameLine ?? `Use an accessible real-life example to explore ${topic}.`), 24);
+  const showLine = find(/^(?:show\s+us|what\s+to\s+bring\/?show|expected\s+output)\s*:/i);
+  const showUs = limitWords(stripExtendedTaskLabel(showLine ?? "Bring one short explanation to the next lesson."), 20);
+  const skillLine = find(/^skill\s*(?:you(?:'|’)ll\s+build)?\s*:/i);
+  const skill = limitWords(stripExtendedTaskLabel(skillLine ?? "Explain with evidence"), 8);
+  const challengeLine = find(/^challenge\s*:/i);
+  const challenge = challengeLine ? limitWords(stripExtendedTaskLabel(challengeLine), 20) : "";
+  return {
+    slideTitle: isArabic ? `مهمة موسعة: ${taskName}` : `Extended Task: ${taskName}`,
+    body: [
+      `${isArabic ? "مهمتك" : "Your mission"}: ${mission}`,
+      `${isArabic ? "الخطوات" : "Steps"}:`,
+      ...steps.map((step, index) => `${index + 1}. ${step}.`),
+      `${isArabic ? "اعرض لنا" : "Show us"}: ${showUs}`,
+      `${isArabic ? "المهارة التي ستبنيها" : "Skill you'll build"}: ${skill}`,
+      ...(challenge ? [`${isArabic ? "التحدي" : "Challenge"}: ${challenge}`] : []),
+    ].join("\n"),
+    teacherGuidance,
+  };
+}
+
 export function validateSlide10ExtendedBody(
   body: string,
   slideTitle = "Extended Task",
@@ -830,6 +890,22 @@ export function validateSlide10ExtendedBody(
   if (!t) return { ok: false, reasons: ["empty body"] };
 
   const lines = t.replace(/\r\n/g, "\n").split("\n").map((l) => l.trim()).filter(Boolean);
+
+  const isArabic = /[\u0600-\u06ff]/.test(t);
+  const mission = lines.filter((line) => /^your\s+mission\s*:/i.test(line));
+  const steps = lines.filter((line) => /^\d+[.)]\s+/.test(line));
+  const showUs = lines.filter((line) => /^show\s+us\s*:/i.test(line));
+  const skills = lines.filter((line) => /^skill\s+you(?:'|’)ll\s+build\s*:/i.test(line));
+  const challenges = lines.filter((line) => /^challenge\s*:/i.test(line));
+  if (!isArabic) {
+    if (mission.length !== 1 || stripExtendedTaskLabel(mission[0] ?? "").split(/\s+/).filter(Boolean).length > 24) reasons.push("mission must be one short sentence");
+    if (steps.length < 3 || steps.length > 4) reasons.push("must contain 3 or 4 numbered steps");
+    if (steps.some((line) => line.replace(/^\d+[.)]\s+/, "").trim().split(/\s+/).length > 15)) reasons.push("each step must be 15 words or fewer");
+    if (showUs.length !== 1 || stripExtendedTaskLabel(showUs[0] ?? "").split(/\s+/).filter(Boolean).length > 20) reasons.push("Show us must be one line of 20 words or fewer");
+    if (skills.length !== 1) reasons.push("must name exactly one skill");
+    if (challenges.length > 1 || challenges.some((line) => stripExtendedTaskLabel(line).split(/\s+/).filter(Boolean).length > 20)) reasons.push("challenge must be optional and 20 words or fewer");
+  }
+  if (lines.some((line) => /future\s+learning/i.test(line))) reasons.push("future-learning explanation must not appear on the slide");
 
   for (const line of lines) {
     if (lineEchoesSlideTitle(line, slideTitle)) {

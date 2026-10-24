@@ -5,8 +5,8 @@
  */
 
 import {
+  normalizeExtendedTaskSlide,
   sanitizeSlide7DifferentiatedBody,
-  sanitizeSlide10ExtendedBody,
   stripSlideTitleEchoFromBody,
 } from "@/lib/ppt-slide-by-slide";
 import { getTeachingStrategyMechanism, resolveGenerationTopic } from "@/lib/lesson-plan";
@@ -789,26 +789,37 @@ export async function generateSlide10(params: SlideGenParams): Promise<SlideGenR
   const { topic, subject, grade } = params;
   const slideName = "Extended Task";
   const system = buildIsolatedSystemPrompt(slideName, params);
-  const user = `Generate a Homework or Extended Task for a ${grade} ${subject} lesson on: ${topic}
+  const user = `Generate one short Extended Task for a ${grade} ${subject} lesson on: ${topic}
 
-Include:
-1. Task name (NOT "Extended Task" or "Homework" alone — give it a descriptive title)
-2. Numbered step-by-step student instructions (what to do, how, and by when)
-3. Expected output (what the finished work should look like)
-4. Challenge extension for early finishers
-5. How this task connects to future learning about ${topic}
+Return JSON with body and teacher_notes. The body must use this exact plain-text structure:
+Task name: [specific name, maximum 6 words]
+Your mission: [one student-facing sentence]
+Steps:
+1. [maximum 15 words]
+2. [maximum 15 words]
+3. [maximum 15 words]
+4. [optional, maximum 15 words]
+Show us: [one outcome only and when to present it, maximum 20 words]
+Skill you'll build: [one clear skill]
+Challenge: [optional, maximum 20 words]
 
 Requirements:
-- Task must go DEEPER than the lesson — choose from: research task, investigative task, creative project, or design challenge
-- Specific to ${topic}
-- Do NOT include success criteria or I can statements (separate slide)
-- Do NOT include exit ticket questions (separate slide)
-- Do NOT include plenary activities
-- Do NOT repeat the slide title inside the content`;
+- Build at least one clear skill using action verbs such as Observe, Record, Compare, Explain, Design, or Present.
+- If ${topic} has an honest real-life link, use something the student can do or observe at home, school, with family, or locally.
+- If a real-life link would feel forced, use a meaningful topic-based create, explain, design, or compare task.
+- Use easy-to-access materials only. Require no spending, special equipment, or unsafe activity.
+- Make it suitable for 15–30 minutes, or a few days only when simple observation is needed.
+- Ask for exactly one outcome, such as a short explanation, labelled sketch, or mini poster.
+- Put marking guidance, what a good answer looks like, and teacher delivery guidance in teacher_notes only.
+- Do not include future-learning text, expected-output paragraphs, extra explanation, success criteria, exit tickets, plenaries, or the slide title in body.`;
 
   const result = await generateWithRetries(slideName, system, user, undefined, params.usageUserId);
   const cleaned = cleanBody(result.body, slideName);
-  result.body = sanitizeSlide10ExtendedBody(cleaned, slideName);
+  const normalized = normalizeExtendedTaskSlide(cleaned, topic, slideName);
+  result.body = normalized.body;
+  if (normalized.teacherGuidance.length) {
+    result.teacherNotes = [result.teacherNotes, ...normalized.teacherGuidance].filter(Boolean).join("\n");
+  }
   return result;
 }
 

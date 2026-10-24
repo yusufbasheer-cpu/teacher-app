@@ -4,8 +4,8 @@ import {
   parseDeckBodiesFromPptOutline,
   parseMainPhaseActivitiesFromPptOutline,
   parseTeacherNotesFromPptOutline,
+  normalizeExtendedTaskSlide,
   sanitizeEarlyPptSlideBody,
-  sanitizeSlide10ExtendedBody,
   sanitizeSlide7DifferentiatedBody,
   stripSlideTitleEchoFromBody,
   type EarlySlideSanitizeContext,
@@ -792,7 +792,14 @@ function applyPptIsolationValidationToDeck(
       b = stripLinesDuplicatedFromEarlierSlides(b, prevBodies);
     }
     if (i === 6) b = sanitizeSlide7DifferentiatedBody(b, topic, language);
-    if (i === 9) b = sanitizeSlide10ExtendedBody(b, slide.slideTitle);
+    if (i === 9) {
+      const normalized = normalizeExtendedTaskSlide(b, topic, slide.slideTitle);
+      b = normalized.body;
+      slide.slideTitle = normalized.slideTitle;
+      if (normalized.teacherGuidance.length) {
+        slide.speakerNotes = [slide.speakerNotes, ...normalized.teacherGuidance].filter(Boolean).join("\n");
+      }
+    }
     let cleaned = stripMarkdownSymbolsForStudents(b);
     // Sanitisation must never be the reason a slide is blank. If every line was filtered out of
     // a slide that had content, keep the original: showing unpolished real content beats
@@ -1339,10 +1346,14 @@ export function buildStructuredLessonSlides(ctx: StructuredLessonPptContext): St
     s10Pick.body,
     isAr ? `مهمة موسعة: «${topic}»\n\nاستكشف هذا الموضوع أكثر قبل الحصة القادمة.` : `Extended Task: "${topic}"\n\nExplore this topic further before the next lesson.`,
   );
-  const s10Body = stripMarkdownSymbolsForStudents(
-    sanitizeSlide10ExtendedBody(s10Merged, T[9]!),
-  );
-  slides.push({ slideTitle: T[9]!, body: s10Body, speakerNotes: s10Pick.notes, includeImageSlot: true });
+  const s10Normalized = normalizeExtendedTaskSlide(s10Merged, topic, T[9]!);
+  const s10Body = stripMarkdownSymbolsForStudents(s10Normalized.body);
+  slides.push({
+    slideTitle: s10Normalized.slideTitle,
+    body: s10Body,
+    speakerNotes: [s10Pick.notes, ...s10Normalized.teacherGuidance].filter(Boolean).join("\n"),
+    includeImageSlot: true,
+  });
 
   const s11 = pickDeck(
     "exitTicket",

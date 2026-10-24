@@ -112,6 +112,12 @@ describe("POST: authorised tester in staging", () => {
     expect(call.userId).toBe("user-1");
     expect(typeof call.startedAt).toBe("number");
   });
+  it("fails closed when the design flow sends pictures without a selected theme", async () => {
+    const res = await post({ pptProvider: "gamma", gammaImageSource: "aiGenerated" });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ code: "GAMMA_THEME_REQUIRED", error: "Choose a slide theme before generating the PowerPoint." });
+    expect(renderPptxWithGamma).not.toHaveBeenCalled();
+  });
   it("the checkbox can select legacy even when the server default is gamma", async () => {
     vi.stubEnv("PPT_GENERATION_PROVIDER", "gamma");
     await post({ pptProvider: "legacy" });

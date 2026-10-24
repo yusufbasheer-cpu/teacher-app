@@ -751,6 +751,8 @@ export function chunkDeckForSlides(
   if (deck.length > 0) chunksByDeckIdx[0] = [];
   for (let i = 1; i < deck.length; i++) {
     if (SLIDE_KIND_BY_INDEX[i] === "hero-close") { chunksByDeckIdx[i] = []; continue; }
+    // Extended Task is hard-limited before rendering and must never create a continuation card.
+    if (i === 9) { chunksByDeckIdx[i] = [normalizeToLines(deck[i]!.body)]; continue; }
     const cpl = hasImage(i) ? CPL_IMAGE : CPL_FULL;
     const kind = SLIDE_KIND_BY_INDEX[i] ?? "standard";
     const budget = chipKeyFor(kind, i) ? CONTENT_H - CHIP_RESERVE_H : CONTENT_H;

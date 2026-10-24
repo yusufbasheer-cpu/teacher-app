@@ -139,6 +139,9 @@ export function buildGammaPayload(params: {
   hasImage?: (deckIdx: number) => boolean;
 }): { request: Record<string, unknown>; snapshot: SlideSnapshot[]; neutralisedBreaks: number; slides: CanonicalSlide[]; layout: SlideLayoutPlan[]; notes: string[] } {
   const slides = buildCanonicalSlides(params);
+  if (params.deck.length > 9 && slides.filter((slide) => slide.deckIdx === 9).length !== 1) {
+    throw new GammaError("bad_request", "The Extended Task must fit on exactly one slide.");
+  }
   if (slides.length > GAMMA_MAX_CARDS) {
     throw new GammaError(
       "card_limit_exceeded",

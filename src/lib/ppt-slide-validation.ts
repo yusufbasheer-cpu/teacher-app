@@ -109,7 +109,7 @@ export function buildPptSlidePreflightChecklist(ctx: PptSlideValidationContext):
       ? "UAE-specific real-life connection to the topic, cross-curricular link relevant to UAE schools, UAE MOE alignment, KHDA/SPEA inspection note, and SDG in UAE context — all specific to the actual topic"
       : "one specific connection (real-life application, cross-curricular link, career connection, or global/SDG link) fully developed for the actual topic — no UAE references at all",
     9: "complete plenary activity with the selected tool's exact student response format and topic-specific prompts; teacher timings belong in speaker notes",
-    10: "complete extended task or homework with task name, numbered student instructions, expected output, and a challenge extension — specific to the actual topic; no success criteria or self-evaluation content",
+    10: "one short practical extended task with a one-sentence mission, 3–4 short steps, one Show us outcome, one skill, and an optional challenge",
     11: "exit ticket only",
     12: "success criteria and self-evaluation only",
     13: "concise topic-specific takeaway and student reflection only",
@@ -121,7 +121,7 @@ export function buildPptSlidePreflightChecklist(ctx: PptSlideValidationContext):
     5: "extra outcomes, missing outcomes, or copying objectives verbatim",
     7: "standalone plenary, homework, success criteria, exit ticket, or UAE link (a Mini Plenary quick check IS required at the bottom)",
     9: "homework, new teaching, future slide references, or starting the body with the word 'Plenary'",
-    10: "success criteria, self-evaluation, I can statements, checklist, rating scale, exit ticket, or repeating the slide title",
+    10: "future-learning text, long expected-output paragraphs, multiple products, success criteria, self-evaluation, exit ticket, or repeating the slide title",
     8: ctx.uaeFrameworkSelected ? "generic content without specific UAE or topic references" : "any UAE-specific references (UAE, Emirates, Dubai, KHDA, SPEA, MOE UAE)",
     11: "success criteria, extended homework essay",
     12: "exit ticket repeat, new teaching",
