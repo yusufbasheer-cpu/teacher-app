@@ -578,7 +578,7 @@ export function LessonPlanGenerator() {
     }
 
     // Only the isolated Gamma experiment preview leaves PPT lessons unmetered (the server is the authority).
-    const unmeteredPpt = sectionSelection["PPT Slide Content"] && process.env.NEXT_PUBLIC_GAMMA_EXPERIMENT === "true";
+    const unmeteredPpt = sectionSelection["PPT Slide Content"] && process.env.NEXT_PUBLIC_GAMMA_EXPERIMENT === "true" && process.env.NEXT_PUBLIC_EXPERIMENT_FEATURE_LOCK !== "off";
     if (!unmeteredPpt && usage && !usage.canGenerate) {
       setLimitModalOpen(true);
       return;

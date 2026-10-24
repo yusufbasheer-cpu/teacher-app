@@ -55,21 +55,29 @@ export function experimentFeatureForPath(path: string): string | null {
   return PATH_FEATURES.find(({ match }) => match(normalised))?.feature ?? null;
 }
 
-/** Server authority for the focused preview. It is deliberately a no-op outside isolated environments. */
+/**
+ * The focused tester preview locks the app down to the lesson-plan flow. Staging is also an isolated environment (staging
+ * database, Gamma allowed) but opens the whole app with EXPERIMENT_FEATURE_LOCK=off. Isolation's safety checks still apply.
+ */
+export function isFeatureLockActive(env: Env = process.env): boolean {
+  return isIsolatedEnvironment(env) && env.EXPERIMENT_FEATURE_LOCK?.trim().toLowerCase() !== "off";
+}
+
+/** Server authority for the focused preview. It is deliberately a no-op unless the feature lock is active. */
 export function isFeatureAllowed(pathOrFeature: string, env: Env = process.env): boolean {
-  if (!isIsolatedEnvironment(env)) return true;
+  if (!isFeatureLockActive(env)) return true;
   const feature = experimentFeatureForPath(pathOrFeature);
   return feature !== null && experimentAllowedFeatures(env).includes(feature);
 }
 
-/** UI-only mirror. The server lock remains authoritative; the public flag only hides unavailable navigation. */
+/** UI-only mirror. The server lock remains authoritative; the public flags only hide unavailable navigation. */
 export function isFeatureVisible(pathOrFeature: string, env: Env = process.env): boolean {
-  const clientExperiment = env.NEXT_PUBLIC_GAMMA_EXPERIMENT === "true";
-  if (!clientExperiment && !isIsolatedEnvironment(env)) return true;
+  const clientLock = env.NEXT_PUBLIC_GAMMA_EXPERIMENT === "true" && env.NEXT_PUBLIC_EXPERIMENT_FEATURE_LOCK?.trim().toLowerCase() !== "off";
+  if (!clientLock && !isFeatureLockActive(env)) return true;
   const feature = experimentFeatureForPath(pathOrFeature);
   return feature !== null && experimentAllowedFeatures(env).includes(feature);
 }
 
 export function experimentFeatureLockReport(env: Env = process.env) {
-  return { active: isIsolatedEnvironment(env), allowed: experimentAllowedFeatures(env) };
+  return { active: isFeatureLockActive(env), allowed: experimentAllowedFeatures(env) };
 }

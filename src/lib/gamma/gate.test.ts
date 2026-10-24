@@ -11,6 +11,19 @@ const staging = {
   GAMMA_TESTER_EMAILS: "T@x.com, b@x.com",
 };
 
+describe("open to every signed-in user (staging: GAMMA_TESTER_EMAILS=*)", () => {
+  const open = { ...staging, GAMMA_TESTER_EMAILS: "*" };
+  it("allows any signed-in user", () => {
+    expect(gammaGate("anyone@school.ae", open)).toEqual({ available: true, reason: "authorized" });
+  });
+  it("still needs a signed-in user and every environment and database check", () => {
+    expect(gammaGate(null, open).available).toBe(false);
+    expect(gammaGate("anyone@school.ae", { ...open, VERCEL_ENV: "production" }).reason).toBe("production-environment");
+    expect(gammaGate("anyone@school.ae", { ...open, GAMMA_ALLOWED_SUPABASE_REFS: "other" }).reason).toBe("database-not-allowlisted");
+    expect(gammaGate("anyone@school.ae", { ...open, NEXT_PUBLIC_SUPABASE_URL: "https://jbwevzvtloahjoamwnjt.supabase.co", GAMMA_ALLOWED_SUPABASE_REFS: "jbwevzvtloahjoamwnjt" }).reason).toBe("production-database");
+  });
+});
+
 describe("gammaGate fails closed", () => {
   it("is disabled by default", () => {
     expect(gammaGate("t@x.com", {}).available).toBe(false);

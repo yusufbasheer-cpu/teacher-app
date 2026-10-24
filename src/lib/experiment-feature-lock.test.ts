@@ -1,7 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_EXPERIMENT_FEATURES, experimentFeatureForPath, isFeatureAllowed, isFeatureVisible } from "./experiment-feature-lock";
+import { DEFAULT_EXPERIMENT_FEATURES, experimentFeatureForPath, isFeatureAllowed, isFeatureLockActive, isFeatureVisible } from "./experiment-feature-lock";
 
 const isolated = { GAMMA_ENVIRONMENT_NAME: "staging" };
+
+describe("staging: isolated but with the whole app open", () => {
+  it("EXPERIMENT_FEATURE_LOCK=off opens every route while the environment stays isolated", () => {
+    const staging = { ...isolated, EXPERIMENT_FEATURE_LOCK: "off" };
+    expect(isFeatureLockActive(staging)).toBe(false);
+    for (const path of ["/pricing", "/question-paper", "/differentiated-worksheets", "/api/razorpay/create-order"]) {
+      expect(isFeatureAllowed(path, staging), path).toBe(true);
+    }
+    expect(isFeatureVisible("/question-paper", { ...staging, NEXT_PUBLIC_GAMMA_EXPERIMENT: "true", NEXT_PUBLIC_EXPERIMENT_FEATURE_LOCK: "off" })).toBe(true);
+  });
+  it("any other value keeps the tester preview locked", () => {
+    expect(isFeatureLockActive(isolated)).toBe(true);
+    expect(isFeatureLockActive({ ...isolated, EXPERIMENT_FEATURE_LOCK: "on" })).toBe(true);
+    expect(isFeatureAllowed("/pricing", { ...isolated, EXPERIMENT_FEATURE_LOCK: "of" })).toBe(false);
+  });
+});
 
 describe("experiment feature lock", () => {
   it("has no effect outside isolated environments", () => {

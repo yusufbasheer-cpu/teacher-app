@@ -33,7 +33,7 @@ import {
 } from "@/lib/ppt-language";
 import { apiErrorResponse } from "@/lib/api-client-error";
 import { filterUserFacingNotices } from "@/lib/image-notices";
-import { isIsolatedEnvironment } from "@/lib/environment-isolation";
+import { isFeatureLockActive } from "@/lib/experiment-feature-lock";
 import { SECTION_GENERATION_FAILED, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import {
   normalizeGenerationSections,
@@ -683,9 +683,9 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  // Unmetered PPT testing exists only on the isolated experiment deployment; everywhere else (production included)
-  // PPT lessons use the normal rate limits, spending protection and plan allowance.
-  const isPptExperiment = sections.includes("PPT Slide Content") && isIsolatedEnvironment();
+  // Unmetered PPT testing exists only on the locked-down tester preview; everywhere else (staging and production
+  // included) PPT lessons use the normal rate limits, spending protection and plan allowance.
+  const isPptExperiment = sections.includes("PPT Slide Content") && isFeatureLockActive();
   if (!isPptExperiment) {
     const ip = getClientIp(req);
     const ipLimit = checkRateLimit(`lesson-plan:ip:${ip}`, 10, HOUR_MS);

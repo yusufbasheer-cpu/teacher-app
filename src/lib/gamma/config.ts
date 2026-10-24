@@ -79,8 +79,10 @@ export function gammaGate(email: string | null | undefined, env: Env = process.e
   const ref = supabaseRef(env);
   if (ref === PRODUCTION_SUPABASE_REF) return { available: false, reason: "production-database" };
   if (!ref || !csv(env.GAMMA_ALLOWED_SUPABASE_REFS).includes(ref)) return { available: false, reason: "database-not-allowlisted" };
+  // "*" opens Gamma to every signed-in user (staging); everything above still has to pass, so it can't reach production.
   const e = email?.trim().toLowerCase();
-  if (!e || !csv(env.GAMMA_TESTER_EMAILS).includes(e)) return { available: false, reason: "not-an-authorized-tester" };
+  const testers = csv(env.GAMMA_TESTER_EMAILS);
+  if (!e || !(testers.includes("*") || testers.includes(e))) return { available: false, reason: "not-an-authorized-tester" };
   return { available: true, reason: "authorized" };
 }
 
