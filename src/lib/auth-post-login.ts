@@ -20,11 +20,10 @@ async function registerSession(userId: string): Promise<void> {
  */
 export async function completeGooglePostAuthLogin(
   userId: string,
-  userEmail: string,
 ): Promise<PostAuthLoginResult> {
   await registerSession(userId);
 
-  const enrollment = await runSchoolEnrollment(userEmail);
+  const enrollment = await runSchoolEnrollment();
   if (!enrollment.ok) {
     await supabase.auth.signOut();
     return { ok: false, message: enrollment.message };

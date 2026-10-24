@@ -269,7 +269,6 @@ function PlanCard({
 export function SchoolRegisterForm() {
   const [step, setStep] = useState<Step>(1);
   const [userEmail, setUserEmail] = useState("");
-  const [userId, setUserId] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [form, setForm] = useState<SchoolForm>({
     schoolName: "",
@@ -297,7 +296,6 @@ export function SchoolRegisterForm() {
       const email = session.user.email;
       const domain = email.split("@")[1] ?? "";
       setUserEmail(email);
-      setUserId(session.user.id);
       setForm((prev) => ({ ...prev, emailDomain: domain }));
       setStep(2);
       setGoogleLoading(false);
@@ -330,7 +328,6 @@ export function SchoolRegisterForm() {
       const email = session.user.email;
       const domain = email.split("@")[1] ?? "";
       setUserEmail(email);
-      setUserId(session.user.id);
       setForm((prev) => ({ ...prev, emailDomain: domain }));
       setStep(2);
     }
@@ -374,12 +371,20 @@ export function SchoolRegisterForm() {
     setError(null);
 
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Session expired. Please sign in again.");
+      }
+
       const res = await fetch("/api/school-register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          adminEmail: userEmail,
-          adminUserId: userId || undefined,
           schoolName: form.schoolName,
           emailDomain: form.emailDomain,
           country: form.country,
