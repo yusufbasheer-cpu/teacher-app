@@ -8,7 +8,7 @@ import type { PresentationLanguage } from "@/lib/ppt-language";
 import { getAuthHeaders } from "@/lib/auth-headers";
 import { decodeReportHeader, type GammaReportSummary } from "@/lib/gamma/report";
 import type { CuratedGammaTheme } from "@/lib/gamma/themes";
-import { extractGammaImagePreviews } from "./gamma-ppt-images";
+import { extractGammaSlidePreviews, type GammaSlidePreview } from "./gamma-ppt-images";
 
 export type GammaThemeLoadState = "idle" | "loading" | "ready" | "empty" | "error";
 
@@ -141,7 +141,7 @@ export function buildPptExportBody(p: PptExportInput): Record<string, unknown> {
 }
 
 export type GammaPptOutcome =
-  | { kind: "ready"; blob: Blob; filename: string; summary: GammaReportSummary | null; imagePreviews: string[] }
+  | { kind: "ready"; blob: Blob; filename: string; summary: GammaReportSummary | null; slidePreviews: GammaSlidePreview[] }
   | { kind: "error"; code: string; message: string };
 
 /** Silent resumes of a long-running design before giving up (each resume is free: same generation id). */
@@ -175,7 +175,7 @@ export async function requestGammaPpt(
     if (blob.size === 0 || res.headers.get("x-layah-ppt-provider") !== "gamma") {
       return { kind: "error", code: "EMPTY", message: "We couldn't design your slides this time. Please try again." };
     }
-    return { kind: "ready", blob, filename, summary: decodeReportHeader(res.headers.get("x-layah-gamma-report")), imagePreviews: await extractGammaImagePreviews(blob) };
+    return { kind: "ready", blob, filename, summary: decodeReportHeader(res.headers.get("x-layah-gamma-report")), slidePreviews: await extractGammaSlidePreviews(blob) };
   } catch (e) {
     console.error("[gamma-ppt] request failed", e);
     return { kind: "error", code: "NETWORK", message: "We couldn't reach the slide designer. Check your connection and try again." };
