@@ -11,7 +11,7 @@ import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StudioIndicator } from "./generation-studio";
 
-export type PreviewSlide = { title: string; lines: string[] };
+export type PreviewSlide = { title: string; lines: string[]; imagePreview?: string };
 
 type SlideDeckPreviewProps = {
   eyebrow: string;
@@ -22,8 +22,6 @@ type SlideDeckPreviewProps = {
   swatch?: string[];
   caption: string;
   busy: boolean;
-  /** Real images extracted from the completed PPTX export. */
-  imagePreviews?: string[];
   /** Slide to show while text streams in; the teacher's own pick always wins. */
   focusIndex?: number;
 };
@@ -42,11 +40,12 @@ function inkFor(hex: string | undefined): { ink: string; soft: string } | null {
  * same proportions as the large preview; thumbnails show a bigger title and fewer lines to stay legible.
  */
 export function SlideFace({ slide, index, eyebrow, deckTitle, swatch, large }: { slide: PreviewSlide; index: number; eyebrow: string; deckTitle: string; swatch?: string[]; large?: boolean }) {
-  const ink = inkFor(swatch?.[0]);
-  const themed = Boolean(ink);
-  const bg = themed ? swatch![0] : undefined;
-  const accent = swatch?.[1] ?? "var(--brand)";
   const cover = index === 0;
+  const themeBackground = cover ? swatch?.[0] : (swatch?.[1] ?? swatch?.[0]);
+  const ink = inkFor(themeBackground);
+  const themed = Boolean(ink);
+  const bg = themed ? themeBackground : undefined;
+  const accent = cover ? (swatch?.[1] ?? "var(--brand)") : (swatch?.[0] ?? "var(--brand)");
   const text = { color: ink?.ink };
   const soft = { color: ink?.soft };
   const lines = large ? slide.lines : slide.lines.slice(0, 2);
@@ -69,9 +68,10 @@ export function SlideFace({ slide, index, eyebrow, deckTitle, swatch, large }: {
             {slide.title}
           </p>
           <span className="mt-[3%] block h-[2px] w-1/5 shrink-0 rounded-full" style={{ background: accent }} />
-          <div className={cn("mt-[5%] flex flex-col", large ? "gap-[1.6cqw]" : "gap-[3cqw]")}>
-            {lines.length
-              ? lines.map((l, i) => (
+          <div className={cn("mt-[5%] flex min-h-0 flex-1", slide.imagePreview ? "gap-[5%]" : "flex-col", large ? "gap-y-[1.6cqw]" : "gap-y-[3cqw]")}>
+            <div className={cn("flex min-w-0 flex-col", slide.imagePreview && "w-[54%]")}>
+              {lines.length
+                ? lines.map((l, i) => (
                   <p
                     key={i}
                     className={cn("std-in font-serif leading-snug", large ? "line-clamp-2 text-[2.2cqw]" : "line-clamp-1 text-[6.5cqw]", !themed && "text-muted")}
@@ -79,10 +79,17 @@ export function SlideFace({ slide, index, eyebrow, deckTitle, swatch, large }: {
                   >
                     {l}
                   </p>
-                ))
-              : [0.9, 0.75, 0.82].slice(0, large ? 3 : 2).map((w, i) => (
+                  ))
+                : [0.9, 0.75, 0.82].slice(0, large ? 3 : 2).map((w, i) => (
                   <span key={i} className={cn("std-skel block rounded-full", large ? "h-[1.6cqw]" : "h-[4cqw]", themed && "opacity-60")} style={{ width: `${w * 100}%` }} />
                 ))}
+            </div>
+            {slide.imagePreview ? (
+              <span className="std-scale-in min-h-0 flex-1 overflow-hidden rounded-[4%] bg-white/20 shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element -- data URL extracted from the generated PPTX */}
+                <img src={slide.imagePreview} alt="" className="h-full w-full object-cover" />
+              </span>
+            ) : null}
           </div>
         </>
       )}
@@ -90,7 +97,7 @@ export function SlideFace({ slide, index, eyebrow, deckTitle, swatch, large }: {
   );
 }
 
-export function SlideDeckPreview({ eyebrow, deckTitle, slides, swatch, caption, busy, imagePreviews = [], focusIndex }: SlideDeckPreviewProps) {
+export function SlideDeckPreview({ eyebrow, deckTitle, slides, swatch, caption, busy, focusIndex }: SlideDeckPreviewProps) {
   const [picked, setPicked] = useState<number | null>(null);
   const selected = picked ?? focusIndex ?? 0;
   const current = slides[selected] ?? slides[0];
@@ -134,22 +141,6 @@ export function SlideDeckPreview({ eyebrow, deckTitle, slides, swatch, caption, 
           </li>
         ))}
       </ol>
-      {imagePreviews.length > 0 ? (
-        <div className="mt-4 border-t border-line-subtle pt-3">
-          <p className="mb-2 text-[11px] font-medium text-muted">
-            {imagePreviews.length} {imagePreviews.length === 1 ? "image" : "images"} attached to your PowerPoint
-          </p>
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
-            {imagePreviews.map((src, index) => (
-              // Each real image arrives one after another, so the teacher sees them being attached.
-              <span key={index} className="std-scale-in aspect-video overflow-hidden rounded-md border border-line-subtle bg-surface" style={{ animationDelay: `${120 + index * 110}ms` }}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- data URLs are extracted from the generated PPTX */}
-                <img src={src} alt={`Generated PowerPoint visual ${index + 1}`} className="h-full w-full object-cover" />
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
       <p className="mt-3 text-center text-[11px] text-faint">{caption}</p>
     </div>
   );

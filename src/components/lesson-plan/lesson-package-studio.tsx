@@ -61,10 +61,11 @@ export function LessonPackageStudio(p: LessonPackageStudioProps) {
 
   const titles = useMemo(() => getStructuredLessonSlideTitles(p.arabicSlides, p.uaeFramework), [p.arabicSlides, p.uaeFramework]);
   const outline = p.lessonPlan?.["PPT Slide Content"];
-  const slides = useMemo(() => {
+  const componentSlides = useMemo(() => {
     if (typeof outline === "string" && outline.trim()) return slideTextFromOutline(outline, titles);
     return titles.map((title, index) => ({ title, lines: previewLinesFromComponent(p.livePptComponents[index + 1] ?? "") }));
   }, [outline, p.livePptComponents, titles]);
+  const slides = deck?.slidePreviews.length ? deck.slidePreviews : componentSlides;
 
   const eyebrow = [p.subject, p.grade && `Grade ${p.grade.replace(/^grade\s*/i, "")}`].filter(Boolean).join(" · ");
   const designing = Boolean(p.gamma && !p.gamma.outcome && contentReady);
@@ -86,7 +87,6 @@ export function LessonPackageStudio(p: LessonPackageStudioProps) {
       swatch={p.gamma && contentReady ? p.gamma.swatch : undefined}
       caption={caption}
       busy={!p.finished}
-      imagePreviews={deck?.imagePreviews}
       focusIndex={!contentReady && p.latestPptComponent ? p.latestPptComponent - 1 : undefined}
     />
   ) : (
