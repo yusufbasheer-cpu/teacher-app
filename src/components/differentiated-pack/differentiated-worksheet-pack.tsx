@@ -499,6 +499,38 @@ export function DifferentiatedWorksheetPack() {
     );
   }
 
+  // While generating, the page shows the Studio in its content area: the app's sidebar and top bar stay usable.
+  if (loading) {
+    return (
+      <GenerationStudio
+        kind="Worksheet pack"
+        eyebrow={[subject.trim(), grade.trim()].filter(Boolean).join(" · ")}
+        title="Creating your differentiated worksheets"
+        subtitle={topic.trim()}
+        // One request per level, in order: each stage is that level's real result.
+        stages={DIFF_LEVELS.map(({ level, label, detail }) => ({
+          id: level,
+          label: `${label} worksheet`,
+          detail: levelProgress[level] === "error" ? "This level didn't generate — the others continue" : detail,
+          status: STUDIO_STATUS[levelProgress[level]],
+        }))}
+        meta={[{ label: "Levels", value: "3" }]}
+        preview={
+          <ArtifactPagesPreview
+            caption="One worksheet per level · your questions appear on the next screen"
+            pages={DIFF_LEVELS.map(({ level, label, detail }) => ({
+              key: level,
+              title: `${label} worksheet`,
+              subtitle: detail,
+              status: STUDIO_STATUS[levelProgress[level]] as "pending" | "active" | "done" | "error",
+            }))}
+          />
+        }
+        footerNote="Keep this page open while Layah writes your worksheets."
+      />
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-[1100px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       <PageTitle
@@ -889,34 +921,6 @@ export function DifferentiatedWorksheetPack() {
         </>
       ) : null}
 
-      {loading ? (
-        <GenerationStudio
-          kind="Worksheet pack"
-          eyebrow={[subject.trim(), grade.trim()].filter(Boolean).join(" · ")}
-          title="Creating your differentiated worksheets"
-          subtitle={topic.trim()}
-          // One request per level, in order: each stage is that level's real result.
-          stages={DIFF_LEVELS.map(({ level, label, detail }) => ({
-            id: level,
-            label: `${label} worksheet`,
-            detail: levelProgress[level] === "error" ? "This level didn't generate — the others continue" : detail,
-            status: STUDIO_STATUS[levelProgress[level]],
-          }))}
-          meta={[{ label: "Levels", value: "3" }]}
-          preview={
-            <ArtifactPagesPreview
-              caption="One worksheet per level · your questions appear on the next screen"
-              pages={DIFF_LEVELS.map(({ level, label, detail }) => ({
-                key: level,
-                title: `${label} worksheet`,
-                subtitle: detail,
-                status: STUDIO_STATUS[levelProgress[level]] as "pending" | "active" | "done" | "error",
-              }))}
-            />
-          }
-          footerNote="Keep this page open while Layah writes your worksheets."
-        />
-      ) : null}
     </div>
   );
 }

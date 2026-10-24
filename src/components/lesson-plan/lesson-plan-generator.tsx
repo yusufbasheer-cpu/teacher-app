@@ -387,7 +387,6 @@ export function LessonPlanGenerator() {
     };
   }, [searchParams]);
 
-
   const clearUploadedSource = () => {
     setUploadedChunks([]);
     setUploadInfo(null);
@@ -657,7 +656,6 @@ export function LessonPlanGenerator() {
           noticeRaw ? noticeRaw.split(/\n\n+/).map((p) => p.trim()) : [],
         );
         setParseNotice(safeNotices.length > 0 ? safeNotices.join("\n\n") : null);
-
 
         const fromApi = data.pptSlideImageUrls;
         const ppt =
@@ -1025,6 +1023,31 @@ export function LessonPlanGenerator() {
     setError(null);
     setComposerStep("outputs");
   };
+
+  // While generating, the page shows the Studio in its content area: the app's sidebar and top bar stay usable.
+  if (loading) {
+    const theme = gammaDesign.themes.find((t) => t.id === gammaDesign.themeId);
+    return (
+      <LessonPackageStudio
+        sections={TEACHER_PACKAGE_SECTIONS.filter((k) => sectionSelection[k])}
+        progress={generationProgress}
+        lessonPlan={lessonPlan}
+        livePptComponents={livePptComponents}
+        latestPptComponent={latestPptComponent}
+        subject={form.subject}
+        grade={form.grade}
+        topicTitle={resolveLessonTitle(form.topic, form.chapter, form.subject)}
+        arabicSlides={resolvePresentationLanguage({ language: form.language, subject: form.subject }) === "ar"}
+        uaeFramework={isUaeCurriculumFramework(form.curriculumFramework)}
+        gamma={designBeforeGenerate ? { themeName: theme?.name, swatch: theme?.swatch, designing: gammaDesigning, resumes: gammaResumes, outcome: pregeneratedPpt } : null}
+        finished={studioFinished}
+        preparingFiles={preparingFiles}
+        readyFiles={readyFiles}
+        onDownload={triggerFileDownload}
+        onOpenLesson={() => finishStudioRef.current?.()}
+      />
+    );
+  }
 
   return (
     <div className="w-full" ref={wizardRef}>
@@ -1744,30 +1767,6 @@ export function LessonPlanGenerator() {
           {successMessage}
         </div>
       ) : null}
-
-      {loading ? (() => {
-        const theme = gammaDesign.themes.find((t) => t.id === gammaDesign.themeId);
-        return (
-          <LessonPackageStudio
-            sections={TEACHER_PACKAGE_SECTIONS.filter((k) => sectionSelection[k])}
-            progress={generationProgress}
-            lessonPlan={lessonPlan}
-            livePptComponents={livePptComponents}
-            latestPptComponent={latestPptComponent}
-            subject={form.subject}
-            grade={form.grade}
-            topicTitle={resolveLessonTitle(form.topic, form.chapter, form.subject)}
-            arabicSlides={resolvePresentationLanguage({ language: form.language, subject: form.subject }) === "ar"}
-            uaeFramework={isUaeCurriculumFramework(form.curriculumFramework)}
-            gamma={designBeforeGenerate ? { themeName: theme?.name, swatch: theme?.swatch, designing: gammaDesigning, resumes: gammaResumes, outcome: pregeneratedPpt } : null}
-            finished={studioFinished}
-            preparingFiles={preparingFiles}
-            readyFiles={readyFiles}
-            onDownload={triggerFileDownload}
-            onOpenLesson={() => finishStudioRef.current?.()}
-          />
-        );
-      })() : null}
 
       <GenerationLimitModal
         open={limitModalOpen}

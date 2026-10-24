@@ -158,7 +158,6 @@ export function QuestionPaperGenerator() {
 
   const extractedMaterial = useMemo(() => combineSourceChunks(uploadedChunks), [uploadedChunks]);
 
-
   const totalQuestions = useMemo(() => countSelectedQuestions(questionCounts), [questionCounts]);
   const missingStepOneFields = [
     { label: "Curriculum type", value: curriculumType, field: "curriculumType" },
@@ -598,6 +597,48 @@ export function QuestionPaperGenerator() {
           onSuccess={() => window.location.reload()}
         />
       </>
+    );
+  }
+
+  // While generating, the page shows the Studio in its content area: the app's sidebar and top bar stay usable.
+  if (loading) {
+    // Real stages only: the paper request, then the blueprint request (each is one call, no sub-steps).
+    const finished = generationProgress === "Finalizing...";
+    const onBlueprint = generationProgress === "Generating blueprint...";
+    const paperDone = result !== null;
+    const blueprintFailed = Boolean(result?.blueprintError);
+    const stages: StudioStage[] = [
+      { id: "paper", label: "Writing the question paper", detail: paperDone ? "Questions, answer key and marking scheme written" : `${totalMarks} marks · ${difficulty} difficulty`, status: paperDone ? "done" : "active" },
+      ...(generateBlueprint
+        ? [{
+            id: "blueprint",
+            label: "Building the blueprint",
+            detail: blueprintFailed ? "The blueprint couldn't be built this time — your paper is still ready" : onBlueprint ? "Mapping each question to its topic and marks" : undefined,
+            status: (blueprintFailed ? "warning" : finished ? "done" : onBlueprint ? "active" : "pending") as StudioStage["status"],
+          }]
+        : []),
+    ];
+    return (
+      <GenerationStudio
+        kind="Question paper"
+        eyebrow={[subject, grade].filter(Boolean).join(" · ")}
+        title={`Creating your ${subject || "question"} paper`}
+        subtitle={topic}
+        stages={stages}
+        meta={[{ label: "Total marks", value: String(totalMarks) }, { label: "Time allowed", value: String(timeAllowed) }]}
+        preview={
+          <ArtifactPagesPreview
+            caption={finished ? "Your papers are written" : "Layout preview · your questions appear on the next screen"}
+            pages={[
+              { key: "paper", title: "Question paper", subtitle: `${totalMarks} marks`, status: paperDone ? "done" : "active" },
+              ...(includeAnswerKey || includeMarkingScheme ? [{ key: "key", title: includeMarkingScheme ? "Marking scheme" : "Answer key", status: (paperDone ? "done" : "active") as PreviewPage["status"] }] : []),
+              ...(generateBlueprint ? [{ key: "bp", title: "Blueprint", status: (blueprintFailed ? "error" : finished ? "done" : onBlueprint ? "active" : "pending") as PreviewPage["status"] }] : []),
+            ]}
+          />
+        }
+        outcome={finished ? { tone: blueprintFailed ? "warn" : "ok", title: "Your question paper is ready", detail: blueprintFailed ? "The blueprint didn't finish, but your paper is ready." : "Opening your downloads now.", actions: [] } : null}
+        footerNote="Keep this page open while Layah writes your paper."
+      />
     );
   }
 
@@ -1186,47 +1227,6 @@ export function QuestionPaperGenerator() {
           </div>
         </section>
       )}
-
-      {loading ? (() => {
-        // Real stages only: the paper request, then the blueprint request (each is one call, no sub-steps).
-        const finished = generationProgress === "Finalizing...";
-        const onBlueprint = generationProgress === "Generating blueprint...";
-        const paperDone = result !== null;
-        const blueprintFailed = Boolean(result?.blueprintError);
-        const stages: StudioStage[] = [
-          { id: "paper", label: "Writing the question paper", detail: paperDone ? "Questions, answer key and marking scheme written" : `${totalMarks} marks · ${difficulty} difficulty`, status: paperDone ? "done" : "active" },
-          ...(generateBlueprint
-            ? [{
-                id: "blueprint",
-                label: "Building the blueprint",
-                detail: blueprintFailed ? "The blueprint couldn't be built this time — your paper is still ready" : onBlueprint ? "Mapping each question to its topic and marks" : undefined,
-                status: (blueprintFailed ? "warning" : finished ? "done" : onBlueprint ? "active" : "pending") as StudioStage["status"],
-              }]
-            : []),
-        ];
-        return (
-          <GenerationStudio
-            kind="Question paper"
-            eyebrow={[subject, grade].filter(Boolean).join(" · ")}
-            title={`Creating your ${subject || "question"} paper`}
-            subtitle={topic}
-            stages={stages}
-            meta={[{ label: "Total marks", value: String(totalMarks) }, { label: "Time allowed", value: String(timeAllowed) }]}
-            preview={
-              <ArtifactPagesPreview
-                caption={finished ? "Your papers are written" : "Layout preview · your questions appear on the next screen"}
-                pages={[
-                  { key: "paper", title: "Question paper", subtitle: `${totalMarks} marks`, status: paperDone ? "done" : "active" },
-                  ...(includeAnswerKey || includeMarkingScheme ? [{ key: "key", title: includeMarkingScheme ? "Marking scheme" : "Answer key", status: (paperDone ? "done" : "active") as PreviewPage["status"] }] : []),
-                  ...(generateBlueprint ? [{ key: "bp", title: "Blueprint", status: (blueprintFailed ? "error" : finished ? "done" : onBlueprint ? "active" : "pending") as PreviewPage["status"] }] : []),
-                ]}
-              />
-            }
-            outcome={finished ? { tone: blueprintFailed ? "warn" : "ok", title: "Your question paper is ready", detail: blueprintFailed ? "The blueprint didn't finish, but your paper is ready." : "Opening your downloads now.", actions: [] } : null}
-            footerNote="Keep this page open while Layah writes your paper."
-          />
-        );
-      })() : null}
 
       <GenerationLimitModal
         open={limitModalOpen}

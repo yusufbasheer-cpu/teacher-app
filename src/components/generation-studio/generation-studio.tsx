@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Layah Studio: the full-page workspace shown while a teaching resource is generated. One shell for every
+ * Layah Studio: the workspace shown (inside the app frame, sidebar kept) while a teaching resource is generated. One shell for every
  * generator (lesson package, PowerPoint, question paper, worksheet levels); each caller supplies its stages and an
  * artifact-appropriate preview.
  *
@@ -297,14 +297,37 @@ export function GenerationStudio({ kind, eyebrow, title, subtitle, stages, meta,
     : { text: "In progress", cls: "border-line bg-surface" };
   const announcement = outcome ? `${outcome.title}. ${outcome.detail ?? ""}` : current ? `${current.label}. ${current.detail ?? ""}` : "";
 
+  // Leaving mid-run throws the generation away (and what it cost), so ask first; once finished, navigation is free.
+  const running = !outcome;
+  useEffect(() => {
+    if (!running) return;
+    const leaveMessage = "Your resources are still being generated. If you leave now, this generation will be lost.";
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    // In-app links (sidebar, header) are client-side navigations, which beforeunload doesn't see.
+    const onClick = (e: MouseEvent) => {
+      const link = (e.target as Element | null)?.closest?.("a[href]");
+      if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if ((link as HTMLAnchorElement).target === "_blank") return;
+      if (!window.confirm(leaveMessage)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [running]);
+
+  // Rendered inside the app frame (not over it), so the sidebar and top bar stay available throughout.
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="studio-title"
-      className="fixed inset-0 z-[9999] overflow-y-auto overscroll-contain bg-canvas text-ink"
-    >
-      <header className="sticky top-0 z-10 border-b border-line-subtle bg-surface/85 backdrop-blur">
+    <section aria-labelledby="studio-title" className="min-h-full bg-canvas text-ink">
+      <header className="border-b border-line-subtle bg-surface/85">
         <div className="mx-auto flex h-12 max-w-[1240px] items-center justify-between gap-3 px-4 md:px-8">
           <div className="flex items-center gap-2 text-[13px] font-semibold">
             <Sparkles className="size-4 text-brand" aria-hidden />
@@ -320,7 +343,7 @@ export function GenerationStudio({ kind, eyebrow, title, subtitle, stages, meta,
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1240px] px-4 pb-10 pt-6 md:px-8 md:pt-10">
+      <div className="mx-auto max-w-[1240px] px-4 pb-10 pt-6 md:px-8 md:pt-10">
         <div className="std-in">
           {eyebrow ? <p className="font-mono text-[11px] uppercase tracking-wider text-faint">{eyebrow}</p> : null}
           <h1 id="studio-title" ref={headingRef} tabIndex={-1} className="mt-1 text-[22px] font-semibold leading-tight tracking-tight outline-none md:text-[28px]">
@@ -393,7 +416,7 @@ export function GenerationStudio({ kind, eyebrow, title, subtitle, stages, meta,
 
         {footerNote && !outcome ? <p className="mt-6 text-center text-[12px] text-faint">{footerNote}</p> : null}
         <p className="sr-only" aria-live="polite" role="status">{announcement}</p>
-      </main>
-    </div>
+      </div>
+    </section>
   );
 }
