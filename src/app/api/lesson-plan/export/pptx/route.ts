@@ -189,6 +189,9 @@ export async function POST(req: Request) {
     if (body.templateMode !== "uploaded") {
       const choice = resolvePptProvider({ requested: body.pptProvider, email: auth.email });
       if (choice.provider === "gamma") {
+        if (body.pptProvider === "gamma" && typeof body.gammaImageSource === "string" && (typeof body.gammaThemeId !== "string" || !body.gammaThemeId.trim())) {
+          return NextResponse.json({ code: "GAMMA_THEME_REQUIRED", error: "Choose a slide theme before generating the PowerPoint." }, { status: 400 });
+        }
         let requestConfig;
         if (body.gammaThemeId || body.gammaImageSource || body.gammaImageStyle) {
           const baseConfig = getGammaConfig();

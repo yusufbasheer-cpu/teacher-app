@@ -55,7 +55,7 @@ export function GammaDesignControls({
         <div><p className="font-mono text-[10px] uppercase tracking-wider text-brand-text">Slide design</p><h2 className="mt-1 text-[15px] font-semibold text-ink">Choose a look for your slides</h2><p className="mt-1 text-[12px] text-faint">Your lesson stays the same; the theme sets the colours, fonts and layout.</p></div>
         <Button type="button" variant="ghost" size="xs" onClick={onUseLegacy}>Use Layah templates</Button>
       </div>
-      {themeLoadState === "loading" ? <Notice tone="brand" className="mb-3">Loading themes…</Notice> : themeLoadState === "error" || themeLoadState === "empty" ? <Notice tone="brand" className="mb-3">Themes couldn&apos;t be loaded right now. Your slides will use a clean default look.</Notice> : (
+      {themeLoadState === "loading" ? <Notice tone="brand" className="mb-3">Loading themes…</Notice> : themeLoadState === "error" || themeLoadState === "empty" ? <Notice tone="brand" className="mb-3">Themes couldn&apos;t be loaded. Try again, or use Layah templates.</Notice> : (
         <div className="grid max-h-80 grid-cols-2 gap-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Slide theme">
           {themes.map((theme) => {
             const selected = theme.id === themeId;

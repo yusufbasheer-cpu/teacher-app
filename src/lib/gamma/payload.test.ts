@@ -25,15 +25,14 @@ describe("request serialisation", () => {
     deck[6] = { ...deck[6]!, aflCallout: "Thumbs up if ready" };
     expect(String(buildGammaPayload({ deck, title: "t", language: "en", config }).request.inputText)).not.toContain("Thumbs up");
   });
-  it("splits a long section into continuation slides exactly like the platform renderer", () => {
+  it("keeps the Extended Task on exactly one physical slide even when input is long", () => {
     const deck = makeDeck();
     deck[9] = { ...deck[9]!, body: Array.from({ length: 30 }, (_, i) => `Step ${i + 1}: a full sentence of homework instructions for the class.`).join("\n") };
     const { slides, snapshot } = buildGammaPayload({ deck, title: "t", language: "en", config });
     const parts = slides.filter((s) => s.deckIdx === 9);
-    expect(parts.length).toBeGreaterThan(1);
+    expect(parts).toHaveLength(1);
     expect(parts.every((p) => p.title === deck[9]!.slideTitle)).toBe(true);
-    // Every line survives, in order, across the continuation slides.
-    expect(parts.flatMap((p) => p.lines)).toEqual(deck[9]!.body.split("\n"));
+    expect(parts[0]!.lines).toEqual(deck[9]!.body.split("\n"));
     expect(snapshot).toHaveLength(slides.length);
   });
   it("neutralises stray --- lines so they cannot create extra cards", () => {
@@ -79,7 +78,7 @@ describe("design brief size", () => {
       body: i >= 6 && i <= 9 ? Array.from({ length: 22 }, (_, k) => `Line ${k}: a long instruction sentence that fills most of the width.`).join("\n") : "x",
     }));
     const { request, slides } = buildGammaPayload({ deck, title: "t", language: "en", config: testConfig(), lesson: { topic: "Reflection of Light and Formation of Images", subject: "Science", grade: "Grade 1" } });
-    expect(slides.length).toBeGreaterThanOrEqual(20);
+    expect(slides.length).toBeGreaterThanOrEqual(18);
     const brief = String(request.additionalInstructions);
     expect(brief.length).toBeLessThanOrEqual(4900);
     // The rules come before the per-slide lines, and the last slide's line is complete: nothing was cut.

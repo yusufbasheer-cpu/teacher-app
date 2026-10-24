@@ -25,20 +25,20 @@ const planHash = (slides: ReturnType<typeof buildCanonicalSlides>) => sha(JSON.s
 const split = (slides: ReturnType<typeof buildCanonicalSlides>) => deck.map((_, d) => slides.filter((s) => s.deckIdx === d).length).join(",");
 
 describe("regression pins: Force and Pressure physical-slide plan", () => {
-  it("Gamma path (no platform pictures): 17 slides", () => {
+  it("Gamma path keeps Extended Task to one slide", () => {
     const slides = buildCanonicalSlides({ deck, lesson });
     expect({ count: slides.length, split: split(slides), content: contentHash(slides), plan: planHash(slides) })
-      .toEqual({ count: 17, split: "1,1,1,1,1,1,2,2,2,2,1,1,1", content: "cfb4129322b10bd7", plan: "d632081adbd8bf7d" });
+      .toEqual({ count: 16, split: "1,1,1,1,1,1,2,2,2,1,1,1,1", content: "cfb4129322b10bd7", plan: "20134c0bda158eee" });
   });
-  it("platform renderer with the benchmark's two pictures: 18 slides, identical educational text", () => {
+  it("platform renderer keeps Extended Task to one slide with pictures", () => {
     const slides = buildCanonicalSlides({ deck, lesson, hasImage: platformImages });
     expect({ count: slides.length, split: split(slides), content: contentHash(slides), plan: planHash(slides) })
-      .toEqual({ count: 18, split: "1,1,1,1,1,1,2,2,3,2,1,1,1", content: "cfb4129322b10bd7", plan: "a2243086b54251f4" });
+      .toEqual({ count: 17, split: "1,1,1,1,1,1,2,2,3,1,1,1,1", content: "cfb4129322b10bd7", plan: "b528c10a9d8709a6" });
   });
 });
 
 describe("slide count: Gamma gets the platform's slides, not the 13 lesson sections", () => {
-  it("reproduces the platform deck exactly (18 slides, same split) with the platform's picture pattern", () => {
+  it("reproduces the updated platform deck with one Extended Task slide", () => {
     const slides = buildCanonicalSlides({ deck, lesson, hasImage: platformImages });
     expect(slides).toHaveLength(fixture.platformSlideCount);
     const perSection = fixture.platformChunksPerSection.map((_, i) => slides.filter((s) => s.deckIdx === i).length);
