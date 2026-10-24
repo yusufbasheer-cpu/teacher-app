@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
 import { isValidCurriculumFramework } from "@/lib/curriculum-framework";
-import {
-  FAL_REQUIRED_DECK_INDICES,
-  generatePptDeckSlideImages,
-  type SlideImageDiagnostic,
-} from "@/lib/ppt-image-resolver";
 import { sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildPptxFromPptContent, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import { buildStructuredLessonSlides } from "@/lib/ppt-structured-lesson";
@@ -24,7 +19,6 @@ import { buildCanonicalSlides, buildGammaPayload } from "@/lib/gamma/payload";
 import { extractPptx } from "@/lib/gamma/validate";
 import {
   buildRequiredVisualIntents,
-  REQUIRED_VISUAL_DECK_INDICES,
   verifyRequiredVisualCoverage,
   type RequiredVisualCoverageReport,
 } from "@/lib/ppt-visual-intent";
@@ -41,17 +35,6 @@ function slideUrlsFromRequestBody(raw: unknown, deckLen: number): (string | null
     const x = raw[i];
     return typeof x === "string" && x.trim().length > 0 ? x.trim() : null;
   });
-}
-
-function isPexelsUrl(url: string | null | undefined): boolean {
-  return typeof url === "string" && /\bpexels\.com\b/i.test(url);
-}
-
-function requiredImageRepairIndices(urls: readonly (string | null)[]): number[] {
-  return [...new Set([
-    ...REQUIRED_VISUAL_DECK_INDICES.filter((idx) => !urls[idx]),
-    ...FAL_REQUIRED_DECK_INDICES.filter((idx) => !urls[idx] || isPexelsUrl(urls[idx])),
-  ])];
 }
 
 type Body = {
@@ -257,60 +240,10 @@ export async function POST(req: Request) {
       }
     }
 
-    const fromClient = slideUrlsFromRequestBody(body.pptSlideImageUrls, deck.length);
-    const slideContentByIndex = deck.map((slide) =>
-      `${slide.slideTitle}. ${slide.body}`.replace(/\s+/g, " ").trim(),
-    );
-    const slideTitleByIndex = deck.map((slide) => slide.slideTitle);
-
-    let slideImageUrls: (string | null)[];
-    let imageDiagnostics: SlideImageDiagnostic[] = [];
-    if (fromClient !== null) {
-      console.log("[pptx export] embedding pre-generated slide images (no new API image calls)");
-      slideImageUrls = fromClient;
-      const repairIndices = requiredImageRepairIndices(slideImageUrls);
-      if (repairIndices.length) {
-        console.error(
-          "[pptx export] pre-generated slide images are missing Fal-required slots; repairing before export",
-        );
-        const repaired = await generatePptDeckSlideImages({
-          topic,
-          subject,
-          grade,
-          chapter: chapter || undefined,
-          learningObjectives: learningObjectives || undefined,
-          curriculumFramework: curriculumFramework || undefined,
-          slideContentByIndex,
-          slideTitleByIndex,
-          requestedDeckIndices: repairIndices,
-        });
-        imageDiagnostics = repaired.diagnostics ?? [];
-        slideImageUrls = slideImageUrls.map((url, idx) =>
-          repairIndices.includes(idx)
-            ? repaired.urls[idx] ?? url
-            : url,
-        );
-      }
-    } else {
-      console.log("[pptx export] no pptSlideImageUrls on request — generating/fetching images (legacy path)");
-      slideImageUrls = Array.from({ length: deck.length }, () => null);
-      try {
-        const generated = await generatePptDeckSlideImages({
-          topic,
-          subject,
-          grade,
-          chapter: chapter || undefined,
-          learningObjectives: learningObjectives || undefined,
-          curriculumFramework: curriculumFramework || undefined,
-          slideContentByIndex,
-          slideTitleByIndex,
-        });
-        imageDiagnostics = generated.diagnostics ?? [];
-        slideImageUrls = Array.from({ length: deck.length }, (_, i) => generated.urls[i] ?? null);
-      } catch (imgErr) {
-        console.error("[pptx export] Image fetch failed; continuing without images:", imgErr);
-      }
-    }
+    // No picture generation here: pictures generated for older lessons are still embedded; otherwise the built-in
+    // Layah slides render without pictures (designed decks get their imagery from Gamma).
+    const slideImageUrls: (string | null)[] =
+      slideUrlsFromRequestBody(body.pptSlideImageUrls, deck.length) ?? Array.from({ length: deck.length }, () => null);
 
     // Reuse the source deck for uploaded designs; the Layah renderer keeps its existing path.
     const buffer = uploadedTemplate && serviceUrl && serviceSecret
@@ -338,15 +271,6 @@ export async function POST(req: Request) {
 
     const visualIntents = buildRequiredVisualIntents({ deck, topic, subject, grade, curriculumFramework })
       .map((intent) => {
-        const diagnostic = imageDiagnostics.find((item) => item.deckIndex === intent.deckIndex);
-        if (diagnostic?.resolvedProvider !== "none" && diagnostic?.resolvedImageReference) {
-          return {
-            ...intent,
-            imageSource: diagnostic.resolvedProvider,
-            assetStatus: "resolved" as const,
-            resolvedImageReference: diagnostic.resolvedImageReference,
-          };
-        }
         if (slideImageUrls[intent.deckIndex]) {
           return { ...intent, imageSource: "cached" as const, assetStatus: "provider-generated-unverified" as const };
         }

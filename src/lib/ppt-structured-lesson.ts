@@ -32,8 +32,6 @@ export const STRUCTURED_LESSON_DECK_SLIDE_COUNT = 13 as const;
 /** Slides that reserve a right-hand image column in the 13-slide Layah deck (0-based indices). */
 export const PPT_IMAGE_SLIDE_INDEX_SET = new Set<number>([0, 1, 2, 5, 6, 7, 8, 9, 10, 11, 12]);
 
-/** Legacy note: FLUX images previously only on slides 2, 6, 9 — superseded by full deck pipeline in `ppt-image-resolver.ts`. */
-export const PPT_FLUX_PRIMARY_SLIDE_INDICES = [2, 5, 6, 10, 11] as const;
 
 /** Deck index of the Learning Objectives slide (slide 4), which is teacher-authored verbatim. */
 export const LEARNING_OBJECTIVES_SLIDE_INDEX = 3 as const;

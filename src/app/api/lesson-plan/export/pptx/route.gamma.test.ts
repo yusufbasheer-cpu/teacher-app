@@ -4,11 +4,9 @@ import { gammaUserMessage } from "@/lib/gamma/user-messages";
 const authenticateRequest = vi.hoisted(() => vi.fn());
 const renderPptxWithGamma = vi.hoisted(() => vi.fn());
 const buildPptxFromPptContent = vi.hoisted(() => vi.fn());
-const generatePptDeckSlideImages = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/user-usage-server", () => ({ authenticateRequest }));
 vi.mock("@/lib/gamma/render", () => ({ renderPptxWithGamma }));
-vi.mock("@/lib/ppt-image-resolver", async (orig) => ({ ...(await orig<object>()), generatePptDeckSlideImages }));
 vi.mock("@/lib/lesson-plan-export", async (orig) => ({ ...(await orig<object>()), buildPptxFromPptContent }));
 
 import { GammaError } from "@/lib/gamma/config";
@@ -45,7 +43,6 @@ beforeEach(() => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
   buildPptxFromPptContent.mockResolvedValue(Buffer.from("PK-legacy"));
-  generatePptDeckSlideImages.mockResolvedValue({ urls: [] });
   renderPptxWithGamma.mockResolvedValue(gammaResult);
 });
 afterEach(() => {
@@ -105,7 +102,6 @@ describe("POST: authorised tester in staging", () => {
     const res = await post({ pptProvider: "gamma" });
     expect(res.status).toBe(200);
     expect(renderPptxWithGamma).toHaveBeenCalledTimes(1);
-    expect(generatePptDeckSlideImages).not.toHaveBeenCalled();
     expect(buildPptxFromPptContent).not.toHaveBeenCalled();
     expect(res.headers.get("x-layah-ppt-provider")).toBe("gamma");
     expect(res.headers.get("x-layah-gamma-validation")).toBe("uncertain");

@@ -12,7 +12,7 @@
 | Styling | Tailwind CSS |
 | Database & Auth | Supabase (Postgres + Supabase Auth), accessed via `@supabase/ssr` and `@supabase/supabase-js` |
 | AI text generation | DeepSeek (`deepseek-chat` model, called directly via `fetch`) |
-| AI image generation | fal.ai (Flux model), with Pexels stock photos as a fallback |
+| AI slide design | Gamma (designed PowerPoints, including their pictures). No separate image provider: fal.ai/Pexels were removed in Oct 2026; built-in Layah slides render without pictures |
 | Document export | `pptxgenjs` (PowerPoint), `docx` (Word), `jszip` (bundling) |
 | OCR / file parsing | `tesseract.js`, `pdf-parse`, `mammoth` |
 | Observability | Sentry (errors + session replay), PostHog (product analytics) |
@@ -99,7 +99,7 @@ teacher-app/
 
 | Group | Routes | Purpose |
 |---|---|---|
-| `lesson-plan/` | `route.ts`, `extract-upload`, `export/docx`, `export/pptx`, `export/zip` | Generate a lesson plan (DeepSeek + fal.ai), optionally from an uploaded doc (OCR), then export it. |
+| `lesson-plan/` | `route.ts`, `extract-upload`, `export/docx`, `export/pptx`, `export/zip` | Generate a lesson plan (DeepSeek), optionally from an uploaded doc (OCR), then export it. |
 | `ppt/` | `slide-1` … `slide-13` | One route per PowerPoint slide, so slides can be generated/regenerated individually rather than as one giant call. |
 | `question-paper/` | `route.ts`, `blueprint`, `export/blueprint`, `export/docx`, `export/zip` | Generate a question paper (DeepSeek), with a "blueprint" (structure) step before full content. |
 | `differentiated-pack/` | `route.ts`, `extract`, `infer-meta`, `export-docx`, `export-zip` | Generate leveled worksheet packs, with metadata inference and file extraction. |
@@ -112,7 +112,7 @@ teacher-app/
 | `school-register` | — | Registers a new school. |
 | `super-admin/` | `me`, `pending`, `schools`, `stats`, `users`, `approve`, `reject`, `change-plan`, `deactivate-school`, `verify-pin` | Full platform-admin surface: approvals, plan changes, stats. |
 | `contact`, `feedback`, `waitlist`, `send-welcome-email`, `welcome-email` | — | Form submissions and transactional emails. |
-| `get-image`, `geo`, `test-image` | — | Pexels image search; IP geolocation (currently unused by pricing); dev test endpoint. |
+| `geo` | — | IP geolocation (currently unused by pricing). |
 | `debug/school-enrollment` | — | Diagnostic endpoint — reads Supabase config directly. |
 
 ## 6. Shared Layouts, Providers, Hooks, Components
@@ -156,13 +156,12 @@ src/app/lesson-plan/page.tsx
             ├─ checkRateLimit / checkSpendingProtection   (src/lib/rate-limit.ts)
             ├─ buildDeepseekLessonSystemPrompt            (src/lib/deepseek-lesson-system-prompt.ts)
             ├─ fetch("https://api.deepseek.com/chat/completions")    — text generation
-            ├─ generateFluxSectionImages                 (src/lib/fal-flux-section-images.ts — fal.ai)
             ├─ parseTeacherPackageResponse                (src/lib/parse-teacher-package-response.ts)
             └─ responds with NDJSON stream
        └─ rendered by src/components/lesson-plan/teacher-package-viewer.tsx
 ```
 
-Once a plan exists, the client can separately call `export/docx`, `export/pptx`, or `export/zip` — these only format already-generated content; they don't call DeepSeek or fal.ai again.
+Once a plan exists, the client can separately call `export/docx`, `export/pptx`, or `export/zip` — these only format already-generated content; they don't call DeepSeek again. `export/pptx` can also call Gamma for a designed deck.
 
 ## 8. Authentication
 
@@ -196,8 +195,6 @@ Documented in `.env.example`:
 | `DEEPSEEK_API_KEY` | DeepSeek chat-completions API key. |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase project URL and public key. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only key that bypasses RLS. |
-| `PEXELS_API_KEY` | Stock photo fallback. |
-| `FAL_API_KEY` | fal.ai key (image generation). |
 | `SMTP_HOST` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | Transactional email (Hostinger SMTP). |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | Signup captcha. |
 | `SUPER_ADMIN_PIN` | Second factor for `/super-admin`. |
@@ -227,7 +224,7 @@ Documented in `.env.example`:
 3. **`src/lib/supabase-ssr.ts`** — the three Supabase client factories everything else depends on.
 4. **`src/app/auth/callback/route.ts`** — the PKCE code-exchange + school-plan assignment flow.
 5. **`src/lib/user-usage-server.ts`** — shared auth + quota-enforcement logic used by almost every API route.
-6. **`src/app/api/lesson-plan/route.ts`** — the largest, most representative API route (auth → rate-limit → DeepSeek → fal.ai → parse → respond).
+6. **`src/app/api/lesson-plan/route.ts`** — the largest, most representative API route (auth → rate-limit → DeepSeek → parse → respond).
 7. **`src/components/lesson-plan/lesson-plan-generator.tsx`** — the canonical feature-page client component pattern, mirrored by question-paper and differentiated-worksheets.
 8. **`src/lib/protected-routes.ts`** + **`src/components/auth/active-session-guard.tsx`** — the single-device-session security model.
 9. **`src/lib/lesson-plan.ts`** — central type definitions shared by the UI, API route, and export/PPT pipeline.

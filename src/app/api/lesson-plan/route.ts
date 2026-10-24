@@ -31,7 +31,6 @@ import {
   localeTagFor,
   type PresentationLanguage,
 } from "@/lib/ppt-language";
-import { generateFluxSectionImages, formatFalError } from "@/lib/fal-flux-section-images";
 import { apiErrorResponse } from "@/lib/api-client-error";
 import { filterUserFacingNotices } from "@/lib/image-notices";
 import { isIsolatedEnvironment } from "@/lib/environment-isolation";
@@ -44,12 +43,10 @@ import {
   buildGenerationSourceMaterial,
   buildSourceMaterialPromptBlock,
   isLanguageTeachingSubject,
-  mergePptSlideImageUrlsIntoPlan,
   resolveGenerationTopic,
   type LessonPlanGenerateBody,
   type LessonPlanInput,
   type LessonPlanResult,
-  type SectionImageMap,
   type TeacherPackageSectionKey,
   isValidCurriculumType,
   isValidGradeYear,
@@ -72,15 +69,11 @@ import {
 } from "@/lib/parse-teacher-package-response";
 import {
   assembleFullPptFromSlideBodies,
-  parseDeckBodiesFromPptOutline,
   type EarlySlideSanitizeContext,
 } from "@/lib/ppt-slide-by-slide";
 import {
   STRUCTURED_LESSON_DECK_SLIDE_COUNT,
-  getStructuredLessonSlideTitles,
 } from "@/lib/ppt-structured-lesson";
-import { generatePptDeckSlideImages } from "@/lib/ppt-image-resolver";
-import { shouldSkipLegacyPptImages } from "@/lib/gamma/legacy-images";
 import { buildSlide8PptModeBlock } from "@/lib/ppt-slide-validation";
 import {
   generateSlide1Body,
@@ -246,24 +239,6 @@ ${strategyBlock}
       `.trim(),
     },
   ];
-}
-
-function buildPptImageContextFromSource(sourceMaterial: string | undefined): string | undefined {
-  const raw = sourceMaterial?.replace(/\r\n/g, "\n").trim();
-  if (!raw) return undefined;
-  const usefulLines = raw
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => {
-      if (line.length < 12) return false;
-      if (/^=+/.test(line)) return true;
-      if (/[+\-=×÷<>≤≥]/.test(line)) return true;
-      if (/\b(?:chapter|topic|objective|example|activity|diagram|table|worksheet|equation|scenario)\b/i.test(line)) return true;
-      return line.length >= 45;
-    })
-    .slice(0, 24);
-  const compact = usefulLines.join("\n").slice(0, 3000).trim();
-  return compact || raw.slice(0, 1600);
 }
 
 function emptyLessonShell(sections: readonly TeacherPackageSectionKey[]): LessonPlanResult {
@@ -668,98 +643,15 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
   return { mergedPlan, parseNotices };
 }
 
-async function runFluxAndBuildResponsePayload(
-  input: LessonPlanInput,
-  sections: readonly TeacherPackageSectionKey[],
-  mergedPlan: LessonPlanResult,
-  parseNotices: string[],
-  sourceMaterial?: string,
-  /** Gamma-by-default users: Gamma makes its own slide imagery, so the legacy deck images are not paid for. */
-  skipPptDeckImages = false,
-): Promise<{
-  lessonPlan: LessonPlanResult;
-  parseNotice?: string;
-  sectionImages?: SectionImageMap;
-  pptSlideImageUrls?: (string | null)[];
-}> {
-  let workingPlan = mergedPlan;
-  let pptSlideImageUrls: (string | null)[] | undefined;
-  const imageNotices: string[] = [];
-
-  if (sections.includes("PPT Slide Content") && !skipPptDeckImages) {
-    try {
-      // Feed each slide's own generated text into its image prompt so required visual categories
-      // slides get contextually specific artwork rather than generic subject-level imagery.
-      const deckLanguage = resolvePresentationLanguage({
-        language: input.language,
-        subject: input.subject,
-      });
-      const slideContentByIndex = parseDeckBodiesFromPptOutline(
-        workingPlan["PPT Slide Content"] ?? "",
-        deckLanguage === "ar",
-        isUaeCurriculumFramework(input.curriculumFramework),
-      );
-      const slideTitleByIndex = [...getStructuredLessonSlideTitles(
-        deckLanguage === "ar",
-        isUaeCurriculumFramework(input.curriculumFramework),
-      )];
-      const { urls, notices: imgNotices, diagnostics } = await generatePptDeckSlideImages({
-        topic: input.topic.trim(),
-        subject: input.subject.trim(),
-        grade: input.grade.trim(),
-        chapter: input.chapter.trim() || undefined,
-        learningObjectives: input.learningObjectives.trim() || undefined,
-        imageContext: buildPptImageContextFromSource(sourceMaterial),
-        curriculumFramework: input.curriculumFramework.trim() || undefined,
-        ...(slideContentByIndex ? { slideContentByIndex } : {}),
-        slideTitleByIndex,
-      });
-      workingPlan = mergePptSlideImageUrlsIntoPlan(workingPlan, urls);
-      pptSlideImageUrls = urls;
-      imageNotices.push(...imgNotices);
-      // console.error so provider selection stays observable in production, where
-      // `removeConsole` strips console.log.
-      console.error(
-        "[lesson-plan] PPT deck image providers:",
-        JSON.stringify(
-          diagnostics.map((d) => ({
-            slide: d.slideNumber1Based,
-            policy: d.policy,
-            provider: d.resolvedProvider,
-            ...(d.falFailureKind ? { falFailure: d.falFailureKind } : {}),
-          })),
-        ),
-      );
-    } catch (e) {
-      const msg = formatFalError(e);
-      imageNotices.push(`PPT image generation failed: ${msg}`);
-      console.error("[lesson-plan] PPT deck image generation failed:", msg, e);
-    }
-  }
-
-  let sectionImages: SectionImageMap = {};
-  try {
-    const fluxResult = await generateFluxSectionImages({
-      input,
-      plan: workingPlan,
-      sections,
-    });
-    sectionImages = fluxResult.sectionImages;
-    if (Object.keys(fluxResult.errors).length > 0) {
-      console.warn("[lesson-plan] section image errors (not shown to user):", fluxResult.errors);
-    }
-  } catch (e) {
-    console.error("[lesson-plan] FLUX section images failed:", formatFalError(e), e);
-  }
-
-  const parseNoticeParts = filterUserFacingNotices([...parseNotices, ...imageNotices]);
-  const parseNotice = parseNoticeParts.length > 0 ? parseNoticeParts.join("\n\n") : undefined;
-
+/**
+ * The generated package as the client expects it. Slide and section pictures are not generated here: designed
+ * PowerPoints get their imagery from Gamma, and the built-in Layah slides render without pictures.
+ */
+function buildResponsePayload(mergedPlan: LessonPlanResult, parseNotices: string[]): { lessonPlan: LessonPlanResult; parseNotice?: string } {
+  const parseNoticeParts = filterUserFacingNotices(parseNotices);
   return {
-    lessonPlan: workingPlan,
-    ...(parseNotice ? { parseNotice } : {}),
-    ...(Object.keys(sectionImages).length > 0 ? { sectionImages } : {}),
-    ...(pptSlideImageUrls ? { pptSlideImageUrls } : {}),
+    lessonPlan: mergedPlan,
+    ...(parseNoticeParts.length > 0 ? { parseNotice: parseNoticeParts.join("\n\n") } : {}),
   };
 }
 
@@ -830,8 +722,6 @@ export async function POST(req: Request) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
   }
-
-  const skipPptDeckImages = shouldSkipLegacyPptImages(auth.email);
 
   // Entitlement gate — runs before any rate-limit/spend/quota work so a
   // rejected request never consumes a generation. The frontend disables
@@ -936,7 +826,7 @@ export async function POST(req: Request) {
             userId: auth.userId,
             onProgress: (message) => send({ type: "progress", message }),
           });
-          const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices, sourceMaterial, skipPptDeckImages);
+          const payload = buildResponsePayload(mergedPlan, parseNotices);
           send({ type: "complete", ...payload, usage: gate.usage });
           void logGenerationEvent({
             userId: auth.userId,
@@ -977,7 +867,7 @@ export async function POST(req: Request) {
       strategyBlock,
       userId: auth.userId,
     });
-    const payload = await runFluxAndBuildResponsePayload(input, sections, mergedPlan, parseNotices, sourceMaterial, skipPptDeckImages);
+    const payload = buildResponsePayload(mergedPlan, parseNotices);
     void logGenerationEvent({
       userId: auth.userId,
       generationType: "lesson_plan",

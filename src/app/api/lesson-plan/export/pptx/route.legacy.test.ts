@@ -2,11 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const authenticateRequest = vi.hoisted(() => vi.fn());
 const renderPptxWithGamma = vi.hoisted(() => vi.fn());
-const generatePptDeckSlideImages = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/user-usage-server", () => ({ authenticateRequest }));
 vi.mock("@/lib/gamma/render", () => ({ renderPptxWithGamma }));
-vi.mock("@/lib/ppt-image-resolver", async (orig) => ({ ...(await orig<object>()), generatePptDeckSlideImages }));
 // NOTE: lesson-plan-export / the pptxgenjs renderer are deliberately NOT mocked: this proves the real legacy path still works.
 
 import { extractPptx } from "@/lib/gamma/validate";
@@ -40,7 +38,6 @@ beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
-  generatePptDeckSlideImages.mockResolvedValue({ urls: [] });
 });
 afterEach(() => {
   vi.unstubAllEnvs();

@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
-    "@fal-ai/client": "^1.10.1",
     "@sentry/nextjs": "^10.56.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
@@ -29,7 +28,6 @@
     "next": "^16.2.6",
     "nodemailer": "^8.0.8",
     "pdf-parse": "^1.1.1",
-    "pexels": "^1.4.0",
     "posthog-js": "^1.382.0",
     "pptxgenjs": "^4.0.1",
     "razorpay": "^2.9.8",
