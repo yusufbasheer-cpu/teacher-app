@@ -7,6 +7,7 @@ import type { StudioStage } from "./generation-studio";
  * - With PPT selected it streams "Generating Slide N of 13" (slides finish in parallel, so N is a count, not which
  *   slide) and "Generating AFL Activity Sheets". Nothing else is announced.
  * - Without PPT there is no stream at all, so the whole package is one honest "writing" stage.
+ * - The download files are real requests too (Word exports, the package ZIP), built once everything is written.
  * - The Gamma deck is a single request: it is in flight (maybe resumed, which is free) and then returns a verdict.
  *   Its design, export and content check happen inside that request, so only the result is shown separately.
  */
@@ -23,6 +24,8 @@ export type LessonPackageSignals = {
     verdict?: { tone: "ok" | "warn" | "bad"; title: string } | null;
     errorMessage?: string;
   };
+  /** The downloadable files being built after the content (and deck) are ready. */
+  files: "pending" | "active" | "done";
 };
 
 const SLIDE_COUNT_RE = /slide\s+(\d+)\s+of\s+(\d+)/i;
@@ -85,7 +88,14 @@ export function lessonPackageStages(s: LessonPackageSignals): StudioStage[] {
     if (slides.status === "done") slides.detail = `All ${slidesTotal} slides written`;
   }
 
-  if (!s.gamma) return content;
+  const files: StudioStage = {
+    id: "files",
+    label: "Preparing your downloads",
+    status: s.files,
+    ...(s.files === "active" ? { detail: "Packing every file so downloads start instantly" } : {}),
+  };
+
+  if (!s.gamma) return [...content, files];
 
   const g = s.gamma;
   const design: StudioStage = {
@@ -107,7 +117,7 @@ export function lessonPackageStages(s: LessonPackageSignals): StudioStage[] {
     check.detail = g.verdict.tone === "ok" ? "Your lesson wording was preserved" : g.verdict.title;
   }
 
-  return [...content, design, check];
+  return [...content, design, check, files];
 }
 
 /**

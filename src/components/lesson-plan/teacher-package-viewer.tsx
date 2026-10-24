@@ -23,11 +23,10 @@ import {
   getLessonPlanDisplayOrder,
   getSectionTabLabel,
   hasTeacherPackageContent,
-  mergePptSlideImageUrlsIntoPlan,
   type LessonPlanResult,
   type SectionImageMap,
 } from "@/lib/lesson-plan";
-import { AFL_PHASE_IDS, type AflSelectionsPayload } from "@/lib/afl-tools";
+import type { AflSelectionsPayload } from "@/lib/afl-tools";
 import {
   DEFAULT_TEMPLATE_ID as DEFAULT_PPT_THEME_ID,
   TEMPLATE_CARDS as PPT_THEME_CARDS,
@@ -42,6 +41,7 @@ import { buildPptExportBody, GAMMA_MAX_RESUMES, useGammaDesign, type GammaDesign
 import type { PresentationLanguage } from "@/lib/ppt-language";
 import { TemplateUploadIssuePanel } from "@/components/lesson-plan/template-upload-issue";
 import { StudioIndicator } from "@/components/generation-studio/generation-studio";
+import { docxFile, zipRequestBody, type PackageDocxKey, type ReadyFiles } from "@/components/lesson-plan/package-files";
 import {
   TEMPLATE_ACCEPT_ATTRIBUTE,
   TEMPLATE_REQUIREMENTS_LINE,
@@ -51,11 +51,6 @@ import {
   type TemplateUploadIssue,
 } from "@/lib/school-template-upload";
 import { toUserFacingError, USER_FACING_ERROR, sanitizeUserMessage } from "@/lib/user-facing-errors";
-
-function hasAflSelections(s: AflSelectionsPayload | undefined): boolean {
-  if (!s) return false;
-  return AFL_PHASE_IDS.some((p) => (s[p]?.length ?? 0) > 0);
-}
 
 type TeacherPackageViewerProps = {
   lessonPlan: LessonPlanResult;
@@ -97,6 +92,8 @@ type TeacherPackageViewerProps = {
   gammaDesign?: GammaDesign;
   /** The Gamma deck built while the lesson was generating, so Download is instant. */
   pregeneratedPpt?: GammaPptOutcome | null;
+  /** Files the generator already built in the background; used instead of a fresh export while the lesson is unedited. */
+  readyFiles?: ReadyFiles | null;
 };
 
 type ExportKey =
@@ -303,6 +300,7 @@ export function TeacherPackageViewer({
   onSendToDifferentiatedPack,
   gammaDesign,
   pregeneratedPpt,
+  readyFiles,
 }: TeacherPackageViewerProps) {
   const sectionKeys = useMemo(() => getLessonPlanDisplayOrder(lessonPlan), [lessonPlan]);
   const [activeKey, setActiveKey] = useState(sectionKeys[0] ?? "");
@@ -379,10 +377,13 @@ export function TeacherPackageViewer({
     else setGammaPanel({ kind: "result", blob, filename, summary });
   }, [pregeneratedPpt]);
 
-  // Editing the lesson makes a prebuilt deck stale: drop it so Download builds from the edited text.
+  // Editing the lesson makes the prebuilt deck and files stale: drop them so Download builds from the edited text.
   const firstPlanRef = useRef(lessonPlan);
+  const [lessonEdited, setLessonEdited] = useState(false);
   useEffect(() => {
-    if (lessonPlan !== firstPlanRef.current) setReadyGammaFile(null);
+    if (lessonPlan === firstPlanRef.current) return;
+    setReadyGammaFile(null);
+    setLessonEdited(true);
   }, [lessonPlan]);
 
   const uploadTemplate = async (file: File) => {
@@ -580,14 +581,6 @@ export function TeacherPackageViewer({
     }
   };
 
-  const baseMeta = {
-    subject,
-    grade,
-    topic,
-    ...(chapter?.trim() ? { chapter: chapter.trim() } : {}),
-    ...(language ? { language } : {}),
-  };
-
   const onDownloadPpt = (mode: "layah" | "uploaded" = templateMode) => {
     // Fastest first: the deck already in memory (built while the lesson generated), then a stored one, then build.
     if (useGamma && mode === "layah" && readyGammaFile) {
@@ -615,95 +608,26 @@ export function TeacherPackageViewer({
     );
   };
 
-  const onDownloadLessonPlan = () =>
-    runExport(
-      "lesson",
-      `${baseName}-lesson-plan.docx`,
-      "/api/lesson-plan/export/docx",
-      {
-        ...baseMeta,
-        documentTitle: "Lesson Plan",
-        fileBaseName: "lesson-plan",
-        content: lessonPlan["Full Lesson Plan"] ?? "",
-        ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
-      },
-    );
-
-  const onDownloadWorksheet = () =>
-    runExport(
-      "worksheet",
-      `${baseName}-worksheet.docx`,
-      "/api/lesson-plan/export/docx",
-      {
-        ...baseMeta,
-        documentTitle: "Worksheet",
-        fileBaseName: "worksheet",
-        content: lessonPlan["Worksheet"] ?? "",
-      },
-    );
-
-  const onDownloadAssessment = () =>
-    runExport(
-      "assessment",
-      `${baseName}-assessment.docx`,
-      "/api/lesson-plan/export/docx",
-      {
-        ...baseMeta,
-        documentTitle: "Assessment Questions",
-        fileBaseName: "assessment",
-        content: lessonPlan["Assessment Questions"] ?? "",
-      },
-    );
-
-  const onDownloadHomework = () =>
-    runExport(
-      "homework",
-      `${baseName}-homework.docx`,
-      "/api/lesson-plan/export/docx",
-      {
-        ...baseMeta,
-        documentTitle: "Homework",
-        fileBaseName: "homework",
-        content: lessonPlan["Homework Task"] ?? "",
-      },
-    );
-
-  const onDownloadTeacherNotes = () =>
-    runExport(
-      "notes",
-      `${baseName}-teacher-notes.docx`,
-      "/api/lesson-plan/export/docx",
-      {
-        ...baseMeta,
-        documentTitle: "Teacher Notes",
-        fileBaseName: "teacher-notes",
-        content: lessonPlan["Teacher Notes"] ?? "",
-      },
-    );
-
-  const onDownloadAflSheets = () =>
-    runExport(
-      "afl-sheets",
-      `${baseName}-afl-activity-sheets.docx`,
-      "/api/lesson-plan/export/docx",
-      {
-        ...baseMeta,
-        documentTitle: "Activity Sheet AFL",
-        fileBaseName: "afl-activity-sheets",
-        content: lessonPlan["AFL Activity Sheets"] ?? "",
-      },
-    );
+  // Word files and the ZIP: the copy built during generation downloads instantly; an edited lesson builds afresh.
+  const packageMeta = { subject, grade, topic, chapter, language, aflSelections };
+  const prebuilt = (key: string) => (lessonEdited ? undefined : readyFiles?.[key]);
+  const downloadDocx = (key: PackageDocxKey) => {
+    const ready = prebuilt(key);
+    if (ready) return triggerFileDownload(ready.blob, ready.filename);
+    const f = docxFile(key, lessonPlan, packageMeta, baseName);
+    return runExport(key, f.filename, "/api/lesson-plan/export/docx", f.body);
+  };
+  const onDownloadLessonPlan = () => downloadDocx("lesson");
+  const onDownloadWorksheet = () => downloadDocx("worksheet");
+  const onDownloadAssessment = () => downloadDocx("assessment");
+  const onDownloadHomework = () => downloadDocx("homework");
+  const onDownloadTeacherNotes = () => downloadDocx("notes");
+  const onDownloadAflSheets = () => downloadDocx("afl-sheets");
 
   const onDownloadZip = () => {
-    const planForZip =
-      pptSlideImageUrls && pptSlideImageUrls.length >= STRUCTURED_LESSON_DECK_SLIDE_COUNT
-        ? mergePptSlideImageUrlsIntoPlan(lessonPlan, pptSlideImageUrls)
-        : lessonPlan;
-    return runExport("zip", `${baseName}-all.zip`, "/api/lesson-plan/export/zip", {
-      ...baseMeta,
-      lessonPlan: planForZip,
-      ...(hasAflSelections(aflSelections) ? { aflSelections } : {}),
-    });
+    const ready = prebuilt("all");
+    if (ready) return triggerFileDownload(ready.blob, ready.filename);
+    return runExport("zip", `${baseName}-all.zip`, "/api/lesson-plan/export/zip", zipRequestBody(lessonPlan, packageMeta, pptSlideImageUrls, STRUCTURED_LESSON_DECK_SLIDE_COUNT));
   };
 
   const rawOverviewCards: (OverviewCard | null)[] = [
@@ -807,6 +731,12 @@ export function TeacherPackageViewer({
           {onRegenerate ? (
             <Button variant="ghost" size="lg" onClick={onRegenerate}>
               Edit and regenerate
+            </Button>
+          ) : null}
+          {hasPpt && showTeacherDownloads ? (
+            <Button variant="outline" size="lg" disabled={busy !== null} onClick={onDownloadZip}>
+              <Download />
+              {busy === "zip" ? "Building ZIP…" : "Download all"}
             </Button>
           ) : null}
           {hasPpt ? (
@@ -1189,22 +1119,10 @@ function GammaPanel({
     );
   }
   const v = presentVerdict(panel.summary);
-  // What exactly differs, so a failed or flagged deck explains itself (line examples, else the check's reasons).
-  const differences = panel.summary && panel.summary.verdict !== "passed"
-    ? (panel.summary.examples.length ? panel.summary.examples : panel.summary.reasons).slice(0, 4)
-    : [];
   return (
     <Notice tone={v.tone === "ok" ? "generated" : v.tone === "warn" ? "brand" : "danger"} className="mb-3" aria-live="polite">
       <p className="font-semibold">{v.title}</p>
       <p className="mt-1">{v.detail}</p>
-      {differences.length ? (
-        <div className="mt-2 text-[12px]">
-          <p className="font-medium">What differs:</p>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5">
-            {differences.map((d) => <li key={d} className="break-words">{d}</li>)}
-          </ul>
-        </div>
-      ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         <Button size="sm" variant={v.normalDownload ? "outline" : "default"} onClick={() => triggerFileDownload(panel.blob, panel.filename)}>
           {v.downloadLabel}

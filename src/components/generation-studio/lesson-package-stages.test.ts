@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { lessonPackageStages, slideTextFromOutline, type LessonPackageSignals } from "./lesson-package-stages";
 
 const FULL = ["Full Lesson Plan", "PPT Slide Content", "Worksheet", "Homework Task", "AFL Activity Sheets"];
-const base: LessonPackageSignals = { sections: FULL, progress: null, contentReady: false, gamma: null };
+const base: LessonPackageSignals = { sections: FULL, progress: null, contentReady: false, gamma: null, files: "pending" };
 const statuses = (s: LessonPackageSignals) => Object.fromEntries(lessonPackageStages(s).map((x) => [x.id, x.status]));
 
 describe("lessonPackageStages", () => {
   it("starts on the first selected section, nothing else active", () => {
-    expect(statuses(base)).toEqual({ lesson: "active", slides: "pending", resources: "pending", afl: "pending" });
+    expect(statuses(base)).toEqual({ lesson: "active", slides: "pending", resources: "pending", afl: "pending", files: "pending" });
   });
 
   it("uses the real slide count, and a slide message means the lesson plan is done", () => {
@@ -29,7 +29,7 @@ describe("lessonPackageStages", () => {
 
   it("shows one honest stage when nothing is streamed (no PPT)", () => {
     const stages = lessonPackageStages({ ...base, sections: ["Full Lesson Plan", "Worksheet"] });
-    expect(stages).toHaveLength(1);
+    expect(stages).toHaveLength(2);
     expect(stages[0]).toMatchObject({ status: "active", detail: "Writing your lesson plan and worksheet" });
   });
 
@@ -38,6 +38,7 @@ describe("lessonPackageStages", () => {
     expect(designing).toMatchObject({ afl: "done", design: "active", check: "pending" });
     const failed = statuses({ ...base, contentReady: true, gamma: { phase: "done", resumes: 0, verdict: { tone: "bad", title: "x" } } });
     expect(failed).toMatchObject({ design: "done", check: "error" });
+    expect(statuses({ ...base, contentReady: true, files: "active", gamma: { phase: "done", resumes: 0, verdict: { tone: "ok", title: "x" } } })).toMatchObject({ check: "done", files: "active" });
   });
 });
 

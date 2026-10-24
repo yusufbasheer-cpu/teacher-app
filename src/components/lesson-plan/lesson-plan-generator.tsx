@@ -23,6 +23,7 @@ import {
 import { LessonPackageStudio } from "@/components/lesson-plan/lesson-package-studio";
 import { isUaeCurriculumFramework } from "@/lib/curriculum-framework";
 import { triggerFileDownload } from "@/lib/trigger-file-download";
+import { fetchServerZip, prefetchDocxFiles, zipReadyFiles, zipRequestBody, type ReadyFiles } from "@/components/lesson-plan/package-files";
 import { safeFilenamePart, TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
 import { GammaDesignControls } from "@/components/lesson-plan/gamma-design-controls";
 import { buildPptExportBody, requestGammaPpt, useGammaDesign, type GammaPptOutcome } from "@/components/lesson-plan/gamma-ppt";
@@ -224,6 +225,8 @@ export function LessonPlanGenerator() {
   const [gammaDesigning, setGammaDesigning] = useState(false);
   const [gammaResumes, setGammaResumes] = useState(0);
   const [studioFinished, setStudioFinished] = useState(false);
+  const [readyFiles, setReadyFiles] = useState<ReadyFiles | null>(null);
+  const [preparingFiles, setPreparingFiles] = useState(false);
   const finishStudioRef = useRef<(() => void) | null>(null);
   const [detailsValidationAttempted, setDetailsValidationAttempted] = useState(false);
 
@@ -549,6 +552,8 @@ export function LessonPlanGenerator() {
     setGammaDesigning(false);
     setGammaResumes(0);
     setStudioFinished(false);
+    setReadyFiles(null);
+    setPreparingFiles(false);
 
     if (!form.topic.trim() || !form.learningObjectives.trim()) {
       setComposerStep("details");
@@ -620,6 +625,7 @@ export function LessonPlanGenerator() {
         await refreshUsage();
       };
 
+      let latestPptSlideImageUrls: (string | null)[] | null = null;
       const applySuccessPayload = async (data: LessonPlanApiResponse) => {
         if (!data.lessonPlan) {
           if (data.error || data.rawResponse) {
@@ -658,6 +664,7 @@ export function LessonPlanGenerator() {
               ? stripped.pptSlideImageUrls
               : null;
         setPptSlideImageUrls(ppt);
+        latestPptSlideImageUrls = ppt;
         await syncUsageAfterGeneration(data.usage);
 
         // ── Auto-save to saved_lessons ──────────────────────────────────────
@@ -706,8 +713,8 @@ export function LessonPlanGenerator() {
 
       // Build the designed deck inside the same loader, from the same inputs the viewer sends on Download, so the
       // stored deck is also found again later. A failure never blocks the lesson: the viewer shows a friendly retry.
-      const designSlides = async (plan: LessonPlanResult) => {
-        if (!designBeforeGenerate) return;
+      const designSlides = async (plan: LessonPlanResult): Promise<GammaPptOutcome | null> => {
+        if (!designBeforeGenerate) return null;
         setGenerationProgress("Designing your slides");
         setGammaDesigning(true);
         const topicTitle = resolveLessonTitle(form.topic, form.chapter, form.subject);
@@ -726,16 +733,35 @@ export function LessonPlanGenerator() {
         );
         setPregeneratedPpt(outcome);
         setGammaDesigning(false);
+        return outcome;
       };
 
-      // The Studio shows how the run ended. With a designed deck the teacher chooses what to do next; a plain
-      // package opens by itself after a moment.
-      const holdStudioOpen = () => {
+      // Every downloadable file is built while the slides are designed, so each Download click afterwards is
+      // instant, here and in the lesson viewer. "Everything" carries the designed deck when there is one; otherwise
+      // the server's package ZIP (with the built-in Layah slides) or just the Word files.
+      const finishPackage = async (plan: LessonPlanResult) => {
+        const topicTitle = resolveLessonTitle(form.topic, form.chapter, form.subject);
+        const baseName = safeFilenamePart(topicTitle, "lesson");
+        const meta = {
+          subject: form.subject, grade: form.grade, topic: topicTitle, chapter: form.chapter,
+          language: form.language ?? DEFAULT_PRESENTATION_LANGUAGE,
+          aflSelections: hasAflForExport ? aflSelectionsPayload : undefined,
+        };
+        const docxPromise = prefetchDocxFiles(plan, meta, baseName);
+        const deck = await designSlides(plan);
+        setPreparingFiles(true);
+        const files = await docxPromise;
+        const allName = `${baseName}-all.zip`;
+        const all = deck?.kind === "ready"
+          ? await zipReadyFiles([...Object.values(files), { blob: deck.blob, filename: deck.filename, label: "PowerPoint" }], allName)
+          : pptSelected
+            ? await fetchServerZip(zipRequestBody(plan, meta, latestPptSlideImageUrls, STRUCTURED_LESSON_DECK_SLIDE_COUNT), allName)
+            : Object.keys(files).length ? await zipReadyFiles(Object.values(files), allName) : null;
+        setReadyFiles(all ? { ...files, all } : files);
+        setPreparingFiles(false);
+        // The finished Studio waits for the teacher: download what they need, or open the lesson.
         setStudioFinished(true);
-        return new Promise<void>((resolve) => {
-          finishStudioRef.current = resolve;
-          if (!designBeforeGenerate) window.setTimeout(resolve, 1800);
-        });
+        await new Promise<void>((resolve) => { finishStudioRef.current = resolve; });
       };
 
       if (response.ok && pptSelected && contentType.includes("application/x-ndjson")) {
@@ -776,8 +802,7 @@ export function LessonPlanGenerator() {
           console.error("[lesson-plan client] stream ended without complete lesson package");
           throw new Error(USER_FACING_ERROR);
         }
-        await designSlides(await applySuccessPayload(completePayload));
-        await holdStudioOpen();
+        await finishPackage(await applySuccessPayload(completePayload));
       } else {
         const raw = await response.text();
         console.log("[lesson-plan client] /api/lesson-plan", {
@@ -812,8 +837,7 @@ export function LessonPlanGenerator() {
           throw new Error(sanitizeUserMessage(data.error, "lesson-plan-generate"));
         }
 
-        await designSlides(await applySuccessPayload(data));
-        await holdStudioOpen();
+        await finishPackage(await applySuccessPayload(data));
       }
     } catch (err) {
       const msg = toUserFacingError(err, "lesson-plan-generate");
@@ -1692,6 +1716,7 @@ export function LessonPlanGenerator() {
             parseNotice={parseNotice}
             gammaDesign={gammaDesign}
             pregeneratedPpt={pregeneratedPpt}
+            readyFiles={readyFiles}
             onLessonPlanChange={setLessonPlan}
             onRegenerate={() => {
               // Back to the composer with every input still in place, so
@@ -1725,6 +1750,8 @@ export function LessonPlanGenerator() {
             uaeFramework={isUaeCurriculumFramework(form.curriculumFramework)}
             gamma={designBeforeGenerate ? { themeName: theme?.name, swatch: theme?.swatch, designing: gammaDesigning, resumes: gammaResumes, outcome: pregeneratedPpt } : null}
             finished={studioFinished}
+            preparingFiles={preparingFiles}
+            readyFiles={readyFiles}
             onDownload={triggerFileDownload}
             onOpenLesson={() => finishStudioRef.current?.()}
           />

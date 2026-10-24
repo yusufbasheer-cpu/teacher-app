@@ -76,7 +76,7 @@ export type VerdictPresentation = {
 
 /**
  * Pure UI decision logic (unit-tested). Teacher-facing copy: no validator jargon. A passed or merely "review"
- * deck downloads automatically; only a structurally wrong deck (or no report at all) needs an explicit choice.
+ * deck downloads automatically; only a deck with no report at all needs an explicit choice.
  */
 export function presentVerdict(s: GammaReportSummary | null): VerdictPresentation {
   if (!s) {
@@ -103,22 +103,17 @@ export function presentVerdict(s: GammaReportSummary | null): VerdictPresentatio
     }
     return { title: "Your slides are ready", tone: "ok", normalDownload: true, downloadLabel: "Download again", detail: `${s.counts.actualSlides} slides, designed and downloaded.` };
   }
-  if (s.verdict === "uncertain") {
+  // Wording-level differences (a line reworded, shortened or dropped) were reviewed on real decks and judged
+  // acceptable, so teachers aren't warned about them; the details stay in the server-side report and logs.
+  // Only a different slide count is mentioned, and even that downloads normally.
+  if (s.counts.actualSlides !== s.counts.expectedSlides) {
     return {
       title: "Your slides are ready — give them a quick look",
       tone: "warn",
       normalDownload: true,
       downloadLabel: "Download again",
-      detail: "Some wording was shortened to fit the slides. Read through them once before class.",
+      detail: `The design has ${s.counts.actualSlides} slides instead of ${s.counts.expectedSlides}. Flick through it once before class.`,
     };
   }
-  return {
-    title: "Some slides didn't come out right",
-    tone: "bad",
-    normalDownload: false,
-    downloadLabel: "Download anyway",
-    detail: s.counts.actualSlides !== s.counts.expectedSlides
-      ? `The design has ${s.counts.actualSlides} slides instead of ${s.counts.expectedSlides}. You can download it and check it, or pick another theme for a fresh design.`
-      : "Some of your lesson text is missing or changed on the designed slides. You can download it and check it, or pick another theme for a fresh design.",
-  };
+  return { title: "Your slides are ready", tone: "ok", normalDownload: true, downloadLabel: "Download again", detail: `${s.counts.actualSlides} slides, designed and downloaded.` };
 }

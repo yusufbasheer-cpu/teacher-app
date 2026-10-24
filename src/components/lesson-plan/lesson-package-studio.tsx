@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { GenerationStudio, type StudioOutcome } from "@/components/generation-studio/generation-studio";
+import { GenerationStudio, type StudioAction, type StudioOutcome } from "@/components/generation-studio/generation-studio";
 import { ArtifactPagesPreview, SlideDeckPreview } from "@/components/generation-studio/studio-previews";
 import { lessonPackageStages, slideTextFromOutline } from "@/components/generation-studio/lesson-package-stages";
 import type { GammaPptOutcome } from "@/components/lesson-plan/gamma-ppt";
+import { PACKAGE_DOCX_FILES, type ReadyFiles } from "@/components/lesson-plan/package-files";
 import { presentVerdict } from "@/lib/gamma/report";
 import { getStructuredLessonSlideTitles } from "@/lib/ppt-structured-lesson";
 import { SECTION_TAB_LABELS, type LessonPlanResult } from "@/lib/lesson-plan";
@@ -27,6 +28,9 @@ type LessonPackageStudioProps = {
     outcome: GammaPptOutcome | null;
   };
   finished: boolean;
+  /** The download files being built, then ready (all in memory, so every click is instant). */
+  preparingFiles: boolean;
+  readyFiles: ReadyFiles | null;
   onDownload: (blob: Blob, filename: string) => void;
   onOpenLesson: () => void;
 };
@@ -34,7 +38,8 @@ type LessonPackageStudioProps = {
 export function LessonPackageStudio(p: LessonPackageStudioProps) {
   const pptSelected = p.sections.includes("PPT Slide Content");
   const contentReady = p.lessonPlan !== null;
-  const verdict = p.gamma?.outcome?.kind === "ready" ? presentVerdict(p.gamma.outcome.summary) : null;
+  const deck = p.gamma?.outcome?.kind === "ready" ? p.gamma.outcome : null;
+  const verdict = deck ? presentVerdict(deck.summary) : null;
 
   const stages = lessonPackageStages({
     sections: p.sections,
@@ -48,6 +53,7 @@ export function LessonPackageStudio(p: LessonPackageStudioProps) {
           errorMessage: p.gamma.outcome?.kind === "error" ? p.gamma.outcome.message : undefined,
         }
       : null,
+    files: p.readyFiles ? "done" : p.preparingFiles ? "active" : "pending",
   });
 
   const titles = useMemo(() => getStructuredLessonSlideTitles(p.arabicSlides, p.uaeFramework), [p.arabicSlides, p.uaeFramework]);
@@ -59,7 +65,7 @@ export function LessonPackageStudio(p: LessonPackageStudioProps) {
 
   const eyebrow = [p.subject, p.grade && `Grade ${p.grade.replace(/^grade\s*/i, "")}`].filter(Boolean).join(" · ");
   const designing = Boolean(p.gamma && !p.gamma.outcome && contentReady);
-  const actualSlides = verdict && p.gamma?.outcome?.kind === "ready" ? p.gamma.outcome.summary?.counts.actualSlides : undefined;
+  const actualSlides = deck?.summary?.counts.actualSlides;
 
   const caption = !contentReady
     ? `Lesson structure · ${titles.length} slides · text appears here once it's written`
@@ -93,41 +99,43 @@ export function LessonPackageStudio(p: LessonPackageStudioProps) {
 
   let outcome: StudioOutcome | null = null;
   if (p.finished) {
-    const open = { label: "Open your lesson", onClick: p.onOpenLesson };
+    const open: StudioAction = { label: "Open your lesson", onClick: p.onOpenLesson, variant: "outline" };
+    const all = p.readyFiles?.all;
+    const docx = PACKAGE_DOCX_FILES.flatMap(({ key }) => (p.readyFiles?.[key] ? [p.readyFiles[key]!] : []));
+    const download = (f: { blob: Blob; filename: string }) => () => p.onDownload(f.blob, f.filename);
+    const actions: StudioAction[] = [
+      ...(all ? [{ label: "Download all", onClick: download(all) }] : []),
+      ...(deck ? [{ label: "Download PowerPoint", onClick: download(deck), variant: all ? ("outline" as const) : undefined }] : []),
+      open,
+    ];
+    // With a single file there's nothing to pick between: "Download all" already covers it.
+    const files = docx.length + (deck ? 1 : 0) > 1
+      ? [
+          ...(deck ? [{ label: "PowerPoint", type: "PPTX", onClick: download(deck) }] : []),
+          ...docx.map((f) => ({ label: f.label, type: "DOCX", onClick: download(f) })),
+        ]
+      : undefined;
+
     const o = p.gamma?.outcome;
-    if (o?.kind === "ready" && verdict) {
-      const s = o.summary;
-      const notes = s && s.verdict !== "passed" ? (s.examples.length ? s.examples : s.reasons).slice(0, 4) : undefined;
-      // A deck that failed the content check is never offered as classroom-ready: the lesson comes first and the
-      // file is only the explicitly labelled "Download anyway" for checking.
-      outcome = verdict.normalDownload
-        ? {
-            tone: verdict.tone,
-            title: verdict.tone === "ok" ? "Presentation ready" : verdict.title,
-            // presentVerdict's copy assumes the file already downloaded; here it hasn't yet.
-            detail: verdict.tone === "ok" ? `${s?.counts.actualSlides ?? "Your"} slides, designed by Gamma, with your lesson wording checked on every slide.` : verdict.detail,
-            notes,
-            actions: [
-              { label: "Download PowerPoint", onClick: () => { p.onDownload(o.blob, o.filename); p.onOpenLesson(); } },
-              { ...open, variant: "outline" },
-            ],
-          }
-        : {
-            tone: "bad",
-            title: verdict.title,
-            detail: `${verdict.detail} Your lesson itself is ready.`,
-            notes,
-            actions: [open, { label: verdict.downloadLabel, variant: "ghost", onClick: () => p.onDownload(o.blob, o.filename) }],
-          };
+    if (deck && verdict) {
+      outcome = {
+        tone: verdict.tone,
+        title: verdict.tone === "bad" ? verdict.title : verdict.tone === "ok" ? "Presentation ready" : verdict.title,
+        // presentVerdict's copy assumes the file already downloaded; here it hasn't yet.
+        detail: verdict.tone === "ok" ? `${actualSlides ?? "Your"} slides, designed by Gamma, plus every file in your lesson package.` : verdict.detail,
+        actions,
+        files,
+      };
     } else if (o?.kind === "error") {
       outcome = {
         tone: "warn",
         title: "Your lesson is ready — the slide design didn't finish",
-        detail: `${o.message} You can design the PowerPoint again from your lesson.`,
-        actions: [open],
+        detail: `${o.message} You can design the PowerPoint again from your lesson.${all ? " Download all includes the standard Layah slides." : ""}`,
+        actions,
+        files,
       };
     } else {
-      outcome = { tone: "ok", title: "Your lesson package is ready", detail: "Opening it now.", actions: [open] };
+      outcome = { tone: "ok", title: "Your lesson package is ready", detail: "Every file is ready to download.", actions, files };
     }
   }
 

@@ -5,6 +5,28 @@ import { Notice } from "@/components/ui/panel";
 import type { CuratedGammaTheme } from "@/lib/gamma/themes";
 import { pictureMediumFor, type PictureMedium } from "@/lib/gamma/picture-medium";
 import type { GammaThemeLoadState } from "./gamma-ppt";
+import { SlideFace } from "@/components/generation-studio/studio-previews";
+
+function luminance(hex: string): number {
+  const n = parseInt(hex.slice(1), 16);
+  return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+}
+
+/**
+ * Gamma's theme list has no preview images, only colour and tone keywords, so the glimpse is a small slide drawn
+ * from those real colours: a dark theme gets its darkest colour as the background, others their lightest, and the
+ * next colour becomes the accent. It's a hint of the look, not a render of the theme.
+ */
+function glimpseColours(theme: CuratedGammaTheme): string[] | undefined {
+  if (!theme.swatch.length) return undefined;
+  const dark = /\b(dark|night|midnight|black|charcoal)\b/i.test([theme.name, ...theme.toneKeywords, ...theme.colorKeywords].join(" "));
+  const byLight = [...theme.swatch].sort((a, b) => luminance(a) - luminance(b));
+  const bg = dark ? byLight[0]! : byLight[byLight.length - 1]!;
+  const accent = theme.swatch.find((c) => c !== bg);
+  return accent ? [bg, accent] : [bg];
+}
+
+const GLIMPSE_SLIDE = { title: "Your lesson title", lines: ["Your lesson's own wording", "Second key point"] };
 
 /** Picture options shown to teachers, each mapped onto Gamma's image source + style. */
 const PICTURE_CHOICES: { medium: PictureMedium; label: string; hint: string; source: string; style: string }[] = [
@@ -38,8 +60,8 @@ export function GammaDesignControls({
           {themes.map((theme) => {
             const selected = theme.id === themeId;
             return <button key={theme.id} type="button" role="radio" aria-checked={selected} onClick={() => onThemeChange(theme.id)} className={`min-w-0 rounded-lg border p-2 text-left transition-[border-color,background-color] duration-[160ms] ease-[cubic-bezier(0.23,1,0.32,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${selected ? "border-brand bg-brand-subtle" : "border-line-subtle bg-surface hover:border-line-strong"}`}>
-              <span className="mb-2 flex h-8 overflow-hidden rounded-md border border-line-subtle bg-sunken" aria-hidden>
-                {theme.swatch.map((colour) => <span key={colour} className="flex-1" style={{ background: colour }} />)}
+              <span className="mb-2 block aspect-video overflow-hidden rounded-md border border-line-subtle" aria-hidden>
+                <SlideFace slide={GLIMPSE_SLIDE} index={1} eyebrow="" deckTitle="" swatch={glimpseColours(theme)} />
               </span>
               <span className="block truncate text-[12px] font-semibold text-ink">{theme.name}</span>
               <span className="block truncate text-[10px] text-faint">{[...theme.toneKeywords, ...theme.colorKeywords].slice(0, 3).join(" · ") || (theme.type === "custom" ? "Your workspace theme" : " ")}</span>

@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, Check, ChevronDown, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Download, Lightbulb, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +37,8 @@ export type StudioOutcome = {
   /** Specific differences or reasons, shown as a short list. */
   notes?: string[];
   actions: StudioAction[];
+  /** Individual files that are already in memory, so each click downloads instantly. */
+  files?: { label: string; type: string; onClick: () => void }[];
 };
 
 type GenerationStudioProps = {
@@ -52,7 +54,43 @@ type GenerationStudioProps = {
   /** Set once generation has finished (successfully or not). */
   outcome?: StudioOutcome | null;
   footerNote?: string;
+  /** Light, true classroom facts shown while waiting — kept apart from the preview so they never read as lesson content. */
+  tips?: string[];
 };
+
+const FUN_FACTS = [
+  "Honey never spoils — archaeologists have found 3,000-year-old honey in Egyptian tombs that was still edible.",
+  "Octopuses have three hearts and blue blood.",
+  "A day on Venus is longer than its year: it spins once every 243 Earth days but orbits the Sun in 225.",
+  "Bananas are berries, but strawberries aren't.",
+  "Sunlight takes about 8 minutes 20 seconds to reach Earth.",
+  "Sharks are older than trees — they've been around for over 400 million years.",
+  "The Eiffel Tower grows about 15 cm taller in summer as the iron expands in the heat.",
+  "A bolt of lightning is around five times hotter than the surface of the Sun.",
+  "Wombats are the only animals known to produce cube-shaped droppings.",
+  "The word 'school' comes from the Greek skholē, which meant 'leisure'.",
+  "The first computer 'bug' was a real moth, found stuck in a Harvard computer in 1947.",
+  "There are more possible games of chess than atoms in the observable universe.",
+  "Your brain uses about 20% of your body's energy while weighing only around 2% of it.",
+  "A group of flamingos is called a flamboyance.",
+];
+
+function WhileYouWait({ tips }: { tips: string[] }) {
+  const [i, setI] = useState(() => Math.floor(Math.random() * tips.length));
+  useEffect(() => {
+    const id = window.setInterval(() => setI((n) => (n + 1) % tips.length), 9000);
+    return () => window.clearInterval(id);
+  }, [tips.length]);
+  return (
+    <div className="mt-3 flex gap-2.5 rounded-lg border border-line-subtle bg-surface px-3 py-2.5">
+      <Lightbulb className="mt-0.5 size-4 shrink-0 text-gen" aria-hidden />
+      <p key={i} className="std-in text-[12px] leading-5 text-muted">
+        <span className="font-semibold text-ink">While you wait · </span>
+        {tips[i]}
+      </p>
+    </div>
+  );
+}
 
 const EASE = "cubic-bezier(0.23, 1, 0.32, 1)";
 
@@ -219,11 +257,33 @@ function OutcomeCard({ outcome }: { outcome: StudioOutcome }) {
           </Button>
         ))}
       </div>
+      {outcome.files?.length ? (
+        <div className="mt-4 border-t border-line-subtle pt-3">
+          <p className="mb-2 text-[11px] font-medium text-faint">Or download one file</p>
+          <ul className="grid gap-1.5">
+            {outcome.files.map((f) => (
+              <li key={f.label}>
+                <button
+                  type="button"
+                  onClick={f.onClick}
+                  className="flex w-full items-center justify-between gap-2 rounded-md border border-line-subtle bg-surface px-3 py-2 text-left text-[13px] transition-colors duration-150 hover:border-line-strong hover:bg-hover"
+                >
+                  <span className="min-w-0 truncate font-medium text-ink">{f.label}</span>
+                  <span className="flex shrink-0 items-center gap-2 text-[11px] text-faint">
+                    {f.type}
+                    <Download className="size-3.5" aria-hidden />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-export function GenerationStudio({ kind, eyebrow, title, subtitle, stages, meta, preview, outcome, footerNote }: GenerationStudioProps) {
+export function GenerationStudio({ kind, eyebrow, title, subtitle, stages, meta, preview, outcome, footerNote, tips = FUN_FACTS }: GenerationStudioProps) {
   const [stepsOpen, setStepsOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -303,6 +363,7 @@ export function GenerationStudio({ kind, eyebrow, title, subtitle, stages, meta,
                 ))}
               </dl>
             ) : null}
+            {!outcome && tips.length ? <WhileYouWait tips={tips} /> : null}
           </section>
 
           {/* Steps: always open on desktop, collapsible on small screens */}

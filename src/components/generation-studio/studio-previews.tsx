@@ -33,7 +33,11 @@ function inkFor(hex: string | undefined): { ink: string; soft: string } | null {
   return lum > 0.6 ? { ink: "#1f2629", soft: "rgba(31,38,41,.74)" } : { ink: "#f4f6f5", soft: "rgba(244,246,245,.8)" };
 }
 
-function SlideFace({ slide, index, eyebrow, deckTitle, swatch, large }: { slide: PreviewSlide; index: number; eyebrow: string; deckTitle: string; swatch?: string[]; large?: boolean }) {
+/**
+ * One slide face. Text is sized against the slide's own width (container query units), so a thumbnail keeps the
+ * same proportions as the large preview; thumbnails show a bigger title and fewer lines to stay legible.
+ */
+export function SlideFace({ slide, index, eyebrow, deckTitle, swatch, large }: { slide: PreviewSlide; index: number; eyebrow: string; deckTitle: string; swatch?: string[]; large?: boolean }) {
   const ink = inkFor(swatch?.[0]);
   const themed = Boolean(ink);
   const bg = themed ? swatch![0] : undefined;
@@ -41,38 +45,39 @@ function SlideFace({ slide, index, eyebrow, deckTitle, swatch, large }: { slide:
   const cover = index === 0;
   const text = { color: ink?.ink };
   const soft = { color: ink?.soft };
+  const lines = large ? slide.lines : slide.lines.slice(0, 2);
   return (
     <div
-      className={cn("relative flex h-full w-full flex-col overflow-hidden", !themed && "bg-surface", large ? "p-[6%]" : "p-[8%]")}
+      className={cn("@container relative flex h-full w-full flex-col overflow-hidden", !themed && "bg-surface", large ? "p-[6%]" : "p-[7%]")}
       style={{ background: bg }}
     >
       {cover ? (
         <div className="flex h-full flex-col justify-center">
-          {large ? <p className={cn("font-mono text-[11px] uppercase tracking-wider", !themed && "text-faint")} style={soft}>{eyebrow}</p> : null}
-          <p className={cn("mt-[3%] font-semibold leading-tight", large ? "text-[clamp(18px,2.4vw,30px)]" : "text-[8px]", !themed && "text-ink")} style={text}>
+          {large ? <p className={cn("font-mono text-[1.6cqw] uppercase tracking-wider", !themed && "text-faint")} style={soft}>{eyebrow}</p> : null}
+          <p className={cn("mt-[3%] line-clamp-3 font-semibold leading-tight", large ? "text-[4.6cqw]" : "text-[11cqw]", !themed && "text-ink")} style={text}>
             {deckTitle}
           </p>
           <span className="mt-[4%] block h-[3px] w-1/3 rounded-full" style={{ background: accent }} />
         </div>
       ) : (
         <>
-          <p className={cn("font-semibold leading-tight", large ? "text-[clamp(14px,1.7vw,22px)]" : "text-[6.5px]", !themed && "text-ink")} style={text}>
+          <p className={cn("line-clamp-2 shrink-0 font-semibold leading-tight", large ? "text-[3.4cqw]" : "text-[9.5cqw]", !themed && "text-ink")} style={text}>
             {slide.title}
           </p>
-          <span className="mt-[3%] block h-[2px] w-1/5 rounded-full" style={{ background: accent }} />
-          <div className={cn("mt-[5%] flex flex-col", large ? "gap-2.5" : "gap-[3px]")}>
-            {slide.lines.length
-              ? slide.lines.map((l, i) => (
+          <span className="mt-[3%] block h-[2px] w-1/5 shrink-0 rounded-full" style={{ background: accent }} />
+          <div className={cn("mt-[5%] flex flex-col", large ? "gap-[1.6cqw]" : "gap-[3cqw]")}>
+            {lines.length
+              ? lines.map((l, i) => (
                   <p
                     key={i}
-                    className={cn("std-in line-clamp-2 font-serif", large ? "text-[clamp(11px,1.1vw,15px)] leading-snug" : "text-[4.5px] leading-tight", !themed && "text-muted")}
+                    className={cn("std-in font-serif leading-snug", large ? "line-clamp-2 text-[2.2cqw]" : "line-clamp-1 text-[6.5cqw]", !themed && "text-muted")}
                     style={{ ...soft, animationDelay: `${i * 70}ms` }}
                   >
                     {l}
                   </p>
                 ))
-              : [0.9, 0.75, 0.82].map((w, i) => (
-                  <span key={i} className={cn("std-skel block rounded-full", large ? "h-2.5" : "h-[3px]", themed && "opacity-60")} style={{ width: `${w * 100}%` }} />
+              : [0.9, 0.75, 0.82].slice(0, large ? 3 : 2).map((w, i) => (
+                  <span key={i} className={cn("std-skel block rounded-full", large ? "h-[1.6cqw]" : "h-[4cqw]", themed && "opacity-60")} style={{ width: `${w * 100}%` }} />
                 ))}
           </div>
         </>
@@ -96,7 +101,7 @@ export function SlideDeckPreview({ eyebrow, deckTitle, slides, swatch, caption, 
         ) : null}
       </div>
 
-      <ol className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-5 xl:grid-cols-7" aria-label="Slides">
+      <ol className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-4 xl:grid-cols-5" aria-label="Slides">
         {slides.map((s, i) => (
           <li key={i} className="std-in" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
             <button
@@ -116,7 +121,7 @@ export function SlideDeckPreview({ eyebrow, deckTitle, slides, swatch, caption, 
               >
                 <SlideFace slide={s} index={i} eyebrow={eyebrow} deckTitle={deckTitle} swatch={swatch} />
               </span>
-              <span className="mt-1 flex items-baseline gap-1 text-[10px] leading-tight">
+              <span className="mt-1 flex items-baseline gap-1 text-[11px] leading-tight">
                 <span className="font-mono text-faint">{i + 1}</span>
                 <span className="truncate text-muted">{s.title}</span>
               </span>
