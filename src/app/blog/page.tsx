@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Footer } from "@/components/layout/footer";
+import { BreadcrumbJsonLd } from "@/components/layout/breadcrumbs";
 import { Card } from "@/components/ui/card";
 import { SectionLabel } from "@/components/marketing/section-label";
 import { posts, formatDate } from "@/content/blog/posts";
@@ -39,6 +40,7 @@ export default function BlogPage() {
 
   return (
     <div className="site-editorial min-h-screen bg-background text-foreground">
+      <BreadcrumbJsonLd trail={[{ name: "Blog", href: "/blog" }]} />
       {/* Header */}
       <div className="bg-navy pb-16 pt-20">
         <Container>

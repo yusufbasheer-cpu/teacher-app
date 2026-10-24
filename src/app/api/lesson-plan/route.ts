@@ -34,6 +34,7 @@ import {
 import { generateFluxSectionImages, formatFalError } from "@/lib/fal-flux-section-images";
 import { apiErrorResponse } from "@/lib/api-client-error";
 import { filterUserFacingNotices } from "@/lib/image-notices";
+import { isIsolatedEnvironment } from "@/lib/environment-isolation";
 import { SECTION_GENERATION_FAILED, USER_FACING_ERROR } from "@/lib/user-facing-errors";
 import {
   normalizeGenerationSections,
@@ -785,7 +786,9 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const isPptExperiment = sections.includes("PPT Slide Content");
+  // Unmetered PPT testing exists only on the isolated experiment deployment; everywhere else (production included)
+  // PPT lessons use the normal rate limits, spending protection and plan allowance.
+  const isPptExperiment = sections.includes("PPT Slide Content") && isIsolatedEnvironment();
   if (!isPptExperiment) {
     const ip = getClientIp(req);
     const ipLimit = checkRateLimit(`lesson-plan:ip:${ip}`, 10, HOUR_MS);

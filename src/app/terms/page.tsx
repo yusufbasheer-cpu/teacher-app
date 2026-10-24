@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPageLayout title="Terms of Service" lastUpdated="August 7, 2026">
+    <LegalPageLayout title="Terms of Service" path="/terms"lastUpdated="August 7, 2026">
       <p>
         These Terms of Service (&quot;Terms&quot;) govern your access to and use of Layah.ai
         (&quot;Layah,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) at{" "}

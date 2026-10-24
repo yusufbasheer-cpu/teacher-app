@@ -163,6 +163,7 @@ export function Footer() {
             className="transition hover:opacity-80"
           >
             <img
+              loading="lazy"
               alt="Layah - AI lesson plans & PPTs — built by a teacher, for teachers | Product Hunt"
               width="250"
               height="54"

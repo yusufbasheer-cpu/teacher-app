@@ -576,9 +576,9 @@ export function LessonPlanGenerator() {
       return;
     }
 
-    // Gamma PPT experimentation is intentionally unmetered. Other generation
-    // flows continue to use the account allowance as before.
-    if (!sectionSelection["PPT Slide Content"] && usage && !usage.canGenerate) {
+    // Only the isolated Gamma experiment preview leaves PPT lessons unmetered (the server is the authority).
+    const unmeteredPpt = sectionSelection["PPT Slide Content"] && process.env.NEXT_PUBLIC_GAMMA_EXPERIMENT === "true";
+    if (!unmeteredPpt && usage && !usage.canGenerate) {
       setLimitModalOpen(true);
       return;
     }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { SLIDE_BODY_LIMIT, dropRepeatedTail, mergeBodies } from "./ppt-structured-lesson";
+import { buildStructuredLessonSlides, SLIDE_BODY_LIMIT, dropRepeatedTail, mergeBodies } from "./ppt-structured-lesson";
+import { assembleFullPptFromSlideBodies } from "./ppt-slide-by-slide";
 
 // The deck's AFL-heavy, multi-part slides — Starter Activity, Differentiated Activity, UAE /
 // Real-Life Connection, Plenary, Extended Task. Two of these (7, then 9) were independently
@@ -27,6 +28,29 @@ describe("SLIDE_BODY_LIMIT — per-slide truncation ceilings", () => {
     const min = Math.min(...chars);
     const max = Math.max(...chars);
     expect(max).toBeLessThanOrEqual(min * 2);
+  });
+});
+
+describe("structured lesson body preservation", () => {
+  it("keeps generated slide content beyond the historical character and line guidance", () => {
+    const body = [
+      ...Array.from({ length: 45 }, (_, index) => `Investigation point ${index + 1}: learners compare observations, explain the evidence, and connect the result to the model.`),
+      "Final evidence marker beyond the historical slide limit.",
+    ].join("\n");
+    const slideBodies = Array.from({ length: 13 }, () => "A concise learner-facing point with evidence and explanation.");
+    slideBodies[5] = body;
+    const outline = assembleFullPptFromSlideBodies(slideBodies, false);
+    const slides = buildStructuredLessonSlides({
+      subject: "Science",
+      grade: "Grade 8",
+      topic: "Energy transfer",
+      teacherName: "Teacher",
+      pptContent: outline,
+      language: "en",
+    });
+    expect(slides[5]!.body.length).toBeGreaterThan(SLIDE_BODY_LIMIT[5]!.chars);
+    expect(slides[5]!.body.split("\n").length).toBeGreaterThan(SLIDE_BODY_LIMIT[5]!.lines);
+    expect(slides[5]!.body).toContain("Final evidence marker beyond the historical slide limit.");
   });
 });
 

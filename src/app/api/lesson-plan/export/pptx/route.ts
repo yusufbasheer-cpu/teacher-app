@@ -15,7 +15,7 @@ import {
 import { resolvePresentationLanguage } from "@/lib/ppt-language";
 import { authenticateRequest } from "@/lib/user-usage-server";
 import { renderUploadedPpt, UploadedTemplateError } from "@/lib/uploaded-ppt-export";
-import { moveTeacherFacingLinesToNotes } from "@/lib/ppt-template-engine";
+import { moveTeacherFacingLinesToNotes, PptContentError } from "@/lib/ppt-template-engine";
 import { defaultProviderFor, GammaError, gammaGate, getGammaConfig, resolvePptProvider } from "@/lib/gamma/config";
 import { encodeReportHeader, summariseReport } from "@/lib/gamma/report";
 import { renderPptxWithGamma } from "@/lib/gamma/render";
@@ -407,6 +407,9 @@ export async function POST(req: Request) {
       console.error("[pptx export] gamma", e.code, e.message);
       const friendly = gammaUserMessage(e.code);
       return NextResponse.json({ code: `GAMMA_${e.code.toUpperCase()}`, error: friendly.message, resumable: friendly.resumable }, { status: GAMMA_ERROR_STATUS[e.code] });
+    }
+    if (e instanceof PptContentError) {
+      return NextResponse.json({ code: e.code, error: e.message }, { status: 422 });
     }
     const message = e instanceof Error ? e.message : String(e);
     console.error("[pptx export]", message, e);

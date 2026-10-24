@@ -8,6 +8,8 @@ import { PageTransitionWrapper } from "@/components/layout/page-transition-wrapp
 import { SentryProvider } from "@/components/sentry-provider";
 import { PostHogProvider } from "@/providers/posthog-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
+import { CONTACT_EMAIL, OG_IMAGE, SITE_NAME, SITE_URL, SOCIAL_PROFILES, absoluteUrl } from "@/lib/site";
 import "./globals.css";
 
 /* Three faces, three jobs — see the type-role note in globals.css.
@@ -42,21 +44,20 @@ export const metadata: Metadata = {
   title: { default: "Layah – AI Lesson Planning for Teachers", template: "%s | Layah" },
   description:
     "Layah helps teachers create complete lesson plans, PPTs, worksheets and assessments using AI. Save hours every week. KHDA and SPEA aligned for UAE schools. Try free.",
-  metadataBase: new URL("https://layah.in"),
+  metadataBase: new URL(SITE_URL),
+  // "./" resolves against each page's own path, so every page self-canonicalises
+  // on the www host with query strings (utm_*, ?ref=) and trailing slashes dropped.
+  alternates: { canonical: "./" },
+  // Search Console meta-tag verification, only if the owner sets the token.
+  // (The HTML-file method via public/google*.html is already in place.)
+  verification: { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION },
   openGraph: {
     title: "Layah – AI Lesson Planning for Teachers",
     description:
       "Layah helps teachers create complete lesson plans, PPTs, worksheets and assessments using AI. Save hours every week. KHDA and SPEA aligned for UAE schools. Try free.",
-    url: "https://layah.in",
-    siteName: "Layah",
-    images: [
-      {
-        url: "/Logo.png",
-        width: 512,
-        height: 512,
-        alt: "Layah logo",
-      },
-    ],
+    url: "./",
+    siteName: SITE_NAME,
+    images: [OG_IMAGE],
     type: "website",
   },
   twitter: {
@@ -64,7 +65,7 @@ export const metadata: Metadata = {
     title: "Layah – AI Lesson Planning for Teachers",
     description:
       "Layah helps teachers create complete lesson plans, PPTs, worksheets and assessments using AI. Save hours every week. KHDA and SPEA aligned for UAE schools. Try free.",
-    images: ["/Logo.png"],
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -86,16 +87,13 @@ export default function RootLayout({
     {
       "@context": "https://schema.org",
       "@type": "Organization",
-      name: "Layah",
-      url: "https://layah.in",
-      logo: "https://layah.in/Logo.png",
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: absoluteUrl("/Logo.png"),
       description:
         "AI-powered lesson planning and teaching resource generation platform for educators",
-      sameAs: [
-        "https://www.instagram.com/layah.teachers",
-        "https://www.linkedin.com/company/layah-ai/",
-        "https://x.com/layah_ai",
-      ],
+      contactPoint: { "@type": "ContactPoint", contactType: "customer support", email: CONTACT_EMAIL },
+      sameAs: [...SOCIAL_PROFILES],
     },
     {
       "@context": "https://schema.org",
@@ -111,7 +109,7 @@ export default function RootLayout({
         priceCurrency: "USD",
         description: "Free plan available",
       },
-      url: "https://layah.in",
+      url: SITE_URL,
     },
   ];
 
@@ -150,6 +148,7 @@ export default function RootLayout({
           </AppShell>
           <CookieBanner />
         </PostHogProvider>
+        <GoogleAnalytics />
         <Toaster />
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       </body>

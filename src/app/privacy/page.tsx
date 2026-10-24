@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPageLayout title="Privacy Policy" lastUpdated="June 2026">
+    <LegalPageLayout title="Privacy Policy" path="/privacy"lastUpdated="June 2026">
       <p>
         Layah.ai provides AI-powered lesson planning and classroom resource tools for educators.
         This Privacy Policy explains how we collect, use, disclose, and safeguard information when
