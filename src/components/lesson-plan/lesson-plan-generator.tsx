@@ -994,7 +994,9 @@ export function LessonPlanGenerator() {
     selectedGenerationCount > 0 &&
     !loading &&
     !uploadExtracting &&
-    !usageLoading;
+    !usageLoading &&
+    (!designBeforeGenerate || gammaDesign.themeLoadState !== "loading") &&
+    (!designBeforeGenerate || gammaDesign.themeLoadState !== "ready" || Boolean(gammaDesign.themeId));
   const classComplete = detailsComplete;
   const hasSource = uploadedChunks.length > 0 || pastedContent.trim().length > 0;
   const aflCount = Object.values(aflSelected).reduce((n, list) => n + list.length, 0);

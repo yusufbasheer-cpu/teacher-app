@@ -26,7 +26,7 @@ describe("image policy: six required educational categories, content always firs
     ]);
     expect(plans.map((p) => p.image)).toEqual(["side", "diagram", "diagram", "side"]);
   });
-  it("keeps continuation, question, worked-example and objective slides text-only", () => {
+  it("keeps continuation, question, worked-example and objective slides text-only while allowing a moderate real-life visual", () => {
     const plans = planSlideLayouts([
       slide(5, ["x".repeat(1300)]),
       slide(7, ["Dentists use mirrors."], 2),
@@ -35,7 +35,14 @@ describe("image policy: six required educational categories, content always firs
       slide(4, ["Outcome"]),
       slide(7, ["y".repeat(800)]),
     ]);
-    expect(plans.map((p) => p.image)).toEqual(["diagram", "none", "none", "none", "none", "none"]);
+    expect(plans.map((p) => p.image)).toEqual(["diagram", "none", "none", "none", "none", "side"]);
+  });
+  it("keeps useful visuals on moderately detailed activity slides", () => {
+    const plans = planSlideLayouts([
+      slide(8, ["Students review the central idea. ".repeat(12)]),
+      slide(9, ["Students observe and compare examples. ".repeat(12)]),
+    ]);
+    expect(plans.map((p) => p.image)).toEqual(["inset", "inset"]);
   });
   it("requires a starter visual but keeps activity-instruction cards text-only", () => {
     expect(planSlideLayouts([slide(1, ["Observe a sharp and a blunt pin."])])[0]!.image).toBe("side");
@@ -57,6 +64,7 @@ describe("picture choice", () => {
     expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("simple concept diagram with no words or numbers in it");
     expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("REQUIRED cover visual");
     expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("S3 questions: no image.");
+    expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("Every planned image is required");
     expect(layoutInstructionsFor(slides, plans, "none")).not.toMatch(/photograph|illustration or/);
   });
 });

@@ -47,6 +47,11 @@ describe("request serialisation", () => {
     expect(buildGammaPayload({ deck: makeDeck(2), title: "t", language: "en", config: withModel }).request.imageOptions).toEqual({ source: "aiGenerated", model: "m1", style: "flat" });
     expect(buildGammaPayload({ deck: makeDeck(2), title: "t", language: "en", config: { ...withModel, imageSource: "noImages" } }).request.imageOptions).toEqual({ source: "noImages" });
   });
+  it("sends the selected Gamma theme as a top-level generation option", () => {
+    const request = buildGammaPayload({ deck: makeDeck(2), title: "t", language: "en", config: { ...config, themeId: "classroom-theme-123" } }).request;
+    expect(request.themeId).toBe("classroom-theme-123");
+    expect(request.imageOptions).toMatchObject({ source: "aiGenerated" });
+  });
   it("fails before generation when physical instructions push the deck above 25 cards", () => {
     const deck = makeDeck();
     deck[5] = {

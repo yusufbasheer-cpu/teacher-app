@@ -35,8 +35,8 @@ export { pictureMediumFor, type PictureMedium };
 
 /** Text density limits per picture size. ponytail: character counts, not a layout measurement; tune from real decks. */
 export const DIAGRAM_MAX_CHARS = 1200;
-export const SIDE_IMAGE_MAX_CHARS = 700;
-export const INSET_IMAGE_MAX_CHARS = 350;
+export const SIDE_IMAGE_MAX_CHARS = 950;
+export const INSET_IMAGE_MAX_CHARS = 550;
 
 const WORKED = /(=|÷|×|\bcalculat|\bformula\b|\bsolve\b|\bequation\b)/i;
 const charsOf = (s: CanonicalSlide) => s.lines.reduce((n, l) => n + l.length, 0);
@@ -59,9 +59,9 @@ export function classifySlide(s: CanonicalSlide): SlideType {
 const CORE_TEACHING_IDX = 5;
 
 /**
- * Content first, and pictures that teach: the one visual that helps most is a concept diagram on the core teaching
- * slide. No cover art, no decorative chapter/SDG picture; continuation, question, objective, worked-example and
- * summary slides stay text-only, and dense slides lose their picture before any text gets smaller.
+ * Content first, with subject-specific pictures on the first card of each eligible teaching section. Continuation,
+ * question, objective, worked-example and summary slides stay text-only, and genuinely dense slides lose their
+ * picture before any text gets smaller.
  */
 export function planSlideLayouts(slides: CanonicalSlide[]): SlideLayoutPlan[] {
   const firstContentByDeck = new Map<number, number>();
@@ -96,9 +96,9 @@ export function planSlideLayouts(slides: CanonicalSlide[]): SlideLayoutPlan[] {
     }
     if (s.part > 1) return plan("none", "Continuation slide: all space goes to the content.");
     if (s.deckIdx === CORE_TEACHING_IDX && chars <= DIAGRAM_MAX_CHARS) return plan("diagram", "Core teaching: a concept diagram explains the idea.");
-    if (type === "concept" && chars <= SIDE_IMAGE_MAX_CHARS) return plan("diagram", "A concept diagram supports the explanation.");
+    if (type === "concept" && chars <= SIDE_IMAGE_MAX_CHARS) return plan("diagram", "A subject-specific concept diagram supports the explanation.");
     if (type === "real-life" && chars <= SIDE_IMAGE_MAX_CHARS) return plan("side", "One contextual picture supports the application.");
-    if (type === "activity" && chars <= INSET_IMAGE_MAX_CHARS) return plan("inset", "Short activity: a small supporting picture fits.");
+    if (type === "activity" && chars <= INSET_IMAGE_MAX_CHARS) return plan("inset", "A subject-specific supporting picture helps students understand the activity.");
     return plan("none", type === "concept" || type === "real-life" || type === "activity" ? "Dense slide: the content needs the space." : `${type} slides are text-first.`);
   });
 }
@@ -144,6 +144,6 @@ export function layoutInstructionsFor(slides: CanonicalSlide[], plans: SlideLayo
   return [
     `Per-slide layout${about}. Layout types: ${legend}.`,
     ...lines,
-    `"No image" means no picture, icon or decorative graphic on that slide. Pictures must show the slide's own content, be age-appropriate, never be cover art or decoration, never sit behind text, and never contain invented labels, numbers or claims.`,
+    `Every planned image is required, not optional. Use a different, subject-specific image for each planned slide. "No image" means no picture, icon or decorative graphic on that slide. Pictures must show the slide's own content, be age-appropriate, never be generic theme decoration, never sit behind text, and never contain invented labels, numbers or claims.`,
   ].join(" ");
 }

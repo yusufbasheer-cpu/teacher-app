@@ -40,7 +40,7 @@ export function useGammaDesign(enabled = true): GammaDesign {
   const [themeLoadState, setThemeLoadState] = useState<GammaThemeLoadState>("idle");
   const [themeId, setThemeIdState] = useState("");
   const [imageSource, setImageSource] = useState("aiGenerated");
-  const [imageStyle, setImageStyle] = useState("clean educational illustration, age-appropriate, uncluttered");
+  const [imageStyle, setImageStyle] = useState("clean educational illustration, age-appropriate, uncluttered, subject-specific");
 
   useEffect(() => {
     if (!experiment || !enabled) return;

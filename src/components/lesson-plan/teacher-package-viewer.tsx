@@ -316,7 +316,7 @@ export function TeacherPackageViewer({
   // The server stays the authority on availability and re-checks it on every export.
   const ownGammaDesign = useGammaDesign(!gammaDesign);
   const design = gammaDesign ?? ownGammaDesign;
-  const { available: gammaAvailable, useGamma, setUseGamma, themes: gammaThemes, themeLoadState: gammaThemeLoadState, themeId: gammaThemeId, imageSource: gammaImageSource, setImageSource: setGammaImageSource, imageStyle: gammaImageStyle, setImageStyle: setGammaImageStyle } = design;
+  const { available: gammaAvailable, useGamma, setUseGamma, themes: gammaThemes, themeLoadState: gammaThemeLoadState, themeId: gammaThemeId, imageSource: gammaImageSource, imageStyle: gammaImageStyle } = design;
   // Persistent until dismissed or the next generation starts; never auto-cleared by toasts.
   const [gammaPanel, setGammaPanel] = useState<GammaPanelState | null>(null);
   const [readyGammaFile, setReadyGammaFile] = useState<{ blob: Blob; filename: string; summary: GammaReportSummary | null } | null>(null);
@@ -359,6 +359,20 @@ export function TeacherPackageViewer({
 
   const chooseGammaTheme = (id: string) => {
     design.setThemeId(id);
+    setReadyGammaFile(null);
+    setGammaArtifactHash(null);
+    setGammaArtifactAvailable(false);
+  };
+
+  const chooseGammaImageSource = (source: string) => {
+    design.setImageSource(source);
+    setReadyGammaFile(null);
+    setGammaArtifactHash(null);
+    setGammaArtifactAvailable(false);
+  };
+
+  const chooseGammaImageStyle = (style: string) => {
+    design.setImageStyle(style);
     setReadyGammaFile(null);
     setGammaArtifactHash(null);
     setGammaArtifactAvailable(false);
@@ -800,7 +814,7 @@ export function TeacherPackageViewer({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* ══════════ SIDEBAR ══════════ */}
         <aside className="space-y-6 lg:col-span-4">
-        {hasPpt && !useGamma ? (
+        {hasPpt ? (
           <div className="rounded-md border border-line-subtle bg-surface p-3">
             {gammaAvailable && useGamma ? (
               <GammaDesignControls
@@ -810,8 +824,8 @@ export function TeacherPackageViewer({
                 imageSource={gammaImageSource}
                 imageStyle={gammaImageStyle}
                 onThemeChange={chooseGammaTheme}
-                onImageSourceChange={setGammaImageSource}
-                onImageStyleChange={setGammaImageStyle}
+                onImageSourceChange={chooseGammaImageSource}
+                onImageStyleChange={chooseGammaImageStyle}
                 onUseLegacy={() => setUseGamma(false)}
               />
             ) : <>

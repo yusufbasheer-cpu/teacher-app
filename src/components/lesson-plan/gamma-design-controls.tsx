@@ -30,9 +30,9 @@ const GLIMPSE_SLIDE = { title: "Your lesson title", lines: ["Your lesson's own w
 
 /** Picture options shown to teachers, each mapped onto Gamma's image source + style. */
 const PICTURE_CHOICES: { medium: PictureMedium; label: string; hint: string; source: string; style: string }[] = [
-  { medium: "illustration", label: "Illustrations", hint: "Drawn pictures made for this lesson", source: "aiGenerated", style: "clean educational illustration, age-appropriate, uncluttered" },
-  { medium: "realistic", label: "Realistic images", hint: "Photo-like pictures made for this lesson", source: "aiGenerated", style: "photorealistic, natural lighting, real-world, classroom-appropriate" },
-  { medium: "photo", label: "Real photos", hint: "Photographs from a stock library", source: "pexels", style: "" },
+  { medium: "illustration", label: "Illustrations", hint: "Educational visuals across key teaching slides", source: "aiGenerated", style: "clean educational illustration, age-appropriate, uncluttered, subject-specific" },
+  { medium: "realistic", label: "Realistic images", hint: "Photo-like visuals across key teaching slides", source: "aiGenerated", style: "photorealistic, natural lighting, real-world, classroom-appropriate, subject-specific" },
+  { medium: "photo", label: "Real photos", hint: "Relevant photos across key teaching slides", source: "pexels", style: "" },
   { medium: "none", label: "No pictures", hint: "Text and the theme's design only", source: "noImages", style: "" },
 ];
 
