@@ -16,6 +16,7 @@
 // Server-only: Node.js built-ins and pptxgenjs must not be imported by client components.
 import { buildPhysicalSlideNotes } from "@/lib/ppt-speaker-notes";
 import { isComplianceClaim } from "@/lib/ppt-educational-quality";
+import { isTeacherOnlyLine, LEADING_BULLET_RE, stripInlineMarks } from "@/lib/ppt-slide-guards";
 import { readFile } from "fs/promises";
 import path from "path";
 import PptxGenJS from "pptxgenjs";
@@ -222,7 +223,8 @@ export function normalizeToLines(body: string): string[] {
     .map((l) => {
       let s = l.trim();
       s = s.replace(/^#{1,6}\s+/, "");
-      s = s.replace(/^\s*(?:[-*+]|\d+[.):])\s+/, "");
+      // Gamma and the built-in renderer add their own bullet, so a typed one ("•", "-", "*", "·") would double.
+      s = s.replace(LEADING_BULLET_RE, "").replace(/^\s*\d+[.):]\s+/, "");
       s = s.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1");
       // A run of 3+ underscores is a fill-in blank ("A plant needs ______"), not emphasis. Protect it, or a
       // sentence starter and a cloze question lose the very gap students must fill.
@@ -239,8 +241,9 @@ export function normalizeToLines(body: string): string[] {
 function isTeacherFacingRenderLine(line: string): boolean {
   const t = line.trim();
   if (!t) return false;
-  // Compliance / inspection claims are teacher guidance, never student text (also cleans older saved lessons).
-  if (isComplianceClaim(t)) return true;
+  // Compliance / inspection claims, marking guides, marks totals, rubrics and anything about the teacher are teacher
+  // guidance, never student text (also cleans older saved lessons).
+  if (isComplianceClaim(t) || isTeacherOnlyLine(t)) return true;
   return (
     /^(?:time|timing|total duration|duration)\s*[:=]/i.test(t) ||
     /^step\s*\d+\s*\([^)]*(?:minute|min|mins)\)/i.test(t) ||
@@ -254,18 +257,25 @@ export function moveTeacherFacingLinesToNotes(model: StructuredLessonSlideModel)
   const studentLines: string[] = [];
   const noteLines: string[] = [];
 
+  const marking: string[] = [];
   for (const raw of rawLines) {
     const line = raw.trim();
     if (line && isTeacherFacingRenderLine(line)) {
-      noteLines.push(line);
+      (/\bmarks?\b|\bmarking\b|\brubric/i.test(line) ? marking : noteLines).push(line);
     } else {
-      studentLines.push(raw);
+      // "(4 marks)" after a question is for the teacher: the question stays, the marks move to the notes.
+      const stripped = stripInlineMarks(raw);
+      if (stripped.marks) marking.push(stripped.marks);
+      studentLines.push(stripped.line);
     }
   }
 
-  if (noteLines.length === 0) return model;
+  if (noteLines.length === 0 && marking.length === 0) return model;
   const body = studentLines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
-  const movedNotes = `Teacher-facing details moved from slide body:\n${noteLines.join("\n")}`;
+  const movedNotes = [
+    noteLines.length ? `Teacher-facing details moved from slide body:\n${noteLines.join("\n")}` : "",
+    marking.length ? `Marking: ${marking.join("; ")}` : "",
+  ].filter(Boolean).join("\n");
   return {
     ...model,
     body: body || model.body,
@@ -788,6 +798,8 @@ export async function buildPptxFromTemplateEngine(params: {
 }): Promise<Buffer> {
   const tpl = getTemplateConfig(params.templateId);
   const deck = params.slides.map(moveTeacherFacingLinesToNotes);
+  // One per deck: a notes line used on one slide is never repeated on another.
+  const seenNotes = new Set<string>();
   const language = params.language ?? DEFAULT_PRESENTATION_LANGUAGE;
   const ctx = buildRenderContext(language, tpl);
   const safetyWarnings = validatePptContentSafety(deck);
@@ -896,7 +908,7 @@ export async function buildPptxFromTemplateEngine(params: {
           schoolLogo,
           ctx,
           true,
-          buildPhysicalSlideNotes({ model, deckIdx: di, lines: instructionSlideLines(activity), part: 1, parts: 1, sectionChars: 0, physicalKind: "activity-instructions", activity, topic: params.topic }),
+          buildPhysicalSlideNotes({ model, deckIdx: di, lines: instructionSlideLines(activity), part: 1, parts: 1, sectionChars: 0, physicalKind: "activity-instructions", activity, topic: params.topic, seen: seenNotes }),
         );
         slideNum++;
 
@@ -924,7 +936,7 @@ export async function buildPptxFromTemplateEngine(params: {
             schoolLogo,
             ctx,
             false,
-            buildPhysicalSlideNotes({ model, deckIdx: di, lines: activityChunks[ci]!, part: ci + 1, parts: activityChunks.length, sectionChars: activityChars, activity, topic: params.topic }),
+            buildPhysicalSlideNotes({ model, deckIdx: di, lines: activityChunks[ci]!, part: ci + 1, parts: activityChunks.length, sectionChars: activityChars, activity, topic: params.topic, seen: seenNotes }),
           );
           slideNum++;
         }
@@ -939,7 +951,7 @@ export async function buildPptxFromTemplateEngine(params: {
         ci === 0 && hasImg ? image : null,
         params.subject, slideNum, totalPhysical, layahLogo, schoolLogo, ctx,
         false,
-        buildPhysicalSlideNotes({ model, deckIdx: di, lines: chunks[ci]!, part: ci + 1, parts: chunks.length, sectionChars, topic: params.topic }),
+        buildPhysicalSlideNotes({ model, deckIdx: di, lines: chunks[ci]!, part: ci + 1, parts: chunks.length, sectionChars, topic: params.topic, seen: seenNotes }),
       );
       slideNum++;
     }

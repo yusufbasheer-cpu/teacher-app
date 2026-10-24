@@ -73,7 +73,10 @@ import {
 } from "@/lib/ppt-slide-by-slide";
 import {
   STRUCTURED_LESSON_DECK_SLIDE_COUNT,
+  getStructuredLessonSlideTitles,
 } from "@/lib/ppt-structured-lesson";
+import { finishGeneratedDeck } from "@/lib/ppt-post-generation";
+import { OFFICIAL_SDG_NAMES } from "@/lib/ppt-slide-guards";
 import { buildSlide8PptModeBlock } from "@/lib/ppt-slide-validation";
 import {
   generateSlide1Body,
@@ -387,7 +390,9 @@ async function generatePptSlideContentSlideBySlide(params: {
       content: [okBody(r6), ...(mainPhase?.mainPhaseActivities ?? []).map((a) => a.activityContent)].filter(Boolean).join("\n\n"),
     },
   ].filter((e) => e.content.trim());
-  const selectedSdg = parseSelectedSdg(undefined, okBody(r3));
+  // The one SDG for the deck, always with its official name (slide 3 may have shortened or mis-named it).
+  const parsedSdg = parseSelectedSdg(undefined, okBody(r3));
+  const selectedSdg = parsedSdg && OFFICIAL_SDG_NAMES[parsedSdg.id] ? { ...parsedSdg, name: OFFICIAL_SDG_NAMES[parsedSdg.id]! } : parsedSdg;
   const questionParams: SlideGenParams = { ...slideParams, teachingEvidence, ...(selectedSdg ? { selectedSdg } : {}) };
   const [r7, r8, r9, r11] = await Promise.allSettled([
     track(7, generateSlide7(questionParams)),                          // differentiated + mini plenary
@@ -421,6 +426,22 @@ async function generatePptSlideContentSlideBySlide(params: {
   });
 
   console.log(`[ppt-deck] All ${STRUCTURED_LESSON_DECK_SLIDE_COUNT} slides complete — ${completedCount} ready`);
+
+  // One official SDG everywhere, hard word limits (DeepSeek shortens over-limit slides) and no repeated notes.
+  const post = await finishGeneratedDeck(bodies, {
+    titles: getStructuredLessonSlideTitles(isAr, uaeFrameworkEnabled),
+    language,
+    usageUserId: params.userId,
+    topic: slideParams.topic,
+    uae: uaeFrameworkEnabled,
+  });
+  console.log(`[ppt-deck] post-generation ${JSON.stringify({
+    sdg: post.sdg?.id ?? null,
+    sdgRewrites: post.sdgRewrites,
+    shortened: post.words.filter((w) => w.shortened).map((w) => w.slide),
+    stillOverLimit: post.words.filter((w) => w.limit && w.after > w.limit).map((w) => w.slide),
+    repeatedNotes: post.repeatedNotes.map((r) => ({ slide: r.slide, regenerated: r.regenerated })),
+  })}`);
 
   // One SDG per deck: anything still contradicting it is logged for review rather than silently rewritten.
   if (selectedSdg) {

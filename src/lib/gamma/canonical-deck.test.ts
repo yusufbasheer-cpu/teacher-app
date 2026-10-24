@@ -11,6 +11,7 @@ import type { StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
 import { buildCanonicalSlides, buildGammaPayload } from "./payload";
 import { checkLayout, compareToSnapshot, extractPptx } from "./validate";
 import { pptxFrom, testConfig } from "./test-helpers";
+import { isChapterLine } from "@/lib/ppt-slide-guards";
 
 const deck = fixture.deck as StructuredLessonSlideModel[];
 const lesson = fixture.lesson;
@@ -70,13 +71,15 @@ describe("content: every platform line reaches Gamma, verbatim and in order", ()
       for (const line of normalizeToLines(model.body)) {
         // A bare "---" separator is removed on purpose: it is Gamma's card delimiter and would split the slide.
         if (/^\s*(-{3,}|_{3,}|\*{3,})\s*$/.test(line)) continue;
+        // The chapter is shown once, on the title slide, so its repeat on later slides is dropped on purpose.
+        if (isChapterLine(line)) continue;
         const at = sent.indexOf(line, from);
         expect(at, line).toBeGreaterThanOrEqual(0);
         from = at;
       }
     }
     const isSeparator = (l: string) => /^\s*(-{3,}|_{3,}|\*{3,})\s*$/.test(l);
-    const platformChars = deck.slice(1).reduce((n, m) => n + normalizeToLines(moveTeacherFacingLinesToNotes(m).body).filter((l) => !isSeparator(l)).join("").length, 0);
+    const platformChars = deck.slice(1).reduce((n, m) => n + normalizeToLines(moveTeacherFacingLinesToNotes(m).body).filter((l) => !isSeparator(l) && !isChapterLine(l)).join("").length, 0);
     const sentChars = snapshot.slice(1).reduce((n, s) => n + s.lines.slice(1).join("").length, 0);
     expect(sentChars).toBe(platformChars);
   });

@@ -1,0 +1,332 @@
+{
+  "lesson": {
+    "subject": "Science",
+    "grade": "Grade 6",
+    "topic": "Photosynthesis",
+    "chapter": "Chapter 7 — Getting to Know Plants (NCERT Science)",
+    "learningObjectives": "Describe how green plants make their own food.\nIdentify the raw materials and products of photosynthesis.",
+    "curriculumFramework": "UAE Framework - UAE MOE, KHDA and SPEA Standards"
+  },
+  "perElementWords": [
+    {
+      "element": 1,
+      "title": "Subject, Grade, Date",
+      "raw": 6,
+      "afterGuards": 6,
+      "limit": 60,
+      "shortened": false
+    },
+    {
+      "element": 2,
+      "title": "Starter Activity",
+      "raw": 66,
+      "afterGuards": 66,
+      "limit": 80,
+      "shortened": false
+    },
+    {
+      "element": 3,
+      "title": "Chapter, Topic and SDG Goal",
+      "raw": 15,
+      "afterGuards": 15,
+      "limit": 60,
+      "shortened": false
+    },
+    {
+      "element": 4,
+      "title": "Learning Objectives",
+      "raw": 27,
+      "afterGuards": 27,
+      "limit": 60,
+      "shortened": false
+    },
+    {
+      "element": 5,
+      "title": "Learning Outcomes",
+      "raw": 40,
+      "afterGuards": 40,
+      "limit": 60,
+      "shortened": false
+    },
+    {
+      "element": 6,
+      "title": "Main Phase Core Teaching",
+      "raw": 112,
+      "afterGuards": 112,
+      "limit": null,
+      "shortened": false
+    },
+    {
+      "element": 7,
+      "title": "Differentiated Activity and Mini Plenary",
+      "raw": 84,
+      "afterGuards": 73,
+      "limit": 80,
+      "shortened": true
+    },
+    {
+      "element": 8,
+      "title": "UAE Real Life and Cross Curricular Connection",
+      "raw": 66,
+      "afterGuards": 65,
+      "limit": 70,
+      "shortened": false
+    },
+    {
+      "element": 9,
+      "title": "Plenary",
+      "raw": 56,
+      "afterGuards": 56,
+      "limit": 80,
+      "shortened": false
+    },
+    {
+      "element": 10,
+      "title": "Extended Task",
+      "raw": 93,
+      "afterGuards": 93,
+      "limit": null,
+      "shortened": false
+    },
+    {
+      "element": 11,
+      "title": "Exit Ticket",
+      "raw": 45,
+      "afterGuards": 45,
+      "limit": 60,
+      "shortened": false
+    },
+    {
+      "element": 12,
+      "title": "Success Criteria and Self Evaluation",
+      "raw": 68,
+      "afterGuards": 60,
+      "limit": 60,
+      "shortened": true
+    },
+    {
+      "element": 13,
+      "title": "Lesson Takeaway",
+      "raw": 25,
+      "afterGuards": 25,
+      "limit": 60,
+      "shortened": false
+    }
+  ],
+  "physicalSlides": [
+    {
+      "slide": 1,
+      "element": 1,
+      "part": "1/1",
+      "title": "Photosynthesis",
+      "words": 16,
+      "teacherKeywords": [],
+      "sdg": []
+    },
+    {
+      "slide": 2,
+      "element": 2,
+      "part": "1/1",
+      "title": "Starter Activity",
+      "words": 66,
+      "teacherKeywords": [],
+      "sdg": []
+    },
+    {
+      "slide": 3,
+      "element": 3,
+      "part": "1/1",
+      "title": "Chapter, Topic and SDG Goal",
+      "words": 11,
+      "teacherKeywords": [],
+      "sdg": [
+        "SDG 2 — Zero Hunger"
+      ]
+    },
+    {
+      "slide": 4,
+      "element": 4,
+      "part": "1/1",
+      "title": "Learning Objectives",
+      "words": 18,
+      "teacherKeywords": [],
+      "sdg": []
+    },
+    {
+      "slide": 5,
+      "element": 5,
+      "part": "1/1",
+      "title": "Learning Outcomes",
+      "words": 40,
+      "teacherKeywords": [],
+      "sdg": []
+    },
+    {
+      "slide": 6,
+      "element": 6,
+      "part": "1/1",
+      "title": "Main Phase Core Teaching",
+      "words": 116,
+      "teacherKeywords": [],
+      "sdg": []
+    },
+    {
+      "slide": 7,
+      "element": 7,
+      "part": "1/1",
+      "title": "Differentiated Activity and Mini Plenary",
+      "words": 78,
+      "teacherKeywords": [],
+      "sdg": []
+    },
+    {
+      "slide": 8,
+      "element": 8,
+      "part": "1/1",
+      "title": "Real Life and Cross Curricular Connection",
+      "words": 71,
+      "teacherKeywords": [],
+      "sdg": [
+        "SDG: SDG 2 — Zero Hunger. The UAE uses smart farms and greenhouse technology to grow more food with less water."
+      ]
+    },
+    {
+      "slide": 9,
+      "element": 9,
+      "part": "1/1",
+      "title": "Plenary",
+      "words": 57,
+      "teacherKeywords": [],
+      "sdg": []
+    },
+    {
+      "slide": 10,
+      "element": 10,
+      "part": "1/1",
+      "title": "Extended Task: Photosynthesis",
+      "words": 92,
+      "teacherKeywords": [],
+      "sdg": []
+    },
+    {
+      "slide": 11,
+      "element": 11,
+      "part": "1/1",
+      "title": "Exit Ticket",
+      "words": 45,
+      "teacherKeywords": [],
+      "sdg": []
+    },
+    {
+      "slide": 12,
+      "element": 12,
+      "part": "1/1",
+      "title": "Success Criteria and Self Evaluation",
+      "words": 62,
+      "teacherKeywords": [],
+      "sdg": []
+    },
+    {
+      "slide": 13,
+      "element": 13,
+      "part": "1/1",
+      "title": "Lesson Takeaway",
+      "words": 34,
+      "teacherKeywords": [],
+      "sdg": []
+    }
+  ],
+  "uaeSlideText": [
+    "UAE link: The Ghaf tree in UAE deserts makes food by photosynthesis using strong sunlight, and its shade helps other plants grow.\nCross-curricular task: In Mathematics, measure a leaf's length and width, then compare leaf sizes to see which leaves capture more sunlight for photosynthesis.\nSDG: SDG 2 — Zero Hunger. The UAE uses smart farms and greenhouse technology to grow more food with less water."
+  ],
+  "teacherTextOnSlides": [],
+  "removedBeforeGamma": [],
+  "sdgPerSlide": [
+    {
+      "slide": 3,
+      "sdg": [
+        "SDG 2 — Zero Hunger"
+      ]
+    },
+    {
+      "slide": 8,
+      "sdg": [
+        "SDG: SDG 2 — Zero Hunger. The UAE uses smart farms and greenhouse technology to grow more food with less water."
+      ]
+    }
+  ],
+  "deckSdg": {
+    "id": 2,
+    "name": "Zero Hunger"
+  },
+  "notes": [
+    {
+      "slide": 1,
+      "notes": "Timing: about 2 min.\nSay/Ask: \"Today we're learning about Photosynthesis. What do you already know about it?\""
+    },
+    {
+      "slide": 2,
+      "notes": "Timing: about 6 min.\nSetup/Grouping: Students work alone at their desks using a small paper slip or digital form; no grouping needed. Prepare one slip per student and collect them as students finish.\nSay/Ask: \"Answer both questions in your own words — a guess is fine.\" Then ask: \"Who wrote sunlight as the energy source? Who wrote something different?\"\nWatch for: Many students say plants get food from the soil rather than making it from sunlight, water and carbon dioxide. Prompt with: \"Does the soil travel up to the leaf, or does the leaf make food itself?\"\nAnswers: 1. Energy comes from sunlight (light energy). 2. Needs: sunlight, water, carbon dioxide (any one); gives out: oxygen. Green colour is due to chlorophyll, the green pigment that traps sunlight.\nMarking: One point per correct question (2 points total); the green-leaf guess is unmarked curiosity only — use responses to decide whether to revisit the role of sunlight and chlorophyll."
+    },
+    {
+      "slide": 3,
+      "notes": "Timing: about 2 min.\nSetup/Grouping: Whole class; read the chapter, topic and goal together.\nSay/Ask: \"Read the chapter, topic and goal together. Why do you think photosynthesis links to ending hunger?\"\nWatch for: Students may think SDG 2 is only about growing more food; prompt them to name how plants make their own food using sunlight, water and air.\nAnswers: Chapter 7 — Getting to Know Plants; Photosynthesis; SDG 2 — Zero Hunger."
+    },
+    {
+      "slide": 4,
+      "notes": "Timing: about 3 min.\nSetup/Grouping: Whole class; leave the objectives visible.\nSay/Ask: \"Describe how green plants make their own food.\""
+    },
+    {
+      "slide": 5,
+      "notes": "Timing: about 3 min.\nSetup/Grouping: Whole class, seated facing the board; learning outcomes displayed as the lesson opens.\nSay/Ask: \"Read outcome 1 with me — what will you be able to do by the end of today?\" then \"Which words tell you what the plant takes in and what it gives out?\"\nWatch for: Students may read \"raw materials\" as food the plant eats; prompt with \"Where does the plant get what it needs — from soil, air, or both?\"\nAnswers: Outcome 1 — explain how green plants make their own food; Outcome 2 — name raw materials (water, carbon dioxide, sunlight) and products (food/glucose, oxygen).\nMarking: No marks; outcomes are shared for orientation only."
+    },
+    {
+      "slide": 6,
+      "notes": "Timing: about 12 min.\nSetup/Grouping: Pairs for questions 1 and 2, whole-class sharing for question 3. Have a green leaf and a pale leaf (or pictures) ready.\nSay/Ask: 'Why is the green colour in leaves so important for making food?' and 'How do water and carbon dioxide meet inside the leaf?'\nAnswers: Q1 green chlorophyll traps sunlight for food-making; Q2 no sunlight means little or no food made, so leaves turn pale; Q3 water moves up to leaves and carbon dioxide enters through pores, sunlight helps combine them into sugar, oxygen is released.\nMarking: Check that each answer links sunlight, water, carbon dioxide and food-making."
+    },
+    {
+      "slide": 7,
+      "notes": "Timing: about 12 min.\nSetup/Grouping: Students work in mixed-ability pairs; assign Must to all, Should to most, Could to early finishers.\nSay/Ask: \"Which gas enters the leaf pores?\" and \"What does the pale leaf in the dark tell you about sunlight?\"\nWatch for: Students naming oxygen as an input; prompt with \"Which gas goes in, and which comes out?\"\nAnswers: Must — sunlight, water, carbon dioxide. Should — water travels up from roots, carbon dioxide enters through pores, sunlight helps them make sugar and oxygen is released. Could — no sunlight means no food-making, so the leaf turns pale and may die. Mini Plenar…\nMarking: Must 1 mark for all three inputs; Should 2 marks (meeting + product); Could 2 marks (explanation + prediction)."
+    },
+    {
+      "slide": 8,
+      "notes": "Timing: about 8 min.\nSetup/Grouping: Whole class for the UAE link, then pairs for the Mathematics leaf-measuring task; prepare a few real leaves or printed leaf outlines and rulers.\nSay/Ask: \"Why does a Ghaf tree need strong sunlight?\" and \"How can measuring a leaf help us think about how much sunlight it catches?\"\nWatch for: Students may think photosynthesis happens only in cool, wet places, not deserts; prompt them to recall that sunlight and water are both needed and that Ghaf roots reach deep water.\nAnswers: Ghaf uses sunlight, water and air to make food; larger leaf area can capture more sunlight; solar panels use sunlight like plants do.\nMarking: Check that each pair records two leaf measurements and gives one sentence linking leaf size to sunlight capture."
+    },
+    {
+      "slide": 9,
+      "notes": "Timing: about 8 min.\nSetup/Grouping: Individual work first, then whole-class sharing. Prepare small slips or use notebooks.\nSay/Ask: \"Think about everything we learned about photosynthesis today. What one word captures the most important idea for you?\" and \"Now explain your word in one sentence using 'I chose this word because...'\"\nWatch for: Students choosing vague words like 'plants' or 'green' without linking to the process. Prompt: \"What did the leaf actually do with sunlight, water and carbon dioxide?\"\nAnswers: Accept any word related to photosynthesis (e.g., sunlight, chlorophyll, sugar, oxygen, energy, leaves, food) with a clear sentence explaining the choice. Example: 'I chose sunlight because leaves need sunlight to make food.'\nMarking: No marks. Listen for correct use of key terms and clear reasoning."
+    },
+    {
+      "slide": 10,
+      "notes": "Timing: about 10 min.\nSetup/Grouping: Individual task; students may use any two leafy plants at home or school. No buying needed.\nSay/Ask: \"Which plant do you think will make food better, and why?\" \"What colour change tells you a leaf is not making food well?\"\nWatch for: Students thinking the dark plant 'eats soil' instead of needing light. Prompt: \"What does a leaf need from the Sun to make food?\"\nAnswers: The sunny plant stays greener; the dark plant turns pale or yellow because it cannot photosynthesise without light.\nMarking: Good work shows daily colour notes for both plants, a clear comparison, and one sentence linking light to photosynthesis. Award up to 5 marks: 2 for records, 2 for comparison, 1 for explanation."
+    },
+    {
+      "slide": 11,
+      "notes": "Timing: about 3 min.\nSetup/Grouping: Individual work; hand out one small exit card per student.\nSay/Ask: \"Answer both questions on your card quietly. Do not discuss.\"\nWatch for: Students saying green colour \"attracts insects\" or \"looks nice\" — redirect with \"What does the green part of the leaf catch?\"\nAnswers: 1. The green colour (chlorophyll) helps the leaf catch sunlight, which gives energy to make food. 2. Food-making slows or stops because there is no sunlight for the leaf to use.\nMarking: 1 mark for linking green colour to catching sunlight; 1 mark for saying no sunlight means little or no food made. Total 2 marks."
+    },
+    {
+      "slide": 12,
+      "notes": "Timing: about 5 min.\nSetup/Grouping: Students stay in their seats and mark the slide checklist individually on paper or in their notebooks.\nSay/Ask: \"Read each 'I can' line and colour it Green, Yellow or Red honestly.\" Then ask: \"Which line is mostly Red for you?\"\nWatch for: Students marking Green for criterion 2 without knowing the green part is the chloroplast or the gas taken in is carbon dioxide; prompt with \"Which gas do plants take in, and where in the leaf is food made?\"\nAnswers: 1. Plants use sunlight, water and carbon dioxide to make food (glucose) and release oxygen. 2. Chloroplasts (green parts) make food; carbon dioxide is taken in. 3. It gives plants food and releases oxygen that living things need.\nMarking: No marks; use the colour pattern to decide which criterion to revisit in the next lesson."
+    },
+    {
+      "slide": 13,
+      "notes": "Timing: about 1 min.\nSetup/Grouping: Whole class; finish on one student's question for next lesson.\nSay/Ask: \"Think back to Photosynthesis: which idea helped you make sense of it?\""
+    }
+  ],
+  "duplicateNotes": [],
+  "paraphrasedWatchFor": [],
+  "repeatedNotesRegenerated": [
+    {
+      "slide": 6,
+      "repeated": [
+        "students thinking plants get food from the soil prompt if a plant gets food from soil why does it need sunlight and green leaves"
+      ],
+      "regenerated": false
+    },
+    {
+      "slide": 8,
+      "repeated": [],
+      "regenerated": true
+    }
+  ]
+}

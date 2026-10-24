@@ -19,6 +19,7 @@ import {
   type PresentationLanguage,
 } from "@/lib/ppt-language";
 import { logDeepSeekUsage } from "@/lib/ai-usage/deepseek";
+import { MAX_WORDS_PER_BULLET, SLIDE_WORD_LIMITS, studentWordCount } from "@/lib/ppt-slide-guards";
 import {
   parseQuestionSources,
   QUESTION_SOURCE_SELF_CHECK,
@@ -219,7 +220,19 @@ VISIBLE SLIDE AUDIENCE (MANDATORY):
 - Explain concepts directly to students, then give them a clear task. Address activity steps directly: "Think...", "Discuss...", "Write...".
 - Timing, AFL delivery, teacher moves, answer reveals, and differentiation support belong only in teacher_notes.
 - Never print a tool's catalogue purpose or a heading such as "Selected AFL". Display the actual student task, filled-in items, questions, and response format instead. A tool name may appear only alongside its fully implemented task.
-- Return JSON with "body" (student-facing visible text) and "teacher_notes" (short teacher-only note with timing, AFL tool/reminder, and delivery/differentiation tip). The main-phase prompt may require one additional "main_phase_activities" array; do not add it for other slides. Do not use markdown fences.
+- Never put marks, totals ("Total: 12 marks", "(4 marks)"), a marking guide, rubric wording, KHDA/SPEA/MOE compliance text, or any sentence about the teacher, school or inspection in the body. Put marks and marking in teacher_notes on a "Marking:" line.
+- Do not write the chapter name or chapter number in the body; it is shown once on the title slide.
+- Keep the body short and simple: short sentences, simple words, no paragraphs, at most ${MAX_WORDS_PER_BULLET} words per line. Do not type bullet symbols (•, -, *, ·); the slide adds its own.
+- Return JSON with "body" (student-facing visible text) and "teacher_notes". The main-phase prompt may require one additional "main_phase_activities" array; do not add it for other slides. Do not use markdown fences.
+
+TEACHER NOTES (teacher_notes) — 3 to 6 short lines, written for THIS slide only, in plain words, using exactly these labels (skip a line that does not apply):
+Timing: <minutes>
+Setup/Grouping: <how students are arranged, what to prepare>
+Say/Ask: <1 to 2 exact prompts tied to this slide's content>
+Watch for: <one SPECIFIC misconception or difficulty with THIS slide's task, plus a prompt that helps>
+Answers: <the actual expected answers to the questions on this slide>
+Marking: <only on slides with a task: simple success points, marks if relevant>
+Never use generic lines that could fit any slide.
 `;
 }
 
@@ -718,12 +731,13 @@ export async function generateSlide8(params: SlideGenParams): Promise<SlideGenRe
   const user = uaeFrameworkEnabled
     ? `Generate UAE Real Life and Cross Curricular Connection content for a ${grade} ${subject} lesson on: ${topic}
 
-Include ALL three of the following, written directly to students:
-1. UAE Real-Life Connection: A specific UAE example directly related to ${topic}. Choose the most relevant from: UAE national tree (Ghaf), mangroves, desert ecosystems, UAE Vision 2031, Masdar City, EXPO 2020 legacy, UAE sustainability goals, Emirates wildlife — only what genuinely connects to ${topic}. Say clearly how it connects to today's concept.
-2. Cross-Curricular Task: A short task students do that links ${topic} to another school subject (for example Mathematics, Arabic, ICT, Social Studies), with a specific example.
-3. SDG in UAE Context: ${params.selectedSdg ? `Use exactly "${selectedSdgLabel(params.selectedSdg)}"` : "The most relevant SDG, written as \"SDG <number> — <official title>\""} and how the UAE is working toward it in relation to ${topic}.
+Write EXACTLY three lines, directly to students, at most ${SLIDE_WORD_LIMITS[7]} words in total:
+UAE link: <at most 2 short sentences, about 30 words: one specific UAE example that genuinely connects to ${topic} (for example the Ghaf tree, mangroves, desert ecosystems, Masdar City, UAE sustainability goals, Emirates wildlife) and how it connects to today's idea>
+Cross-curricular task: <ONE task sentence, about 25 words, linking ${topic} to another subject such as Mathematics, Arabic, ICT or Social Studies>
+SDG: <${params.selectedSdg ? `"${selectedSdgLabel(params.selectedSdg)}"` : "\"SDG <number> — <official title>\""} followed by one short sentence, about 15 words, on how the UAE works toward it>
 
 Requirements:
+- No paragraphs, no extra lines, no headings beyond the three labels above
 - All content must be SPECIFIC to ${topic}, not generic
 - ${TEACHER_TEXT_SELF_CHECK} No curriculum-alignment, inspection or quality-standard statements on the slide (e.g. about MOE, KHDA or SPEA); real UAE examples and institutions as learning content are fine.
 - ${selectedSdgRule(params)}
@@ -732,12 +746,13 @@ Requirements:
 - Do NOT include homework`
     : `Generate Real Life and Cross Curricular Connection content for a ${grade} ${subject} lesson on: ${topic}
 
-Choose ONE connection type that BEST fits ${topic} and develop it fully with specific details:
-A) Real-life application: a concrete, specific example of how ${topic} is used in everyday life
-B) Cross-curricular link: how ${topic} connects to another school subject with a specific classroom example
-C) Career connection: 2-3 specific careers that use knowledge of ${topic} and exactly how they apply it
+Write at most three lines, directly to students, at most ${SLIDE_WORD_LIMITS[7]} words in total:
+Real life: <at most 2 short sentences, about 30 words: a concrete everyday use of ${topic}, or careers that use it>
+Cross-curricular task: <ONE task sentence, about 25 words, linking ${topic} to another school subject>
+${params.selectedSdg ? `SDG: <"${selectedSdgLabel(params.selectedSdg)}" followed by one short sentence, about 15 words>` : ""}
 
 Requirements:
+- No paragraphs, no extra lines, no headings beyond the labels above
 - Content must be SPECIFIC to ${topic} — not generic
 - Do NOT mention UAE, Emirates, Dubai, Abu Dhabi, MOE UAE, KHDA, or SPEA
 - ${selectedSdgRule(params)}
@@ -890,4 +905,129 @@ export function generateSlide13Body(params: SlideGenParams): SlideGenResult {
     teacherNotes: "Suggested timing: 1 minute\nAFL: Use the closing response as a final positive check-in.\nDelivery tip: Acknowledge effort and dismiss students calmly.",
     notices: [],
   };
+}
+
+// ── Post-generation edits (word limits, repeated notes) ───────────────────────
+
+const comparableText = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/**
+ * Shortens one slide body to `limit` student-facing words, keeping its meaning, its section labels and every listed
+ * question word for word (each question's expected answer in the notes is matched to its exact text). Accepted only
+ * when the result really fits; otherwise the original is kept and the caller reports it.
+ */
+export async function shortenSlideToLimit(params: {
+  slideName: string;
+  body: string;
+  limit: number;
+  questions: readonly string[];
+  usageUserId?: string;
+  language?: PresentationLanguage;
+}): Promise<{ body: string; ok: boolean; words: number; attempts: number; reason?: string }> {
+  const original = { body: params.body, ok: false, words: studentWordCount(params.body) };
+  const language = params.language === "ar" ? "Arabic" : "English";
+  // Aim below the limit: models overshoot word targets, and the limit is a hard ceiling.
+  const target = Math.max(10, params.limit - 12);
+  let feedback = "";
+  let reason = "no usable response";
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const { content, error } = await callDeepSeek([
+      {
+        role: "system",
+        content: `You edit school slides for students. You shorten text without changing its meaning or adding anything new. Reply in ${language}, as JSON {"body": "..."} with no markdown fences.`,
+      },
+      {
+        role: "user",
+        content: `Shorten this "${params.slideName}" slide to about ${target} words in total (never more than ${params.limit}). Count every word, including labels and questions.
+
+Rules:
+- Keep the meaning, the order and every section label line (for example "Must", "Should", "Could", "Mini Plenary", "K", "W", "L", "UAE link:", "Cross-curricular task:", "SDG:").
+- Keep these questions exactly as written, word for word: ${params.questions.length ? params.questions.map((q) => `"${q}"`).join("; ") : "(none)"}.
+- Keep fill-in blanks such as ______ exactly.
+- Short sentences, simple words, no paragraphs, at most ${MAX_WORDS_PER_BULLET} words per line. No bullet symbols.
+- Do not add teacher text, marks, timing or new content.${feedback}
+
+Slide text:
+${params.body}`,
+      },
+    ], params.usageUserId ? { userId: params.usageUserId, operation: "ppt_slide_shorten" } : undefined);
+    if (error || !content) continue;
+    let body = "";
+    try {
+      const parsed = JSON.parse(content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "")) as { body?: unknown };
+      body = typeof parsed.body === "string" ? cleanBody(parsed.body, params.slideName) : "";
+    } catch {
+      body = "";
+    }
+    if (!body) continue;
+    const words = studentWordCount(body);
+    const lost = params.questions.filter((q) => !comparableText(body).includes(comparableText(q)));
+    if (words <= params.limit && lost.length === 0) return { body, ok: true, words, attempts: attempt };
+    reason = lost.length ? `would change or drop ${lost.length} question(s)` : `still ${words} words`;
+    feedback = `\n- Your last version had ${words} words${lost.length ? ` and changed or dropped these questions: ${lost.map((x) => `"${x}"`).join("; ")}` : ""}. Fix that: cut explanation words, not the questions.`;
+  }
+  return { ...original, attempts: 3, reason };
+}
+
+/** Rewrites one slide's teacher notes so that none of `avoidLines` (used on other slides) is repeated. */
+export async function regenerateSlideNotes(params: {
+  slideName: string;
+  body: string;
+  currentNotes: string;
+  avoidLines: readonly string[];
+  usageUserId?: string;
+}): Promise<string | undefined> {
+  const { content, error } = await callDeepSeek([
+    {
+      role: "system",
+      content: "You write short, specific teacher notes for ONE school slide. Reply as JSON {\"teacher_notes\": \"...\"} with no markdown fences.",
+    },
+    {
+      role: "user",
+      content: `Rewrite the teacher notes for the "${params.slideName}" slide below. Use 3 to 6 short lines with exactly these labels, skipping any that do not apply:
+Timing: / Setup/Grouping: / Say/Ask: / Watch for: / Answers: / Marking:
+Every line must be about THIS slide's actual content. Do NOT reuse or paraphrase any of these lines from other slides:
+${params.avoidLines.map((l) => `- ${l}`).join("\n")}
+
+Slide text:
+${params.body}
+
+Current notes (keep their timing and any expected answers):
+${params.currentNotes}`,
+    },
+  ], params.usageUserId ? { userId: params.usageUserId, operation: "ppt_notes_regenerate" } : undefined);
+  if (error || !content) return undefined;
+  try {
+    const parsed = JSON.parse(content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "")) as { teacher_notes?: unknown };
+    return typeof parsed.teacher_notes === "string" && parsed.teacher_notes.trim() ? parsed.teacher_notes.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Rewrites the sentence after an SDG label when the label had to be corrected to the deck's one SDG (e.g. a line
+ * that described clean energy under "SDG 7" now carries "SDG 2 — Zero Hunger"). Returns undefined on failure.
+ */
+export async function rewriteSdgSentence(params: {
+  topic: string;
+  sdgLabel: string;
+  uae: boolean;
+  usageUserId?: string;
+}): Promise<string | undefined> {
+  const { content, error } = await callDeepSeek([
+    { role: "system", content: "You write one short, accurate sentence for a school slide. Reply as JSON {\"sentence\": \"...\"} with no markdown fences." },
+    {
+      role: "user",
+      content: `Write ONE short sentence (at most 15 words), directly to Grade school students, on how ${params.uae ? "the UAE works toward" : "people work toward"} ${params.sdgLabel}, linked to the topic "${params.topic}". It must be about ${params.sdgLabel} only. Do not repeat the SDG label.`,
+    },
+  ], params.usageUserId ? { userId: params.usageUserId, operation: "ppt_sdg_sentence" } : undefined);
+  if (error || !content) return undefined;
+  try {
+    const parsed = JSON.parse(content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "")) as { sentence?: unknown };
+    const sentence = typeof parsed.sentence === "string" ? parsed.sentence.trim() : "";
+    return sentence && sentence.split(/\s+/).length <= 18 ? sentence : undefined;
+  } catch {
+    return undefined;
+  }
 }

@@ -37,7 +37,9 @@ import {
   type PptThemeId,
   getPptRenderTheme,
 } from "@/lib/ppt-themes";
-import { buildPptxFromDeckSpec } from "@/lib/ppt-template-engine";
+import { buildPptxFromDeckSpec, moveTeacherFacingLinesToNotes, normalizeToLines } from "@/lib/ppt-template-engine";
+import { prepareDeckForStudents } from "@/lib/ppt-slide-guards";
+import { buildPhysicalSlideNotes } from "@/lib/ppt-speaker-notes";
 import { adaptStructuredLessonSlidesToDeck } from "@/lib/slide-deck-legacy-adapter";
 import type { DeckSpec } from "@/lib/slide-schema";
 import { resolvePresentationLanguage, type PresentationLanguage } from "@/lib/ppt-language";
@@ -1054,7 +1056,17 @@ export async function buildPptxFromPptContent(params: {
       slideImageUrls: params.slideImageUrls,
     });
   }
-  const structuredSlides = params.structuredSlides ?? buildStructuredLessonSlides(ctx);
+  // The same student-slide guards and notes as the Gamma path: one official SDG, the chapter once, teacher-facing
+  // text (marking, marks, rubric, compliance, the teacher) moved to the notes, and specific notes that never repeat.
+  const seenNotes = new Set<string>();
+  const structuredSlides = prepareDeckForStudents(params.structuredSlides ?? buildStructuredLessonSlides(ctx)).deck
+    .map(moveTeacherFacingLinesToNotes)
+    .map((model, deckIdx) => ({
+      ...model,
+      speakerNotes: buildPhysicalSlideNotes({
+        model, deckIdx, lines: normalizeToLines(model.body), part: 1, parts: 1, sectionChars: 0, topic: ctx.topic, seen: seenNotes,
+      }),
+    }));
   const normalized = adaptStructuredLessonSlidesToDeck({
     slides: structuredSlides,
     subject: params.subject.trim(),

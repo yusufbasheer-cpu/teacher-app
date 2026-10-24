@@ -27,6 +27,7 @@ import {
 } from "@/lib/ppt-educational-quality";
 import { buildGammaPayload } from "@/lib/gamma/payload";
 import { insertSpeakerNotes, readSpeakerNotes } from "@/lib/gamma/notes";
+import { duplicateNoteLines } from "@/lib/ppt-speaker-notes";
 import { compareToSnapshot, extractPptx, type ExtractedDeck } from "@/lib/gamma/validate";
 import { pptxFrom, testConfig } from "@/lib/gamma/test-helpers";
 
@@ -127,17 +128,20 @@ describe("Photosynthesis (Grade 6): the five fixes hold in the final PPTX", () =
     }
   });
 
-  it("FIX 5: every physical slide has 3–6 useful note lines in the actual notes parts", async () => {
+  it("FIX 5: every physical slide has its own 3–6 note lines (title: timing + opening), none repeated across slides", async () => {
     const { legacy, gamma } = await finalDecks();
     for (const file of [legacy, gamma]) {
       const notes = await readSpeakerNotes(file);
       expect(notes).toHaveLength(payload.slides.length);
       notes.forEach((n, i) => {
         const lines = n.split("\n").filter(Boolean);
-        expect(lines.length, `slide ${i + 1}`).toBeGreaterThanOrEqual(3);
+        expect(lines.length, `slide ${i + 1}`).toBeGreaterThanOrEqual(i === 0 ? 2 : 3);
         expect(lines.length, `slide ${i + 1}`).toBeLessThanOrEqual(6);
         expect(n, `slide ${i + 1}`).toMatch(/^Timing: about \d+ min/);
+        // No doubled labels such as "Grouping: Timing: ...".
+        expect(n, `slide ${i + 1}`).not.toMatch(/^(?:[A-Za-z/ ]+):\s*(?:Timing|Grouping|Setup|Say|Ask|Watch for|Answers|Marking)\s*:/m);
       });
+      expect(duplicateNoteLines(notes)).toEqual([]);
     }
     // Continuation slides get their own notes, not a copy of part 1.
     const notes = await readSpeakerNotes(gamma);

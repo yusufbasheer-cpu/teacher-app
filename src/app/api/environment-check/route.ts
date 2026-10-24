@@ -28,6 +28,7 @@ export async function GET(req: Request) {
         publicGammaExperiment: e.NEXT_PUBLIC_GAMMA_EXPERIMENT === "true",
         defaultProvider: e.PPT_GENERATION_PROVIDER ?? "legacy",
         testerCount: (e.GAMMA_TESTER_EMAILS ?? "").split(",").filter((s) => s.trim()).length,
+        testersOpenToAll: (e.GAMMA_TESTER_EMAILS ?? "").split(",").some((s) => s.trim() === "*"),
         gammaKeyPresent: !!e.GAMMA_API_KEY?.trim(),
         exportHostAllowlist: e.GAMMA_EXPORT_HOST_ALLOWLIST ?? null,
         exportHostIsPlaceholder: /\.invalid$/i.test(e.GAMMA_EXPORT_HOST_ALLOWLIST?.trim() ?? ""),

@@ -11,6 +11,7 @@ import { resolvePresentationLanguage } from "@/lib/ppt-language";
 import { authenticateRequest } from "@/lib/user-usage-server";
 import { renderUploadedPpt, UploadedTemplateError } from "@/lib/uploaded-ppt-export";
 import { moveTeacherFacingLinesToNotes, PptContentError } from "@/lib/ppt-template-engine";
+import { prepareDeckForStudents } from "@/lib/ppt-slide-guards";
 import { defaultProviderFor, GammaError, gammaGate, getGammaConfig, resolvePptProvider } from "@/lib/gamma/config";
 import { encodeReportHeader, summariseReport } from "@/lib/gamma/report";
 import { renderPptxWithGamma } from "@/lib/gamma/render";
@@ -252,7 +253,7 @@ export async function POST(req: Request) {
     const buffer = uploadedTemplate && serviceUrl && serviceSecret
       ? await renderUploadedPpt({
           template: uploadedTemplate,
-          slides: deck.map(moveTeacherFacingLinesToNotes),
+          slides: prepareDeckForStudents(deck, { chapter }).deck.map(moveTeacherFacingLinesToNotes),
           slideImageUrls,
           serviceUrl,
           serviceSecret,

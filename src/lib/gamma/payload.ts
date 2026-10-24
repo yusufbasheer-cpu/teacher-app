@@ -6,6 +6,7 @@ import type { GammaConfig } from "./config";
 import { layoutInstructionsFor, pictureMediumFor, planSlideLayouts, type CanonicalSlide, type SlideLayoutPlan } from "./visual-plan";
 import { instructionSlideLines, instructionSlideTitle } from "@/lib/ppt-main-phase-activity";
 import { GammaError } from "./config";
+import { prepareDeckForStudents, teacherKeywordsIn } from "@/lib/ppt-slide-guards";
 
 /** Gamma splits cards on this exact delimiter when cardSplit is "inputTextBreaks". */
 export const GAMMA_CARD_BREAK = "\n---\n";
@@ -117,6 +118,8 @@ export function speakerNotesForCanonicalSlides(deck: StructuredLessonSlideModel[
   const sectionChars = (s: CanonicalSlide) => slides
     .filter((o) => o.deckIdx === s.deckIdx && o.activityId === s.activityId && o.physicalKind === s.physicalKind)
     .reduce((n, o) => n + o.lines.join("").length, 0);
+  // One per deck: a notes line used on one slide is never repeated on another.
+  const seen = new Set<string>();
   return slides.map((s) => {
     const model = models[s.deckIdx]!;
     const activity = s.activityId ? model.mainPhaseActivities?.find((a) => a.activityId === s.activityId) : undefined;
@@ -125,7 +128,7 @@ export function speakerNotesForCanonicalSlides(deck: StructuredLessonSlideModel[
       model, deckIdx: s.deckIdx, lines, part: s.part, parts: s.parts,
       sectionChars: s.deckIdx === 0 ? 0 : sectionChars(s),
       physicalKind: s.physicalKind === "activity-instructions" ? "activity-instructions" : "content",
-      activity, topic,
+      activity, topic, seen,
     });
   });
 }
@@ -137,8 +140,21 @@ export function buildGammaPayload(params: {
   config: GammaConfig;
   lesson?: GammaLessonMeta;
   hasImage?: (deckIdx: number) => boolean;
-}): { request: Record<string, unknown>; snapshot: SlideSnapshot[]; neutralisedBreaks: number; slides: CanonicalSlide[]; layout: SlideLayoutPlan[]; notes: string[] } {
+}): { request: Record<string, unknown>; snapshot: SlideSnapshot[]; neutralisedBreaks: number; slides: CanonicalSlide[]; layout: SlideLayoutPlan[]; notes: string[]; removedTeacherLines: { slide: number; keywords: string[] }[] } {
+  // One official SDG everywhere and the chapter line only on the title slide (idempotent; older lessons included).
+  params = { ...params, deck: prepareDeckForStudents(params.deck, { chapter: params.lesson?.chapter }).deck };
   const slides = buildCanonicalSlides(params);
+  // Last check before Gamma: no student slide may carry teacher, marking, marks, KHDA, SPEA, inspection or rubric
+  // text. moveTeacherFacingLinesToNotes already moved such lines; anything left is removed here and logged.
+  const removedTeacherLines: { slide: number; keywords: string[] }[] = [];
+  slides.forEach((s, index) => {
+    s.lines = s.lines.filter((line) => {
+      const keywords = teacherKeywordsIn(line);
+      if (keywords.length) removedTeacherLines.push({ slide: index + 1, keywords });
+      return keywords.length === 0;
+    });
+  });
+  if (removedTeacherLines.length) console.warn(`[gamma-payload] removed teacher-facing lines before Gamma: ${JSON.stringify(removedTeacherLines)}`);
   if (params.deck.length > 9 && slides.filter((slide) => slide.deckIdx === 9).length !== 1) {
     throw new GammaError("bad_request", "The Extended Task must fit on exactly one slide.");
   }
@@ -182,5 +198,5 @@ export function buildGammaPayload(params: {
     },
     ...(config.themeId ? { themeId: config.themeId } : {}),
   };
-  return { request, snapshot, neutralisedBreaks, slides, layout, notes: speakerNotesForCanonicalSlides(params.deck, slides, params.lesson?.topic) };
+  return { request, snapshot, neutralisedBreaks, slides, layout, notes: speakerNotesForCanonicalSlides(params.deck, slides, params.lesson?.topic), removedTeacherLines };
 }
