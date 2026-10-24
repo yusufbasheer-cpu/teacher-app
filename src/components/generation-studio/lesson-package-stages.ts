@@ -4,8 +4,8 @@ import type { StudioStage } from "./generation-studio";
  * Turns the signals the lesson generator really receives into Studio stages. Nothing here is time-based:
  *
  * - The server writes the selected sections one after another, in TEACHER_PACKAGE_SECTIONS order.
- * - With PPT selected it streams "Generating Slide N of 13" (slides finish in parallel, so N is a count, not which
- *   slide) and "Generating AFL Activity Sheets". Nothing else is announced.
+ * - With PPT selected it streams "Writing component N of 13" (components finish in parallel, so N is a count, not
+ *   a physical-slide number) plus each component's real text, and "Generating AFL Activity Sheets".
  * - Without PPT there is no stream at all, so the whole package is one honest "writing" stage.
  * - The download files are real requests too (Word exports, the package ZIP), built once everything is written.
  * - The Gamma deck is a single request: it is in flight (maybe resumed, which is free) and then returns a verdict.
@@ -28,7 +28,7 @@ export type LessonPackageSignals = {
   files: "pending" | "active" | "done";
 };
 
-const SLIDE_COUNT_RE = /slide\s+(\d+)\s+of\s+(\d+)/i;
+const SLIDE_COUNT_RE = /(?:slide|component)\s+(\d+)\s+of\s+(\d+)/i;
 const OTHER_RESOURCES = ["Worksheet", "Assessment Questions", "Homework Task", "Teacher Notes"];
 const SHORT: Record<string, string> = {
   Worksheet: "worksheet",
@@ -63,7 +63,7 @@ export function lessonPackageStages(s: LessonPackageSignals): StudioStage[] {
     const others = OTHER_RESOURCES.filter(has);
 
     if (has("Full Lesson Plan")) content.push({ id: "lesson", label: "Writing the lesson plan", status: "pending" });
-    content.push({ id: "slides", label: "Writing the slide content", status: "pending", count: { done: slidesDone, total: slidesTotal } });
+    content.push({ id: "slides", label: "Writing 13 lesson components", status: "pending", count: { done: slidesDone, total: slidesTotal } });
     if (others.length) content.push({ id: "resources", label: `Writing the ${joinNames(others.map((k) => SHORT[k]!))}`, status: "pending" });
     if (has("AFL Activity Sheets")) content.push({ id: "afl", label: "Writing the AFL activity sheets", status: "pending" });
 
@@ -84,8 +84,8 @@ export function lessonPackageStages(s: LessonPackageSignals): StudioStage[] {
     }
 
     const slides = content[idx("slides")]!;
-    if (slides.status === "active" && !slides.detail) slides.detail = `${slidesDone} of ${slidesTotal} slides written`;
-    if (slides.status === "done") slides.detail = `All ${slidesTotal} slides written`;
+    if (slides.status === "active" && !slides.detail) slides.detail = `${slidesDone} of ${slidesTotal} components written`;
+    if (slides.status === "done") slides.detail = `All ${slidesTotal} lesson components written; pagination decides the final slide count`;
   }
 
   const files: StudioStage = {
@@ -138,4 +138,14 @@ export function slideTextFromOutline(outline: string, titles: readonly string[])
       .filter(Boolean);
     return { title, lines: body.slice(0, 4) };
   });
+}
+
+/** Real text from one completed streamed component, cleaned only for the visual preview. */
+export function previewLinesFromComponent(body: string): string[] {
+  return body
+    .replace(/<!--[^]*?-->/g, "")
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, "").replace(/\*\*|__/g, "").trim())
+    .filter((line) => line && !/^(?:teacher notes?|speaker notes?)\s*:/i.test(line))
+    .slice(0, 4);
 }

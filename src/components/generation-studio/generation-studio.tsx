@@ -24,7 +24,7 @@ export type StudioStage = {
   label: string;
   detail?: string;
   status: StudioStageStatus;
-  /** A real count reported by the server ("7 of 13 slides"); drives that stage's share of the progress bar. */
+  /** A real count reported by the server (for example 7 of 13 lesson components). */
   count?: { done: number; total: number };
 };
 

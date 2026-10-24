@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifySlide, layoutInstructionsFor, pictureMediumFor, planSlideLayouts, type CanonicalSlide } from "./visual-plan";
+import { classifySlide, layoutInstructionsFor, pictureMediumFor, planSlideLayouts, targetMeaningfulImageCount, type CanonicalSlide } from "./visual-plan";
 
 const slide = (deckIdx: number, lines: string[], part = 1, title = `Slide ${deckIdx + 1}`): CanonicalSlide => ({ deckIdx, part, parts: part, title, lines });
 
@@ -17,6 +17,27 @@ describe("slide types", () => {
 });
 
 describe("image policy: six required educational categories, content always first", () => {
+  it("targets seven meaningful visuals for 20 slides and eight for 24", () => {
+    expect(targetMeaningfulImageCount(20)).toBe(7);
+    expect(targetMeaningfulImageCount(24)).toBe(8);
+  });
+  it("adds distinct eligible continuation visuals to meet the ratio on a 20-slide deck", () => {
+    const slides = Array.from({ length: 20 }, (_, index) => ({
+      ...slide(index === 0 ? 0 : index < 8 ? 5 : index < 14 ? 8 : 9, [`Teaching evidence ${index + 1}`], index === 0 ? 1 : (index % 4) + 1),
+      parts: 4,
+    }));
+    expect(planSlideLayouts(slides).filter((plan) => plan.image !== "none")).toHaveLength(7);
+  });
+  it("a 24-slide brief with long slide text fits the budget and never loses its rules", () => {
+    const long = "Pressure is force spread over an area; sharper blades cut more easily because the area is smaller. ".repeat(4);
+    const slides = Array.from({ length: 24 }, (_, i) => ({ ...slide(i === 0 ? 0 : i < 10 ? 5 : i < 18 ? 8 : 9, [long, long], i === 0 ? 1 : (i % 4) + 1), parts: 4 }));
+    const plans = planSlideLayouts(slides);
+    const text = layoutInstructionsFor(slides, plans, "illustration", { subject: "Science", grade: "8", topic: "Force and Pressure" }, 3200);
+    expect(text.length).toBeLessThanOrEqual(3200);
+    expect(text).toContain("Match the requested medium exactly");
+    expect(text).toContain(`Create exactly ${plans.filter((p) => p.image !== "none").length} meaningful images`);
+    expect(text).toMatch(/S24 /);
+  });
   it("plans required cover, topic, main-phase, and real-life visuals", () => {
     const plans = planSlideLayouts([
       slide(0, ["cover"]),
@@ -60,7 +81,7 @@ describe("picture choice", () => {
   it("describes the chosen medium and says 'no image' where none is planned", () => {
     const slides = [slide(0, ["cover"]), slide(5, ["Pressure is force per unit area."], 1, "Main Phase Core Teaching"), slide(10, ["Why?"])];
     const plans = planSlideLayouts(slides);
-    expect(layoutInstructionsFor(slides, plans, "photo")).toContain('one real photograph that shows the idea explaining "Main Phase Core Teaching"');
+    expect(layoutInstructionsFor(slides, plans, "photo")).toContain('one real photograph that shows the idea accurately explaining "Main Phase Core Teaching — Pressure is force per unit area."');
     expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("simple concept diagram with no words or numbers in it");
     expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("REQUIRED cover visual");
     expect(layoutInstructionsFor(slides, plans, "illustration")).toContain("S3 questions: no image.");

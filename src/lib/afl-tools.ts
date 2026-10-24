@@ -912,6 +912,7 @@ export function buildAutoAflSelections(ctx: PptSlideAflContext): AflSelectionsPa
 }
 
 export type AflSelectionsPayload = Partial<Record<AflPhaseId, string[]>>;
+export const MAX_AFL_SELECTIONS_PER_PHASE = 2;
 
 /** Keep only known phase keys and tool ids that belong to that phase. */
 export function sanitizeAflSelections(raw: unknown): AflSelectionsPayload {
@@ -927,7 +928,7 @@ export function sanitizeAflSelections(raw: unknown): AflSelectionsPayload {
       .filter((x): x is string => typeof x === "string")
       .map((x) => x.trim())
       .filter((id) => allowed.has(id));
-    if (ids.length) out[phase] = [...new Set(ids)];
+    if (ids.length) out[phase] = [...new Set(ids)].slice(0, MAX_AFL_SELECTIONS_PER_PHASE);
   }
   return out;
 }

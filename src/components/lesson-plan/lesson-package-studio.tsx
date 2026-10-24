@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { GenerationStudio, type StudioAction, type StudioOutcome } from "@/components/generation-studio/generation-studio";
 import { ArtifactPagesPreview, SlideDeckPreview } from "@/components/generation-studio/studio-previews";
-import { lessonPackageStages, slideTextFromOutline } from "@/components/generation-studio/lesson-package-stages";
+import { lessonPackageStages, previewLinesFromComponent, slideTextFromOutline } from "@/components/generation-studio/lesson-package-stages";
 import type { GammaPptOutcome } from "@/components/lesson-plan/gamma-ppt";
 import { PACKAGE_DOCX_FILES, type ReadyFiles } from "@/components/lesson-plan/package-files";
 import { presentVerdict } from "@/lib/gamma/report";
@@ -14,6 +14,9 @@ type LessonPackageStudioProps = {
   sections: readonly string[];
   progress: string | null;
   lessonPlan: LessonPlanResult | null;
+  livePptComponents: Record<number, string>;
+  /** The component whose text arrived last (1-based), so the large preview can show it being written. */
+  latestPptComponent: number | null;
   subject: string;
   grade: string;
   topicTitle: string;
@@ -58,17 +61,17 @@ export function LessonPackageStudio(p: LessonPackageStudioProps) {
 
   const titles = useMemo(() => getStructuredLessonSlideTitles(p.arabicSlides, p.uaeFramework), [p.arabicSlides, p.uaeFramework]);
   const outline = p.lessonPlan?.["PPT Slide Content"];
-  const slides = useMemo(
-    () => (typeof outline === "string" && outline.trim() ? slideTextFromOutline(outline, titles) : titles.map((title) => ({ title, lines: [] as string[] }))),
-    [outline, titles],
-  );
+  const slides = useMemo(() => {
+    if (typeof outline === "string" && outline.trim()) return slideTextFromOutline(outline, titles);
+    return titles.map((title, index) => ({ title, lines: previewLinesFromComponent(p.livePptComponents[index + 1] ?? "") }));
+  }, [outline, p.livePptComponents, titles]);
 
   const eyebrow = [p.subject, p.grade && `Grade ${p.grade.replace(/^grade\s*/i, "")}`].filter(Boolean).join(" · ");
   const designing = Boolean(p.gamma && !p.gamma.outcome && contentReady);
   const actualSlides = deck?.summary?.counts.actualSlides;
 
   const caption = !contentReady
-    ? `Lesson structure · ${titles.length} slides · text appears here once it's written`
+      ? `Lesson structure · ${titles.length} components · live text appears as each component is written`
     : designing
       ? `Your slide text${p.gamma?.themeName ? ` in ${p.gamma.themeName} colours` : ""} · this is a preview, Gamma is designing the real layout`
       : actualSlides
@@ -83,6 +86,8 @@ export function LessonPackageStudio(p: LessonPackageStudioProps) {
       swatch={p.gamma && contentReady ? p.gamma.swatch : undefined}
       caption={caption}
       busy={!p.finished}
+      imagePreviews={deck?.imagePreviews}
+      focusIndex={!contentReady && p.latestPptComponent ? p.latestPptComponent - 1 : undefined}
     />
   ) : (
     <ArtifactPagesPreview
@@ -93,7 +98,7 @@ export function LessonPackageStudio(p: LessonPackageStudioProps) {
 
   const meta = [
     ...(p.gamma?.themeName ? [{ label: "Slide theme", value: p.gamma.themeName }] : []),
-    ...(pptSelected ? [{ label: actualSlides ? "Designed slides" : "Lesson slides", value: String(actualSlides ?? titles.length) }] : []),
+    ...(pptSelected ? [{ label: actualSlides ? "Physical slides" : "Lesson components", value: String(actualSlides ?? titles.length) }] : []),
     ...(!pptSelected ? [{ label: "Resources", value: String(p.sections.length) }] : []),
   ];
 

@@ -168,7 +168,8 @@ export function buildGammaPayload(params: {
     cardSplit: "inputTextBreaks",
     exportAs: "pptx",
     title: params.title.slice(0, 500),
-    additionalInstructions: `${GAMMA_DESIGN_INSTRUCTIONS} ${layoutInstructionsFor(slides, layout, medium, params.lesson)}`.slice(0, 5000),
+    // The layout brief fits itself into what's left of Gamma's 5000 characters; the slice is only a last-resort guard.
+    additionalInstructions: `${GAMMA_DESIGN_INSTRUCTIONS} ${layoutInstructionsFor(slides, layout, medium, params.lesson, 4900 - GAMMA_DESIGN_INSTRUCTIONS.length - 1)}`.slice(0, 5000),
     cardOptions: { dimensions: "16x9" },
     textOptions: { language: params.language },
     imageOptions: {

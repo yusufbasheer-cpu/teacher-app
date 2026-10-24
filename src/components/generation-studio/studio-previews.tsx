@@ -22,6 +22,10 @@ type SlideDeckPreviewProps = {
   swatch?: string[];
   caption: string;
   busy: boolean;
+  /** Real images extracted from the completed PPTX export. */
+  imagePreviews?: string[];
+  /** Slide to show while text streams in; the teacher's own pick always wins. */
+  focusIndex?: number;
 };
 
 /** Readable ink for a hex background (only hex comes from the theme swatches). */
@@ -86,8 +90,9 @@ export function SlideFace({ slide, index, eyebrow, deckTitle, swatch, large }: {
   );
 }
 
-export function SlideDeckPreview({ eyebrow, deckTitle, slides, swatch, caption, busy }: SlideDeckPreviewProps) {
-  const [selected, setSelected] = useState(0);
+export function SlideDeckPreview({ eyebrow, deckTitle, slides, swatch, caption, busy, imagePreviews = [], focusIndex }: SlideDeckPreviewProps) {
+  const [picked, setPicked] = useState<number | null>(null);
+  const selected = picked ?? focusIndex ?? 0;
   const current = slides[selected] ?? slides[0];
   if (!current) return null;
   return (
@@ -106,7 +111,7 @@ export function SlideDeckPreview({ eyebrow, deckTitle, slides, swatch, caption, 
           <li key={i} className="std-in" style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}>
             <button
               type="button"
-              onClick={() => setSelected(i)}
+              onClick={() => setPicked(i)}
               aria-current={i === selected ? "true" : undefined}
               aria-label={`Slide ${i + 1}: ${s.title}`}
               className={cn(
@@ -129,6 +134,22 @@ export function SlideDeckPreview({ eyebrow, deckTitle, slides, swatch, caption, 
           </li>
         ))}
       </ol>
+      {imagePreviews.length > 0 ? (
+        <div className="mt-4 border-t border-line-subtle pt-3">
+          <p className="mb-2 text-[11px] font-medium text-muted">
+            {imagePreviews.length} {imagePreviews.length === 1 ? "image" : "images"} attached to your PowerPoint
+          </p>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+            {imagePreviews.map((src, index) => (
+              // Each real image arrives one after another, so the teacher sees them being attached.
+              <span key={index} className="std-scale-in aspect-video overflow-hidden rounded-md border border-line-subtle bg-surface" style={{ animationDelay: `${120 + index * 110}ms` }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- data URLs are extracted from the generated PPTX */}
+                <img src={src} alt={`Generated PowerPoint visual ${index + 1}`} className="h-full w-full object-cover" />
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <p className="mt-3 text-center text-[11px] text-faint">{caption}</p>
     </div>
   );

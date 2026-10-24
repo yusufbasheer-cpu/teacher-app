@@ -280,9 +280,10 @@ async function generatePptSlideContentSlideBySlide(params: {
   aflSelections: ReturnType<typeof sanitizeAflSelections>;
   fullLessonPlan: string;
   onProgress: (message: string) => void;
+  onSlide?: (slideNumber: number, body: string) => void;
   userId: string;
 }): Promise<{ text: string; notices: string[] }> {
-  const { input, aflSelections, onProgress } = params;
+  const { input, aflSelections, onProgress, onSlide } = params;
   const notices: string[] = [];
   const language: PresentationLanguage = resolvePresentationLanguage({
     language: input.language,
@@ -341,16 +342,18 @@ async function generatePptSlideContentSlideBySlide(params: {
   // Shared completion counter — safe across parallel closures (JS is single-threaded at await points)
   let completedCount = 0;
 
-  const track = (resultPromise: Promise<SlideGenResult>): Promise<SlideGenResult> =>
+  const track = (slideNumber: number, resultPromise: Promise<SlideGenResult>): Promise<SlideGenResult> =>
     resultPromise.then((r) => {
       notices.push(...r.notices);
-      onProgress(`Generating Slide ${++completedCount} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
+      onSlide?.(slideNumber, r.body);
+      onProgress(`Writing component ${++completedCount} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
       return r;
     });
 
-  const trackSync = (result: SlideGenResult): SlideGenResult => {
+  const trackSync = (slideNumber: number, result: SlideGenResult): SlideGenResult => {
     notices.push(...result.notices);
-    onProgress(`Generating Slide ${++completedCount} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
+    onSlide?.(slideNumber, result.body);
+    onProgress(`Writing component ${++completedCount} of ${STRUCTURED_LESSON_DECK_SLIDE_COUNT}`);
     return result;
   };
 
@@ -359,15 +362,15 @@ async function generatePptSlideContentSlideBySlide(params: {
   // Wave 1: the teaching slides and the topic/SDG slide, in parallel. Promise.allSettled ensures a single
   // slide failure never blocks or cancels any other slide.
   const [r1, r2, r3, r4, r5, r6, r10, r12, r13] = await Promise.allSettled([
-    Promise.resolve(trackSync(generateSlide1Body(slideParams))),   // programmatic
-    track(generateSlide2(slideParams)),                             // starter
-    track(generateSlide3(slideParams)),                             // chapter/SDG
-    Promise.resolve(trackSync(generateSlide4Body(slideParams))),   // programmatic
-    track(generateSlide5(slideParams)),                             // outcomes
-    track(generateSlide6(slideParams)),                             // main phase
-    track(generateSlide10(slideParams)),                            // extended task
-    track(generateSlide12(slideParams)),                            // success criteria
-    Promise.resolve(trackSync(generateSlide13Body(slideParams))),  // programmatic
+    Promise.resolve(trackSync(1, generateSlide1Body(slideParams))),   // programmatic
+    track(2, generateSlide2(slideParams)),                             // starter
+    track(3, generateSlide3(slideParams)),                             // chapter/SDG
+    Promise.resolve(trackSync(4, generateSlide4Body(slideParams))),   // programmatic
+    track(5, generateSlide5(slideParams)),                             // outcomes
+    track(6, generateSlide6(slideParams)),                             // main phase
+    track(10, generateSlide10(slideParams)),                           // extended task
+    track(12, generateSlide12(slideParams)),                           // success criteria
+    Promise.resolve(trackSync(13, generateSlide13Body(slideParams))), // programmatic
   ]);
 
   // Wave 2: the question slides only ask about what wave 1 actually taught, and every slide that names an SDG
@@ -387,10 +390,10 @@ async function generatePptSlideContentSlideBySlide(params: {
   const selectedSdg = parseSelectedSdg(undefined, okBody(r3));
   const questionParams: SlideGenParams = { ...slideParams, teachingEvidence, ...(selectedSdg ? { selectedSdg } : {}) };
   const [r7, r8, r9, r11] = await Promise.allSettled([
-    track(generateSlide7(questionParams)),                          // differentiated + mini plenary
-    track(generateSlide8(questionParams)),                          // UAE/real life (uses the selected SDG)
-    track(generateSlide9(questionParams)),                          // plenary
-    track(generateSlide11(questionParams)),                         // exit ticket
+    track(7, generateSlide7(questionParams)),                          // differentiated + mini plenary
+    track(8, generateSlide8(questionParams)),                          // UAE/real life (uses the selected SDG)
+    track(9, generateSlide9(questionParams)),                          // plenary
+    track(11, generateSlide11(questionParams)),                        // exit ticket
   ]);
 
   const slideResults = [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13];
@@ -454,6 +457,7 @@ type GeneratePackageParams = {
   aflPromptBlock: string;
   strategyBlock: string;
   onProgress?: (message: string) => void;
+  onSlide?: (slideNumber: number, body: string) => void;
   userId: string;
 };
 
@@ -461,7 +465,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
   mergedPlan: LessonPlanResult;
   parseNotices: string[];
 }> {
-  const { apiKey, input, sections, sourceMaterial, frameworkAddendum, aflSelections, aflPromptBlock, strategyBlock, onProgress, userId } =
+  const { apiKey, input, sections, sourceMaterial, frameworkAddendum, aflSelections, aflPromptBlock, strategyBlock, onProgress, onSlide, userId } =
     params;
   const orderedSections = TEACHER_PACKAGE_SECTIONS.filter((k) => sections.includes(k));
   const mergedPlan = emptyLessonShell(sections);
@@ -478,6 +482,7 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
         aflSelections,
         fullLessonPlan: fullLesson,
         onProgress: onProgress ?? (() => {}),
+        onSlide,
         userId,
       });
       mergedPlan[section] = text;
@@ -825,6 +830,7 @@ export async function POST(req: Request) {
             strategyBlock,
             userId: auth.userId,
             onProgress: (message) => send({ type: "progress", message }),
+            onSlide: (slideNumber, body) => send({ type: "slide", slideNumber, body }),
           });
           const payload = buildResponsePayload(mergedPlan, parseNotices);
           send({ type: "complete", ...payload, usage: gate.usage });

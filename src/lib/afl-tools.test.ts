@@ -234,6 +234,10 @@ describe("sanitizeAflSelections — no hidden defaults injected for invalid/miss
     expect(sanitizeAflSelections([])).toEqual({});
     expect(sanitizeAflSelections({})).toEqual({});
   });
+  it("keeps at most two valid activities in each phase", () => {
+    const starterIds = AFL_PHASE_GROUPS.find((group) => group.phase === "starter")!.tools.slice(0, 3).map((tool) => tool.id);
+    expect(sanitizeAflSelections({ starter: starterIds }).starter).toEqual(starterIds.slice(0, 2));
+  });
 
   it("drops unknown phase keys and tool ids that don't belong to that phase, without substituting anything", () => {
     const out = sanitizeAflSelections({

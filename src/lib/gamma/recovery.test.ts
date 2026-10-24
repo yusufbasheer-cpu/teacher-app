@@ -262,7 +262,7 @@ describe("logging hygiene and validation pass-through", () => {
     const text = log.mock.calls.map((c) => String(c[0])).join("\n");
     expect(text).toContain("[gamma-ppt]");
     expect(text).not.toMatch(/test-key-123|SECRET-SIG|Point A0|files\.gamma-test/);
-    expect(JSON.parse(text.split("[gamma-ppt] ")[1])).toMatchObject({ provider: "gamma", requestedSlides: 13, actualSlides: 13, creditsDeducted: 55, validation: "passed", resumed: false });
+    expect(JSON.parse(text.split("[gamma-ppt] ")[1])).toMatchObject({ provider: "gamma", requestedSlides: 13, actualSlides: 13, creditsDeducted: 55, creditsDeductedTotal: 55, validation: "passed", resumed: false });
   });
   it("returns (does not hide) a deck whose content changed, verdict failed", async () => {
     const h = harness({ pptx: changed });

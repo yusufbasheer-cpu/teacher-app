@@ -28,15 +28,28 @@ export async function GET(req: Request) {
     gammaQuery = gammaQuery.gte("created_at", start.toISOString());
     deepQuery = deepQuery.gte("created_at", start.toISOString());
   }
-  const [gammaResult, deepResult] = await Promise.all([gammaQuery, deepQuery]);
+  // All-time totals for both providers, shown whatever period is selected. Different units (Gamma credits vs
+  // estimated DeepSeek dollars), so they're reported side by side rather than added together.
+  const [gammaResult, deepResult, gammaAll, deepAll] = await Promise.all([
+    gammaQuery,
+    deepQuery,
+    admin.from("gamma_generations").select("credits_deducted"),
+    admin.from("ai_usage_events").select("total_tokens,estimated_cost_usd"),
+  ]);
   if (gammaResult.error || deepResult.error) return NextResponse.json({ error: "Usage data unavailable." }, { status: 500 });
 
   const summary = aggregateAiUsage((gammaResult.data ?? []) as GammaUsageRow[], (deepResult.data ?? []) as DeepSeekUsageRow[]);
+  const allTime = gammaAll.error || deepAll.error ? null : {
+    gammaCredits: (gammaAll.data ?? []).reduce((t, r) => t + (Number(r.credits_deducted) || 0), 0),
+    deepSeekTokens: (deepAll.data ?? []).reduce((t, r) => t + (Number(r.total_tokens) || 0), 0),
+    deepSeekCostUsd: (deepAll.data ?? []).reduce((t, r) => t + (Number(r.estimated_cost_usd) || 0), 0),
+  };
   const dailyBudget = Number(process.env.GAMMA_DAILY_CREDIT_BUDGET) || null;
   const monthlyBudget = Number(process.env.GAMMA_MONTHLY_CREDIT_BUDGET) || null;
   return NextResponse.json({
     period: selected,
     staging: true,
+    allTime,
     ...summary,
     budgets: {
       daily: dailyBudget,

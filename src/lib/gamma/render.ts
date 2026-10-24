@@ -24,6 +24,8 @@ export type GammaRunMetrics = {
   imageMediaFiles?: number;
   creditsDeducted?: number;
   creditsRemaining?: number;
+  /** Cumulative settled Gamma credits recorded in this isolated experiment ledger. */
+  creditsDeductedTotal?: number;
   durationMs: number;
   outcome: "success" | "failure";
   failureCode?: string;
@@ -309,6 +311,12 @@ export async function renderPptxWithGamma(
     throw e;
   } finally {
     metrics.durationMs = now() - t0;
+    try {
+      const ledger = await store.rowsSince(0);
+      metrics.creditsDeductedTotal = ledger.reduce((total, row) => total + (row.creditsDeducted ?? 0), 0);
+    } catch {
+      // Per-run reporting must still succeed when an aggregate observability query is unavailable.
+    }
     console.log(`[gamma-ppt] ${JSON.stringify(metrics)}`);
   }
 }

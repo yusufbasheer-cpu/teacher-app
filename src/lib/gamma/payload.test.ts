@@ -81,7 +81,9 @@ describe("design brief size", () => {
     const { request, slides } = buildGammaPayload({ deck, title: "t", language: "en", config: testConfig(), lesson: { topic: "Reflection of Light and Formation of Images", subject: "Science", grade: "Grade 1" } });
     expect(slides.length).toBeGreaterThanOrEqual(20);
     const brief = String(request.additionalInstructions);
-    expect(brief.length).toBeLessThan(4900);
-    expect(brief.endsWith("invented labels, numbers or claims.")).toBe(true);
+    expect(brief.length).toBeLessThanOrEqual(4900);
+    // The rules come before the per-slide lines, and the last slide's line is complete: nothing was cut.
+    expect(brief).toContain("invented labels, numbers or claims.");
+    expect(brief).toMatch(new RegExp(`S${slides.length} [a-z-]+: [^.]*\\.`));
   });
 });

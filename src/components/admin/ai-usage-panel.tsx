@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 type Period = "today" | "7d" | "30d" | "all";
 type Usage = {
   staging: boolean;
+  allTime: { gammaCredits: number; deepSeekTokens: number; deepSeekCostUsd: number } | null;
   gamma: { runs: number; failures: number; undelivered: number; unsettled: number; creditsUsed: number; latestCreditsRemaining: number | null };
   deepSeek: { calls: number; failures: number; totalTokens: number; estimatedCostUsd: number; unpriced: number; operations: Array<{ operation: string; calls: number; tokens: number; estimatedCostUsd: number; unpriced: number }>; topUsers: Array<{ userId: string; calls: number; tokens: number }> };
   budgets: { daily: number | null; monthly: number | null; selectedPeriodHeadroom: number | null };
@@ -47,6 +48,17 @@ export function AiUsagePanel() {
         action={<div className="flex gap-1" aria-label="Usage period">{(["today", "7d", "30d", "all"] as Period[]).map((value) => <AdminButton key={value} size="sm" tone={period === value ? "primary" : "secondary"} onClick={() => setPeriod(value)}>{value === "all" ? "All" : value}</AdminButton>)}</div>}
       />
       {loading ? <EmptyState title="Loading AI usage…" /> : error ? <AdminCard tone="danger"><p className="flex items-center gap-2 text-sm" style={{ color: INK }}><TriangleAlert className="size-4" />{error}</p></AdminCard> : !data ? null : (
+        <>
+        {data.allTime ? (
+          <AdminCard className="mb-4">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider" style={{ color: INK_FAINT }}>All-time totals</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Metric label="Gamma credits used" value={compact.format(data.allTime.gammaCredits)} />
+              <Metric label="DeepSeek est. cost" value={money(data.allTime.deepSeekCostUsd)} />
+              <Metric label="DeepSeek tokens" value={compact.format(data.allTime.deepSeekTokens)} />
+            </div>
+          </AdminCard>
+        ) : null}
         <div className="grid gap-4 xl:grid-cols-2">
           <AdminCard>
             <div className="mb-4 flex items-center gap-2"><Coins className="size-4" /><h3 className="font-semibold" style={{ color: INK }}>Gamma credits</h3></div>
@@ -84,6 +96,7 @@ export function AiUsagePanel() {
             {data.deepSeek.topUsers.length > 0 ? <div className="mt-4 border-t pt-3"><p className="mb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: INK_FAINT }}>Top users</p>{data.deepSeek.topUsers.map((user) => <div key={user.userId} className="flex justify-between text-xs"><span className={FONT_MONO} style={{ color: INK_MUTED }}>{user.userId.slice(0, 8)}…</span><span className={FONT_MONO} style={{ color: INK }}>{compact.format(user.tokens)} tokens</span></div>)}</div> : null}
           </AdminCard>
         </div>
+        </>
       )}
     </section>
   );

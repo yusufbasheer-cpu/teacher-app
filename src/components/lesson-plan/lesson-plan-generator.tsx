@@ -188,6 +188,8 @@ export function LessonPlanGenerator() {
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<string | null>(null);
+  const [livePptComponents, setLivePptComponents] = useState<Record<number, string>>({});
+  const [latestPptComponent, setLatestPptComponent] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useErrorToast();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -586,6 +588,8 @@ export function LessonPlanGenerator() {
     // State updates before any await so the loading screen renders with them
     setLoading(true);
     setGenerationProgress("Initializing...");
+    setLivePptComponents({});
+    setLatestPptComponent(null);
 
     try {
       const combinedSource = combineSourceChunks(uploadedChunks);
@@ -791,6 +795,9 @@ export function LessonPlanGenerator() {
             const t = ev.type;
             if (t === "progress" && typeof ev.message === "string") {
               setGenerationProgress(ev.message);
+            } else if (t === "slide" && typeof ev.slideNumber === "number" && typeof ev.body === "string") {
+              setLivePptComponents((previous) => ({ ...previous, [ev.slideNumber as number]: ev.body as string }));
+              setLatestPptComponent(ev.slideNumber);
             } else if (t === "error" && typeof ev.message === "string") {
               throw new Error(ev.message);
             } else if (t === "complete") {
@@ -1745,6 +1752,8 @@ export function LessonPlanGenerator() {
             sections={TEACHER_PACKAGE_SECTIONS.filter((k) => sectionSelection[k])}
             progress={generationProgress}
             lessonPlan={lessonPlan}
+            livePptComponents={livePptComponents}
+            latestPptComponent={latestPptComponent}
             subject={form.subject}
             grade={form.grade}
             topicTitle={resolveLessonTitle(form.topic, form.chapter, form.subject)}

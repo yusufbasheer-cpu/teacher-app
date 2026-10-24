@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lessonPackageStages, slideTextFromOutline, type LessonPackageSignals } from "./lesson-package-stages";
+import { lessonPackageStages, previewLinesFromComponent, slideTextFromOutline, type LessonPackageSignals } from "./lesson-package-stages";
 
 const FULL = ["Full Lesson Plan", "PPT Slide Content", "Worksheet", "Homework Task", "AFL Activity Sheets"];
 const base: LessonPackageSignals = { sections: FULL, progress: null, contentReady: false, gamma: null, files: "pending" };
@@ -10,8 +10,8 @@ describe("lessonPackageStages", () => {
     expect(statuses(base)).toEqual({ lesson: "active", slides: "pending", resources: "pending", afl: "pending", files: "pending" });
   });
 
-  it("uses the real slide count, and a slide message means the lesson plan is done", () => {
-    const stages = lessonPackageStages({ ...base, progress: "Generating Slide 7 of 13" });
+  it("uses the real component count, and a component message means the lesson plan is done", () => {
+    const stages = lessonPackageStages({ ...base, progress: "Writing component 7 of 13" });
     expect(stages.find((s) => s.id === "lesson")!.status).toBe("done");
     const slides = stages.find((s) => s.id === "slides")!;
     expect(slides.status).toBe("active");
@@ -19,11 +19,11 @@ describe("lessonPackageStages", () => {
   });
 
   it("moves to the next section once every slide is written", () => {
-    expect(statuses({ ...base, progress: "Generating Slide 13 of 13" })).toMatchObject({ slides: "done", resources: "active" });
+    expect(statuses({ ...base, progress: "Writing component 13 of 13" })).toMatchObject({ slides: "done", resources: "active" });
   });
 
   it("keeps the last stage active while the server finishes after its last announcement", () => {
-    const stages = lessonPackageStages({ ...base, sections: ["PPT Slide Content"], progress: "Generating Slide 13 of 13" });
+    const stages = lessonPackageStages({ ...base, sections: ["PPT Slide Content"], progress: "Writing component 13 of 13" });
     expect(stages[0]).toMatchObject({ status: "active", detail: "Finishing your package" });
   });
 
@@ -50,5 +50,8 @@ describe("slideTextFromOutline", () => {
       { title: "Starter", lines: ["What do plants need?", "Think pair share"] },
       { title: "Missing", lines: [] },
     ]);
+  });
+  it("shows real streamed component text before the complete outline arrives", () => {
+    expect(previewLinesFromComponent("- **Locate** latitude\n2. Compare two places\nTeacher notes: hidden")).toEqual(["Locate latitude", "Compare two places"]);
   });
 });

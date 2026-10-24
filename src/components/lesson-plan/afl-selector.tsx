@@ -6,6 +6,7 @@ import {
   AFL_PHASE_GROUPS,
   AFL_PHASE_IDS,
   AFL_RECOMMENDED_IDS,
+  MAX_AFL_SELECTIONS_PER_PHASE,
   getAflToolById,
   suggestRecommendedToolId,
   type AflPhaseId,
@@ -40,6 +41,7 @@ function toggleTool(
   toolId: string,
 ): AflSelectionsPayload {
   const current = selected[phase] ?? [];
+  if (!current.includes(toolId) && current.length >= MAX_AFL_SELECTIONS_PER_PHASE) return selected;
   const next = current.includes(toolId)
     ? current.filter((id) => id !== toolId)
     : [...current, toolId];
@@ -57,21 +59,23 @@ function ToolCheckbox({
   onToggle,
   label,
   purpose,
+  disabled = false,
 }: {
   checked: boolean;
   onToggle: () => void;
   label: string;
   purpose: string;
+  disabled?: boolean;
 }) {
   return (
     <label
-      className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 text-sm shadow-sm transition ${
+      className={`flex items-start gap-2.5 rounded-xl border p-3 text-sm shadow-sm transition ${disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer"} ${
         checked
           ? "border-[var(--brand)] bg-[color-mix(in_oklch,var(--brand)_8%,transparent)] ring-1 ring-[color-mix(in_oklch,var(--brand)_20%,transparent)]"
           : "border-[var(--border-subtle)] bg-surface hover:border-[color-mix(in_oklch,var(--brand)_50%,transparent)] hover:bg-[color-mix(in_oklch,var(--brand)_5%,transparent)]"
       }`}
     >
-      <Checkbox checked={checked} onChange={onToggle} className="mt-0.5" />
+      <Checkbox checked={checked} disabled={disabled} onChange={onToggle} className="mt-0.5" />
       <span className="min-w-0">
         <span className={`block font-medium ${checked ? "text-[var(--brand-active)]" : "text-ink"}`}>{label}</span>
         <span className="mt-0.5 block text-xs leading-snug text-faint">{purpose}</span>
@@ -117,7 +121,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade, context }: 
 
   const applyRecommended = () => {
     onChange(
-      Object.fromEntries(AFL_PHASE_IDS.map((p) => [p, [...AFL_RECOMMENDED_IDS[p]]])) as AflSelectionsPayload,
+      Object.fromEntries(AFL_PHASE_IDS.map((p) => [p, [...AFL_RECOMMENDED_IDS[p]].slice(0, MAX_AFL_SELECTIONS_PER_PHASE)])) as AflSelectionsPayload,
     );
   };
 
@@ -144,7 +148,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade, context }: 
       <div>
         <h3 className="text-lg font-semibold text-ink">Assessment for Learning</h3>
         <p className="mt-1 text-sm text-muted">
-          Select activities to weave into different phases of your lesson.
+          Select up to {MAX_AFL_SELECTIONS_PER_PHASE} activities for each lesson phase.
         </p>
       </div>
       {!locked && totalSelected > 0 ? (
@@ -230,6 +234,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade, context }: 
                     onToggle={() => onChange(toggleTool(selected, group.phase, t.id))}
                     label={t.label}
                     purpose={t.purpose}
+                    disabled={!(selected[group.phase] ?? []).includes(t.id) && (selected[group.phase]?.length ?? 0) >= MAX_AFL_SELECTIONS_PER_PHASE}
                   />
                 )),
             )}
@@ -290,6 +295,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade, context }: 
                         onToggle={() => onChange(toggleTool(selected, group.phase, t.id))}
                         label={t.label}
                         purpose={t.purpose}
+                        disabled={!(selected[group.phase] ?? []).includes(t.id) && count >= MAX_AFL_SELECTIONS_PER_PHASE}
                       />
                     ))}
                   </div>
@@ -318,6 +324,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade, context }: 
             ) : (
               filteredAllTools.map((t) => {
                 const checked = (selected[t.phase] ?? []).includes(t.id);
+                const phaseFull = !checked && (selected[t.phase]?.length ?? 0) >= MAX_AFL_SELECTIONS_PER_PHASE;
                 return (
                   <label
                     key={t.id}
@@ -329,6 +336,7 @@ export function AflSelector({ selected, onChange, locked, onUpgrade, context }: 
                   >
                     <Checkbox
                       checked={checked}
+                      disabled={phaseFull}
                       onChange={() => onChange(toggleTool(selected, t.phase, t.id))}
                       className="mt-0.5"
                     />

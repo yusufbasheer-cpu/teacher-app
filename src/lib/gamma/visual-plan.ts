@@ -58,6 +58,12 @@ export function classifySlide(s: CanonicalSlide): SlideType {
 /** Deck indexes in the 13-section lesson: the core teaching slide, and the decorative chapter/SDG slide. */
 const CORE_TEACHING_IDX = 5;
 
+/** Roughly one meaningful visual per three physical slides: 20 -> 7, 24 -> 8. */
+export function targetMeaningfulImageCount(physicalSlides: number): number {
+  if (physicalSlides <= 0) return 0;
+  return Math.max(1, Math.ceil(physicalSlides / 3));
+}
+
 /**
  * Content first, with subject-specific pictures on the first card of each eligible teaching section. Continuation,
  * question, objective, worked-example and summary slides stay text-only, and genuinely dense slides lose their
@@ -73,7 +79,7 @@ export function planSlideLayouts(slides: CanonicalSlide[]): SlideLayoutPlan[] {
   const requiredByDeck = new Map<number, RequiredVisualCategory>(
     Object.entries(REQUIRED_VISUAL_DECK_INDEX).map(([category, deckIndex]) => [deckIndex, category as RequiredVisualCategory]),
   );
-  return slides.map((s, slideIndex) => {
+  const plans = slides.map((s, slideIndex) => {
     const type = classifySlide(s);
     const chars = charsOf(s);
     const requiredVisualCategory = requiredByDeck.get(s.deckIdx);
@@ -101,6 +107,34 @@ export function planSlideLayouts(slides: CanonicalSlide[]): SlideLayoutPlan[] {
     if (type === "activity" && chars <= INSET_IMAGE_MAX_CHARS) return plan("inset", "A subject-specific supporting picture helps students understand the activity.");
     return plan("none", type === "concept" || type === "real-life" || type === "activity" ? "Dense slide: the content needs the space." : `${type} slides are text-first.`);
   });
+
+  // Pagination can turn the 13 lesson components into 20+ physical slides. Add a small number of visuals to
+  // suitable continuation/activity cards so longer decks do not become long text-only runs. Never add imagery to
+  // questions, objectives, worked examples, summaries or instruction-only cards.
+  let planned = plans.filter((plan) => plan.image !== "none").length;
+  const target = Math.max(planned, targetMeaningfulImageCount(slides.length));
+  const candidates = plans
+    .filter((plan) => {
+      if (plan.image !== "none") return false;
+      const slide = slides[plan.slideIndex]!;
+      return slide.physicalKind !== "activity-instructions"
+        && (plan.type === "concept" || plan.type === "activity" || plan.type === "real-life")
+        && charsOf(slide) <= SIDE_IMAGE_MAX_CHARS;
+    })
+    .sort((a, b) => {
+      const aContinuation = slides[a.slideIndex]!.part > 1 ? 1 : 0;
+      const bContinuation = slides[b.slideIndex]!.part > 1 ? 1 : 0;
+      return aContinuation - bContinuation || charsOf(slides[a.slideIndex]!) - charsOf(slides[b.slideIndex]!);
+    });
+  for (const plan of candidates) {
+    if (planned >= target) break;
+    plan.image = plan.type === "concept" ? "diagram" : plan.type === "real-life" ? "side" : "inset";
+    plan.reason = slides[plan.slideIndex]!.part > 1
+      ? "Long deck: this continuation gets a distinct subject-specific visual to break up a text-only run."
+      : "Long deck: a distinct subject-specific visual supports this teaching card.";
+    planned++;
+  }
+  return plans;
 }
 
 const LAYOUT_RULES: Record<SlideType, string> = {
@@ -125,25 +159,53 @@ function diagramNoun(medium: PictureMedium): string {
   return medium === "photo" ? "real photograph that shows the idea" : "simple concept diagram with no words or numbers in it";
 }
 
-/** Compact per-slide brief (a legend once, then one short line per slide) so 25 slides still fit Gamma's 5000 chars. */
-export function layoutInstructionsFor(slides: CanonicalSlide[], plans: SlideLayoutPlan[], medium: PictureMedium, lesson?: GammaLessonMeta): string {
+/** What a planned picture should show: the slide title plus up to `evidenceChars` of its own text. */
+function visualSubject(slide: CanonicalSlide, evidenceChars: number): string {
+  const evidence = slide.lines
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("; ")
+    .slice(0, evidenceChars);
+  return [slide.title, evidence].filter(Boolean).join(" — ");
+}
+
+/** Evidence budgets tried in turn until the brief fits; the last one sends titles only. */
+const EVIDENCE_BUDGETS = [180, 120, 70, 0];
+
+/**
+ * Compact per-slide brief: the legend and the rules first (so nothing important is ever cut), then one short line per
+ * slide. Each picture line carries some of the slide's own text so the image depicts the actual content; that text is
+ * shortened until the whole brief fits `maxChars` (Gamma's additionalInstructions limit minus the design rules).
+ */
+export function layoutInstructionsFor(slides: CanonicalSlide[], plans: SlideLayoutPlan[], medium: PictureMedium, lesson?: GammaLessonMeta, maxChars = 5000): string {
   const noun = pictureNoun(medium);
-  const about = lesson?.topic.trim() ? ` (lesson: ${lesson.topic.trim()})` : "";
+  const about = lesson?.topic.trim() ? ` (lesson: ${[lesson.subject, lesson.topic].filter(Boolean).join(", ")})` : "";
   const legend = (Object.keys(LAYOUT_RULES) as SlideType[]).map((t) => `${t} = ${LAYOUT_RULES[t]}`).join("; ");
-  const lines = plans.map((p) => {
+  const imageCount = medium === "none" ? 0 : plans.filter((plan) => plan.image !== "none").length;
+  const mediumRule = medium === "none"
+    ? "The teacher chose no pictures, so do not add any image, icon or decorative graphic."
+    : "Match the requested medium exactly: illustration means illustration, photorealistic means photorealistic, and real photograph means a stock photograph.";
+  const head = [
+    `Per-slide layout${about}. Create exactly ${imageCount} meaningful images for this ${slides.length}-slide presentation. Layout types: ${legend}.`,
+    `Every planned image is required, not optional. Use a different, subject-specific image for each planned slide. ${mediumRule} "No image" means no picture, icon or decorative graphic on that slide. Pictures must explain or accurately depict the supplied slide evidence, be age-appropriate, never be generic theme decoration, never sit behind text, and never contain invented labels, numbers or claims.`,
+  ];
+  const lineFor = (p: SlideLayoutPlan, evidenceChars: number) => {
+    const subject = visualSubject(slides[p.slideIndex]!, evidenceChars);
     const image = medium === "none" || p.image === "none"
       ? "no image"
       : p.image === "diagram"
-        ? `one ${diagramNoun(medium)} explaining "${slides[p.slideIndex]!.title}", side column, max 1/3 width`
+        ? `one ${diagramNoun(medium)} accurately explaining "${subject}", side column, max 1/3 width`
         : p.image === "side"
-          ? `one ${noun} of "${slides[p.slideIndex]!.title}" in a side column, max 1/3 width`
-          : `one small ${noun} of "${slides[p.slideIndex]!.title}", max 1/4 of the slide`;
+          ? `one ${noun} accurately depicting "${subject}" in a side column, max 1/3 width`
+          : `one small ${noun} accurately depicting "${subject}", max 1/4 of the slide`;
     const required = p.requiredVisualCategory ? ` REQUIRED ${p.requiredVisualCategory} visual; it must depict this slide's educational concept, not theme decoration.` : "";
     return `S${p.slideIndex + 1} ${p.type}: ${image}.${required}`;
-  });
-  return [
-    `Per-slide layout${about}. Layout types: ${legend}.`,
-    ...lines,
-    `Every planned image is required, not optional. Use a different, subject-specific image for each planned slide. "No image" means no picture, icon or decorative graphic on that slide. Pictures must show the slide's own content, be age-appropriate, never be generic theme decoration, never sit behind text, and never contain invented labels, numbers or claims.`,
-  ].join(" ");
+  };
+  let text = "";
+  for (const budget of EVIDENCE_BUDGETS) {
+    text = [...head, ...plans.map((p) => lineFor(p, budget))].join(" ");
+    if (text.length <= maxChars) break;
+  }
+  return text;
 }
