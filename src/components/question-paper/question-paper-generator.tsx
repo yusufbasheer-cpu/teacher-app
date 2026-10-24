@@ -11,7 +11,8 @@ import {
   useState,
 } from "react";
 import type { User } from "@supabase/supabase-js";
-import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
+import { GenerationStudio, type StudioStage } from "@/components/generation-studio/generation-studio";
+import { ArtifactPagesPreview, type PreviewPage } from "@/components/generation-studio/studio-previews";
 import { GenerationLimitModal } from "@/components/usage/generation-limit-modal";
 import { StepWizardProgress } from "@/components/ui/step-wizard-progress";
 import { useErrorToast } from "@/hooks/use-error-toast";
@@ -157,14 +158,6 @@ export function QuestionPaperGenerator() {
 
   const extractedMaterial = useMemo(() => combineSourceChunks(uploadedChunks), [uploadedChunks]);
 
-  const qpLoadingSections = useMemo(
-    () => ({
-      "qp-paper": true,
-      "qp-blueprint": generateBlueprint,
-      "qp-downloads": true,
-    }),
-    [generateBlueprint],
-  );
 
   const totalQuestions = useMemo(() => countSelectedQuestions(questionCounts), [questionCounts]);
   const missingStepOneFields = [
@@ -386,6 +379,12 @@ export function QuestionPaperGenerator() {
       ...(extractedMaterial ? { sourceMaterial: extractedMaterial } : {}),
     };
 
+    // The Studio shows the finished state briefly, then the downloads section takes over.
+    const showFinished = async () => {
+      setGenerationProgress("Finalizing...");
+      await new Promise<void>((r) => setTimeout(r, 1600));
+    };
+
     const syncUsageAfterGeneration = async (nextUsage?: UserUsageSnapshot) => {
       if (nextUsage) applyUsage(nextUsage);
       await refreshUsage();
@@ -430,10 +429,7 @@ export function QuestionPaperGenerator() {
       setResult(paperResult);
 
       if (!generateBlueprint) {
-        setGenerationProgress("Preparing downloads...");
-        await new Promise<void>((r) => setTimeout(r, 500));
-        setGenerationProgress("Finalizing...");
-        await new Promise<void>((r) => setTimeout(r, 3000));
+        await showFinished();
         return;
       }
 
@@ -472,10 +468,7 @@ export function QuestionPaperGenerator() {
               }
             : prev,
         );
-        setGenerationProgress("Preparing downloads...");
-        await new Promise<void>((r) => setTimeout(r, 500));
-        setGenerationProgress("Finalizing...");
-        await new Promise<void>((r) => setTimeout(r, 3000));
+        await showFinished();
         return;
       }
 
@@ -486,10 +479,7 @@ export function QuestionPaperGenerator() {
           blueprintError: bpParsed.data.blueprintError,
         });
         setResult((prev) => (prev ? { ...prev, blueprintError: "failed" } : prev));
-        setGenerationProgress("Preparing downloads...");
-        await new Promise<void>((r) => setTimeout(r, 500));
-        setGenerationProgress("Finalizing...");
-        await new Promise<void>((r) => setTimeout(r, 3000));
+        await showFinished();
         return;
       }
 
@@ -501,10 +491,7 @@ export function QuestionPaperGenerator() {
             }
           : prev,
       );
-      setGenerationProgress("Preparing downloads...");
-      await new Promise<void>((r) => setTimeout(r, 500));
-      setGenerationProgress("Finalizing...");
-      await new Promise<void>((r) => setTimeout(r, 3000));
+      await showFinished();
     } catch (err) {
       setError(toUserFacingError(err, "question-paper-generate"));
     } finally {
@@ -1200,14 +1187,46 @@ export function QuestionPaperGenerator() {
         </section>
       )}
 
-      {loading ? (
-        <LessonPlanLoadingGame
-          active={loading}
-          statusText={generationProgress}
-          selectedSections={qpLoadingSections}
-          preset="question-paper"
-        />
-      ) : null}
+      {loading ? (() => {
+        // Real stages only: the paper request, then the blueprint request (each is one call, no sub-steps).
+        const finished = generationProgress === "Finalizing...";
+        const onBlueprint = generationProgress === "Generating blueprint...";
+        const paperDone = result !== null;
+        const blueprintFailed = Boolean(result?.blueprintError);
+        const stages: StudioStage[] = [
+          { id: "paper", label: "Writing the question paper", detail: paperDone ? "Questions, answer key and marking scheme written" : `${totalMarks} marks · ${difficulty} difficulty`, status: paperDone ? "done" : "active" },
+          ...(generateBlueprint
+            ? [{
+                id: "blueprint",
+                label: "Building the blueprint",
+                detail: blueprintFailed ? "The blueprint couldn't be built this time — your paper is still ready" : onBlueprint ? "Mapping each question to its topic and marks" : undefined,
+                status: (blueprintFailed ? "warning" : finished ? "done" : onBlueprint ? "active" : "pending") as StudioStage["status"],
+              }]
+            : []),
+        ];
+        return (
+          <GenerationStudio
+            kind="Question paper"
+            eyebrow={[subject, grade].filter(Boolean).join(" · ")}
+            title={`Creating your ${subject || "question"} paper`}
+            subtitle={topic}
+            stages={stages}
+            meta={[{ label: "Total marks", value: String(totalMarks) }, { label: "Time allowed", value: String(timeAllowed) }]}
+            preview={
+              <ArtifactPagesPreview
+                caption={finished ? "Your papers are written" : "Layout preview · your questions appear on the next screen"}
+                pages={[
+                  { key: "paper", title: "Question paper", subtitle: `${totalMarks} marks`, status: paperDone ? "done" : "active" },
+                  ...(includeAnswerKey || includeMarkingScheme ? [{ key: "key", title: includeMarkingScheme ? "Marking scheme" : "Answer key", status: (paperDone ? "done" : "active") as PreviewPage["status"] }] : []),
+                  ...(generateBlueprint ? [{ key: "bp", title: "Blueprint", status: (blueprintFailed ? "error" : finished ? "done" : onBlueprint ? "active" : "pending") as PreviewPage["status"] }] : []),
+                ]}
+              />
+            }
+            outcome={finished ? { tone: blueprintFailed ? "warn" : "ok", title: "Your question paper is ready", detail: blueprintFailed ? "The blueprint didn't finish, but your paper is ready." : "Opening your downloads now.", actions: [] } : null}
+            footerNote="Keep this page open while Layah writes your paper."
+          />
+        );
+      })() : null}
 
       <GenerationLimitModal
         open={limitModalOpen}

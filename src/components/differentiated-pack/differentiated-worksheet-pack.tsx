@@ -25,6 +25,8 @@ import { PaymentModal } from "@/components/payment/payment-modal";
 import { EmptyState, Notice, PageTitle, Panel, Skeleton } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { LockedPageState } from "@/components/premium/locked-page-state";
+import { GenerationStudio, type StudioStage } from "@/components/generation-studio/generation-studio";
+import { ArtifactPagesPreview } from "@/components/generation-studio/studio-previews";
 import { PLANS } from "@/lib/plans";
 
 function safeFilePart(topic: string) {
@@ -180,6 +182,7 @@ export function DifferentiatedWorksheetPack() {
       return;
     }
     setLoading(true);
+    setLevelProgress({ foundation: "idle", core: "idle", extension: "idle" });
     try {
       const levels: Level[] = ["foundation", "core", "extension"];
       const notices: string[] = [];
@@ -719,38 +722,6 @@ export function DifferentiatedWorksheetPack() {
             Clear “from lesson” session
           </button>
         </div>
-        <div className="mt-3 space-y-1 text-xs">
-          <p className="text-muted">
-            Generating Foundation worksheet…{" "}
-            {levelProgress.foundation === "loading"
-              ? "⏳"
-              : levelProgress.foundation === "success"
-                ? "✅"
-                : levelProgress.foundation === "error"
-                  ? "❌"
-                  : "—"}
-          </p>
-          <p className="text-muted">
-            Generating Core worksheet…{" "}
-            {levelProgress.core === "loading"
-              ? "⏳"
-              : levelProgress.core === "success"
-                ? "✅"
-                : levelProgress.core === "error"
-                  ? "❌"
-                  : "—"}
-          </p>
-          <p className="text-muted">
-            Generating Extension worksheet…{" "}
-            {levelProgress.extension === "loading"
-              ? "⏳"
-              : levelProgress.extension === "success"
-                ? "✅"
-                : levelProgress.extension === "error"
-                  ? "❌"
-                  : "—"}
-          </p>
-        </div>
       </section>
 
       {parseNotice ? (
@@ -917,6 +888,48 @@ export function DifferentiatedWorksheetPack() {
           </section>
         </>
       ) : null}
+
+      {loading ? (
+        <GenerationStudio
+          kind="Worksheet pack"
+          eyebrow={[subject.trim(), grade.trim()].filter(Boolean).join(" · ")}
+          title="Creating your differentiated worksheets"
+          subtitle={topic.trim()}
+          // One request per level, in order: each stage is that level's real result.
+          stages={DIFF_LEVELS.map(({ level, label, detail }) => ({
+            id: level,
+            label: `${label} worksheet`,
+            detail: levelProgress[level] === "error" ? "This level didn't generate — the others continue" : detail,
+            status: STUDIO_STATUS[levelProgress[level]],
+          }))}
+          meta={[{ label: "Levels", value: "3" }]}
+          preview={
+            <ArtifactPagesPreview
+              caption="One worksheet per level · your questions appear on the next screen"
+              pages={DIFF_LEVELS.map(({ level, label, detail }) => ({
+                key: level,
+                title: `${label} worksheet`,
+                subtitle: detail,
+                status: STUDIO_STATUS[levelProgress[level]] as "pending" | "active" | "done" | "error",
+              }))}
+            />
+          }
+          footerNote="Keep this page open while Layah writes your worksheets."
+        />
+      ) : null}
     </div>
   );
 }
+
+const DIFF_LEVELS = [
+  { level: "foundation", label: "Foundation", detail: "Supported tasks to build confidence" },
+  { level: "core", label: "Core", detail: "Grade-level practice" },
+  { level: "extension", label: "Extension", detail: "Stretch and challenge" },
+] as const;
+
+const STUDIO_STATUS: Record<"idle" | "loading" | "success" | "error", StudioStage["status"]> = {
+  idle: "pending",
+  loading: "active",
+  success: "done",
+  error: "error",
+};

@@ -147,10 +147,15 @@ export type GammaPptOutcome =
 export const GAMMA_MAX_RESUMES = 4;
 
 /** Builds the Gamma deck, quietly resuming when a request outlasts the server's time limit. Never throws. */
-export async function requestGammaPpt(body: Record<string, unknown>, filename: string): Promise<GammaPptOutcome> {
+export async function requestGammaPpt(
+  body: Record<string, unknown>,
+  filename: string,
+  onResume?: (attempt: number) => void,
+): Promise<GammaPptOutcome> {
   try {
     let res: Response | null = null;
     for (let attempt = 0; attempt <= GAMMA_MAX_RESUMES; attempt++) {
+      if (attempt > 0) onResume?.(attempt);
       res = await fetch("/api/lesson-plan/export/pptx", {
         method: "POST",
         headers: await getAuthHeaders(),

@@ -41,6 +41,7 @@ import { GammaDesignControls } from "@/components/lesson-plan/gamma-design-contr
 import { buildPptExportBody, GAMMA_MAX_RESUMES, useGammaDesign, type GammaDesign, type GammaPptOutcome } from "@/components/lesson-plan/gamma-ppt";
 import type { PresentationLanguage } from "@/lib/ppt-language";
 import { TemplateUploadIssuePanel } from "@/components/lesson-plan/template-upload-issue";
+import { StudioIndicator } from "@/components/generation-studio/generation-studio";
 import {
   TEMPLATE_ACCEPT_ATTRIBUTE,
   TEMPLATE_REQUIREMENTS_LINE,
@@ -1153,20 +1154,14 @@ type GammaPanelState =
   | { kind: "error"; code: string; message: string }
   | { kind: "progress"; startedAt: number };
 
-/** Stage messages advance with time but never promise a duration. */
-const GAMMA_STAGES = ["Designing your slides…", "Creating illustrations for your lesson…", "Laying out each slide…", "Adding the finishing touches…"];
-
-function GammaProgress({ startedAt }: { startedAt: number }) {
-  const [stage, setStage] = useState(0);
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setStage(Math.min(GAMMA_STAGES.length - 1, Math.floor((Date.now() - startedAt) / 20_000)));
-    }, 2_000);
-    return () => window.clearInterval(id);
-  }, [startedAt]);
+/**
+ * The deck is one request: Gamma designs and exports it, then Layah checks the text. None of those steps are
+ * reported separately, so this shows one honest status rather than timed stages.
+ */
+function GammaProgress() {
   return (
     <Notice tone="brand" className="mb-3" aria-live="polite">
-      <div className="flex items-start gap-3"><span className="mt-1.5 size-2 shrink-0 animate-pulse rounded-full bg-brand motion-reduce:animate-none" aria-hidden /><div><p className="font-semibold">{GAMMA_STAGES[stage]}</p><p className="mt-1">Your PowerPoint will download automatically when it&apos;s ready. You can keep reading your lesson meanwhile.</p></div></div>
+      <div className="flex items-start gap-3"><StudioIndicator size={16} className="mt-0.5" /><div><p className="font-semibold">Designing your PowerPoint…</p><p className="mt-1">Gamma lays out and exports your slides, then Layah checks your lesson text made it onto them. It downloads automatically when ready — keep reading your lesson meanwhile.</p></div></div>
     </Notice>
   );
 }
@@ -1180,7 +1175,7 @@ function GammaPanel({
   onDismiss: () => void;
   onRetry?: () => void;
 }) {
-  if (panel.kind === "progress") return <GammaProgress startedAt={panel.startedAt} />;
+  if (panel.kind === "progress") return <GammaProgress />;
   if (panel.kind === "error") {
     return (
       <Notice tone="danger" className="mb-3">

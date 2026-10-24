@@ -18,8 +18,11 @@ import {
   PRESENTATION_LANGUAGE_LABELS,
   defaultLanguageForSubject,
   isPresentationLanguage,
+  resolvePresentationLanguage,
 } from "@/lib/ppt-language";
-import { LessonPlanLoadingGame } from "@/components/lesson-plan/lesson-plan-loading-game";
+import { LessonPackageStudio } from "@/components/lesson-plan/lesson-package-studio";
+import { isUaeCurriculumFramework } from "@/lib/curriculum-framework";
+import { triggerFileDownload } from "@/lib/trigger-file-download";
 import { safeFilenamePart, TeacherPackageViewer } from "@/components/lesson-plan/teacher-package-viewer";
 import { GammaDesignControls } from "@/components/lesson-plan/gamma-design-controls";
 import { buildPptExportBody, requestGammaPpt, useGammaDesign, type GammaPptOutcome } from "@/components/lesson-plan/gamma-ppt";
@@ -217,6 +220,11 @@ export function LessonPlanGenerator() {
   // Slide design is chosen before generating, so the deck can be built while the loader is already showing.
   const gammaDesign = useGammaDesign();
   const [pregeneratedPpt, setPregeneratedPpt] = useState<GammaPptOutcome | null>(null);
+  // Studio state: only real signals (the deck request in flight, its free resumes, and the finished run).
+  const [gammaDesigning, setGammaDesigning] = useState(false);
+  const [gammaResumes, setGammaResumes] = useState(0);
+  const [studioFinished, setStudioFinished] = useState(false);
+  const finishStudioRef = useRef<(() => void) | null>(null);
   const [detailsValidationAttempted, setDetailsValidationAttempted] = useState(false);
 
   /** Fail-closed to Free's entitlements while usage is still loading, so
@@ -538,6 +546,9 @@ export function LessonPlanGenerator() {
     setPptSlideImageUrls(null);
     setActivePlanId(null);
     setPregeneratedPpt(null);
+    setGammaDesigning(false);
+    setGammaResumes(0);
+    setStudioFinished(false);
 
     if (!form.topic.trim() || !form.learningObjectives.trim()) {
       setComposerStep("details");
@@ -698,6 +709,7 @@ export function LessonPlanGenerator() {
       const designSlides = async (plan: LessonPlanResult) => {
         if (!designBeforeGenerate) return;
         setGenerationProgress("Designing your slides");
+        setGammaDesigning(true);
         const topicTitle = resolveLessonTitle(form.topic, form.chapter, form.subject);
         const teacher = typeof user?.user_metadata?.full_name === "string" ? user.user_metadata.full_name.trim() : user?.email?.split("@")[0];
         const outcome = await requestGammaPpt(
@@ -710,8 +722,20 @@ export function LessonPlanGenerator() {
             design: { themeId: gammaDesign.themeId, imageSource: gammaDesign.imageSource, imageStyle: gammaDesign.imageStyle },
           }),
           `${safeFilenamePart(topicTitle, "lesson")}-ppt.pptx`,
+          setGammaResumes,
         );
         setPregeneratedPpt(outcome);
+        setGammaDesigning(false);
+      };
+
+      // The Studio shows how the run ended. With a designed deck the teacher chooses what to do next; a plain
+      // package opens by itself after a moment.
+      const holdStudioOpen = () => {
+        setStudioFinished(true);
+        return new Promise<void>((resolve) => {
+          finishStudioRef.current = resolve;
+          if (!designBeforeGenerate) window.setTimeout(resolve, 1800);
+        });
       };
 
       if (response.ok && pptSelected && contentType.includes("application/x-ndjson")) {
@@ -753,9 +777,7 @@ export function LessonPlanGenerator() {
           throw new Error(USER_FACING_ERROR);
         }
         await designSlides(await applySuccessPayload(completePayload));
-        setGenerationProgress("Finalizing...");
-        // Hold the loading screen open so the celebration animation plays
-        await new Promise<void>((r) => setTimeout(r, 3000));
+        await holdStudioOpen();
       } else {
         const raw = await response.text();
         console.log("[lesson-plan client] /api/lesson-plan", {
@@ -791,9 +813,7 @@ export function LessonPlanGenerator() {
         }
 
         await designSlides(await applySuccessPayload(data));
-        setGenerationProgress("Finalizing...");
-        // Hold the loading screen open so the celebration animation plays
-        await new Promise<void>((r) => setTimeout(r, 3000));
+        await holdStudioOpen();
       }
     } catch (err) {
       const msg = toUserFacingError(err, "lesson-plan-generate");
@@ -810,6 +830,8 @@ export function LessonPlanGenerator() {
     } finally {
       setLoading(false);
       setGenerationProgress(null);
+      setStudioFinished(false);
+      finishStudioRef.current = null;
     }
   };
 
@@ -1689,7 +1711,25 @@ export function LessonPlanGenerator() {
         </div>
       ) : null}
 
-      {loading ? <LessonPlanLoadingGame active statusText={generationProgress} selectedSections={{ ...sectionSelection, "Slide Design": designBeforeGenerate }} /> : null}
+      {loading ? (() => {
+        const theme = gammaDesign.themes.find((t) => t.id === gammaDesign.themeId);
+        return (
+          <LessonPackageStudio
+            sections={TEACHER_PACKAGE_SECTIONS.filter((k) => sectionSelection[k])}
+            progress={generationProgress}
+            lessonPlan={lessonPlan}
+            subject={form.subject}
+            grade={form.grade}
+            topicTitle={resolveLessonTitle(form.topic, form.chapter, form.subject)}
+            arabicSlides={resolvePresentationLanguage({ language: form.language, subject: form.subject }) === "ar"}
+            uaeFramework={isUaeCurriculumFramework(form.curriculumFramework)}
+            gamma={designBeforeGenerate ? { themeName: theme?.name, swatch: theme?.swatch, designing: gammaDesigning, resumes: gammaResumes, outcome: pregeneratedPpt } : null}
+            finished={studioFinished}
+            onDownload={triggerFileDownload}
+            onOpenLesson={() => finishStudioRef.current?.()}
+          />
+        );
+      })() : null}
 
       <GenerationLimitModal
         open={limitModalOpen}
