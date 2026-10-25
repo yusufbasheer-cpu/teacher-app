@@ -23,7 +23,9 @@ export async function storeGammaArtifact(userId: string, generationId: string, b
   return path;
 }
 
-export async function readGammaArtifact(path: string): Promise<Buffer> {
+/** Reads with the service role, so storage policies cannot stop a bad path: only the owner's own folder is allowed. */
+export async function readGammaArtifact(userId: string, path: string): Promise<Buffer> {
+  if (!userId || !path.startsWith(`${userId}/`) || path.includes("..")) throw new GammaError("store_unavailable", "Stored Gamma artifact is unavailable.");
   const { data, error } = await db().storage.from(GAMMA_ARTIFACT_BUCKET).download(path);
   if (error || !data) throw new GammaError("store_unavailable", "Stored Gamma artifact is unavailable.");
   return Buffer.from(await data.arrayBuffer());

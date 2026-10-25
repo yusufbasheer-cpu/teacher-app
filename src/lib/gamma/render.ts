@@ -156,7 +156,7 @@ export async function renderPptxWithGamma(
     const imageOptions = request.imageOptions as { source?: string; style?: string } | undefined;
     const reusable = store.findReusableArtifact ? await store.findReusableArtifact({ userId: params.userId, requestHash, themeId: typeof request.themeId === "string" ? request.themeId : null, imageSource: imageOptions?.source ?? null, imageStyle: imageOptions?.style ?? null }) : null;
     if (reusable?.artifactPath) {
-      const stored = process.env.VITEST ? Buffer.alloc(0) : await readGammaArtifact(reusable.artifactPath);
+      const stored = process.env.VITEST ? Buffer.alloc(0) : await readGammaArtifact(params.userId, reusable.artifactPath);
       if (!process.env.VITEST) {
         const { buffer, validation } = await withSpeakerNotes(stored);
         metrics.presentationId = reusable.id;
