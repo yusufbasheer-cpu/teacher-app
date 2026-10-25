@@ -3,9 +3,7 @@ import path from "path";
 import {
   AlignmentType,
   BorderStyle,
-  Document,
   HeadingLevel,
-  Packer,
   Paragraph,
   ShadingType,
   Table,
@@ -40,6 +38,8 @@ import {
 import { buildPptxFromDeckSpec, moveTeacherFacingLinesToNotes, normalizeToLines } from "@/lib/ppt-template-engine";
 import { prepareDeckForStudents } from "@/lib/ppt-slide-guards";
 import { buildPhysicalSlideNotes } from "@/lib/ppt-speaker-notes";
+import { buildDesignedDocx, kindFromTitle, type KeyWord } from "@/lib/docx-design";
+import { LESSON_KEY_WORDS_KEY, parseKeyWords } from "@/lib/lesson-key-words";
 import { adaptStructuredLessonSlidesToDeck } from "@/lib/slide-deck-legacy-adapter";
 import type { DeckSpec } from "@/lib/slide-schema";
 import { resolvePresentationLanguage, type PresentationLanguage } from "@/lib/ppt-language";
@@ -141,84 +141,22 @@ export function parsePptContentIntoSlides(raw: string): { title: string; body: s
   return slides;
 }
 
+/**
+ * Every teaching document (lesson plan, worksheet, assessment, homework, teacher's notes, AFL sheets) is laid out by
+ * the shared Layah Word design system (docx-design.ts). The document type is taken from its title.
+ */
 export async function buildDocxBuffer(params: {
   documentTitle: string;
   subject: string;
   grade: string;
   topic: string;
   content: string;
+  chapter?: string;
+  teacherName?: string;
+  /** The lesson's key words (same list in every document); omitted for older lessons. */
+  keyWords?: KeyWord[];
 }): Promise<Buffer> {
-  const metaParagraphs: Paragraph[] = [
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: params.documentTitle,
-          bold: true,
-          size: 36,
-          color: "1A1A2E",
-        }),
-      ],
-      spacing: { after: 100 },
-    }),
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: `${params.subject}  ·  ${params.grade}  ·  ${params.topic}`,
-          italics: true,
-          size: 20,
-          color: "555577",
-        }),
-      ],
-      spacing: { after: 320 },
-    }),
-  ];
-
-  const contentParagraphs = parseMarkdownContentToDocxParagraphs(params.content);
-
-  const doc = new Document({
-    styles: {
-      paragraphStyles: [
-        {
-          id: "Heading1",
-          name: "Heading 1",
-          basedOn: "Normal",
-          run: { bold: true, size: 32, color: "1A1A2E" },
-          paragraph: { spacing: { before: 260, after: 120 } },
-        },
-        {
-          id: "Heading2",
-          name: "Heading 2",
-          basedOn: "Normal",
-          run: { bold: true, size: 26, color: "2C3E80" },
-          paragraph: { spacing: { before: 200, after: 80 } },
-        },
-        {
-          id: "Heading3",
-          name: "Heading 3",
-          basedOn: "Normal",
-          run: { bold: true, size: 22, color: "34495E" },
-          paragraph: { spacing: { before: 160, after: 60 } },
-        },
-      ],
-    },
-    sections: [
-      {
-        properties: {
-          page: {
-            margin: {
-              top: 720,
-              right: 900,
-              bottom: 720,
-              left: 900,
-            },
-          },
-        },
-        children: [...metaParagraphs, ...contentParagraphs],
-      },
-    ],
-  });
-
-  return Buffer.from(await Packer.toBuffer(doc));
+  return buildDesignedDocx({ kind: kindFromTitle(params.documentTitle), ...params });
 }
 
 /** Parse inline markdown segments (**bold**, *italic*, `code`) into TextRun array. */
@@ -1165,6 +1103,8 @@ export async function buildTeacherPackageZipBuffer(params: {
           documentTitle: part.title,
           ...meta,
           content: withAfl,
+          // The lesson plan, worksheet, homework and teacher's notes share the lesson's one key-word list.
+          ...(/^(Full Lesson Plan|Worksheet|Homework Task|Teacher Notes)$/.test(part.key) ? { keyWords: parseKeyWords(lessonPlan[LESSON_KEY_WORDS_KEY]) } : {}),
         }),
       );
     }

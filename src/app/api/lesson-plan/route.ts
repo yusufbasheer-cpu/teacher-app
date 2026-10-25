@@ -76,6 +76,7 @@ import {
   getStructuredLessonSlideTitles,
 } from "@/lib/ppt-structured-lesson";
 import { finishGeneratedDeck } from "@/lib/ppt-post-generation";
+import { generateLessonKeyWords, LESSON_KEY_WORDS_KEY } from "@/lib/lesson-key-words";
 import { OFFICIAL_SDG_NAMES } from "@/lib/ppt-slide-guards";
 import { buildSlide8PptModeBlock } from "@/lib/ppt-slide-validation";
 import {
@@ -666,6 +667,20 @@ async function generateTeacherPackage(params: GeneratePackageParams): Promise<{
     if (sliceNotice) parseNotices.push(`${section}: ${sliceNotice}`);
   }
 
+  // One key-word list per lesson, taken from the finished text, so every Word document shows the same words.
+  if (orderedSections.some((k) => k === "Full Lesson Plan" || k === "Worksheet" || k === "Homework Task" || k === "Teacher Notes")) {
+    onProgress?.("Choosing the lesson's key words");
+    const keyWords = await generateLessonKeyWords({
+      apiKey,
+      subject: input.subject.trim(),
+      grade: input.grade.trim(),
+      topic: resolveGenerationTopic(input.topic, input.chapter),
+      chapter: input.chapter.trim() || undefined,
+      lessonText: orderedSections.map((k) => mergedPlan[k] ?? "").join("\n\n"),
+      usageUserId: userId,
+    });
+    if (keyWords.length) mergedPlan[LESSON_KEY_WORDS_KEY] = JSON.stringify(keyWords);
+  }
   return { mergedPlan, parseNotices };
 }
 

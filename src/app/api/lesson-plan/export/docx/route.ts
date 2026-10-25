@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { formatDocxAflAppendix, sanitizeAflSelections } from "@/lib/afl-tools";
 import { buildDocxBuffer, sanitizeExportFileName } from "@/lib/lesson-plan-export";
 import { authenticateRequest } from "@/lib/user-usage-server";
+import { parseKeyWords } from "@/lib/lesson-key-words";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,8 @@ type Body = {
   fileBaseName?: string;
   content?: string;
   aflSelections?: unknown;
+  chapter?: string;
+  keyWords?: unknown;
 };
 
 export async function POST(req: Request) {
@@ -54,6 +57,8 @@ export async function POST(req: Request) {
       grade,
       topic,
       content: aflAppendix ? `${content}${aflAppendix}` : content,
+      chapter: body.chapter?.trim() || undefined,
+      keyWords: parseKeyWords(body.keyWords),
     });
     const name = sanitizeExportFileName(`${grade}-${subject}-${topic}-${fileBaseName}`) || "document";
 

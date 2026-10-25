@@ -4,6 +4,10 @@ import { getAuthHeaders } from "@/lib/auth-headers";
 import { AFL_PHASE_IDS, type AflSelectionsPayload } from "@/lib/afl-tools";
 import { mergePptSlideImageUrlsIntoPlan, type LessonPlanResult } from "@/lib/lesson-plan";
 
+/** The lesson's key words (same list in every document); kept on the lesson under this key. */
+const KEY_WORDS_KEY = "__keyWords";
+const KEY_WORD_DOCS = new Set(["lesson", "worksheet", "homework", "notes"]);
+
 /**
  * The lesson package's downloadable files, built once in the background as soon as the lesson text exists
  * (while the slides are still being designed), so every Download click afterwards is instant. The Word files
@@ -60,6 +64,7 @@ export function docxFile(key: PackageDocxKey, plan: LessonPlanResult, meta: Pack
       fileBaseName: def.fileBaseName,
       content: typeof content === "string" ? content : "",
       ...(key === "lesson" && hasAflSelections(meta.aflSelections) ? { aflSelections: meta.aflSelections } : {}),
+      ...(KEY_WORD_DOCS.has(key) && plan[KEY_WORDS_KEY] ? { keyWords: plan[KEY_WORDS_KEY] } : {}),
     },
   };
 }
