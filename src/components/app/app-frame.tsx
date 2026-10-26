@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { clearActiveSession } from "@/lib/active-session";
 import { useUserUsage } from "@/hooks/use-user-usage";
+import { useFocusTrap, useModKey, useSwipeToClose } from "@/hooks/use-overlay";
 import { PLANS, isFreePlan } from "@/lib/plans";
 import { isNavActive, navGroups, routeLabel, type NavItem } from "@/lib/app-nav";
 import { getTeacherDisplayName } from "@/lib/user-profile";
@@ -422,6 +423,11 @@ export function AppFrame({ user, children }: { user: User; children: React.React
 
   const [collapsed, setCollapsed] = React.useState(false);
   const [drawer, setDrawer] = React.useState(false);
+  const drawerPanelRef = React.useRef<HTMLDivElement>(null);
+  const closeDrawer = React.useCallback(() => setDrawer(false), []);
+  const modKey = useModKey();
+  useFocusTrap(drawer, drawerPanelRef);
+  useSwipeToClose(drawer, drawerPanelRef, closeDrawer);
 
   React.useEffect(() => {
     setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === "1");
@@ -555,7 +561,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
             onClick={() => setDrawer(false)}
             className="animate-fade-in absolute inset-0 bg-ink/30 backdrop-blur-[2px]"
           />
-          <div className="animate-rise absolute inset-y-0 left-0 flex w-[264px] max-w-[82vw] flex-col border-r border-line bg-surface shadow-overlay">
+          <div ref={drawerPanelRef} className="animate-rise absolute inset-y-0 left-0 flex touch-pan-y w-[264px] max-w-[82vw] flex-col border-r border-line bg-surface shadow-overlay">
             <div className="flex h-[calc(52px+env(safe-area-inset-top))] shrink-0 items-center justify-between border-b border-line-subtle px-3 pt-[env(safe-area-inset-top)]">
               <span className="flex items-center gap-2">
                 <Image src="/logo-mark.png" alt="" aria-hidden width={24} height={24} className="size-6 rounded-sm object-cover" />
@@ -629,7 +635,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
             >
               <Search className="size-3.5" aria-hidden />
               <span className="hidden md:inline">Search</span>
-              <Kbd className="hidden md:inline-flex">⌘K</Kbd>
+              <Kbd className="hidden md:inline-flex">{modKey === "⌘" ? "⌘K" : "Ctrl K"}</Kbd>
             </button>
 
             <ThemeToggle className="hidden sm:inline-flex" />
