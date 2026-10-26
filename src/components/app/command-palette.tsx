@@ -12,6 +12,7 @@ import {
   Monitor,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { PALETTE_LESSONS_KEY, cacheGet, cacheSet, isCurrentUser, onUserChange } from "@/lib/client-cache";
 import { resolveLessonTitle } from "@/lib/lesson-plan";
 import { cn } from "@/lib/utils";
 import { Kbd } from "@/components/ui/panel";
@@ -90,30 +91,44 @@ export function CommandPalette({
     return () => cancelAnimationFrame(t);
   }, [open]);
 
-  /* ---- lessons, fetched once on first open ----------------------------- */
+  /* ---- lessons: show the cached list at once, refresh on every open ------ */
+  // Stale-while-revalidate, scoped to the signed-in user (see client-cache).
+  React.useEffect(() => onUserChange(() => setLessons(null)), []);
+
   React.useEffect(() => {
-    if (!open || lessons !== null) return;
+    if (!open) return;
     let cancelled = false;
     void (async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!session?.user) {
+      const userId = session?.user?.id;
+      if (!userId) {
         if (!cancelled) setLessons([]);
         return;
       }
-      const { data } = await supabase
+      const cached = cacheGet<SavedLesson[]>(userId, PALETTE_LESSONS_KEY);
+      if (cached && !cancelled) setLessons(cached);
+      const { data, error } = await supabase
         .from("saved_lessons")
         .select("id, subject, grade, topic, chapter, created_at")
-        .eq("user_id", session.user.id)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(50);
-      if (!cancelled) setLessons((data ?? []) as SavedLesson[]);
+      // A late answer for a closed palette or a previous account is dropped.
+      if (cancelled || !isCurrentUser(userId)) return;
+      if (error) {
+        setLessons((prev) => prev ?? []); // keep stale rows if we have them
+        return;
+      }
+      const fresh = (data ?? []) as SavedLesson[];
+      cacheSet(userId, PALETTE_LESSONS_KEY, fresh);
+      setLessons(fresh);
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, lessons]);
+  }, [open]);
 
   const go = React.useCallback(
     (href: string) => {
