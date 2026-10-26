@@ -4,6 +4,63 @@ Prepared on branch `release/unified-staging` (worktree `C:\Liyaah\teacher-app-un
 **Nothing pushed, merged or deployed. Production untouched. No branch, worktree or commit was deleted or rewritten.**
 Integrated code tip: **`a18abb0`** (this report is committed on top of it).
 
+# >>> DEPLOYMENT RESULT (2026-10-26) — read this first <<<
+
+**Staging is deployed and live. It is NOT declared fully secure or fully verified** (see "Not verified" below).
+
+| # | Item | Result |
+|---|---|---|
+| 1 | Vercel project / team | `project-scquo` (`prj_evS8AChRJBl5N7nY7ZO5ItrBLhg1`), team `teacher-app` ("Mohammed Yusuf's projects"). The existing CLI session (Vercel CLI 58.9.0, authenticated as `yusufbasheer-cpu`) was used for read-only inspection; no token, OTP or password was requested or read. The deploy itself was the Git push. |
+| 2 | Domain configuration | `staging.layah.in` is a project domain with **`gitBranch: staging`**, verified, no redirect, **no custom environment** (a Preview domain). `www.layah.in` has no branch (Production). **No domain or branch setting was changed.** |
+| 3 | Branch binding | Follows `staging` (the earlier worry that it followed the Gamma experiment branch was wrong). Production branch is `main`; Production still serves `dc955af`. |
+| 4 | Git | `git push origin release/unified-staging:staging`, fast-forward `052d638..29e013a`, no force. `main` unchanged. Local `staging` (`74a9784`) and all other branches/worktrees untouched. |
+| 5 | Final SHA / deployment | **`29e013a`** · **`dpl_9BkvWxdNgapZWjXCRDjKvewzAjL6`** · `https://project-scquo-nggkd2ke1-teacher-app.vercel.app` · Preview · READY (built automatically by the Vercel–GitHub integration, region iad1). `staging.layah.in` aliases this deployment (checked with `vercel inspect staging.layah.in`). Previous deployment, for rollback: `dpl_8V2X3ksNWZHahboQKwNmybPFAz4C` (`052d638`, `project-scquo-m84u5g9ix-teacher-app.vercel.app`). |
+| 6 | Supabase identity | Live `/api/environment-check`: `isolated: true, ok: true, supabaseRef: esqnyktumxscyvznftlc, violations: [], anonKeyMatchesProject: true, serviceKeyMatchesProject: true, liveRazorpayKeyPresent: false, siteUrl: https://staging.layah.in`. The production ref `jbwevzvtloahjoamwnjt` is absent from the client bundle; in source it exists only as a blocklist constant in server-side isolation guards and operator scripts. |
+| 7 | HTTPS | Valid (HSTS `max-age=31536000; includeSubDomains`). `robots.txt` = `Disallow: /`. |
+
+## Environment-variable metadata (names and scopes only; no values read)
+54 variables. **Branch-scoped to `staging`** (they override the shared Preview+Production entries): `NEXT_PUBLIC_SUPABASE_URL/ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, all `GAMMA_*` (including `GAMMA_API_KEY`, `GAMMA_ENVIRONMENT_NAME`, `GAMMA_ALLOWED_SUPABASE_REFS`, `GAMMA_EXPORT_HOST_ALLOWLIST`), `PPT_GENERATION_PROVIDER`, `EXPERIMENT_*`, `RAZORPAY_KEY_ID/KEY_SECRET/PRO_PLAN_ID/WEBHOOK_SECRET`, `DEEPSEEK_*_USD_PER_MILLION`.
+**Configured:** Gamma, DeepSeek key, fal.ai key (Preview), Supabase (staging override), isolation guard.
+
+**Findings — shared with Production, not branch-scoped. Not changed; your decision:**
+1. `DEEPSEEK_API_KEY`: the same key serves Preview and Production, so usage and cost cannot be separated.
+2. `NEXT_PUBLIC_POSTHOG_KEY/HOST`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN` point at production projects; staging is protected only by the new code gate (verified live: 0 outbound telemetry requests). Safer long term: remove them from the Preview scope.
+3. `SMTP_*`: staging sends auth and welcome mail through the production SMTP account. `SUPER_ADMIN_PIN` is shared.
+4. `PYTHON_PPT_API_URL` is shared with Production (the `PPT_TEMPLATE_SERVICE_*` pair has a separate Preview entry).
+5. `PEXELS_API_KEY` exists for Production only, so the stock-photo fallback is unavailable on staging.
+6. `CRON_SECRET` is absent everywhere, so the cron endpoint fails closed (verified live: 401 for no auth, a forged `x-vercel-cron-schedule` header, and a wrong bearer). That is fine for Preview, where crons do not run, but it is **required before Production can run maintenance**.
+7. Razorpay keys are staging-scoped; test-versus-live was confirmed only through the server-side isolation check (`liveRazorpayKeyPresent: false`), not by reading values.
+Not inspectable from here: Supabase Auth redirect URLs and Site URL (dashboard), storage bucket privacy.
+
+## Pre-deployment checks (on the pushed tip)
+`tsc` clean · Vitest 77 files, **741 passed**, 11 skipped · ESLint 0 errors (72 warnings, baseline) · `next build` passes · secret scan of the diff clean · client bundle has no production ref, no server-secret names, no key-shaped strings · `build` is plain `next build` (no migration step) · app does not need the unapplied Phase 2 migration to start · cron fails closed.
+
+## Live smoke tests on https://staging.layah.in (anonymous only)
+**Passed:** `/`, `/pricing`, `/about`, `/faq`, `/login`, `/signup` return 200 with title, canonical and JSON-LD; mobile 390 px has no horizontal scroll; anonymous `/my-lesson-plans` redirects to `/login`; **0** outbound PostHog/Sentry/`/ingest`/GA requests; no secret patterns in `/`, `/login`, `/pricing`, `/api/environment-check`; anonymous `GET /api/user-usage`, `GET …/pptx/themes`, `POST …/pptx`, `POST …/pptx/artifact` return **401**; cron returns **401** in all three attempts. `POST /api/lesson-plan` returns 400 for an invalid body *before* authentication (shape validation only); `authenticateRequest` runs before any provider call (checked in source), so no paid call is reachable anonymously. `GET /api/super-admin/me` anonymously returns `{"isSuperAdmin":false}` by design.
+**Observations, not fixed:**
+- Console: `vercel.live/_next-live/feedback/feedback.js` is blocked by CSP on Preview. Only the Vercel comment widget is affected; the deferred toolbar-CSP commits (§3E) address exactly this. Cosmetic.
+- `/login` stays light under `prefers-color-scheme: dark` emulation, while the landing page and app follow the theme. Not investigated whether this is intended.
+Screenshots: `docs/release/screenshots/live-login-dark.png`, `live-landing-mobile.png`.
+
+## Not verified (blocked)
+- **Authenticated flows** (login, dashboard, saved lessons, school navigation, logout, cache isolation, command palette, mobile drawer and swipe on the *live* build, safe-area on a device): no authorized staging test session is available to automation and no credentials were retrieved. The earlier mock-auth coverage does **not** count as live verification.
+- **Gamma PPT:** code-level only (integration present, `gammaKeyPresent: true`, provider `gamma`, theme and artifact routes enforce auth). **No real Gamma export, artifact reuse or private download was exercised**, and no paid call was made. Student-instruction slides, required illustrations and speaker notes are verified in source and tests, not in a real exported deck.
+- **Cross-user isolation on live data:** needs two staging accounts.
+- **Staging database and Phase 2:** not inspected. Migration `20261025120000_phase2_rpc_and_school_policy_hardening.sql` is **still pending** (not applied; needs separate approval) and the DB-backed isolation tests have not run, so staging must not be called secure.
+
+## Verdicts
+- **Staging deployment: GO — done.** Live, correct SHA, correct domain/project/Supabase, no regression visible in anonymous checks.
+- **Staging "fully verified / secure": NO-GO** until the authenticated smoke checklist, one approved real Gamma export (plus reload and re-download without a new credit), and the Phase 2 catalog inventory, migration and isolation tests are done.
+- **Production readiness: NO-GO.** `CRON_SECRET` missing in Production, Phase 2 unapplied and unverified, shared production keys in the Preview scope, authenticated and paid paths unverified.
+
+## Rollback (staging only)
+1. Instant: `vercel alias set project-scquo-m84u5g9ix-teacher-app.vercel.app staging.layah.in --scope teacher-app` re-points the domain to `dpl_8V2X3ksNWZHahboQKwNmybPFAz4C` (the `052d638` build); or use the dashboard's Assign Domain on that deployment. A later push to `staging` moves the alias again.
+2. Durable (Git): `git revert -m 1 d5baea8` and `git revert -m 1 5fa06b9`, plus reverts of `32d24d7`, `a24804a`, `a18abb0`, pushed as a normal fast-forward. Never force-push.
+3. Production and `main` are not involved.
+
+---
+*The sections below were written before deployment and are kept as the audit trail.*
+
 ## Recommendation
 
 | | |
