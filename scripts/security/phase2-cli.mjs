@@ -61,6 +61,16 @@ function resultFromError(out) {
   try { return JSON.parse(s); } catch { return s; }
 }
 
+const F8_MIGRATION = join(here, "..", "..", "supabase", "migrations", "20261026120000_phase2b_school_rls_recursion_fix.sql");
+
+// Compact, pageable result payloads (the Management API truncates error messages at ~900 chars).
+function resultPayload(sliceArg, idPrefix) {
+  if (sliceArg.startsWith("fail:")) {
+    return `(select coalesce(jsonb_agg(jsonb_build_object('t', left(test, 56), 'v', verdict, 'd', left(detail, 80)) order by test), '[]'::jsonb) from (select * from r where verdict <> 'PASS' order by test offset ${Number(sliceArg.slice(5)) * 4} limit 4) x)`;
+  }
+  return `(select jsonb_build_object('totals', (select jsonb_object_agg(verdict, c) from (select verdict, count(*) c from r group by 1) t), 'ids', (select string_agg(split_part(test, ' ', 1) || '=' || left(verdict, 1), ' ' order by test) from r where test like '${idPrefix}%'), 'generic_nonpass', (select count(*) from r where test like 'generic:%' and verdict <> 'PASS')))`;
+}
+
 const [mode, ...flags] = process.argv.slice(2);
 
 if (mode === "inventory") {
@@ -126,7 +136,27 @@ rollback;
 `;
   const { out } = query(head + tail);
   console.log(JSON.stringify({ mode, slice: sliceArg, result: resultFromError(out), rawTail: resultFromError(out) ? undefined : out.slice(-600) }, null, 1));
+} else if (mode === "school-test") {
+  // F8: school RLS test. Live state by default; with --with-migration the F8 migration is applied INSIDE the
+  // rolled-back transaction first (a dry run). Both always end in RAISE EXCEPTION, so nothing persists.
+  const withMigration = flags.includes("--with-migration");
+  if (!flags.includes("--approve-fixture-test")) throw new Error("refusing: inserts fixture users/schools inside an always-rolled-back transaction. Re-run with --approve-fixture-test.");
+  if (withMigration && !flags.includes("--approve-dry-run")) throw new Error("refusing: --with-migration executes the F8 DDL inside an always-rolled-back transaction. Re-run with --approve-dry-run.");
+  const body = readFileSync(join(here, "phase-2b-school-rls-test.sql"), "utf8");
+  const cut = body.lastIndexOf("select verdict, test, detail from r");
+  if (cut < 0) throw new Error("test file shape changed");
+  const sliceArg = (flags.find((f) => f.startsWith("--slice=")) || "--slice=ids").slice("--slice=".length);
+  const tail = `
+do $$
+begin
+  raise exception 'P2_RESULT:%', ${resultPayload(sliceArg, "S")}::text;
+end $$;
+rollback;
+`;
+  const migration = withMigration ? readFileSync(F8_MIGRATION, "utf8") + String.fromCharCode(10) : "";
+  const { out } = query("begin;" + String.fromCharCode(10) + migration + body.slice(0, cut) + tail);
+  console.log(JSON.stringify({ mode, withMigration, slice: sliceArg, result: resultFromError(out), rawTail: resultFromError(out) ? undefined : out.slice(-600) }, null, 1));
 } else {
-  console.error("usage: phase2-cli.mjs inventory | dry-run --approve-dry-run | isolation-test --approve-fixture-test");
+  console.error("usage: phase2-cli.mjs inventory | dry-run --approve-dry-run | isolation-test --approve-fixture-test | school-test --approve-fixture-test [--with-migration --approve-dry-run]");
   process.exit(2);
 }

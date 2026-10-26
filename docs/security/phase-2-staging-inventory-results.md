@@ -4,7 +4,38 @@
 **Date:** 2026-10-26. **Method:** official Supabase CLI 2.122.0 (`npx`, no project dependency added) → `supabase db query --linked --project-ref esqnyktumxscyvznftlc` (Management API; no database password, `psql` or Docker). Every statement was SELECT-only and passed an automated guard (no write keywords, no side-effect functions) *before* any ran. Nothing was written to the database by the investigation, other than the CLI's own short-lived login role (see §J).
 **Sanitised:** no tokens, passwords, connection strings, IP addresses or row data from application tables appear here. Database output is treated as untrusted data.
 
-## CLOSURE (2026-10-26, applied to staging) — read this first
+## CLOSURE 2 (2026-10-26) — F8 fixed on staging; F5 decided — read this first
+
+**F8 inspection.** Live catalog: tables owned by `postgres`, RLS enabled and not forced, `postgres` has `BYPASSRLS`, session user is `postgres`, no existing helper. The cycle is exactly two edges: `school_accounts."Teachers read own school account"` → `school_teachers`, and `school_teachers."School admins read/delete school teachers"` → `school_accounts`. Cutting one edge suffices.
+
+**Helper review (SECURITY DEFINER not assumed safe).** `public.admin_school_account_ids()`: no parameters (nothing to enumerate), returns `uuid` ids only, equality on `lower(admin_email)` vs the caller's own JWT email (no LIKE, so `_`/`%` are literal), `set search_path = ''` with schema-qualified relations, owner `postgres`, EXECUTE revoked from `PUBLIC`/`anon` and granted to `authenticated`/`service_role` (policies run with the invoking role's privilege). Direct callers learn only which schools *they* administer, which "School admins read own school account" already shows them. Tests S21–S25 exercise it directly (admin: own school only; teacher, non-member, wildcard-email: nothing; anon: denied).
+
+**Migration.** `supabase/migrations/20261026120000_phase2b_school_rls_recursion_fix.sql`, SHA-256 `065b9e7a473b7a235d6052d22ccb2c0dd237586944b05787984deb27f0189671`. Phase 2 migration `1a121d0a…2221` untouched. No destructive statement.
+
+**Dry run** (whole migration applied inside a rolled-back transaction, then the 28 tests): **28/28 PASS**. Rollback proven: afterwards the helper did not exist, all five original policies were intact, 0 fixtures, 0 pending transactions, history still 50 rows.
+
+**Apply + live verification.** Applied atomically to staging only. Live catalog: helper owner `postgres`, `secdef`, `stable`, `search_path=""`, ACL `{postgres, service_role, authenticated}` (no PUBLIC/anon); `School admins read/delete school teachers` now call the helper; **0** `school_teachers` policies reference `school_accounts`; the other three policies and all Phase 2 grants unchanged; no data changed. History: one `migration repair --status applied 20261026120000` → 50→51 rows, 0 existing rows changed or removed, baseline rows and the Phase 2 row byte-identical.
+
+**Test results.** New school suite `scripts/security/phase-2b-school-rls-test.sql` (28 checks: teacher own/other school, admin A/B, unauthorised, removed member, anon, cross-user, cross-school update/delete, wildcard/underscore/case emails, helper direct calls, service role, authorized member removal):
+| State | Result |
+|---|---|
+| Before fix (live) | **25 FAIL / 3 PASS** — every authenticated check `42P17 infinite recursion`; only anon (S16–17) and service role (S26) passed |
+| Dry run with migration (rolled back) | **28 PASS** |
+| After apply (live) | **28 PASS** |
+| Full Phase 2 isolation suite after apply | **89 PASS / 0 FAIL / 0 SKIP** (T13a–d, T14, T20a–b now execute) |
+| Real staging REST API, public anon key | `school_accounts`, `school_teachers` → `200 []`; helper RPC and `refund_user_generation` → `401 42501` |
+Fixture cleanup: 0 fixture users, 0 school rows, auth users unchanged (2), 0 pending transactions.
+**Limit:** a live *authenticated* JWT request was **not** made (would require a committed throwaway user, outside the rollback-only authorization). Authenticated behaviour = catalog privileges + forged-claims simulation (the mechanism PostgREST uses), reported as such.
+
+**Production school schema (metadata only; independent identity check: the live production bundle points at `jbwevzvtloahjoamwnjt`).** `school_teachers` there has `school_id` (nullable), no `generations_used_this_month`, nullable `user_id`/`email`/`role`, `UNIQUE (school_id,user_id)`, no CHECKs, two indexes. Full sanitised comparison: [`school-teachers-schema-comparison.md`](./school-teachers-schema-comparison.md).
+
+**F5 decision.** Repo/staging contract (`school_account_id`, `UNIQUE(user_id)`, `generations_used_this_month`) is the one under which all code paths are satisfiable; production is behind it. Staging code keeps `ff87bfd`. **It must not reach production before production is aligned** (it would break production school queries). A data-preserving production alignment is drafted in the comparison doc — not approved, not run. No duplicate column, no shim.
+
+**Status after Closure 2:** F1, F2, F4, F8 closed on staging; F5 decided (staging code correct, production unaligned); F6/F7 hardening still proposed; live authenticated-session test pending. Phase 2 on staging: **GO**; production: **NO-GO**.
+
+---
+
+## CLOSURE (2026-10-26, applied to staging)
 
 > Sections 0–M below are the **pre-migration snapshot** and are kept as the audit trail. This section records what was done afterwards, on **staging only**. Production was never queried or touched.
 

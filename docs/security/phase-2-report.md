@@ -1,5 +1,21 @@
 # Security Phase 2 — Database, RLS and storage isolation
 
+> ## CLOSURE 2 — 2026-10-26: F8 fixed on staging; F5 decided; production school schema inspected (metadata only)
+> Evidence: [`phase-2-staging-inventory-results.md`](./phase-2-staging-inventory-results.md) ("CLOSURE 2") and [`school-teachers-schema-comparison.md`](./school-teachers-schema-comparison.md). Production was touched only by four fixed catalog `SELECT`s on `public.school_teachers`; no rows, auth tables, secrets or writes.
+>
+> | Item | Result |
+> |---|---|
+> | **F8 root cause** | Two policies referenced each other: `school_accounts` "Teachers read own school account" → `school_teachers`; `school_teachers` "School admins read/delete" → `school_accounts`. Every `authenticated` read raised `42P17`. Fail-closed; the app (service role) was unaffected. |
+> | **F8 fix** | New migration `20261026120000_phase2b_school_rls_recursion_fix.sql` (SHA-256 `065b9e7a473b7a235d6052d22ccb2c0dd237586944b05787984deb27f0189671`): one argument-less `SECURITY DEFINER` helper `admin_school_account_ids()` (owner `postgres`, `STABLE`, `search_path = ''`, EXECUTE only for `authenticated`/`service_role`, returns only the caller's own administered school ids) and the two admin policies now call it. The Phase 2 migration was not edited or replayed. |
+> | **Staging status** | Dry run (whole migration + tests inside a rolled-back transaction): **28/28 PASS**; rollback proven. Applied atomically to staging; verified in the live catalog; recorded with one `migration repair --status applied 20261026120000` (50→51 rows, 0 existing rows changed, both baseline rows byte-identical). |
+> | **Tests** | School test (new, 28 checks): before **25 FAIL/3 PASS** (all `42P17`), after **28/28 PASS** on the live applied state. Full Phase 2 isolation suite: **89 PASS / 0 FAIL / 0 SKIP** (T13a–d, T14, T20a–b — cross-school, removed-member, admin-write isolation — now actually execute and pass). Fixtures left behind: 0. |
+> | **Real API (anon key)** | `school_accounts`/`school_teachers` → `200 []`; `admin_school_account_ids` and `refund_user_generation` → `401 42501`. |
+> | **Not proven** | **A real authenticated JWT test was not run** (it needs a committed throwaway staging user, outside the rollback-only authorization). Authenticated behaviour is verified by catalog privileges and forged-claims role simulation, which is how PostgREST establishes the role, but it is not a live-session test. |
+> | **Production schema** | `school_teachers` on production has **`school_id`** (nullable), **no `generations_used_this_month`**, nullable `user_id`/`email`/`role`, `UNIQUE(school_id,user_id)` only, no CHECKs. Staging has `school_account_id` NOT NULL, `UNIQUE(user_id)`, usage column, CHECKs. |
+> | **F5 decision** | Contract of record = repo-migration schema (`school_account_id`). Staging code keeps `ff87bfd`. **Production is behind the contract**; `ff87bfd` would break production school queries if merged to `main`/deployed first. A production alignment is drafted in the comparison doc (not run, needs approval and data checks). No duplicate column, no shim. |
+>
+> **Verdict:** staging database closure for F1/F2/F4/F8 = **GO, verified** (anonymous live API + in-DB role simulation; live authenticated session still pending). Phase 2 overall: **GO on staging, not production**. **Production = NO-GO**: migrations 20261025120000/20261026120000 not applied or checked there; school schema drift; `ff87bfd` must not reach `main` before production is aligned.
+>
 > ## CLOSURE 2026-10-26 — Phase 2 migration applied to STAGING and verified live
 > Details, evidence and hashes: [`phase-2-staging-inventory-results.md`](./phase-2-staging-inventory-results.md) (section "CLOSURE"). Production was never queried or changed.
 >

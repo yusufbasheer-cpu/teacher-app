@@ -4,7 +4,26 @@ Prepared on branch `release/unified-staging` (worktree `C:\Liyaah\teacher-app-un
 **Nothing pushed, merged or deployed. Production untouched. No branch, worktree or commit was deleted or rewritten.**
 Integrated code tip: **`a18abb0`** (this report is committed on top of it).
 
-# >>> PHASE 2 SECURITY CLOSURE ON STAGING (2026-10-26, fourth pass) — newest section <<<
+# >>> F8 + F5 CLOSURE (2026-10-26, fifth pass) — newest section <<<
+
+Evidence: `docs/security/phase-2-staging-inventory-results.md` ("CLOSURE 2"), `docs/security/phase-2-report.md`, `docs/security/school-teachers-schema-comparison.md`. **Nothing pushed or deployed; the live site still runs `29e013a`. Production: four fixed catalog SELECTs on `public.school_teachers` only (plus the CLI's temporary login role); no rows, no writes.**
+
+1. **F8 root cause:** `school_accounts` "Teachers read own school account" ↔ `school_teachers` "School admins read/delete" subqueried each other → every authenticated read raised `42P17`. Fail-closed; app unaffected (service role).
+2. **Migration:** `supabase/migrations/20261026120000_phase2b_school_rls_recursion_fix.sql`, SHA-256 `065b9e7a473b7a235d6052d22ccb2c0dd237586944b05787984deb27f0189671` (new version; Phase 2 migration untouched). One argument-less definer helper `admin_school_account_ids()` (`search_path=''`, owner postgres, EXECUTE authenticated/service_role only) + two policy rewrites.
+3. **Staging status:** dry run 28/28 (rolled back, proven) → applied → live catalog verified → recorded via a single `migration repair` (50→51 rows; nothing else changed).
+4. **Direct authenticated tests:** forged-claims role simulation, 28/28 and the full Phase 2 suite **89 PASS / 0 FAIL / 0 SKIP**. **A live authenticated-JWT request was NOT made** (needs a committed throwaway user, outside the rollback-only authorization) — this is the one remaining gap in "tested for real".
+5. **Cross-school isolation:** teacher A/B, admin A/B, removed member, non-member, anon, wildcard/underscore emails, cross-school delete/update — all enforced; authorised member removal still works; service role unaffected. Real API with the public anon key: school tables `200 []`, helper and refund RPC `401 42501`.
+6. **Production school schema:** `school_id` (nullable), no `generations_used_this_month`, nullable `user_id`/`email`/`role`, `UNIQUE(school_id,user_id)`, no CHECKs.
+7. **F5 decision:** contract of record = repo-migration schema (`school_account_id`, `UNIQUE(user_id)`, usage column). Staging code keeps `ff87bfd`; production is behind and needs a data-preserving alignment (drafted, **not** approved or run). No duplicate column or shim.
+8. **Application-code changes required:** none further for staging. For production: the alignment migration **before** any school code from this branch ships; `ff87bfd` **must not be merged to `main`/deployed to production first** (it would break production school queries).
+9. **Files changed (this pass):** `supabase/migrations/20261026120000_phase2b_school_rls_recursion_fix.sql`, `scripts/security/phase-2b-school-rls-test.sql`, `scripts/security/phase2-cli.mjs` (`school-test` mode), `docs/security/school-teachers-schema-comparison.md`, the three reports.
+10. **Checks:** `tsc` clean · 741 tests pass · ESLint 0 errors (72 warnings, baseline) · `next build` passes · secret scan clean.
+11. **Remaining blockers:** live authenticated-session test; production alignment + merge guard for `ff87bfd`; F6/F7 hardening (default function privileges, table `TRUNCATE/TRIGGER/REFERENCES` grants, anonymous inserts); the Gamma spend-cap gate and shared-key findings from the second pass; **the live website (`29e013a`) still runs the old school code (`school_id`) against a staging database whose column is `school_account_id`, so school flows (enrollment, HOD, school admin, super-admin school views) remain broken on the website until `ff87bfd` is pushed to `staging` (a normal fast-forward, staging only — needs your go-ahead).** The Phase 2 Gamma owner-folder code check is already live in `29e013a`; the database changes (Phase 2 + 2b) are live independently of any deploy.
+12. **Verdict:** Phase 2 on **staging: GO** (F1/F2/F4/F8 closed and verified; authenticated live-session pending). **Production: NO-GO.**
+
+---
+
+# >>> PHASE 2 SECURITY CLOSURE ON STAGING (2026-10-26, fourth pass) <<<
 
 Evidence and hashes: `docs/security/phase-2-staging-inventory-results.md` ("CLOSURE") and `docs/security/phase-2-report.md`. Staging project `esqnyktumxscyvznftlc` only. **Nothing pushed or deployed; the live website still runs `29e013a`. Production untouched.**
 
