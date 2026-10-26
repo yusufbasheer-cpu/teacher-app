@@ -17,15 +17,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
   }
 
-  let bodyEmail: string | undefined;
+  let fromGoogleLogin = false;
   try {
-    const body = (await req.json()) as { email?: string; fromGoogleLogin?: boolean };
-    bodyEmail = body.email?.trim();
-    console.log("[school-enrollment] API called", {
-      userId: auth.userId,
-      fromGoogleLogin: body.fromGoogleLogin === true,
-      bodyEmail: bodyEmail ?? null,
-    });
+    const body = (await req.json()) as { fromGoogleLogin?: boolean };
+    fromGoogleLogin = body.fromGoogleLogin === true;
   } catch {
     /* no body */
   }
@@ -38,10 +33,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
   }
 
-  const userEmail = (bodyEmail ?? user.email ?? "").trim();
+  const userEmail = (user.email ?? "").trim();
   if (!userEmail) {
     return NextResponse.json({ error: "No email on account." }, { status: 400 });
   }
+
+  console.log("[school-enrollment] API called", {
+    userId: auth.userId,
+    fromGoogleLogin,
+  });
 
   const result = await processSchoolEnrollment(auth.userId, userEmail);
 

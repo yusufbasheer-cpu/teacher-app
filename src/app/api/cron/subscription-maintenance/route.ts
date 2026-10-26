@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasValidInternalBearer } from "@/lib/api-authorization";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { reconcileAllSubscriptions } from "@/lib/subscription-billing";
 
@@ -9,12 +10,12 @@ export const runtime = "nodejs";
  * - send reminders when a cycle has 5, 3, 1, or 0 days left
  * - downgrade overdue active/pending subscriptions back to Free
  *
- * This route is intended for Vercel Cron and is only accepted when Vercel's
- * cron schedule header is present.
+ * Vercel sends CRON_SECRET as a bearer token. The schedule header is not an
+ * authenticator because any direct caller can add it themselves.
  */
 export async function GET(req: Request) {
-  if (!req.headers.get("x-vercel-cron-schedule")) {
-    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (!hasValidInternalBearer(req, process.env.CRON_SECRET)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const admin = getSupabaseServiceRole();

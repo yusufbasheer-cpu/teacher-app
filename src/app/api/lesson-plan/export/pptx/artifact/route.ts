@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   try {
     const row = await new SupabaseGammaStore().findReusableArtifact({ userId: auth.userId, requestHash, themeId: typeof body.themeId === "string" ? body.themeId : null, imageSource: typeof body.imageSource === "string" ? body.imageSource : null, imageStyle: typeof body.imageStyle === "string" ? body.imageStyle : null });
     if (!row?.artifactPath || row.validationReport?.verdict !== "passed") return NextResponse.json({ error: "No validated Gamma PowerPoint is available." }, { status: 404 });
-    const buffer = await readGammaArtifact(row.artifactPath);
+    const buffer = await readGammaArtifact(auth.userId, row.artifactPath);
     return new NextResponse(new Uint8Array(buffer), { status: 200, headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation", "Content-Disposition": 'attachment; filename="lesson-gamma.pptx"', "Cache-Control": "private, no-store", "X-Layah-PPT-Provider": "gamma", "X-Layah-Gamma-Validation": "passed" } });
   } catch (error) {
     const message = error instanceof GammaError ? error.message : "Stored Gamma PowerPoint is unavailable.";

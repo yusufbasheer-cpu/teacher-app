@@ -15,7 +15,7 @@ export type SchoolEnrollmentClientResult =
       message: string;
     };
 
-export async function runSchoolEnrollment(userEmail: string): Promise<SchoolEnrollmentClientResult> {
+export async function runSchoolEnrollment(): Promise<SchoolEnrollmentClientResult> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -24,7 +24,7 @@ export async function runSchoolEnrollment(userEmail: string): Promise<SchoolEnro
     return { ok: false, message: "Session expired. Please log in again." };
   }
 
-  console.log("[school-enrollment] Client calling API", { email: userEmail });
+  console.log("[school-enrollment] Client calling API");
 
   let response: Response;
   try {
@@ -35,7 +35,6 @@ export async function runSchoolEnrollment(userEmail: string): Promise<SchoolEnro
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: userEmail,
         fromGoogleLogin: true,
       }),
     });

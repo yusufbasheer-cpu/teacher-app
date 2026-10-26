@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/send-email";
 import { getSupabaseServiceRole } from "@/lib/supabase-admin";
 import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
+import { authenticateRequest } from "@/lib/user-usage-server";
 
 export const runtime = "nodejs";
 
 type RegistrationBody = {
-  adminEmail: string;
-  adminUserId?: string;
   schoolName: string;
   emailDomain: string;
   country: string;
@@ -22,6 +21,14 @@ export async function POST(req: Request) {
   const ipLimit = checkRateLimit(`school-register:ip:${getClientIp(req)}`, 5, HOUR_MS);
   if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
 
+  const auth = await authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
+  }
+  if (!auth.email) {
+    return NextResponse.json({ error: "No email on account." }, { status: 400 });
+  }
+
   let body: RegistrationBody;
   try {
     body = (await req.json()) as RegistrationBody;
@@ -30,10 +37,7 @@ export async function POST(req: Request) {
   }
 
   const {
-    adminEmail,
-    adminUserId,
     schoolName,
-    emailDomain,
     country,
     numTeachers,
     phone,
@@ -42,8 +46,13 @@ export async function POST(req: Request) {
     planPrice,
   } = body;
 
-  if (!adminEmail || !schoolName || !emailDomain || !country || !numTeachers || !planSelected) {
+  if (!schoolName || !country || !numTeachers || !planSelected) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+  }
+
+  const emailDomain = auth.email.split("@")[1]?.trim().toLowerCase();
+  if (!emailDomain) {
+    return NextResponse.json({ error: "The authenticated account email is invalid." }, { status: 400 });
   }
 
   const admin = getSupabaseServiceRole();
@@ -56,8 +65,8 @@ export async function POST(req: Request) {
   }
 
   const insertPayload = {
-    admin_email: adminEmail.trim().toLowerCase(),
-    admin_user_id: adminUserId || null,
+    admin_email: auth.email.trim().toLowerCase(),
+    admin_user_id: auth.userId,
     school_name: schoolName.trim(),
     email_domain: emailDomain.trim().toLowerCase(),
     country: country.trim(),
@@ -98,7 +107,7 @@ export async function POST(req: Request) {
 
   try {
     await sendNotificationEmail({
-      adminEmail,
+      adminEmail: auth.email,
       schoolName,
       emailDomain,
       country,
@@ -115,7 +124,7 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-async function sendNotificationEmail(data: Omit<RegistrationBody, "adminUserId">) {
+async function sendNotificationEmail(data: RegistrationBody & { adminEmail: string }) {
   const subject = `New School Registration - ${data.schoolName}`;
 
   const text = [
