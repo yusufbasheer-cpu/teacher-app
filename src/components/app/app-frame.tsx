@@ -556,7 +556,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
             className="animate-fade-in absolute inset-0 bg-ink/30 backdrop-blur-[2px]"
           />
           <div className="animate-rise absolute inset-y-0 left-0 flex w-[264px] max-w-[82vw] flex-col border-r border-line bg-surface shadow-overlay">
-            <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-line-subtle px-3">
+            <div className="flex h-[calc(52px+env(safe-area-inset-top))] shrink-0 items-center justify-between border-b border-line-subtle px-3 pt-[env(safe-area-inset-top)]">
               <span className="flex items-center gap-2">
                 <Image src="/logo-mark.png" alt="" aria-hidden width={24} height={24} className="size-6 rounded-sm object-cover" />
                 <span className="text-[13px] font-semibold text-ink">Layah</span>
@@ -573,7 +573,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
               onNavigate={() => setDrawer(false)}
               onBeforeNavigate={onBeforeNavigate}
             />
-            <div className="border-t border-line-subtle p-3">
+            <div className="border-t border-line-subtle p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <ThemeToggle />
             </div>
           </div>
@@ -590,7 +590,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
           *within* this container) pinned regardless of how long the page
           content is. */}
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <header className="sticky top-0 z-40 flex h-[52px] shrink-0 items-center gap-2 border-b border-line-subtle bg-canvas/85 px-3 backdrop-blur-md sm:px-4">
+        <header className="sticky top-0 z-40 flex h-[calc(52px+env(safe-area-inset-top))] shrink-0 items-center gap-2 border-b border-line-subtle bg-canvas/85 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-md sm:px-4">
           <Button
             variant="ghost"
             size="icon-sm"

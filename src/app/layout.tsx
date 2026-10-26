@@ -72,6 +72,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Lets env(safe-area-inset-*) report real values on notched / home-indicator
+  // devices; fixed chrome pads itself with them. Zero on other devices.
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f7f8f8" },
     { media: "(prefers-color-scheme: dark)", color: "#181c1e" },

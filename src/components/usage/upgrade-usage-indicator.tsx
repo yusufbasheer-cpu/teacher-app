@@ -44,7 +44,7 @@ export function UpgradeUsageIndicator({ usage, loading }: Props) {
             <p className="truncate text-sm font-semibold" style={{ color: NAVY }}>
               {UPGRADE_COPY[upgradePlan].label}
             </p>
-            <p className="mt-0.5 truncate text-xs" style={{ color: "var(--text-secondary)" }}>
+            <p className="mt-0.5 truncate text-xs tabular-nums" style={{ color: "var(--text-secondary)" }}>
               {UPGRADE_COPY[upgradePlan].sub}
             </p>
           </div>
