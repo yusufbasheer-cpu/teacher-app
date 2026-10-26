@@ -20,7 +20,8 @@ export const PALETTE_LESSONS_KEY = "palette-lessons";
 
 const store = new Map<string, unknown>();
 const listeners = new Set<() => void>();
-let activeUser: string | null = null;
+// undefined = no auth event seen yet; null = known signed out.
+let activeUser: string | null | undefined;
 let wired = false;
 
 function wire() {
@@ -28,7 +29,7 @@ function wire() {
   wired = true;
   supabase.auth.onAuthStateChange((event, session) => {
     const next = session?.user?.id ?? null;
-    const changed = event === "SIGNED_OUT" || (activeUser !== null && next !== activeUser);
+    const changed = event === "SIGNED_OUT" || (typeof activeUser === "string" && next !== activeUser);
     activeUser = next;
     if (changed) {
       store.clear();
@@ -56,7 +57,7 @@ export function cacheInvalidate(key: string) {
 
 /** False once the session has moved to a different user than `userId`. */
 export function isCurrentUser(userId: string) {
-  return activeUser === null || activeUser === userId;
+  return activeUser === undefined || activeUser === userId;
 }
 
 /** Runs when the cache is cleared (sign-out / account change). Returns unsubscribe. */

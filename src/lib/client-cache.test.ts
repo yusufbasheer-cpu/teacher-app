@@ -32,6 +32,14 @@ describe("client-cache", () => {
     expect(c.cacheGet("b", "lessons")).toBeUndefined();
   });
 
+  it("rejects a late response for a user who has signed out", async () => {
+    const c = await import("./client-cache");
+    c.cacheGet("a", "x"); // first use subscribes to auth events
+    authCb("INITIAL_SESSION", { user: { id: "a" } });
+    authCb("SIGNED_OUT", null);
+    expect(c.isCurrentUser("a")).toBe(false);
+  });
+
   it("invalidates a key for every user", async () => {
     const c = await import("./client-cache");
     c.cacheSet("a", "lessons", 1);

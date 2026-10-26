@@ -236,7 +236,7 @@ function RailContent({
 }) {
   const groups = navGroups(roles);
   return (
-    <nav className="flex-1 overflow-y-auto px-2.5 py-2" aria-label="Main">
+    <nav className="flex-1 touch-pan-y overflow-y-auto px-2.5 py-2" aria-label="Main">
       {groups.map((group, gi) => (
         <div key={group.id} className={cn(gi > 0 && "mt-4")}>
           {!collapsed ? (
@@ -319,7 +319,7 @@ function AccountMenu({ user }: { user: User }) {
         aria-label="Account"
         className={cn(
           "relative flex size-7 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-brand-on",
-          "before:absolute before:-inset-2 before:content-['']",
+          "pointer-coarse:before:absolute pointer-coarse:before:-inset-2 pointer-coarse:before:content-['']",
           "transition-opacity duration-[110ms] hover:opacity-90",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
         )}
@@ -612,7 +612,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
             <h2 className="truncate text-[13px] font-medium text-ink">{routeLabel(activePath)}</h2>
           </span>
 
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1.5 pointer-coarse:gap-4">
             <QuotaPill />
 
             {/* Dispatches the same ⌘K the palette listens for, so there is one
@@ -627,8 +627,9 @@ export function AppFrame({ user, children }: { user: User; children: React.React
               aria-label="Search lessons or run a command"
               className={cn(
                 "relative flex items-center gap-2 rounded-md border border-line-subtle bg-surface py-1 pl-2 pr-1.5",
-                // Invisible extension so the touch target is ≥44px without changing the look.
-                "before:absolute before:-inset-x-2 before:-inset-y-3 before:content-['']",
+                // Touch only: invisible extension so the target is ≥44px without changing the look.
+                // The cluster's gap is 16px on touch (2 × the 8px extension) so adjacent extensions never overlap.
+                "pointer-coarse:before:absolute pointer-coarse:before:-inset-x-2 pointer-coarse:before:-inset-y-3 pointer-coarse:before:content-['']",
                 "text-[12px] text-faint transition-colors hover:border-line hover:text-muted",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
               )}

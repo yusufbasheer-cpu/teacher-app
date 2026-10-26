@@ -37,6 +37,11 @@ export function useUserUsage(enabled: boolean) {
   // request, an unmount, or an account change.
   const latest = useRef(0);
 
+  /** Invalidate any request still in flight. */
+  const supersede = useCallback(() => {
+    latest.current++;
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!enabled) return;
     const id = ++latest.current;
@@ -77,15 +82,15 @@ export function useUserUsage(enabled: boolean) {
   useEffect(() => {
     void refresh();
     const stopWatching = onUserChange(() => {
-      latest.current++;
+      supersede();
       setState({ usage: null, loading: enabled, headline: "", subline: "" });
       void refresh();
     });
     return () => {
-      latest.current++;
+      supersede();
       stopWatching();
     };
-  }, [refresh, enabled]);
+  }, [refresh, enabled, supersede]);
 
   return { ...state, refresh, applyUsage };
 }

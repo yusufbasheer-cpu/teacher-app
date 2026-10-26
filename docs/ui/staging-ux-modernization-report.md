@@ -1,69 +1,88 @@
-# Staging UX modernization — report
+# Staging UX modernization — report (final verification pass)
 
 Branch `ux/staging-modernization` (worktree `teacher-app-ux-modernization`), cut from `origin/staging` @ `052d638`.
 **Nothing pushed, merged or deployed.** Production untouched. Companion: `staging-ux-modernization-audit.md`.
 
-## Integration dependencies (for the separate consolidation task)
-- Local `staging` (74a9784) holds **51 commits not in `origin/staging`** (by patch-id): PPT design phases 0–4
-  (layout registry, layout budgets, presentation preview/download UI hardening), the "frontend revamp" commit
-  `8ffe0db`, library recency bands `889d6d3`, auth/CSP/telemetry fixes, and others. Some may be superseded by the
-  rebased history on `origin/staging`; this was **not** reconciled. Local `staging` is preserved unchanged.
-- GitHub Deployments show `origin/staging` @ `052d638` as the latest **Preview** deployment (2026-10-25). I could not
-  confirm which URL maps to it (Vercel CLI/MCP not authorised here), so "deployed to the intended staging URL" is
-  **unconfirmed**.
-- This branch edits `app-frame.tsx`, `command-palette.tsx`, `button.tsx`, `sheet.tsx`, `cookie-banner.tsx`,
-  `active-session-guard.tsx`, `use-user-usage.ts`; expect conflicts if the 51 commits (notably the revamp commit)
-  restyle the same files.
-- Security phase 1/2 worktrees are not merged here; no auth/RLS/payment/credit/PPT code was changed.
+## How the browser verification was done (and its limits)
+- **No real authenticated session was used.** The only logged-in-looking tab was `staging.layah.in` (a different origin
+  and a build without these changes), and reading stored credentials was refused, so none were read.
+- Instead: **isolated mock-auth tests** against the local dev server. A *temporary, uncommitted* route under a protected
+  prefix (so the real `AppShell` → `AppFrame` wiring renders) plus a helper page that sets a **fake, unsigned JWT
+  session** in the browser client. Every `*.supabase.co` and `/api/*` call was intercepted in the browser and answered with
+  mock data, so **no request reached the real backend**; the proxy never accepted these sessions (they exist only
+  client-side). Both temporary files were deleted before committing (`git status` clean apart from the fixes below).
+- What this proves: the real shell/header/drawer/palette/hook code behaves correctly. What it does **not** prove:
+  behaviour against real Supabase data, real RLS, real server rendering of authenticated pages, or real devices.
+- Emulation: Chromium CDP (`setSafeAreaInsetsOverride` 47/34, `setTouchEmulationEnabled`, which makes `pointer: coarse`
+  true), Playwright media emulation for light/dark and reduced motion, synthetic touch events for swipes.
+- Dev server (Turbopack, React StrictMode) — numbers are dev-mode.
 
-## Commits (local, on top of origin/staging)
-| SHA | Content |
-|---|---|
-| c094f8b | safe-area insets, tabular usage figures, audit |
-| f6cb5d8 | user-scoped stale-while-revalidate (`client-cache` + tests), race-safe usage hook, palette caching |
-| 4fff474 | drawer focus trap, swipe-to-close, platform-aware shortcut hint, touch hit areas |
-| (this commit) | report, screenshots, `decoding="async"` on generated slide image |
+## Defects found by browser testing, and fixed (this pass)
+| # | Defect | Fix |
+|---|---|---|
+| 1 | `client-cache.isCurrentUser` treated "signed out" (`null`) like "no auth event seen yet", so a request in flight for user A would have been **accepted after logout**. Found by reasoning from the race test, confirmed with a failing unit test. | Distinguish `undefined` (unknown) from `null` (signed out); regression test fails against the old logic. |
+| 2 | Swipe-to-close **never fired on the nav list**: `touch-action` resolves up to the nearest scroll container, so the panel's `pan-y` did not apply to the `<nav overflow-y-auto>`; the browser took the gesture and sent `pointercancel` (reproduced with pointer-event log). | `touch-pan-y` on that `<nav>`. After fix: nav swipe and header swipe both close. |
+| 3 | **Overlapping touch targets.** My `::after` hit-area on `Button` stacked on the existing `size-11` mobile buttons (drawer close measured 60×60; Regenerate/Delete rows had a 2 px gap), and the header's Search and Account buttons overlapped by 10×44 px (pre-existing 8 px extensions across a 6 px gap). | Removed my `::after` approach. Icon `Button` sizes now grow to a real `size-11` on `pointer: coarse` (cannot overlap by construction; same pattern as the existing `max-md:size-11` buttons). Header: Search/Account extensions apply on touch only and the cluster gap is 16 px on touch (2 × 8 px). Re-measured: **0 overlaps** in header and drawer. |
+| 4 | New ESLint warning (`react-hooks/exhaustive-deps`, `use-user-usage.ts`) introduced by my ref mutation in an effect cleanup. | Moved the ref bump into a `useCallback`. Lint is back to the baseline count. |
 
 ## Status of every requested item
-Legend: **IV** implemented & verified · **AIV** already implemented & verified · **P** partial · **NA** not applicable · **D** deferred
+**Fully browser-verified** (mock-auth harness, real components):
+- Command palette: Ctrl+K opens (loading state → list), Esc closes, search narrows results (verified with a prefix query; mid-word queries intentionally don't match), opens in ~10 ms.
+- User-scoped stale-while-revalidate: cached list shown instantly on reopen, fresh list replaces it, **exactly one request per open** (2 opens → 2 requests); no request loop while idle (0 `/api/user-usage` calls over 3 s).
+- Account switch: after switching mock user A → B the palette never showed A's content (checked early and late) and showed B's.
+- Logout: after `signOut`, no user content remains in the DOM (palette unmounts with the frame).
+- Mobile drawer: opens/closes; **focus trap** (0 escapes over 80 Tab/Shift-Tab presses); Escape closes; **focus restored to the opener**; `role=dialog aria-modal` with label.
+- Swipe-left-to-close on touch input: short swipe snaps back (transform cleared), vertical drag does not close, long swipe closes from both nav list and header.
+- Safe-area: header height 99 px = 52 + 47 inset, first control at y = 50.6 (below the inset); drawer header same; cookie banner bottom padding = 34 px inset.
+- Touch targets: 0 overlapping hit areas in header and drawer (geometry measured including pseudo-elements).
+- Light, dark, and reduced-motion rendering of the authenticated chrome (animation durations resolve to ~0 under `reduce`).
+- No hydration warnings attributable to the app: all 22 mismatch reports are attributes injected by a browser extension (`bis_skin_checked`, `bis_register`, `__processed_*`). No app console errors; the 401/404 lines are from my mocks.
 
-| Item | Status | Detail |
-|---|---|---|
-| Render profiling / optimization | **D** | Not done. Profiling needs an authenticated session; reading the test-account credential was blocked by the permission classifier and I did not work around it. No speculative memoization added. |
-| Progressive image placeholders | **NA / P** | No remote image galleries exist: slide previews are data URLs extracted from generated PPTX, template thumbnails are base64, logos use `next/image`. BlurHash would add a dependency for nothing. Added `decoding="async"` to the one generated-image `<img>`; previews already reserve space with `cqw` boxes. |
-| Platform-aware shortcut hint | **P** | Header shows `⌘K` on Apple, `Ctrl K` elsewhere (`useModKey`, `useSyncExternalStore`, SSR-safe). Typechecked and built; **not browser-verified** (authenticated header). |
-| Drawer focus trap & restore | **P** | `useFocusTrap`: focus in, Tab/Shift-Tab trap, restore to opener. No unit test; **not browser-verified** (needs login). |
-| Touch targets | **P** | Icon `Button` sizes get an invisible `::after` hit area to ≥44px on `pointer: coarse` only; drawn size unchanged. Known limit: adjacent icon buttons closer than the slop overlap by a few px. Not measured on a device. Raw `<button>`s were not swept. |
-| Drawer swipe | **P** | `useSwipeToClose`: touch-only, claims the gesture only when clearly leftward-horizontal, follows the finger, closes past 35% width or on a flick, else snaps back; `touch-pan-y` keeps vertical scroll. **Not verified with touch input.** Bottom-sheet swipe (original #13) is NA: `Sheet` has no consumers. |
-| CTA hierarchy | **D** | Not audited screen-by-screen this round; `Button` already encodes rank (one filled primary). |
-| Form states | **P** | Existing: inline validation, double-submit guards (generator controls disabled while `loading`), `beforeunload` guard in studio. No success/loading input variants added; no screen currently needs them. |
-| Consistent radii | **AIV (code)** | `rounded-2xl/3xl` already alias the `--r-xl` token in `globals.css`, so legacy classes resolve to the scale. No change needed. |
-| Interruptible animations | **AIV (code)** | Motion is CSS transition/keyframe (interruptible, non-blocking); the drawer closes instantly with no exit queue. Not instrumented in a browser. |
-| Safe navigation transitions | **AIV (code)** | `beforeunload` + `onBeforeNavigate` guard in studio, `loading.tsx` per route, no history traps found. Not exercised in a browser (login). |
-| Stale-while-revalidate | **IV (unit) / P (browser)** | `src/lib/client-cache.ts`: entries keyed by user id; cleared on `SIGNED_OUT` or user change; `isCurrentUser` drops late responses. Palette shows cached lessons instantly, revalidates on every open, keeps stale rows on error, and is invalidated after a lesson delete. 2 unit tests. `useUserUsage` is deliberately **not cached** (credits/plan): it keeps the last value during refresh, ignores superseded, unmounted and other-account responses, and resets on account change. Not exercised against a live session. |
-| View transitions | **D** | Next 16.2.6 exposes `experimental.viewTransition` only; deferred per your decision. |
-| Safe-area | **IV (cookie banner) / P (rest)** | Chromium `Emulation.setSafeAreaInsetsOverride` (top 47 / bottom 34), 390×844: cookie banner padding-bottom = 34 px, 33.7 px gap below the card, no horizontal scroll. Header, drawer, sheet and session banner use the same pattern but are authenticated-only or transient → **not browser-verified**. |
-| Skeletons, palette, toasts, typography | **AIV (code)** | Kept unchanged. Reduced motion verified in browser: shimmer/animations resolve to 0.00001 s, 1 iteration. |
-| Optimistic updates, undo toasts, OTP autofill | **NA** | No rename/favourite/archive, only permanent delete behind a confirm dialog; no OTP form. |
-| Tabular numbers | **P** | Added to both usage indicators (code only; authenticated). |
+**Unit-tested only:** `client-cache` scoping / clear-on-change / late-response rejection (3 tests). `useModKey` and the usage hook have no dedicated tests.
 
-## Verification results
+**Implemented, build/typecheck-verified, not behaviourally verified:**
+- Platform-aware `⌘K` / `Ctrl K` header label: header renders on Windows (`Ctrl K` hint not asserted in a macOS browser; Cmd+K itself was not tested — no macOS available).
+- Swipe *flick* (fast short swipe): untestable here — emulated touch events arrive ~1 s apart in dev, so velocity can't be reproduced. Distance-based closing is verified.
+- Real-device touch, real iOS/Android safe-area behaviour, predictive back.
+
+**Not applicable:** optimistic updates, undo toasts, OTP autofill (no supporting workflows); progressive image placeholders (no remote gallery images; `decoding="async"` added to the generated-slide `<img>`).
+
+**Deferred:** view transitions (Next 16.2.6 is experimental-flag only); render profiling and before/after bundle/CWV measurements; CTA hierarchy audit; automated axe-core scan (see below).
+
+**Already implemented, unchanged:** skeletons + `loading.tsx`, command palette, sonner toasts, tabular numbers, balanced headings, radius tokens (`rounded-2xl/3xl` alias `--r-xl`).
+
+## Interaction performance (dev mode, MutationObserver timing, 7 samples)
+Command palette open: 9–12.5 ms. Drawer open: 2–2.6 ms (first open 57 ms). An earlier rAF-based probe showed ~1 s values; that was `requestAnimationFrame` throttling while extra tabs held focus, not app latency, and is discarded.
+
+## Network
+Per page load the shell issues `/api/user-usage` from several hook instances (6 in dev incl. StrictMode double-run, ≈3 in production) — **pre-existing duplication**, not caused by cache updates, and not changed (de-duplicating usage across components would be a feature). Palette lessons: 1 request per open. No loops.
+
+## Test results (final)
 - `tsc --noEmit`: clean.
-- Vitest: 67 files passed, 4 skipped; **698 tests passed**, 11 skipped (baseline 696; +2 cache tests).
-- ESLint: 0 errors, **73 warnings** (baseline 72; one new warning of the existing `set-state-in-effect` kind, not individually located).
-- `next build`: succeeds.
-- Playwright: not configured in the repo; ad-hoc Playwright-MCP checks on public `/landing` only.
-- Browser (public pages, mobile 390×844): light and dark render; reduced motion; keyboard Tab shows a visible indicator (ring box-shadow) on 5 of 6 stops, the 6th was ambiguous in my probe and is unverified. Console: only dev-server HMR WebSocket refusals (`ws://localhost:3077`); no app errors or hydration warnings seen.
-- Screenshots: `docs/ui/screenshots/mobile-safe-area-cookie-banner.png`, `docs/ui/screenshots/mobile-dark-reduced-motion.png`.
-- Before/after render profiling, bundle size, Core Web Vitals, axe: **not measured**.
+- Vitest: 67 files passed / 4 skipped; **699 tests passed**, 11 skipped (baseline 696; +3 `client-cache`).
+- ESLint: **0 errors, 72 warnings** (equals baseline; the warning I introduced is fixed).
+- `next build`: succeeds (compile + static generation of 104 pages). Built with placeholder `NEXT_PUBLIC_SUPABASE_*` values supplied on the command line because the real env file was deliberately not copied for this check.
+- Playwright test suite: none configured; browser checks were ad-hoc via the Playwright MCP. No test setup was added.
+- axe-core: **not run** — loading it required fetching and executing third-party code, which the permission layer declined. Substituted a manual audit: no unnamed interactive controls, 1 `h1`, `lang="en"`, one `main`, no images without `alt`, labelled modal dialog.
 
-## Not verified: needs an authenticated session
-Drawer focus and swipe, header shortcut hint, palette caching, usage hook behaviour, header safe-area, and flows
-1–20 of the original test list beyond public pages. To finish: allow reading the test-account password in this
-session, or log in manually on `npm run dev` (port 3002 used here) and repeat the drawer/palette checks at 390 px.
+## Screenshots (`docs/ui/screenshots/`)
+`mobile-safe-area-cookie-banner.png`, `mobile-header-safe-area.png` (390 px, 47/34 px insets), `mobile-drawer-open.png`, `mobile-drawer-dark-reduced-motion.png`, `mobile-header-dark.png`, `mobile-dark-reduced-motion.png` (public page), `desktop-command-palette.png`, `desktop-palette-user-b.png`.
 
-## Known limitations
-- Touch hit-slop can overlap on tightly packed icon buttons.
-- A swipe that starts during the snap-back transition is not special-cased.
-- `client-cache` is memory-only (lost on reload) by design.
-- The 51 diverged commits may conflict with these edits.
+## Files changed in this pass
+`src/lib/client-cache.ts`, `src/lib/client-cache.test.ts`, `src/hooks/use-user-usage.ts`,
+`src/components/app/app-frame.tsx` (nav `touch-pan-y`; touch-only header extensions + gap),
+`src/components/ui/button.tsx` (touch sizing replaces overlapping extension), new screenshots, this report.
+
+## Remaining limitations / blockers
+- Real-account verification remains outstanding (needs a human-authenticated session or a test account the browser can use legitimately); mock data cannot reveal real-schema or RLS problems.
+- Drawer nav rows are 32 px tall and the theme toggle segments 24 px: they meet WCAG 2.2 AA target size (24 px) but not the 44 px aspiration; changing them is a broad restyle, left alone.
+- Icon `Button`s now grow to 44 px on touch devices; dense toolbars using `icon-xs/sm` (currently 7 call sites) get slightly larger on phones. Visual check on real pages not done.
+- Dialog/sheet close buttons are `absolute top-3 right-3` and grow inward on touch; not visually verified (no dialog opened in the harness).
+- Latencies are dev-mode; production numbers not taken.
+- The browser used for testing spontaneously opened unrelated adult-content tabs (ad pop-ups from another tab, not from this app or any navigation of mine); they were not interacted with, but the shared browser profile should be checked.
+
+## Integration dependencies (for the separate consolidation task)
+- Local `staging` (74a9784) holds **51 commits not in `origin/staging`** by patch-id (PPT design phases 0–4, frontend revamp `8ffe0db`, library recency bands `889d6d3`, auth/CSP/telemetry fixes…). Not reconciled; local `staging` untouched.
+- GitHub Deployments show `origin/staging` @ `052d638` as the latest Preview deployment; the URL mapping is unconfirmed.
+- Expect conflicts in `app-frame.tsx`, `command-palette.tsx`, `button.tsx`, `sheet.tsx`, `cookie-banner.tsx`, `active-session-guard.tsx`, `use-user-usage.ts` if the 51 commits restyle them.
+- No auth/RLS/payment/credit/PPT code touched.
