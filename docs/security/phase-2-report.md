@@ -1,5 +1,24 @@
 # Security Phase 2 — Database, RLS and storage isolation
 
+> ## UPDATE 2026-10-26 — live staging evidence now exists
+> The blocker recorded below ("no SQL access to the isolated staging project") has been removed. Using the official Supabase CLI (`db query --linked`, Management API) the read-only catalog inventory was run against **`esqnyktumxscyvznftlc` only**. Full sanitised results: [`phase-2-staging-inventory-results.md`](./phase-2-staging-inventory-results.md).
+>
+> | Finding | Live status |
+> |---|---|
+> | **F1** `refund_user_generation` | **EXPLOITABLE.** Definer function with no authorization check; EXECUTE live for `anon` and `authenticated`. Pending migration §1 fixes it. |
+> | **F2** usage RPCs | anon EXECUTE live, but each rejects a null `auth.uid()` → not exploitable; least-privilege fix pending (§2). |
+> | **F3** Gamma storage | Protected at the DB layer (private bucket, RLS on, 0 client policies, 11/11 owner-folder objects). App-layer check deployed in `29e013a`. |
+> | **F4** school admin policy | **Present** (wildcard `ILIKE`, role `public`, full UPDATE grant); narrow precondition; staging has 0 school rows. Pending migration §3. |
+> | **F5** `school_id` vs `school_account_id` | Resolved on staging: **`school_account_id` only**. 7 application files still query `school_id` → school flows broken on staging; production schema unknown (not queried). |
+> | **F6/F7** | Default function privileges and table `TRUNCATE/TRIGGER/REFERENCES` grants (defense-in-depth); anonymous `INSERT` on `feedback`/`waitlist`. |
+>
+> Migration `20261025120000` was reviewed against the live schema: correct signatures, no destructive statements, legitimate service-role refunds preserved, rollback comment corrected. It is **still unapplied** and awaits approval. `supabase db push` is blocked by two live-only baseline history entries, so the approved path is `db query --file` + `migration repair --status applied`.
+> The isolation test is prepared and wrapped (`scripts/security/phase2-cli.mjs`) behind explicit approval flags.
+>
+> **Verdict (unchanged): NO-GO for "secure".** F1 is live. Exact approvals requested: see §M of the results document.
+>
+> *The sections below are the original pre-access report and are kept as the audit trail.*
+
 **Verdict: NO-GO (blocked). The code and migration are ready, but the staging-backed verification has not run.**
 The brief does not accept unit tests as proof of isolation. This session had no SQL access to the isolated
 staging project, so none of the following has happened yet:

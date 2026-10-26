@@ -4,7 +4,24 @@ Prepared on branch `release/unified-staging` (worktree `C:\Liyaah\teacher-app-un
 **Nothing pushed, merged or deployed. Production untouched. No branch, worktree or commit was deleted or rewritten.**
 Integrated code tip: **`a18abb0`** (this report is committed on top of it).
 
-# >>> POST-DEPLOYMENT VERIFICATION (2026-10-26, second pass) — newest section <<<
+# >>> PHASE 2 LIVE DATABASE INVESTIGATION (2026-10-26, third pass) — newest section <<<
+
+Detail: `docs/security/phase-2-staging-inventory-results.md`. Staging project `esqnyktumxscyvznftlc` only; read-only; no migration applied; nothing pushed or deployed.
+
+- **Tooling:** Supabase CLI 2.122.0 via `npx` (isolated, no dependency added). `supabase db query --linked --project-ref esqnyktumxscyvznftlc` runs SQL through the Management API (no DB password/`psql`/Docker). The CLI was already authenticated; no token store was read. That login can also see production, so a hard guard refuses the production ref and every command carries the staging ref.
+- **Database connectivity:** working. The earlier "no database access" blocker is **closed**.
+- **Result:** 25 public tables, **all RLS-enabled**; 15 default-deny; migrations through `20261023093000` applied; Gamma tables, private bucket and 11 owner-folder artifacts present; **staging holds no school data**.
+- **New severity-High finding (live): F1 `refund_user_generation` is exploitable** — a `SECURITY DEFINER` function with no authorization check, executable by `anon` and `authenticated`. Anyone with the public anon key can refund any user's credits (and read their usage row), including their own repeatedly. Combined with the uncapped Gamma spend on staging (see §4/§5 of the previous section) this makes the Gamma cost cap and the Phase 2 migration the two gating items before any paid test.
+- **F4 present** (wildcard policy on `school_teachers`, narrow precondition, no data to protect on staging); **F2** least-privilege only; **F3** protected at the database layer.
+- **New functional finding F5:** live `school_teachers` has `school_account_id` only, but **7 application files query `school_id`** → school enrollment, HOD, school-admin teacher management and 3 super-admin routes fail on staging (errors partly swallowed). Production's schema is unknown; no code change until that is decided.
+- **Corrects earlier text:** "Phase 2 DB state unknown" is now known; the school-flow checks in the smoke checklist (§3) cannot pass until F5 is resolved.
+- **Migration:** reviewed against the live schema — safe, non-destructive, preserves service-role refunds; rollback comment corrected. `supabase db push` is blocked by 2 live-only history rows; use `db query --file` + `migration repair --status applied`. **Not applied; approval requested** (results doc §M).
+- **Tests prepared, not run:** `scripts/security/phase2-cli.mjs` (`dry-run`, `isolation-test`) behind approval flags, rollback guaranteed by a result-carrying `RAISE EXCEPTION`. Expected pre-migration failures: T08b, T15a, T15b, T17, T13d.
+- **Phase 2 verdict:** **NO-GO** for "secure" until approvals 1–4 in §M are done and the isolation test passes. Staging deployment verdict unchanged (GO, live); production NO-GO.
+
+---
+
+# >>> POST-DEPLOYMENT VERIFICATION (2026-10-26, second pass) <<<
 
 Scope: read-only. Nothing pushed, deployed, merged, applied to any database, and no paid call made. Production untouched.
 
