@@ -21,7 +21,7 @@ export type SchoolAccountRow = {
 export type SchoolTeacherRow = {
   id: string;
   /** References school_accounts.id */
-  school_id: string;
+  school_account_id: string;
   user_id: string;
   email: string;
   joined_at: string;

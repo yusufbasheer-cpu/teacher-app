@@ -159,7 +159,7 @@ async function loadTeachersForSchool(
   const { data: teachers, error } = await admin
     .from("school_teachers")
     .select("*")
-    .eq("school_id", schoolId)
+    .eq("school_account_id", schoolId)
     .order("joined_at", { ascending: true });
 
   console.log("TEACHERS QUERY RESULT:", JSON.stringify(teachers), "ERROR:", JSON.stringify(error), "schoolId used:", schoolId);
@@ -262,7 +262,7 @@ export async function updateTeacherRoleInSchool(
   const { data: membership } = await admin
     .from("school_teachers")
     .select("id")
-    .eq("school_id", school.id)
+    .eq("school_account_id", school.id)
     .eq("user_id", teacherUserId)
     .maybeSingle();
 
@@ -273,7 +273,7 @@ export async function updateTeacherRoleInSchool(
   const { error } = await admin
     .from("school_teachers")
     .update({ role, department: department ?? null })
-    .eq("school_id", school.id)
+    .eq("school_account_id", school.id)
     .eq("user_id", teacherUserId);
 
   if (error) {
@@ -302,7 +302,7 @@ export async function removeTeacherFromSchool(
   const { data: membership } = await admin
     .from("school_teachers")
     .select("id")
-    .eq("school_id", school.id)
+    .eq("school_account_id", school.id)
     .eq("user_id", teacherUserId)
     .maybeSingle();
 
@@ -313,7 +313,7 @@ export async function removeTeacherFromSchool(
   const { error: deleteError } = await admin
     .from("school_teachers")
     .delete()
-    .eq("school_id", school.id)
+    .eq("school_account_id", school.id)
     .eq("user_id", teacherUserId);
 
   if (deleteError) {
@@ -324,7 +324,7 @@ export async function removeTeacherFromSchool(
   const { count } = await admin
     .from("school_teachers")
     .select("id", { count: "exact", head: true })
-    .eq("school_id", school.id);
+    .eq("school_account_id", school.id);
 
   await admin
     .from("school_accounts")

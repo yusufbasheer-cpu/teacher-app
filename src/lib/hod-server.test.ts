@@ -13,7 +13,7 @@ describe("HOD service-role saved lesson scope", () => {
       data: {
         user_id: "hod-a",
         email: "hod@example.test",
-        school_id: "school-a",
+        school_account_id: "school-a",
         department: "science",
         role: "hod",
       },
@@ -61,7 +61,7 @@ describe("HOD service-role saved lesson scope", () => {
       department: "science",
     });
 
-    expect(schoolEq).toHaveBeenCalledWith("school_id", "school-a");
+    expect(schoolEq).toHaveBeenCalledWith("school_account_id", "school-a");
     expect(departmentEq).toHaveBeenCalledWith("department", "science");
     expect(lessonsIn).toHaveBeenCalledWith("user_id", ["teacher-a", "teacher-b"]);
   });

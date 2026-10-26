@@ -32,7 +32,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { data: updated, error } = await admin
     .from("school_teachers")
     .update({ role: "admin" })
-    .eq("school_id", schoolId)
+    .eq("school_account_id", schoolId)
     .eq("user_id", userId)
     .select("id");
 

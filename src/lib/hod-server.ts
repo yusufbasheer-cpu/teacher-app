@@ -43,7 +43,7 @@ export async function getHodTeacherRow(userId: string): Promise<HodTeacherRow | 
 
   const { data, error } = await admin
     .from("school_teachers")
-    .select("user_id, email, school_id, department, role")
+    .select("user_id, email, school_account_id, department, role")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -54,7 +54,7 @@ export async function getHodTeacherRow(userId: string): Promise<HodTeacherRow | 
   return {
     userId: data.user_id as string,
     email: data.email as string,
-    schoolId: data.school_id as string,
+    schoolId: data.school_account_id as string,
     department: data.department as string,
   };
 }
@@ -66,7 +66,7 @@ export async function getHodDashboard(hod: HodTeacherRow): Promise<HodDashboardD
   const { data: rawTeachers } = await admin
     .from("school_teachers")
     .select("user_id, email, generations_used_this_month, joined_at")
-    .eq("school_id", hod.schoolId)
+    .eq("school_account_id", hod.schoolId)
     .eq("department", hod.department)
     .order("email", { ascending: true });
 

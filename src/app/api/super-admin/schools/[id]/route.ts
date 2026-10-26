@@ -25,7 +25,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     admin
       .from("school_teachers")
       .select("id, user_id, email, role, department, joined_at, generations_used_this_month")
-      .eq("school_id", schoolId)
+      .eq("school_account_id", schoolId)
       .order("joined_at", { ascending: true }),
   ]);
 

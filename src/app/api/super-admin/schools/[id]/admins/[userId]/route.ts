@@ -30,7 +30,7 @@ export async function DELETE(
   const { data: updated, error } = await admin
     .from("school_teachers")
     .update({ role: "teacher" })
-    .eq("school_id", schoolId)
+    .eq("school_account_id", schoolId)
     .eq("user_id", userId)
     .select("id");
 
