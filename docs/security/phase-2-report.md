@@ -1,5 +1,23 @@
 # Security Phase 2 — Database, RLS and storage isolation
 
+> ## CLOSURE 2026-10-26 — Phase 2 migration applied to STAGING and verified live
+> Details, evidence and hashes: [`phase-2-staging-inventory-results.md`](./phase-2-staging-inventory-results.md) (section "CLOSURE"). Production was never queried or changed.
+>
+> | Item | Result |
+> |---|---|
+> | **F1** `refund_user_generation` | **CLOSED on staging.** EXECUTE now `postgres` + `service_role` only. Baseline test: anon and cross-user refund *succeeded*; post-migration: denied (in-DB tests T15a/T08b/T17 PASS; real REST API with the public anon key → `401 42501 permission denied`). Service-role refund still works (T21a/b PASS). |
+> | **F2** usage RPCs | **CLOSED.** `anon` EXECUTE revoked; `authenticated`/`service_role` kept. |
+> | **F3** Gamma artifacts | Already protected (private bucket, no storage policies, owner-folder objects); T10–T12/T18 PASS before and after. |
+> | **F4** wildcard school policy | **CLOSED.** Policy dropped; `UPDATE` revoked from `anon`/`authenticated`. |
+> | **F5** `school_id` vs `school_account_id` | **Fixed in code for staging (local commit, not deployed); production schema unverified** → not resolved overall. |
+> | **F8 (new)** mutually recursive school RLS policies | **OPEN.** Fails closed (error, no leak); app unaffected (service role). Separate approval required. |
+> | Migration tracking | `20261025120000` recorded via `migration repair --status applied` (one row added, 0 changed, both live-only baseline rows byte-identical). SHA-256 `1a121d0a…2221`. |
+> | Tests | Baseline 9 FAIL/69 PASS/2 SKIP → post 1 FAIL/79 PASS/2 SKIP (remaining = F8 only). Fixtures: 0 left behind. |
+>
+> **Phase 2 verdict: GO for the staging database changes (F1/F2/F4 closed and verified). Phase 2 as a whole is not complete** until F8 is fixed and an authenticated-session test is run. **Production: NO-GO** (the same migration has not been applied or even checked there).
+>
+> *The blocks below are earlier states of this report, kept as the audit trail.*
+>
 > ## UPDATE 2026-10-26 — live staging evidence now exists
 > The blocker recorded below ("no SQL access to the isolated staging project") has been removed. Using the official Supabase CLI (`db query --linked`, Management API) the read-only catalog inventory was run against **`esqnyktumxscyvznftlc` only**. Full sanitised results: [`phase-2-staging-inventory-results.md`](./phase-2-staging-inventory-results.md).
 >

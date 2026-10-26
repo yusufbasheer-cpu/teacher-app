@@ -51,9 +51,14 @@ function query(sqlText) {
 }
 
 function resultFromError(out) {
-  const m = out.match(/P2_RESULT:(\[.*\]|\{.*\})/s);
-  if (!m) return null;
-  try { return JSON.parse(m[1].replace(/\\"/g, '"').replace(/\\n/g, "\n")); } catch { return m[1]; }
+  // The CLI prints the PostgreSQL error as JSON, so the payload arrives backslash-escaped and followed by a CONTEXT line.
+  const i = out.indexOf("P2_RESULT:");
+  if (i < 0) return null;
+  let s = out.slice(i + "P2_RESULT:".length);
+  const c = s.indexOf("CONTEXT:");
+  if (c >= 0) s = s.slice(0, c);
+  s = s.replace(/(\\n|\s)+$/, "").replace(/\\"/g, '"');
+  try { return JSON.parse(s); } catch { return s; }
 }
 
 const [mode, ...flags] = process.argv.slice(2);
@@ -105,15 +110,22 @@ rollback;
   const cut = src.lastIndexOf("select verdict, test, detail from r");
   if (cut < 0) throw new Error("test file shape changed; cannot append the result-carrying tail");
   const head = src.slice(0, cut);
+  // The Management API truncates error messages at ~900 chars, so results are returned in compact slices:
+  //   (default) ids  -> every test id with a one-letter verdict (P/F/S) + verdict totals
+  //   --slice=fail:N -> details of the non-PASS rows, 4 per page (N = 0, 1, 2, ...)
+  const sliceArg = (flags.find((f) => f.startsWith("--slice=")) || "--slice=ids").slice("--slice=".length);
+  const payload = sliceArg.startsWith("fail:")
+    ? `(select coalesce(jsonb_agg(jsonb_build_object('t', left(test, 46), 'v', verdict, 'd', left(detail, 70)) order by test), '[]'::jsonb) from (select * from r where verdict <> 'PASS' order by test offset ${Number(sliceArg.slice(5)) * 4} limit 4) x)`
+    : `(select jsonb_build_object('totals', (select jsonb_object_agg(verdict, c) from (select verdict, count(*) c from r group by 1) t), 'ids', (select string_agg(split_part(test, ' ', 1) || '=' || left(verdict, 1), ' ' order by test) from r where test like 'T%'), 'generic_nonpass', (select count(*) from r where test like 'generic:%' and verdict <> 'PASS')))`;
   const tail = `
 do $$
 begin
-  raise exception 'P2_RESULT:%', (select coalesce(jsonb_agg(jsonb_build_object('test', test, 'verdict', verdict, 'detail', detail) order by test), '[]'::jsonb)::text from r);
+  raise exception 'P2_RESULT:%', ${payload}::text;
 end $$;
 rollback;
 `;
   const { out } = query(head + tail);
-  console.log(JSON.stringify({ mode, result: resultFromError(out), rawTail: resultFromError(out) ? undefined : out.slice(-600) }, null, 1));
+  console.log(JSON.stringify({ mode, slice: sliceArg, result: resultFromError(out), rawTail: resultFromError(out) ? undefined : out.slice(-600) }, null, 1));
 } else {
   console.error("usage: phase2-cli.mjs inventory | dry-run --approve-dry-run | isolation-test --approve-fixture-test");
   process.exit(2);

@@ -4,7 +4,26 @@ Prepared on branch `release/unified-staging` (worktree `C:\Liyaah\teacher-app-un
 **Nothing pushed, merged or deployed. Production untouched. No branch, worktree or commit was deleted or rewritten.**
 Integrated code tip: **`a18abb0`** (this report is committed on top of it).
 
-# >>> PHASE 2 LIVE DATABASE INVESTIGATION (2026-10-26, third pass) — newest section <<<
+# >>> PHASE 2 SECURITY CLOSURE ON STAGING (2026-10-26, fourth pass) — newest section <<<
+
+Evidence and hashes: `docs/security/phase-2-staging-inventory-results.md` ("CLOSURE") and `docs/security/phase-2-report.md`. Staging project `esqnyktumxscyvznftlc` only. **Nothing pushed or deployed; the live website still runs `29e013a`. Production untouched.**
+
+1. **Baseline tests (rolled back, fixture users only):** 9 FAIL / 69 PASS / 2 SKIP. The failures demonstrate the vulnerability: anon and cross-user `refund_user_generation` calls *succeeded*; five definer functions anon-executable; plus the school-policy recursion (F8). Private Gamma artifacts and cross-user table isolation already passed.
+2. **Migration execution:** `20261025120000` (SHA-256 `1a121d0a…2221`) applied atomically to staging after a full dry run (whole file executed, rollback proven by an identical before/after catalog snapshot).
+3. **Permission changes (verified in the live catalog):** `refund_user_generation` → `postgres` + `service_role` only; `ensure_user_usage`, `ensure_own_user_usage`, `consume_user_generation`, `increment_user_generations` → `anon` revoked, `authenticated` + `service_role` kept; policy `school_admin_update_teacher_role` dropped; `UPDATE` on `school_teachers` revoked from `anon`/`authenticated`. Function bodies and data unchanged.
+4. **Migration history:** exactly one `migration repair --status applied 20261025120000`; 49 → 50 rows, 0 existing rows changed, both live-only baseline entries byte-identical. `db push` deliberately not used.
+5. **Post-migration tests:** in-DB 1 FAIL / 79 PASS / 2 SKIP (remaining = F8). New T21: **service-role refund still works** and rejects a stale reset date. Through the **real staging REST API with the public anon key**: all five RPCs and a direct `school_teachers` PATCH → `401 42501`. The *authenticated* role is verified by catalog + in-DB simulation, **not** by a live logged-in session (none available).
+6. **Fixture cleanup:** 0 fixture users/lessons/usage rows/storage objects; 0 school rows; auth users unchanged at 2; 0 pending transactions.
+7. **School-column issue:** live column is `school_account_id`; a minimal application-code commit (7 files + 1 test fixture; auth-metadata key untouched) is prepared **locally, not deployed**. Production's column was **not** checked, so this is **not resolved overall** and must not reach production first.
+8. **New finding F8:** mutually recursive school RLS policies (fail closed; app unaffected). Fix proposed, not applied; needs separate approval.
+9. **Files changed (this pass):** `scripts/security/phase2-cli.mjs` (compact result slices), `scripts/security/phase-2-isolation-transaction-test.sql` (fixture NOT NULL fixes, recursion reported as FAIL, new T21), the 3 reports, and — in a separate commit — `src/lib/{hod-server,school-admin-server,school-enrollment-server,school-accounts}.ts`, `src/lib/hod-server.test.ts`, three `src/app/api/super-admin/schools/**` routes.
+10. **Phase 2 verdict:** staging database changes **GO — done and verified**; Phase 2 overall **not complete** (F8, authenticated-session test). **Production: NO-GO** (migration not applied or checked there; `CRON_SECRET` unset; shared keys; school-column unverified).
+
+**Effect on earlier sections:** the "Staging database and Phase 2" blocker in the second pass is partly cleared (F1/F2/F4 closed live). The cap-less Gamma spend (second pass §4–§5) is still open and is now the main gate to a paid test.
+
+---
+
+# >>> PHASE 2 LIVE DATABASE INVESTIGATION (2026-10-26, third pass) <<<
 
 Detail: `docs/security/phase-2-staging-inventory-results.md`. Staging project `esqnyktumxscyvznftlc` only; read-only; no migration applied; nothing pushed or deployed.
 

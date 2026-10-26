@@ -4,7 +4,69 @@
 **Date:** 2026-10-26. **Method:** official Supabase CLI 2.122.0 (`npx`, no project dependency added) → `supabase db query --linked --project-ref esqnyktumxscyvznftlc` (Management API; no database password, `psql` or Docker). Every statement was SELECT-only and passed an automated guard (no write keywords, no side-effect functions) *before* any ran. Nothing was written to the database by the investigation, other than the CLI's own short-lived login role (see §J).
 **Sanitised:** no tokens, passwords, connection strings, IP addresses or row data from application tables appear here. Database output is treated as untrusted data.
 
-## 0. Verdict at a glance
+## CLOSURE (2026-10-26, applied to staging) — read this first
+
+> Sections 0–M below are the **pre-migration snapshot** and are kept as the audit trail. This section records what was done afterwards, on **staging only**. Production was never queried or touched.
+
+### Environment verification (before every operation)
+- Management API: ref `esqnyktumxscyvznftlc` = **`layah-staging`** (Postgres 17.6.1.166; production is 17.6.1.121). The runner constant-refuses the production ref (a probe copy pointed at production threw before sending anything).
+- Database fingerprint (staging-only facts): Gamma tables with rows, migrations through `20261023093000`, 2 auth users, 0 school rows.
+- Migration file `supabase/migrations/20261025120000_phase2_rpc_and_school_policy_hardening.sql`, **SHA-256 `1a121d0aac1b1845ab7a7718aba50b9c07ae87a036ae3609efddcc452db12221`**, identical to the committed blob and to what was dry-run and applied. The history table stores no checksum column (`version`, `statements`, `name`), so the hash is recorded here.
+- Before-state: `refund_user_generation` ACL `{postgres, anon, authenticated, service_role = X}`; the four usage RPCs likewise; wildcard policy present; `UPDATE` on `school_teachers` held by `anon` and `authenticated`; `refund_user_generation` body hash `7bdbd182b48581195f0d6cffd23d561d`.
+
+### Dry run (rolled back) — covers the **whole** migration
+The complete file ran inside a transaction that ended in `RAISE EXCEPTION`. It is one guarded `DO` block, and every object it guards exists live, so every branch executed. In-transaction results: `refund_user_generation` anon **false**, authenticated **false**, service_role **true**; the four usage RPCs anon **false**, authenticated **true** (consume/ensure) ; wildcard policy **gone** (3 policies remain); `UPDATE` on `school_teachers` false for anon and authenticated. **Rollback proof:** a catalog snapshot after the dry run was identical to the snapshot before it (grants, ACLs, policies, update privilege, history, function-definition hash), and nothing was recorded for the migration.
+
+### Baseline isolation test (before migration, rolled back, fixture users only)
+Result: **9 FAIL · 69 PASS · 2 SKIP** (after fixing two defects in the test's own school fixture — missing NOT NULL `max_teachers` and `email`).
+| Check | Baseline | Meaning |
+|---|---|---|
+| T15a anon can call `refund_user_generation` | **FAIL — call succeeded** | anonymous callers could refund credits |
+| T08b user A refunds user B | **FAIL — call succeeded** | cross-user credit manipulation |
+| T15b anon can execute 5 definer functions | **FAIL ×5** | least-privilege exposure |
+| T17 authenticated can execute a definer fn that takes a caller-chosen id | **FAIL** | same root cause |
+| T13/T14/T20 school isolation | **FAIL — `infinite recursion detected in policy for relation 'school_accounts'`** | NEW finding F8 (below) |
+| generic:A / generic:nosub `school_teachers` | SKIP — same recursion error | |
+| T03–T06 cross-user update/delete/insert/reassign, T08a, T10–T12/T18 Gamma storage, T15c, T16/T16b, T19 | PASS | RLS isolation and private storage already held |
+Real user records were not touched: all DML targeted fixed fixture UUIDs; transactions always rolled back.
+
+### Migration applied (atomic) and verified
+Applied to staging only via `supabase db query --linked --project-ref esqnyktumxscyvznftlc --file <migration>` (a single `DO` statement ⇒ atomic). **Verified against the live catalog, not just the command's exit status:**
+| Object | Before | After |
+|---|---|---|
+| `refund_user_generation(uuid,date)` | anon ✔ authenticated ✔ service_role ✔ | anon ✘ authenticated ✘ **service_role ✔** (ACL `{postgres, service_role}`); body unchanged (same hash) |
+| `ensure_user_usage()`, `ensure_own_user_usage()`, `consume_user_generation()`, `increment_user_generations()` | anon ✔ authenticated ✔ service_role ✔ | anon ✘ **authenticated ✔ service_role ✔** |
+| policy `school_admin_update_teacher_role` | present (wildcard `ILIKE`, role `public`) | **dropped**; remaining: admins delete, admins read, teachers read own |
+| `UPDATE` on `school_teachers` | anon ✔ authenticated ✔ | anon ✘ authenticated ✘ service_role ✔ (SELECT/DELETE kept) |
+| data | 2 users, 0 school rows | unchanged |
+Not changed by design: helper functions `plan_generations_limit`, `usage_*` and trigger function `sync_school_active_teachers` remain executable by `anon`/`authenticated` (see §I).
+
+### Migration-history reconciliation (documented, minimal)
+`supabase db push` was **not** used (blocked by the two live-only baseline rows). The version was confirmed absent, the change set confirmed present in the catalog, and then exactly one command ran: `supabase migration repair --status applied 20261025120000 --linked --project-ref esqnyktumxscyvznftlc`. Snapshot comparison (row hash per row): **49 → 50 rows; added only `20261025120000 phase2_rpc_and_school_policy_hardening`; 0 existing rows changed or removed; `20260101000000` and `20260101001000` byte-identical.**
+
+### Post-migration tests
+- **In-database (rolled back):** **1 FAIL · 79 PASS · 2 SKIP.** Now passing: T15a, T08b, T15b ×5, T17. New **T21a/T21b pass: the legitimate `service_role` refund still works (used 2→1) and still refuses a stale reset date.** T10–T12/T18 (private Gamma artifacts), T19 (normal user operations) and T03–T06 pass. The only FAIL/SKIPs are the school-policy recursion (F8), unchanged by this migration.
+- **Through the real staging REST API with the public anon key** (an outsider's view; random non-existent UUID so no record can be affected): `refund_user_generation`, `ensure_user_usage`, `consume_user_generation`, `increment_user_generations`, `ensure_own_user_usage` → **HTTP 401 `42501 permission denied for function …`**; direct `PATCH school_teachers` → **401 `42501`**.
+- **Not proven by a real session:** the *authenticated* role was verified by catalog privileges and in-database role simulation (T08b, T17), not by a live logged-in JWT (no staging test session exists).
+
+### Fixture cleanup evidence (after all runs)
+Fixture users `p2-%@example.invalid` **0**, fixture lessons **0**, fixture usage rows **0**, fixture storage objects **0**, `school_accounts` **0**, `school_teachers` **0**, auth users **2 (unchanged)**, pending prepared transactions **0**. (Gamma object/row counts rose by one between inspections because testers are actively using staging; unrelated to these tests.)
+
+### F8 — NEW: mutually recursive school RLS policies (not fixed; separate approval)
+`school_accounts` policy "Teachers read own school account" subqueries `school_teachers`, whose policy "School admins read school teachers" subqueries `school_accounts` → every `authenticated` read of either table raises `42P17 infinite recursion`. It **fails closed** (an error, no data exposure) and the application is unaffected because it reads these tables with the service role, but it makes client-side school isolation untestable and any future client read of these tables broken. Minimal fix to propose (not applied): two `STABLE SECURITY DEFINER` helpers (`my_school_account_ids()` from `school_teachers`, `my_admin_school_ids()` from `school_accounts`; `set search_path = public`; `revoke … from public, anon`; `grant … to authenticated`) and rewrite the cross-referencing subqueries in the three policies to call them. Requires separate approval and its own dry run + isolation test.
+
+### F5 — school column mismatch (status)
+Live column is `school_account_id` (FK `school_teachers_school_account_id_fkey → school_accounts(id) ON DELETE CASCADE`); no `school_id` anywhere. A **separate, minimal application-code commit** (local only, not deployed) renames the DB-column references in 7 files + 1 test fixture to `school_account_id`; the auth `user_metadata.school_id` key is deliberately untouched. Typecheck clean, 741 tests pass. **Production's column name was not checked (not authorised); this code change must not reach production until it is.** The mismatch is therefore **fixed in code for staging, unverified for production — not resolved overall.**
+
+### Closure verdict
+- **F1 no longer exploitable on staging** (verified live: catalog + in-DB role tests + external REST). F2 and F4 closed. F3 was already protected.
+- Restricted grants verified live; service-role refunds verified operational; migration tracking consistent and auditable; no production touched.
+- **Remaining open:** F8 (fail-closed, separate approval), F5 production verification, F6/F7 (hardening), and real-session authenticated verification.
+- **Phase 2 database verdict for staging: GO (F1/F2/F4 closed). Phase 2 overall: not "complete"** until F8 is resolved and an authenticated session test is run. **Production: NO-GO.**
+
+---
+
+## 0. Verdict at a glance (PRE-MIGRATION SNAPSHOT)
 
 | ID | Finding | Live status on staging | Exploitable? | Fixed by pending migration? |
 |---|---|---|---|---|

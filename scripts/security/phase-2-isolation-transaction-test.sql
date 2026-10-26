@@ -197,10 +197,10 @@ declare
   sa uuid := '30000000-0000-4000-8000-0000000000a1'; sb uuid := '30000000-0000-4000-8000-0000000000b2';
   n bigint;
 begin
-  insert into public.school_accounts (id, school_name, admin_email, email_domain) values
-    (sa, 'P2 School A', 'p2-admin-a@example.invalid', 'p2a.example.invalid'),
-    (sb, 'P2 School B', 'p2-admin-b@example.invalid', 'p2b.example.invalid');
-  execute format('insert into public.school_teachers (%I, user_id) values ($1, $3), ($1, $5), ($2, $4)', col)
+  insert into public.school_accounts (id, school_name, admin_email, email_domain, max_teachers) values
+    (sa, 'P2 School A', 'p2-admin-a@example.invalid', 'p2a.example.invalid', 5),
+    (sb, 'P2 School B', 'p2-admin-b@example.invalid', 'p2b.example.invalid', 5);
+  execute format('insert into public.school_teachers (%I, user_id, email) values ($1, $3, ''p2-teacher-a@example.invalid''), ($1, $5, ''p2-removed@example.invalid''), ($2, $4, ''p2-teacher-b@example.invalid'')', col)
     using sa, sb, '00000000-0000-4000-8000-0000000000c3'::uuid, '00000000-0000-4000-8000-0000000000d4'::uuid, '00000000-0000-4000-8000-000000000017'::uuid;
 
   -- T13: teacher A sees no other school, no other school's members.
@@ -236,7 +236,8 @@ begin
   select count(*) into n from public.school_accounts; reset role;
   perform pg_temp.rec('T14 removed member sees no school', n = 0, n || ' visible');
 exception when others then
-  reset role; insert into r values ('T13/T14/T20 school fixtures', 'SKIP', sqlerrm) on conflict do nothing;
+  -- 42P17 = policy evaluation itself fails (e.g. mutually recursive policies): that is a real defect, not a skipped test.
+  reset role; insert into r values ('T13/T14/T20 school fixtures', case when sqlstate = '42P17' then 'FAIL' else 'SKIP' end, sqlerrm) on conflict do nothing;
 end $$;
 
 -- ── Authorized access still works (T19) ─────────────────────────────────────────────────────────
@@ -257,6 +258,30 @@ do $$ begin
   perform public.consume_user_generation(); reset role;
   perform pg_temp.rec('T15c anon cannot reserve a generation', false, 'call succeeded');
 exception when insufficient_privilege or invalid_authorization_specification then reset role; perform pg_temp.rec('T15c anon cannot reserve a generation', true, sqlerrm); end $$;
+
+-- ── T21: the legitimate server-side refund path (service_role) must keep working after the lock-down ──
+do $$
+declare
+  v jsonb;
+  used_before int;
+  used_after int;
+  rd date;
+begin
+  select generations_used, reset_date into used_before, rd from public.user_usage where user_id = '00000000-0000-4000-8000-0000000000b2';
+  perform pg_temp.act('service_role', null, null);
+  v := public.refund_user_generation('00000000-0000-4000-8000-0000000000b2', rd);
+  reset role;
+  select generations_used into used_after from public.user_usage where user_id = '00000000-0000-4000-8000-0000000000b2';
+  perform pg_temp.rec('T21a service_role refund still works', used_before - used_after = 1, 'used ' || used_before || ' -> ' || used_after);
+
+  perform pg_temp.act('service_role', null, null);
+  v := public.refund_user_generation('00000000-0000-4000-8000-0000000000b2', rd - 40);
+  reset role;
+  select generations_used into used_before from public.user_usage where user_id = '00000000-0000-4000-8000-0000000000b2';
+  perform pg_temp.rec('T21b service_role refund skips a stale reset_date', used_before = used_after, 'used stays ' || used_before);
+exception when others then
+  reset role; insert into r values ('T21 service_role refund', 'FAIL', sqlerrm) on conflict do nothing;
+end $$;
 
 reset role;
 select verdict, test, detail from r order by verdict = 'PASS', test;
