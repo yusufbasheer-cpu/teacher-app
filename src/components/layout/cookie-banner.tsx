@@ -29,7 +29,7 @@ export function CookieBanner() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-[500] px-4 py-4 sm:px-6"
+      className="fixed bottom-0 left-0 right-0 z-[500] px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6"
       role="region"
       aria-label="Cookie consent"
     >

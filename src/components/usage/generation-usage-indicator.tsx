@@ -41,11 +41,11 @@ export function GenerationUsageIndicator({ usage, loading }: GenerationUsageIndi
       style={{ borderColor: "color-mix(in oklch, var(--brand) 25%, transparent)" }}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
+        <p className="text-sm font-medium tabular-nums" style={{ color: "var(--text)" }}>
           {label}
         </p>
         {!usage.unlimited && usage.generationsLimit != null ? (
-          <span className="text-xs font-semibold" style={{ color: TEAL }}>
+          <span className="text-xs font-semibold tabular-nums" style={{ color: TEAL }}>
             {Math.max(0, usage.generationsLimit - usage.generationsUsed)} left
           </span>
         ) : (

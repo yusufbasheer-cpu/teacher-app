@@ -17,6 +17,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { resolveLessonTitle, resolveLessonTopicNote } from "@/lib/lesson-plan";
 import { toUserFacingError } from "@/lib/user-facing-errors";
+import { PALETTE_LESSONS_KEY, cacheInvalidate } from "@/lib/client-cache";
 import { useErrorToast } from "@/hooks/use-error-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -245,6 +246,7 @@ export function MyLessonPlansList() {
     }
     setPlans((prev) => (prev ?? []).filter((p) => p.id !== pendingDelete.id));
     setPendingDelete(null);
+    cacheInvalidate(PALETTE_LESSONS_KEY); // palette must not keep offering the deleted lesson
     toast.success("Lesson plan deleted.");
   };
 

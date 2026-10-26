@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { onUserChange } from "@/lib/client-cache";
 import { getAuthHeaders } from "@/lib/auth-headers";
 import { getUpgradePitch, logUsageSnapshot, type UserUsageSnapshot } from "@/lib/user-usage";
 
@@ -29,9 +30,22 @@ export function useUserUsage(enabled: boolean) {
     });
   }, []);
 
+  // Usage drives credit/plan UI, so it is intentionally NOT cached across
+  // mounts — the server answer is always fetched fresh. What we do here is
+  // keep the last answer on screen while a refresh runs (no flash back to
+  // "Loading usage…"), and drop any response that was overtaken by a newer
+  // request, an unmount, or an account change.
+  const latest = useRef(0);
+
+  /** Invalidate any request still in flight. */
+  const supersede = useCallback(() => {
+    latest.current++;
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!enabled) return;
-    setState((s) => ({ ...s, loading: true }));
+    const id = ++latest.current;
+    setState((s) => (s.usage ? s : { ...s, loading: true }));
     try {
       const res = await fetch("/api/user-usage", {
         headers: await getAuthHeaders(),
@@ -42,6 +56,7 @@ export function useUserUsage(enabled: boolean) {
         upgradePitch?: { headline: string; subline: string };
         error?: string;
       };
+      if (id !== latest.current) return;
       if (!res.ok || !data.usage) {
         console.warn("[user-usage] failed to load usage", {
           status: res.status,
@@ -59,13 +74,23 @@ export function useUserUsage(enabled: boolean) {
         subline: pitch.subline,
       });
     } catch {
-      setState((s) => ({ ...s, loading: false }));
+      // Network blip: keep whatever we were already showing.
+      if (id === latest.current) setState((s) => ({ ...s, loading: false }));
     }
   }, [enabled]);
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    const stopWatching = onUserChange(() => {
+      supersede();
+      setState({ usage: null, loading: enabled, headline: "", subline: "" });
+      void refresh();
+    });
+    return () => {
+      supersede();
+      stopWatching();
+    };
+  }, [refresh, enabled, supersede]);
 
   return { ...state, refresh, applyUsage };
 }

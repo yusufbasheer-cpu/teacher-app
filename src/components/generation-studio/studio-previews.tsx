@@ -87,7 +87,7 @@ export function SlideFace({ slide, index, eyebrow, deckTitle, swatch, large }: {
             {slide.imagePreview ? (
               <span className="std-scale-in min-h-0 flex-1 overflow-hidden rounded-[4%] bg-white/20 shadow-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element -- data URL extracted from the generated PPTX */}
-                <img src={slide.imagePreview} alt="" className="h-full w-full object-cover" />
+                <img src={slide.imagePreview} alt="" decoding="async" className="h-full w-full object-cover" />
               </span>
             ) : null}
           </div>

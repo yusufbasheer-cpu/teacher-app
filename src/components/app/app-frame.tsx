@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { clearActiveSession } from "@/lib/active-session";
 import { useUserUsage } from "@/hooks/use-user-usage";
+import { useFocusTrap, useModKey, useSwipeToClose } from "@/hooks/use-overlay";
 import { PLANS, isFreePlan } from "@/lib/plans";
 import { isNavActive, navGroups, routeLabel, type NavItem } from "@/lib/app-nav";
 import { getTeacherDisplayName } from "@/lib/user-profile";
@@ -235,7 +236,7 @@ function RailContent({
 }) {
   const groups = navGroups(roles);
   return (
-    <nav className="flex-1 overflow-y-auto px-2.5 py-2" aria-label="Main">
+    <nav className="flex-1 touch-pan-y overflow-y-auto px-2.5 py-2" aria-label="Main">
       {groups.map((group, gi) => (
         <div key={group.id} className={cn(gi > 0 && "mt-4")}>
           {!collapsed ? (
@@ -318,7 +319,7 @@ function AccountMenu({ user }: { user: User }) {
         aria-label="Account"
         className={cn(
           "relative flex size-7 items-center justify-center rounded-full bg-brand text-[10px] font-semibold text-brand-on",
-          "before:absolute before:-inset-2 before:content-['']",
+          "pointer-coarse:before:absolute pointer-coarse:before:-inset-2 pointer-coarse:before:content-['']",
           "transition-opacity duration-[110ms] hover:opacity-90",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
         )}
@@ -422,6 +423,11 @@ export function AppFrame({ user, children }: { user: User; children: React.React
 
   const [collapsed, setCollapsed] = React.useState(false);
   const [drawer, setDrawer] = React.useState(false);
+  const drawerPanelRef = React.useRef<HTMLDivElement>(null);
+  const closeDrawer = React.useCallback(() => setDrawer(false), []);
+  const modKey = useModKey();
+  useFocusTrap(drawer, drawerPanelRef);
+  useSwipeToClose(drawer, drawerPanelRef, closeDrawer);
 
   React.useEffect(() => {
     setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === "1");
@@ -555,8 +561,8 @@ export function AppFrame({ user, children }: { user: User; children: React.React
             onClick={() => setDrawer(false)}
             className="animate-fade-in absolute inset-0 bg-ink/30 backdrop-blur-[2px]"
           />
-          <div className="animate-rise absolute inset-y-0 left-0 flex w-[264px] max-w-[82vw] flex-col border-r border-line bg-surface shadow-overlay">
-            <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-line-subtle px-3">
+          <div ref={drawerPanelRef} className="animate-rise absolute inset-y-0 left-0 flex touch-pan-y w-[264px] max-w-[82vw] flex-col border-r border-line bg-surface shadow-overlay">
+            <div className="flex h-[calc(52px+env(safe-area-inset-top))] shrink-0 items-center justify-between border-b border-line-subtle px-3 pt-[env(safe-area-inset-top)]">
               <span className="flex items-center gap-2">
                 <Image src="/logo-mark.png" alt="" aria-hidden width={24} height={24} className="size-6 rounded-sm object-cover" />
                 <span className="text-[13px] font-semibold text-ink">Layah</span>
@@ -573,7 +579,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
               onNavigate={() => setDrawer(false)}
               onBeforeNavigate={onBeforeNavigate}
             />
-            <div className="border-t border-line-subtle p-3">
+            <div className="border-t border-line-subtle p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <ThemeToggle />
             </div>
           </div>
@@ -590,7 +596,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
           *within* this container) pinned regardless of how long the page
           content is. */}
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <header className="sticky top-0 z-40 flex h-[52px] shrink-0 items-center gap-2 border-b border-line-subtle bg-canvas/85 px-3 backdrop-blur-md sm:px-4">
+        <header className="sticky top-0 z-40 flex h-[calc(52px+env(safe-area-inset-top))] shrink-0 items-center gap-2 border-b border-line-subtle bg-canvas/85 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-md sm:px-4">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -606,7 +612,7 @@ export function AppFrame({ user, children }: { user: User; children: React.React
             <h2 className="truncate text-[13px] font-medium text-ink">{routeLabel(activePath)}</h2>
           </span>
 
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1.5 pointer-coarse:gap-4">
             <QuotaPill />
 
             {/* Dispatches the same ⌘K the palette listens for, so there is one
@@ -621,15 +627,16 @@ export function AppFrame({ user, children }: { user: User; children: React.React
               aria-label="Search lessons or run a command"
               className={cn(
                 "relative flex items-center gap-2 rounded-md border border-line-subtle bg-surface py-1 pl-2 pr-1.5",
-                // Invisible extension so the touch target is ≥44px without changing the look.
-                "before:absolute before:-inset-x-2 before:-inset-y-3 before:content-['']",
+                // Touch only: invisible extension so the target is ≥44px without changing the look.
+                // The cluster's gap is 16px on touch (2 × the 8px extension) so adjacent extensions never overlap.
+                "pointer-coarse:before:absolute pointer-coarse:before:-inset-x-2 pointer-coarse:before:-inset-y-3 pointer-coarse:before:content-['']",
                 "text-[12px] text-faint transition-colors hover:border-line hover:text-muted",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
               )}
             >
               <Search className="size-3.5" aria-hidden />
               <span className="hidden md:inline">Search</span>
-              <Kbd className="hidden md:inline-flex">⌘K</Kbd>
+              <Kbd className="hidden md:inline-flex">{modKey === "⌘" ? "⌘K" : "Ctrl K"}</Kbd>
             </button>
 
             <ThemeToggle className="hidden sm:inline-flex" />

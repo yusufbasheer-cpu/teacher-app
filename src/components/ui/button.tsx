@@ -56,10 +56,10 @@ const buttonVariants = cva(
         /* Page-level primary actions. The old scale topped out at 36px, which
            is why the product's most important button never looked important. */
         xl: "h-11 px-5 text-[14px] rounded-lg",
-        icon: "size-8",
-        "icon-xs": "size-6 rounded-sm [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-7 [&_svg:not([class*='size-'])]:size-3.5",
-        "icon-lg": "size-9",
+        icon: "size-8 pointer-coarse:size-11",
+        "icon-xs": "size-6 rounded-sm pointer-coarse:size-11 [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-7 pointer-coarse:size-11 [&_svg:not([class*='size-'])]:size-3.5",
+        "icon-lg": "size-9 pointer-coarse:size-11",
       },
       /** Fills the container. Use for stacked mobile actions and menu items. */
       block: { true: "w-full", false: "" },
