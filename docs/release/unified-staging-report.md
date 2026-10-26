@@ -4,7 +4,78 @@ Prepared on branch `release/unified-staging` (worktree `C:\Liyaah\teacher-app-un
 **Nothing pushed, merged or deployed. Production untouched. No branch, worktree or commit was deleted or rewritten.**
 Integrated code tip: **`a18abb0`** (this report is committed on top of it).
 
-# >>> DEPLOYMENT RESULT (2026-10-26) — read this first <<<
+# >>> POST-DEPLOYMENT VERIFICATION (2026-10-26, second pass) — newest section <<<
+
+Scope: read-only. Nothing pushed, deployed, merged, applied to any database, and no paid call made. Production untouched.
+
+## 1. Alignment
+Remote `staging` = `29e013a`; live deployment `dpl_9BkvWxdNgapZWjXCRDjKvewzAjL6` (Ready, Preview, `githubCommitSha 29e013a`, ref `staging`) is what `staging.layah.in` serves. `main` = `dc955af`. The report commit `aaae64d` (+ the follow-up commit in this pass) stays local and is **not** pushed; it rides along with the next approved staging update.
+
+## 2. Authenticated UI verification — **BLOCKED (no authenticated session available)**
+- The Playwright browser redirects `/overview` to `/login`.
+- I then checked the user's real Chrome through the Claude-in-Chrome integration (opened one new tab, navigated to `https://staging.layah.in/overview`, read only the resulting path/title, closed the tab): also redirected to `/login`. No manually authenticated staging session exists in either browser.
+- **Disclosure:** earlier in this work I called `clearCookies()` on the Playwright browser context several times during my own tests. If a manual staging session had existed in *that* browser, I would have removed it. I did not read, copy or use any cookie, token or password.
+- Therefore **not tested live:** login/logout, dashboard, saved lessons and recency grouping, Ctrl+K palette, mobile drawer and swipe, user-scoped cache cleanup, private-resource access with a real account. The earlier mock-auth results (see UX report and §6 below) are code-behaviour evidence only, not live verification.
+- Anonymous live evidence still stands: protected routes redirect to `/login`, protected APIs return 401, artifact routes return 401.
+
+## 3. Phase 2 database readiness — **no database access; migration reviewed**
+**Access status:** none. No Supabase CLI, `psql` or database variables on this machine; Vercel holds the staging keys as Sensitive (not retrievable); no Supabase token is configured. I did not look for or use any credential store.
+**Simplest secure access procedure (recommended, no secrets leave your hands):**
+1. Supabase dashboard → project **`esqnyktumxscyvznftlc`** (`layah-staging`) → **SQL Editor**.
+2. Paste `scripts/security/phase-2-catalog-inventory.sql` (verified strictly SELECT-only; section 0 prints the database identity first — stop if it is not the staging project). Run it, then paste the result sets back here (CSV/text; contains schema metadata, no row data).
+3. I review; only after that do you decide whether to apply `20261025120000_phase2_rpc_and_school_policy_hardening.sql`, then run `phase-2-isolation-transaction-test.sql` and `saved-lessons-rls-transaction-test.sql` (these insert test rows inside a transaction that ends in `ROLLBACK`, with no `COMMIT`; **not** read-only, so run them only after the catalog review, staging project only).
+Optional later, for automated reads: an operator-created, time-boxed read-only Postgres role whose connection string is put in a local untracked env var by the operator and revoked afterwards. Never paste it into chat or commit it.
+**Migration review (offline, against repo history):**
+- Forward statements are guarded (`to_regprocedure` / `to_regclass` / `drop policy if exists`), idempotent, no data touched, no DROP TABLE/TRUNCATE/DELETE.
+- `refund_user_generation(uuid, date)`: only caller is `src/lib/user-usage-server.ts` via the **service-role** client, so revoking EXECUTE from `public, anon, authenticated` cannot break a legitimate flow. Whether the exposure exists live (default privileges granting `anon`/`authenticated` EXECUTE; the 20260728120000 migration only revoked from `public`) **cannot be confirmed without the catalog** (inventory sections 5 and 10).
+- Usage RPCs: the browser calls `ensure_user_usage` as an **authenticated** user (`user-usage-client.ts`), which the migration keeps granted. Anonymous callers lose access, which nothing legitimate used.
+- `school_admin_update_teacher_role` (from `20260613130000`): confirmed wildcard `ILIKE auth.jwt()->>'email'` match; the app updates roles through the service-role route instead, so dropping it is safe.
+- **Defect found and fixed locally:** the migration's *ROLLBACK comment* used `school_id`; the real column is **`school_account_id`** (`school_teachers` in `20260524143000_school_accounts.sql`). A rollback run as written would have failed. Comment corrected; forward SQL unaffected. (Included in the local commit; not applied anywhere.)
+- Still unknown without DB access: live RLS/policy state, storage policies, `gamma_*` tables, bucket `gamma-pptx-artifacts` privacy (the migration creates it with `public = false`), migration history, Auth settings.
+**Readiness:** code-side ready; **verification blocked** → Phase 2 stays NO-GO for "secure".
+
+## 4. Gamma paid-test readiness — code ready, **environment NOT ready for an uncapped paid test**
+Verified offline: 14 Gamma/export test files, **179 passed / 7 skipped** (the skipped ones are the real-Postgres `store.integration` tests). Covers the fail-closed gate (incl. production-DB refusal), theme listing/selection (server-listed themes only), canonical slide payload (one card per platform slide), ordering, six required visual categories, validation, ledger recovery (unknown outcome blocks new submissions; fails closed if the ledger write is lost), artifact ownership (owner folder only, no traversal) and anonymous-download rejection. Activity-instruction slides, speaker notes and student-only rules are covered in `payload.test`, `ppt-main-phase-activity.test`, `ppt-educational-quality.test`.
+**Not proven by tests:** *artifact reuse / re-download without a new submission.* The reuse branch exists (`findReusableArtifact` by request hash + theme, then read from storage), but under Vitest the storage read is stubbed and the real-Postgres tests are skipped. It must be proven in the controlled live test.
+**Blockers before one controlled end-to-end test:**
+1. **No spend limits on staging.** `GAMMA_USER_HOURLY_LIMIT`, `GAMMA_USER_DAILY_LIMIT`, `GAMMA_DAILY_CREDIT_BUDGET`, `GAMMA_MONTHLY_CREDIT_BUDGET` are unset → default to `Number.MAX_SAFE_INTEGER` (live `/api/environment-check` shows them `null`). Only the per-run caps exist (`GAMMA_MAX_CREDITS_PER_RUN=300`, max 25 cards).
+2. **Tester list is `*`** (live: `testersOpenToAll: true`) → every signed-in staging user can start a paid run. Combined with (1) this is unbounded spend.
+3. **Unknown DB state:** `gamma_generations` / snapshots / artifacts tables and the private bucket must be confirmed via the inventory script.
+4. **No authenticated staging test account/session** available to automation; the account needs plan headroom, and the Gamma account's credit balance is unknown.
+5. Reuse path unproven (above); cross-user check needs a second account.
+**Recommended exact settings (branch `staging`, Preview, Sensitive; then redeploy):** `GAMMA_USER_HOURLY_LIMIT=2`, `GAMMA_USER_DAILY_LIMIT=2`, `GAMMA_DAILY_CREDIT_BUDGET=600`, `GAMMA_MONTHLY_CREDIT_BUDGET=1500`, and `GAMMA_TESTER_EMAILS=<the one test account email>` for the duration of the test. Changing env vars needs a new deployment to take effect. I changed nothing.
+**Controlled test plan (after the above, one run):** record credit before; generate one deck (Layah Studio shows real stages only); inspect content, activity-instruction slides, required visuals, notes; download; reload and re-download; confirm credit unchanged and no second Gamma submission in the ledger/AI-usage panel; second user must get 403/404 on that artifact.
+
+## 5. Configuration review (no values read, nothing changed)
+| # | Item | Severity | Finding | Exact correction (not applied) |
+|---|---|---|---|---|
+| 1 | Gamma has no spend caps + open tester list | **High for paid testing** | See §4. | Set the four limit vars and restrict `GAMMA_TESTER_EMAILS` (staging branch). |
+| 2 | `DEEPSEEK_API_KEY` shared Preview+Production | **Medium** | Staging traffic is billed to, and rate-limited with, the production DeepSeek account; cost cannot be attributed. | Create a separate DeepSeek key with its own spend limit; add it as `DEEPSEEK_API_KEY` scoped Preview + branch `staging`. Do not rotate the production key. |
+| 3 | `SUPER_ADMIN_PIN` shared | **Medium** | Same 6-digit PIN guards super-admin in both environments; `verify-pin` rate limit uses an **in-memory `Map`** (per serverless instance), so the effective limit is weaker than it looks (the file itself notes Redis is the intended fix). It is a second factor *after* the super-admin role check. | Set a distinct staging PIN (Preview + branch `staging`); later replace the in-memory limiter with a shared store. |
+| 4 | PostHog + Sentry keys in the Preview scope | **Low–Medium** | Production projects are reachable from Preview. Mitigated by the new hostname/`VERCEL_ENV` gate: verified live, **0** outbound telemetry requests; unit-tested. Residual risk: only `layah.in`/`www.layah.in` count as production in the browser gate. | Remove `NEXT_PUBLIC_POSTHOG_KEY/HOST`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN` from the **Preview** scope (keep Production), or point Preview at separate staging projects. `NEXT_PUBLIC_*` are baked at build time → redeploy. |
+| 5 | SMTP shared | **Low** | `send-email.ts` refuses to send from an isolated environment, so staging cannot use the production mailbox for app email (also means app-level emails such as welcome mail can't be tested on staging; Supabase Auth mail is separate). | None required. Optional: a staging-only mailbox/sandbox SMTP if app emails must be tested. |
+| 6 | `PYTHON_PPT_API_URL` shared | **Low–Medium** | Legacy PPT path on staging calls the production Python PPT service. Gamma (the staging default) does not. | Point Preview at a staging instance, or leave while Gamma is the default. |
+| 7 | Staging Pexels key missing | **Info — earlier note retracted** | No source file references Pexels or `PEXELS_API_KEY`; there is no fallback to lose. My previous statement that a stock-photo fallback is unavailable was wrong. | None. Optionally delete the stale Production variable. |
+| 8 | Cron authentication | **Info (staging) / Blocker (production)** | Fail-closed, verified live (401 for no auth, forged `x-vercel-cron-schedule`, wrong bearer). `CRON_SECRET` is unset everywhere; crons run only on the Production deployment, so Preview is unaffected. | Before production: set `CRON_SECRET` (≥32 random bytes, Sensitive, Production) per `docs/security/cron-secret-configuration.md`. |
+| 9 | Preview-comments CSP warning | **Low (cosmetic)** | Next bakes a loader for `vercel.live/_next-live/feedback/feedback.js` into Preview builds; CSP blocks it on every page. | Port the net effect of `bf0e5a0` + `dca4085` to `next.config.ts`: `const TOOLBAR_ORIGINS_ALLOWED = process.env.VERCEL_ENV !== "production"` and append `https://vercel.live` to `script-src`/`style-src` (and `https://assets.vercel.com` to `font-src`) only when true, leaving the Production policy byte-for-byte unchanged. |
+| 10 | Login dark-mode inconsistency | **Not a defect — retracted** | With dark scheme set before load, `/login`, `/signup`, `/pricing` all render dark (`html.dark`); my earlier test flipped the scheme after load, and pages without the theme toggle do not live-follow OS changes (negligible). | None. |
+| 11 | Supabase Auth URLs | **Unverified** | Dashboard-only. | Confirm Site URL `https://staging.layah.in` and redirect allowlist includes `https://staging.layah.in/auth/callback` and `/auth/confirm`; no production URLs. |
+
+## 6. Evidence carried forward from pre-deployment (mock-auth, NOT live)
+Palette Ctrl+K/Esc, account-switch isolation, logout clearing, drawer focus trap/restore, header safe-area (99 px), dark mode on the unified build. Drawer swipe passed on the UX branch (identical code) but could not be re-run on the unified build (synthetic touch input did not reach the page).
+
+## 7. Remaining blockers and next actions (in order)
+1. **You:** run the catalog inventory in the staging SQL Editor and paste results (§3). → I review live RLS/grants/storage.
+2. **You, after review:** approve applying the Phase 2 migration to staging, then run the two transaction tests.
+3. **You:** provide a staging test account session for automation (sign in manually in a browser I can drive, or run the checklist yourself) → complete the authenticated checks in `staging-smoke-test-checklist.md`.
+4. **You:** approve the Gamma cap/tester env changes (§4) + a redeploy; then authorize **one** controlled paid run.
+5. Decide on the shared-key corrections (§5 rows 2–4, 6) and the optional CSP port.
+6. Before any production step: `CRON_SECRET` in Production, Phase 2 verified, key separation.
+**Verdicts unchanged:** staging deployment GO (done); staging "fully verified/secure" **NO-GO**; production **NO-GO**.
+
+---
+
+# >>> DEPLOYMENT RESULT (2026-10-26) — first pass <<<
 
 **Staging is deployed and live. It is NOT declared fully secure or fully verified** (see "Not verified" below).
 
@@ -27,7 +98,7 @@ Integrated code tip: **`a18abb0`** (this report is committed on top of it).
 2. `NEXT_PUBLIC_POSTHOG_KEY/HOST`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN` point at production projects; staging is protected only by the new code gate (verified live: 0 outbound telemetry requests). Safer long term: remove them from the Preview scope.
 3. `SMTP_*`: staging sends auth and welcome mail through the production SMTP account. `SUPER_ADMIN_PIN` is shared.
 4. `PYTHON_PPT_API_URL` is shared with Production (the `PPT_TEMPLATE_SERVICE_*` pair has a separate Preview entry).
-5. `PEXELS_API_KEY` exists for Production only, so the stock-photo fallback is unavailable on staging.
+5. `PEXELS_API_KEY` exists for Production only. *(Corrected in the second pass: no app source references Pexels, so this has no effect on staging.)*
 6. `CRON_SECRET` is absent everywhere, so the cron endpoint fails closed (verified live: 401 for no auth, a forged `x-vercel-cron-schedule` header, and a wrong bearer). That is fine for Preview, where crons do not run, but it is **required before Production can run maintenance**.
 7. Razorpay keys are staging-scoped; test-versus-live was confirmed only through the server-side isolation check (`liveRazorpayKeyPresent: false`), not by reading values.
 Not inspectable from here: Supabase Auth redirect URLs and Site URL (dashboard), storage bucket privacy.
@@ -39,7 +110,7 @@ Not inspectable from here: Supabase Auth redirect URLs and Site URL (dashboard),
 **Passed:** `/`, `/pricing`, `/about`, `/faq`, `/login`, `/signup` return 200 with title, canonical and JSON-LD; mobile 390 px has no horizontal scroll; anonymous `/my-lesson-plans` redirects to `/login`; **0** outbound PostHog/Sentry/`/ingest`/GA requests; no secret patterns in `/`, `/login`, `/pricing`, `/api/environment-check`; anonymous `GET /api/user-usage`, `GET …/pptx/themes`, `POST …/pptx`, `POST …/pptx/artifact` return **401**; cron returns **401** in all three attempts. `POST /api/lesson-plan` returns 400 for an invalid body *before* authentication (shape validation only); `authenticateRequest` runs before any provider call (checked in source), so no paid call is reachable anonymously. `GET /api/super-admin/me` anonymously returns `{"isSuperAdmin":false}` by design.
 **Observations, not fixed:**
 - Console: `vercel.live/_next-live/feedback/feedback.js` is blocked by CSP on Preview. Only the Vercel comment widget is affected; the deferred toolbar-CSP commits (§3E) address exactly this. Cosmetic.
-- `/login` stays light under `prefers-color-scheme: dark` emulation, while the landing page and app follow the theme. Not investigated whether this is intended.
+- ~~`/login` stays light under dark emulation~~ **Retracted in the second pass:** that was a test artifact (scheme flipped after load); with dark set before load, `/login`, `/signup` and `/pricing` render dark.
 Screenshots: `docs/release/screenshots/live-login-dark.png`, `live-landing-mobile.png`.
 
 ## Not verified (blocked)

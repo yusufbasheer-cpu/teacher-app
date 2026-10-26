@@ -27,8 +27,8 @@
 --   grant execute on function public.ensure_user_usage() to anon;
 --   grant update on table public.school_teachers to authenticated;
 --   create policy "school_admin_update_teacher_role" on public.school_teachers for update
---     using (school_id in (select id from public.school_accounts where lower(admin_email) = lower(coalesce(auth.jwt() ->> 'email', ''))))
---     with check (school_id in (select id from public.school_accounts where lower(admin_email) = lower(coalesce(auth.jwt() ->> 'email', ''))));
+--     using (school_account_id in (select id from public.school_accounts where lower(admin_email) = lower(coalesce(auth.jwt() ->> 'email', ''))))
+--     with check (school_account_id in (select id from public.school_accounts where lower(admin_email) = lower(coalesce(auth.jwt() ->> 'email', ''))));
 -- ============================================================================
 
 do $$
