@@ -1,7 +1,7 @@
 # Dependency audit exception register
 
-Reviewed: 2026-10-28  
-Owner: Platform/Security  
+Reviewed: 2026-10-28
+Owner: Platform/Security
 Next review: 2026-11-28, or immediately on a new high/critical advisory
 
 This is an exception register, not a vulnerability fix. `npm audit --omit=dev`
