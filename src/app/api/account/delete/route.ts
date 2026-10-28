@@ -7,8 +7,8 @@ export const runtime = "nodejs";
 
 export async function DELETE(req: Request) {
   const ip = getClientIp(req);
-  const ipLimit = checkRateLimit(`delete-account:ip:${ip}`, 3, HOUR_MS);
-  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  const ipLimit = await checkRateLimit(`delete-account:ip:${ip}`, 3, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds, ipLimit.unavailable);
 
   const auth = await authenticateRequest(req);
   if (!auth.ok) {

@@ -6,8 +6,8 @@ export const runtime = "nodejs";
 
 export async function GET(req: Request) {
   const ip = getClientIp(req);
-  const ipLimit = checkRateLimit(`export:ip:${ip}`, 5, HOUR_MS);
-  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  const ipLimit = await checkRateLimit(`export:ip:${ip}`, 5, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds, ipLimit.unavailable);
 
   const auth = await authenticateRequest(req);
   if (!auth.ok) {

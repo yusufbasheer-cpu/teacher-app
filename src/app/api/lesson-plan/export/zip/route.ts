@@ -4,6 +4,7 @@ import { buildTeacherPackageZipBuffer, sanitizeExportFileName } from "@/lib/less
 import { hasTeacherPackageContent } from "@/lib/lesson-plan";
 import type { LessonPlanResult } from "@/lib/lesson-plan";
 import { authenticateRequest } from "@/lib/user-usage-server";
+import { checkRateLimit, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,8 @@ export async function POST(req: Request) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
   }
+  const userLimit = await checkRateLimit(`export:lesson-plan-zip:user:${auth.userId}`, 10, HOUR_MS);
+  if (!userLimit.ok) return rateLimitResponse(userLimit.resetInSeconds, userLimit.unavailable);
 
   let body: Body;
   try {

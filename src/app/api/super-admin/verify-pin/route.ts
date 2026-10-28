@@ -10,8 +10,8 @@ const PIN_REGEX = /^\d{6}$/;
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
-  const ipLimit = checkRateLimit(`admin-pin:${ip}`, 5, FIFTEEN_MIN_MS);
-  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  const ipLimit = await checkRateLimit(`admin-pin:${ip}`, 5, FIFTEEN_MIN_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds, ipLimit.unavailable);
 
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();

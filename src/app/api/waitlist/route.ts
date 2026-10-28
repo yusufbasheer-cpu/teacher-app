@@ -5,7 +5,7 @@ import { checkRateLimit, getClientIp, rateLimitResponse, HOUR_MS } from "@/lib/r
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const ipLimit = checkRateLimit(`waitlist:ip:${getClientIp(req)}`, 10, HOUR_MS);
+  const ipLimit = await checkRateLimit(`waitlist:ip:${getClientIp(req)}`, 10, HOUR_MS, "bounded-fallback");
   if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
 
   let body: { email?: string; plan_interested?: string | null };

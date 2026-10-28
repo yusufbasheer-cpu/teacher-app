@@ -127,8 +127,8 @@ function collectFiles(formData: FormData): File[] {
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
-  const ipLimit = checkRateLimit(`extract-upload:ip:${ip}`, 20, HOUR_MS);
-  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  const ipLimit = await checkRateLimit(`extract-upload:ip:${ip}`, 20, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds, ipLimit.unavailable);
 
   const auth = await authenticateRequest(req);
   if (!auth.ok) {

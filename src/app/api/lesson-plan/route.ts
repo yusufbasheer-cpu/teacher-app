@@ -724,8 +724,8 @@ export async function POST(req: Request) {
   const isPptExperiment = sections.includes("PPT Slide Content") && isFeatureLockActive();
   if (!isPptExperiment) {
     const ip = getClientIp(req);
-    const ipLimit = checkRateLimit(`lesson-plan:ip:${ip}`, 10, HOUR_MS);
-    if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+    const ipLimit = await checkRateLimit(`lesson-plan:ip:${ip}`, 10, HOUR_MS);
+    if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds, ipLimit.unavailable);
   }
 
   const input: LessonPlanInput = {
@@ -792,10 +792,11 @@ export async function POST(req: Request) {
   }
 
   if (!isPptExperiment) {
-    const userDayLimit = checkRateLimit(`lesson-plan:user:${auth.userId}`, 30, DAY_MS);
-    if (!userDayLimit.ok) return rateLimitResponse(userDayLimit.resetInSeconds);
+    const userDayLimit = await checkRateLimit(`lesson-plan:user:${auth.userId}`, 30, DAY_MS);
+    if (!userDayLimit.ok) return rateLimitResponse(userDayLimit.resetInSeconds, userDayLimit.unavailable);
 
-    const spending = checkSpendingProtection(auth.userId);
+    const spending = await checkSpendingProtection(auth.userId);
+    if (spending.unavailable) return rateLimitResponse(spending.resetInSeconds, spending.unavailable);
     if (spending.blocked) {
       if (spending.shouldAlert) {
         void sendEmail({

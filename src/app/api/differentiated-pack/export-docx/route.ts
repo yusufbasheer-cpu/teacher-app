@@ -17,8 +17,8 @@ type Body = {
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
-  const ipLimit = checkRateLimit(`differentiated-pack-export-docx:ip:${ip}`, 30, HOUR_MS);
-  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  const ipLimit = await checkRateLimit(`differentiated-pack-export-docx:ip:${ip}`, 30, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds, ipLimit.unavailable);
 
   const auth = await authenticateRequest(req);
   if (!auth.ok) {

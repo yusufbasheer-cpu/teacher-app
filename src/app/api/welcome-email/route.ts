@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
-  const ipLimit = checkRateLimit(`email:ip:${ip}`, 3, HOUR_MS);
+  const ipLimit = await checkRateLimit(`email:ip:${ip}`, 3, HOUR_MS, "bounded-fallback");
   if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
 
   try {

@@ -4,6 +4,7 @@ const authenticateRequest = vi.hoisted(() => vi.fn());
 const renderPptxWithGamma = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/user-usage-server", () => ({ authenticateRequest }));
+vi.mock("@/lib/rate-limit", async (orig) => ({ ...(await orig<object>()), checkRateLimit: vi.fn(async () => ({ ok: true, remaining: 9, resetInSeconds: 3600, source: "redis" })) }));
 vi.mock("@/lib/gamma/render", () => ({ renderPptxWithGamma }));
 // NOTE: lesson-plan-export / the pptxgenjs renderer are deliberately NOT mocked: this proves the real legacy path still works.
 

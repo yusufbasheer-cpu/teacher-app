@@ -207,15 +207,16 @@ function handleGateFailure(userId: string, error: PostgrestError): GenerationGat
     tags: { area: "usage_gate", pgcode: error.code ?? "unknown" },
   });
 
-  // Reuses the existing in-memory rate limiter purely to throttle the alert
-  // email to once per hour — not a new dependency.
-  if (checkRateLimit("usage_gate_alert", 1, HOUR_MS).ok) {
-    void sendEmail({
+  // Alert throttling uses a bounded local fallback when Redis is unavailable:
+  // one alert per hot instance/hour preserves visibility without a flood.
+  void checkRateLimit("usage_gate_alert", 1, HOUR_MS, "bounded-fallback").then((alert) => {
+    if (!alert.ok) return;
+    return sendEmail({
       to: "info@layah.in",
       subject: "Layah ALERT — usage gate failing",
       text: `consume_user_generation/ensure_user_usage failed.\ncode=${error.code}\nmessage=${error.message}\nfailOpen=${FAIL_OPEN}\ntime=${new Date().toISOString()}`,
     });
-  }
+  });
 
   if (FAIL_OPEN) {
     return {

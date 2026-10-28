@@ -6,6 +6,7 @@ const renderPptxWithGamma = vi.hoisted(() => vi.fn());
 const buildPptxFromPptContent = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/user-usage-server", () => ({ authenticateRequest }));
+vi.mock("@/lib/rate-limit", async (orig) => ({ ...(await orig<object>()), checkRateLimit: vi.fn(async () => ({ ok: true, remaining: 9, resetInSeconds: 3600, source: "redis" })) }));
 vi.mock("@/lib/gamma/render", () => ({ renderPptxWithGamma }));
 vi.mock("@/lib/lesson-plan-export", async (orig) => ({ ...(await orig<object>()), buildPptxFromPptContent }));
 

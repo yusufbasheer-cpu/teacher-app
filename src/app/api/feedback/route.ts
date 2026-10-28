@@ -16,7 +16,7 @@ type FeedbackBody = {
 const STARS = (n: number) => "★".repeat(Math.max(1, Math.min(5, n))) + "☆".repeat(5 - Math.max(1, Math.min(5, n)));
 
 export async function POST(req: Request) {
-  const ipLimit = checkRateLimit(`feedback:ip:${getClientIp(req)}`, 10, HOUR_MS);
+  const ipLimit = await checkRateLimit(`feedback:ip:${getClientIp(req)}`, 10, HOUR_MS, "bounded-fallback");
   if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
 
   let body: FeedbackBody;

@@ -7,7 +7,7 @@ import { CONTACT_EMAIL } from "@/lib/site";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const ipLimit = checkRateLimit(`contact:ip:${getClientIp(request)}`, 10, HOUR_MS);
+  const ipLimit = await checkRateLimit(`contact:ip:${getClientIp(request)}`, 10, HOUR_MS, "bounded-fallback");
   if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
 
   let raw: unknown;
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   const { name, email, subject, message } = parsed.value;
 
   // Stop one address from being used to flood the inbox from many IPs.
-  const emailLimit = checkRateLimit(`contact:email:${email.toLowerCase()}`, 3, HOUR_MS);
+  const emailLimit = await checkRateLimit(`contact:email:${email.toLowerCase()}`, 3, HOUR_MS, "bounded-fallback");
   if (!emailLimit.ok) return rateLimitResponse(emailLimit.resetInSeconds);
 
   const result = await sendEmail({

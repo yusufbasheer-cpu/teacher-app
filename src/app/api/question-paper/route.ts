@@ -37,8 +37,8 @@ const DEEPSEEK_MAX_TOKENS_PAPER = 8000;
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
-  const ipLimit = checkRateLimit(`question-paper:ip:${ip}`, 10, HOUR_MS);
-  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  const ipLimit = await checkRateLimit(`question-paper:ip:${ip}`, 10, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds, ipLimit.unavailable);
 
   let body: QuestionPaperGenerateBody;
   try {
@@ -68,10 +68,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const userDayLimit = checkRateLimit(`question-paper:user:${auth.userId}`, 30, DAY_MS);
-  if (!userDayLimit.ok) return rateLimitResponse(userDayLimit.resetInSeconds);
+  const userDayLimit = await checkRateLimit(`question-paper:user:${auth.userId}`, 30, DAY_MS);
+  if (!userDayLimit.ok) return rateLimitResponse(userDayLimit.resetInSeconds, userDayLimit.unavailable);
 
-  const spending = checkSpendingProtection(auth.userId);
+  const spending = await checkSpendingProtection(auth.userId);
+  if (spending.unavailable) return rateLimitResponse(spending.resetInSeconds, spending.unavailable);
   if (spending.blocked) {
     if (spending.shouldAlert) {
       void sendEmail({

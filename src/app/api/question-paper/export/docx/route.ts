@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { questionPaperDownloadFileName } from "@/lib/question-paper-download-names";
 import { buildQuestionPaperDocxBuffer } from "@/lib/question-paper-export";
 import { authenticateRequest } from "@/lib/user-usage-server";
+import { checkRateLimit, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,8 @@ export async function POST(req: Request) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
   }
+  const userLimit = await checkRateLimit(`export:question-paper-docx:user:${auth.userId}`, 20, HOUR_MS);
+  if (!userLimit.ok) return rateLimitResponse(userLimit.resetInSeconds, userLimit.unavailable);
 
   let body: Body;
   try {

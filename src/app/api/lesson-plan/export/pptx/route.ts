@@ -26,6 +26,7 @@ import {
 import { SupabaseGammaStore } from "@/lib/gamma/store";
 import { gammaUserMessage } from "@/lib/gamma/user-messages";
 import { createHash } from "node:crypto";
+import { checkRateLimit, rateLimitResponse, HOUR_MS } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -105,6 +106,8 @@ export async function POST(req: Request) {
   if (!auth.ok) {
     return NextResponse.json({ error: auth.message }, { status: auth.status });
   }
+  const userLimit = await checkRateLimit(`export:lesson-plan-pptx:user:${auth.userId}`, 10, HOUR_MS);
+  if (!userLimit.ok) return rateLimitResponse(userLimit.resetInSeconds, userLimit.unavailable);
   let body: Body;
   try {
     body = (await req.json()) as Body;

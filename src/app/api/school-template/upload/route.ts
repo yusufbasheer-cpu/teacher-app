@@ -60,7 +60,9 @@ function isLegacyOfficeContainer(bytes: Buffer): boolean {
 }
 
 export async function POST(req: Request) {
-  const ipLimit = checkRateLimit(`school-template-upload:ip:${getClientIp(req)}`, 10, HOUR_MS);
+  // Upload validation is bounded locally during a Redis outage; it is not a
+  // paid generation or export path and retains its 10/hour abuse limit.
+  const ipLimit = await checkRateLimit(`school-template-upload:ip:${getClientIp(req)}`, 10, HOUR_MS, "bounded-fallback");
   if (!ipLimit.ok) {
     const minutes = Math.max(1, Math.ceil(ipLimit.resetInSeconds / 60));
     return fail(

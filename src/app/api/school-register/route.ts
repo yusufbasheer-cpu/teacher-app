@@ -18,8 +18,8 @@ type RegistrationBody = {
 };
 
 export async function POST(req: Request) {
-  const ipLimit = checkRateLimit(`school-register:ip:${getClientIp(req)}`, 5, HOUR_MS);
-  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  const ipLimit = await checkRateLimit(`school-register:ip:${getClientIp(req)}`, 5, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds, ipLimit.unavailable);
 
   const auth = await authenticateRequest(req);
   if (!auth.ok) {

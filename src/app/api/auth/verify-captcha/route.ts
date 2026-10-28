@@ -10,8 +10,8 @@ type TurnstileVerifyResponse = {
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
-  const ipLimit = checkRateLimit(`captcha:ip:${ip}`, 10, HOUR_MS);
-  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds);
+  const ipLimit = await checkRateLimit(`captcha:ip:${ip}`, 10, HOUR_MS);
+  if (!ipLimit.ok) return rateLimitResponse(ipLimit.resetInSeconds, ipLimit.unavailable);
 
   const secretKey = process.env.TURNSTILE_SECRET_KEY?.trim();
 
