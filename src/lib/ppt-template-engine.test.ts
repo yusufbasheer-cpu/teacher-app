@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
+import sharp from "sharp";
 import { buildStructuredLessonSlides } from "./ppt-structured-lesson";
-import { buildPptxFromTemplateEngine, chunkLinesByHeight } from "./ppt-template-engine";
+import { buildPptxFromTemplateEngine, chunkLinesByHeight, normalizePptImageForPptx } from "./ppt-template-engine";
 import { estimateRowHeight, isGroupHeaderLine } from "./ppt-render-primitives";
 
 // Wide enough that none of the fixture lines below wrap onto a second line, so each
@@ -13,6 +14,34 @@ const INSTR_1 = "First instruction sentence.";
 const INSTR_2 = "Second instruction sentence.";
 const HEADER_2 = "Middle Achievers task";
 const INSTR_3 = "Third instruction sentence.";
+
+describe("PPTX untrusted image normalization", () => {
+  it("accepts legitimate PNG and JPEG input but passes only JPEG bytes to PptxGenJS", async () => {
+    const png = await sharp({ create: { width: 1600, height: 900, channels: 4, background: "#2288cc" } }).png().toBuffer();
+    const jpeg = await sharp({ create: { width: 800, height: 600, channels: 3, background: "#cc8822" } }).jpeg().toBuffer();
+    for (const input of [png, jpeg]) {
+      const asset = await normalizePptImageForPptx(input);
+      expect(asset.dataUri).toMatch(/^data:image\/jpeg;base64,/);
+      expect(asset.width).toBeGreaterThan(0);
+      expect(asset.height).toBeGreaterThan(0);
+      const output = Buffer.from(asset.dataUri.split(",")[1]!, "base64");
+      expect(output.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
+    }
+  });
+
+  it("rejects malformed and unsupported image inputs before PPTX rendering", async () => {
+    await expect(normalizePptImageForPptx(Buffer.from("not an image"))).rejects.toThrow("Unsupported PPT image format");
+    await expect(normalizePptImageForPptx(Buffer.from("GIF89a"))).rejects.toThrow("Unsupported PPT image format");
+  });
+
+  it("rejects a PNG with dimensions over the image processing budget", async () => {
+    const oversized = Buffer.alloc(24);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(oversized);
+    oversized.writeUInt32BE(50_000, 16);
+    oversized.writeUInt32BE(50_000, 20);
+    await expect(normalizePptImageForPptx(oversized)).rejects.toThrow("exceeding");
+  });
+});
 
 describe("chunkLinesByHeight — activity headers never get stranded across a page break", () => {
   it("carries a standalone sub-heading forward instead of leaving it as the last line of a chunk", () => {

@@ -20,6 +20,7 @@ import { isTeacherOnlyLine, LEADING_BULLET_RE, stripInlineMarks } from "@/lib/pp
 import { readFile } from "fs/promises";
 import path from "path";
 import PptxGenJS from "pptxgenjs";
+import sharp from "sharp";
 import type { StructuredLessonSlideModel } from "@/lib/ppt-structured-lesson";
 import type {
   DeckSpec,
@@ -41,7 +42,6 @@ import {
   drawProgressPill,
   estimateRowHeight,
   estimateBlockHeight,
-  getImageNaturalSize,
   isGroupHeaderLine,
   type BulletVariant,
   type StablePptIcon,
@@ -61,7 +61,7 @@ export {
 
 // Import for use within this file.
 import { getTemplateConfig, type TemplateConfig, type TemplateId } from "@/lib/ppt-template-config";
-import { fetchExternalImageSafely, sniffFileSignature } from "@/lib/upload-security";
+import { assertPixelBudget, fetchExternalImageSafely, sniffFileSignature } from "@/lib/upload-security";
 import {
   DEFAULT_PRESENTATION_LANGUAGE,
   PPT_STRINGS,
@@ -331,12 +331,53 @@ export function chunkLinesByHeight(
 
 type ImageAsset = { dataUri: string; width: number | undefined; height: number | undefined };
 
-const SNIFFED_KIND_TO_MIME: Record<string, string> = {
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-  gif: "image/gif",
-};
+const MAX_PPT_IMAGE_BYTES = 20 * 1024 * 1024;
+const MAX_PPT_IMAGE_PIXELS = 40_000_000;
+const MAX_PPT_IMAGE_WIDTH = 2560;
+const MAX_PPT_IMAGE_HEIGHT = 1440;
+
+/** Converts untrusted input to bounded JPEG bytes before PptxGenJS sees it. */
+export async function normalizePptImageForPptx(bytes: Buffer): Promise<ImageAsset> {
+  if (bytes.length === 0 || bytes.length > MAX_PPT_IMAGE_BYTES) {
+    throw new Error("PPT image is empty or exceeds the 20 MB input limit.");
+  }
+  const kind = sniffFileSignature(bytes);
+  if (kind !== "jpeg" && kind !== "png" && kind !== "webp") {
+    throw new Error(`Unsupported PPT image format: ${kind ?? "unknown"}.`);
+  }
+  const pixelCheck = assertPixelBudget(bytes);
+  if (!pixelCheck.ok) throw new Error(pixelCheck.reason);
+
+  const decoded = await sharp(bytes, { limitInputPixels: MAX_PPT_IMAGE_PIXELS, pages: 1, failOn: "error" })
+    .rotate()
+    .resize({ width: MAX_PPT_IMAGE_WIDTH, height: MAX_PPT_IMAGE_HEIGHT, fit: "inside", withoutEnlargement: true })
+    .flatten({ background: "#ffffff" })
+    .jpeg({ quality: 82, mozjpeg: true })
+    .toBuffer({ resolveWithObject: true });
+  if (!decoded.info.width || !decoded.info.height) {
+    throw new Error("PPT image could not be decoded to a valid raster.");
+  }
+  return {
+    dataUri: `data:image/jpeg;base64,${decoded.data.toString("base64")}`,
+    width: decoded.info.width,
+    height: decoded.info.height,
+  };
+}
+
+async function normalizeSchoolLogo(dataUri: string | null | undefined): Promise<string | null> {
+  if (!dataUri) return null;
+  const match = /^data:image\/(?:jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(dataUri);
+  if (!match || match[1].length > Math.ceil((MAX_PPT_IMAGE_BYTES * 4) / 3)) {
+    console.warn("[pptx render] school logo is not a supported bounded raster image; omitting it.");
+    return null;
+  }
+  try {
+    return (await normalizePptImageForPptx(Buffer.from(match[1], "base64"))).dataUri;
+  } catch (error) {
+    console.warn(`[pptx render] school logo could not be normalized: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
+}
 
 async function fetchImageAsset(url: string): Promise<ImageAsset> {
   // SSRF-guarded: only fetches https URLs on an allowlisted image-CDN host
@@ -344,17 +385,11 @@ async function fetchImageAsset(url: string): Promise<ImageAsset> {
   // URL reaching this function today comes from Pexels'/fal.ai's own API
   // response, never from user input, but this is the one place in the app
   // that fetches a URL server-side, so it gets the hardening regardless.
-  const buf = await fetchExternalImageSafely(url);
+  const buf = await fetchExternalImageSafely(url, { maxBytes: MAX_PPT_IMAGE_BYTES });
   // Trust the actual bytes, not whatever content-type the remote server
   // claims — a spoofed header is exactly what "validate by magic bytes" is
   // for.
-  const sniffed = sniffFileSignature(buf);
-  const mime = (sniffed && SNIFFED_KIND_TO_MIME[sniffed]) || "image/png";
-  const size = getImageNaturalSize(buf);
-  return {
-    dataUri: `data:${mime};base64,${buf.toString("base64")}`,
-    width: size?.width, height: size?.height,
-  };
+  return normalizePptImageForPptx(buf);
 }
 
 let _logoCache: string | null | undefined;
@@ -834,7 +869,7 @@ export async function buildPptxFromTemplateEngine(params: {
   );
 
   const layahLogo = await loadLayahLogo();
-  const schoolLogo = params.schoolLogo ?? null;
+  const schoolLogo = await normalizeSchoolLogo(params.schoolLogo);
 
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
@@ -2122,7 +2157,7 @@ export async function buildPptxFromDeckSpec(params: {
     }
   }));
   const layahLogo = await loadLayahLogo();
-  const schoolLogo = params.schoolLogo ?? null;
+  const schoolLogo = await normalizeSchoolLogo(params.schoolLogo);
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
   pptx.rtlMode = ctx.rtl;
